@@ -24371,3 +24371,154 @@ html[data-theme="dark"] .formatInfoTrigger,
   .formatInfoFooter { align-items: stretch; flex-direction: column; }
   .formatInfoFooter button { width: 100% !important; }
 }
+
+/* PROTEÇÃO DE DADOS — OFFLINE E COLABORAÇÃO ENTRE DISPOSITIVOS */
+.cloudSyncStatus {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(2, 10, 25, 0.2);
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cloudSyncStatus svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.cloudSyncStatus.synced svg {
+  color: #86efac;
+}
+
+.cloudSyncStatus.pending {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(194, 65, 12, 0.2);
+}
+
+.cloudSyncStatus.pending svg {
+  color: #fdba74;
+  animation: t360SyncSpin 1.2s linear infinite;
+}
+
+.cloudSyncStatus.offline {
+  border-color: rgba(254, 202, 202, 0.48);
+  background: rgba(127, 29, 29, 0.25);
+}
+
+.cloudSyncStatus.offline svg {
+  color: #fecaca;
+}
+
+.dataSafetyBanner {
+  margin: 12px clamp(14px, 2.3vw, 28px) 0;
+  padding: 12px 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  color: #7c2d12;
+  background: #fff7ed;
+  box-shadow: 0 8px 20px rgba(124, 45, 18, 0.08);
+}
+
+.dataSafetyBanner > svg {
+  width: 21px;
+  height: 21px;
+  margin-top: 1px;
+  flex: 0 0 auto;
+  color: #c2410c;
+}
+
+.dataSafetyBanner.pending > svg {
+  animation: t360SyncSpin 1.2s linear infinite;
+}
+
+.dataSafetyBanner div {
+  display: grid;
+  gap: 2px;
+}
+
+.dataSafetyBanner strong {
+  font-size: 0.88rem;
+}
+
+.dataSafetyBanner span {
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.theme-dark .dataSafetyBanner {
+  border-color: rgba(251, 146, 60, 0.35);
+  color: #ffedd5;
+  background: rgba(124, 45, 18, 0.24);
+  box-shadow: none;
+}
+
+.savingBadge.offline {
+  border-color: #fed7aa;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.theme-dark .savingBadge.offline {
+  border-color: rgba(251, 146, 60, 0.4);
+  color: #fdba74;
+  background: rgba(124, 45, 18, 0.25);
+}
+
+.dataConflictBox {
+  max-width: 580px;
+  border-top: 4px solid #f97316;
+}
+
+.dataConflictBox .confirmIcon svg {
+  width: 28px;
+  height: 28px;
+  color: #ea580c;
+}
+
+.dataConflictChoices {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dataConflictChoices button {
+  min-height: 46px;
+}
+
+@keyframes t360SyncSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 760px) {
+  .cloudSyncStatus {
+    min-height: 36px;
+    padding: 7px 9px;
+  }
+
+  .cloudSyncStatus span {
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dataSafetyBanner {
+    margin: 9px 10px 0;
+    padding: 10px 12px;
+  }
+
+  .dataConflictChoices {
+    grid-template-columns: 1fr;
+  }
+}

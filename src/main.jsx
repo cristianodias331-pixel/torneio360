@@ -11,6 +11,8 @@ import {
   ChevronRight,
   ClipboardPaste,
   CircleHelp,
+  CloudCheck,
+  CloudOff,
   Clock3,
   Copy,
   Dices,
@@ -30,6 +32,7 @@ import {
   Moon,
   PlusCircle,
   Printer,
+  RefreshCw,
   Search,
   Settings,
   Shapes,
@@ -46,6 +49,15 @@ import {
 } from "lucide-react";
 import InstallAppBanner from "./InstallAppBanner.jsx";
 import { orderFixedMixedPair } from "./fixedMixedTeamOrder.mjs";
+import {
+  listPendingTournaments,
+  mergeConcurrentTournamentData,
+  readDashboardCache,
+  removePendingTournament,
+  requestDurableOfflineStorage,
+  saveDashboardCache,
+  savePendingTournament,
+} from "./offlineDataStore.mjs";
 import { super12IndividualTemplate } from "./super12Schedule.mjs";
 import { super20MixedTemplate } from "./super20MixedSchedule.mjs";
 import "./style.css";
@@ -1024,11 +1036,50 @@ function savePublicViewStorage(key, value) {
 const USER_APP_STATE_STORAGE_PREFIX = "torneio360:user-app-state:v2:";
 const OPEN_TOURNAMENTS_STORAGE_PREFIX = "torneio360:open-tournaments:v1:";
 const OPEN_TOURNAMENT_NAV_STORAGE_PREFIX = "torneio360:open-tournament-navigation:v1:";
+const PROFILE_CACHE_STORAGE_PREFIX = "torneio360:profile-cache:v1:";
+const TOURNAMENT_DRAFT_STORAGE_PREFIX = "torneio360:tournament-draft:";
+const TOURNAMENT_DRAFT_CHANGED_EVENT = "torneio360:tournament-draft-changed";
 const DEFAULT_TOURNAMENT_NAVIGATION = Object.freeze({
   tournamentTab: "participantes",
   matchesTab: "grupos",
   scrollY: 0,
 });
+
+function isBrowserOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+function isRetryableConnectionError(error) {
+  if (isBrowserOffline()) return true;
+  const text = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
+  return /failed to fetch|fetch failed|network|offline|connection|timeout|timed out|load failed|gateway|temporarily unavailable/.test(text);
+}
+
+function getProfileCacheKey(userId) {
+  return `${PROFILE_CACHE_STORAGE_PREFIX}${userId}`;
+}
+
+function readCachedProfile(userId) {
+  if (!userId) return null;
+  try {
+    const cached = JSON.parse(localStorage.getItem(getProfileCacheKey(userId)) || "null");
+    return cached?.profile && typeof cached.profile === "object" ? cached.profile : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedProfile(userId, profile) {
+  if (!userId || !profile) return;
+  try {
+    localStorage.setItem(getProfileCacheKey(userId), JSON.stringify({
+      profile,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.warn("Não foi possível atualizar a cópia offline do perfil.", error);
+  }
+}
 const TOURNAMENT_TAB_COLORS = Object.freeze([
   "#2563eb",
   "#ea580c",
@@ -1168,7 +1219,36 @@ function saveLocalUserAppState(userId, state) {
 }
 
 function getTournamentDraftStorageKey(userId, tournamentId) {
-  return `torneio360:tournament-draft:${userId || "anonymous"}:${tournamentId}`;
+  return `${TOURNAMENT_DRAFT_STORAGE_PREFIX}${userId || "anonymous"}:${tournamentId}`;
+}
+
+function notifyTournamentDraftChanged(userId, tournamentId) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(TOURNAMENT_DRAFT_CHANGED_EVENT, {
+    detail: { userId, tournamentId },
+  }));
+}
+
+function listLocalTournamentDrafts(userId) {
+  if (!userId) return [];
+  const prefix = `${TOURNAMENT_DRAFT_STORAGE_PREFIX}${userId}:`;
+
+  try {
+    return Object.keys(localStorage)
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => {
+        try {
+          const draft = JSON.parse(localStorage.getItem(key) || "null");
+          const tournamentId = key.slice(prefix.length);
+          return draft?.data && tournamentId ? { ...draft, userId, tournamentId } : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 function readTournamentDraft(userId, tournament) {
@@ -1178,6 +1258,8 @@ function readTournamentDraft(userId, tournament) {
     const rawDraft = localStorage.getItem(getTournamentDraftStorageKey(userId, tournament.id));
     if (!rawDraft) return null;
     const draft = JSON.parse(rawDraft);
+    if (draft?.pending === true && draft?.data) return draft;
+
     const draftUpdatedAt = Number(draft?.updatedAt || 0);
     const serverUpdatedAt = Date.parse(tournament.updated_at || tournament.created_at || "") || 0;
 
@@ -1189,15 +1271,34 @@ function readTournamentDraft(userId, tournament) {
   }
 }
 
-function saveTournamentDraft(userId, tournamentId, data) {
+function saveTournamentDraft(userId, tournament, data, baseUpdatedAt = null, baseData = null) {
+  const tournamentId = typeof tournament === "string" ? tournament : tournament?.id;
+  if (!userId || !tournamentId || !data) return;
+  const draft = {
+    data,
+    name: typeof tournament === "object" ? tournament.name : "",
+    type: typeof tournament === "object" ? tournament.type : "",
+    status: typeof tournament === "object" ? tournament.status : "active",
+    public_id: typeof tournament === "object" ? tournament.public_id : null,
+    is_public: typeof tournament === "object" ? tournament.is_public : true,
+    created_at: typeof tournament === "object" ? tournament.created_at : null,
+    baseUpdatedAt: baseUpdatedAt || (typeof tournament === "object" ? tournament.updated_at : null),
+    baseData: baseData || (typeof tournament === "object" ? tournament.data : null),
+    updatedAt: Date.now(),
+    pending: true,
+  };
+
   try {
     localStorage.setItem(
       getTournamentDraftStorageKey(userId, tournamentId),
-      JSON.stringify({ data, updatedAt: Date.now() })
+      JSON.stringify(draft)
     );
   } catch (error) {
     console.warn("Não foi possível criar o backup local do torneio", error);
   }
+
+  void savePendingTournament(userId, tournamentId, draft);
+  notifyTournamentDraftChanged(userId, tournamentId);
 }
 
 function clearTournamentDraft(userId, tournamentId) {
@@ -1206,6 +1307,8 @@ function clearTournamentDraft(userId, tournamentId) {
   } catch (error) {
     console.warn("Não foi possível remover o rascunho local já salvo", error);
   }
+  void removePendingTournament(userId, tournamentId);
+  notifyTournamentDraftChanged(userId, tournamentId);
 }
 
 async function copyToClipboard(text) {
@@ -4887,12 +4990,18 @@ function App() {
         console.error("Erro ao carregar perfil:", error);
 
         if (!waitForAccess || attempt === attempts - 1) {
+          const cachedProfile = readCachedProfile(userId);
+          if (!lastProfile && cachedProfile && isRetryableConnectionError(error)) {
+            setProfile(cachedProfile);
+            return cachedProfile;
+          }
           if (!lastProfile) setProfile(null);
           return lastProfile;
         }
       } else if (data) {
         lastProfile = data;
         setProfile(data);
+        saveCachedProfile(userId, data);
 
         const status = String(data.status || "").toLowerCase();
         const isStableProfile =
@@ -6803,6 +6912,9 @@ function Dashboard({ profile, user, onProfileChange }) {
   const [selectedArenaTournaments, setSelectedArenaTournaments] = useState([]);
   const [selectedArenaLoading, setSelectedArenaLoading] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [networkOnline, setNetworkOnline] = useState(() => !isBrowserOffline());
+  const [pendingSyncCount, setPendingSyncCount] = useState(() => listLocalTournamentDrafts(user.id).length);
+  const [dashboardUsingOfflineCache, setDashboardUsingOfflineCache] = useState(false);
   const [openTournamentIds, setOpenTournamentIds] = useState(() => readOpenTournamentIds(user.id));
   const tournamentNavigationGuardRef = useRef(null);
   const openTournamentNavigationRef = useRef(readOpenTournamentNavigation(user.id));
@@ -6882,6 +6994,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const [circuits, setCircuits] = useState([]);
+  const tournamentsRef = useRef(tournaments);
+  const trashTournamentsRef = useRef(trashTournaments);
+  const circuitsRef = useRef(circuits);
+  const dashboardLoadInFlightRef = useRef(false);
   const [circuitForm, setCircuitForm] = useState({
     id: null,
     name: "",
@@ -6903,6 +7019,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const scrollRestoreTimersRef = useRef([]);
   const initialAppRouteRef = useRef(`${window.location.pathname}${window.location.search}${window.location.hash || ""}`);
   const initialRouteIsExplicitRef = useRef(isExplicitAppRoute(initialAppRouteRef.current));
+
+  useEffect(() => { tournamentsRef.current = tournaments; }, [tournaments]);
+  useEffect(() => { trashTournamentsRef.current = trashTournaments; }, [trashTournaments]);
+  useEffect(() => { circuitsRef.current = circuits; }, [circuits]);
 
   function getRelativeAppRoute() {
     return `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
@@ -7069,13 +7189,33 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     });
   }
 
-  function goToPanel(panel) {
+  function ensureCloudConnection(actionLabel = "concluir esta ação") {
+    if (!isBrowserOffline()) return true;
+    showNotice(
+      "warning",
+      "Sem conexão com a internet",
+      `Para evitar um cadastro incompleto, reconecte-se antes de ${actionLabel}. As alterações feitas dentro de um torneio aberto continuam protegidas neste aparelho.`
+    );
+    return false;
+  }
+
+  async function guardSelectedTournamentBeforeLeaving() {
+    if (!selected?.id || typeof tournamentNavigationGuardRef.current !== "function") return true;
+    captureCurrentTournamentNavigation();
+    const canLeave = await tournamentNavigationGuardRef.current();
+    if (canLeave) tournamentNavigationGuardRef.current = null;
+    return canLeave;
+  }
+
+  async function goToPanel(panel) {
+    if (!await guardSelectedTournamentBeforeLeaving()) return;
     setSelected(null);
     setActivePanel(panel);
     updateAppUrl({ activePanel: panel, selectedTournamentId: null });
   }
 
-  function openProfileSection(nextSubtab = "editar") {
+  async function openProfileSection(nextSubtab = "editar") {
+    if (!await guardSelectedTournamentBeforeLeaving()) return;
     setProfileMenuOpen(false);
     setSelected(null);
     setProfileSubtab(nextSubtab);
@@ -7084,7 +7224,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function openProfileSettings() {
-    openProfileSection("editar");
+    void openProfileSection("editar");
   }
 
   function toggleColorMode() {
@@ -7312,6 +7452,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       isPublic: true,
     };
   });
+  const organizerProfileBaseRef = useRef({
+    photoUrl: profile.photo_url || "",
+    arenaName: profile.arena_name || "",
+    organizerName: profile.name || "",
+    email: user.email || "",
+    whatsapp: profile.phone || "",
+    address: profile.address || "",
+    mapsLink: profile.maps_link || "",
+    city: profile.city || "",
+    state: profile.state || "",
+    instagramHandle: profile.instagram_handle || "",
+    instagramLink: profile.instagram_link || "",
+    whatsappGroupLink: profile.whatsapp_group_link || "",
+    isPublic: true,
+  });
 
   const allowedTypes = allowedByPlan[profile.plan] || [];
   const freeTrialDetails = getFreeTrialDetails(profile, user);
@@ -7409,7 +7564,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
   }
 
-  async function loadCircuits() {
+  async function loadCircuits({ silentError = false } = {}) {
     const { data, error } = await supabase
       .from("circuits")
       .select("*")
@@ -7418,7 +7573,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (error) {
       console.error("Erro ao carregar circuitos:", error);
-      showNotice("error", "Erro ao carregar circuitos", "Não foi possível carregar seus circuitos do Supabase.");
+      if (!silentError) showNotice("error", "Erro ao carregar circuitos", "Não foi possível carregar seus circuitos do Supabase.");
       return;
     }
 
@@ -7452,12 +7607,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       rankingHistory: historyByCircuit[circuit.id] || {},
     }));
 
-    setCircuits(sortCircuitsForDisplay(loadedCircuits));
-    return loadedCircuits;
+    const sortedCircuits = sortCircuitsForDisplay(loadedCircuits);
+    circuitsRef.current = sortedCircuits;
+    setCircuits(sortedCircuits);
+    return sortedCircuits;
   }
 
-  async function saveCircuitHistoryToSupabase(circuitId, history) {
-    let success = true;
+  async function saveCircuitHistoryToSupabase(circuitId, history, sourceTournaments = []) {
     const rows = Object.entries(history || {}).map(([recordKey, record]) => ({
       user_id: user.id,
       circuit_id: circuitId,
@@ -7471,6 +7627,68 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       played: Number(record.played || 0),
       updated_at: new Date().toISOString(),
     }));
+    const sourceVersions = (sourceTournaments || [])
+      .filter((tournament) => tournament?.id && tournament?.updated_at)
+      .map((tournament) => ({
+        tournament_id: tournament.id,
+        updated_at: tournament.updated_at,
+      }));
+
+    const { error: atomicReplaceError } = await supabase.rpc("replace_circuit_ranking_history", {
+      p_circuit_id: circuitId,
+      p_rows: rows.map((row) => ({
+        tournament_id: row.tournament_id,
+        group_key: row.group_key,
+        player_key: row.player_key,
+        player_name: row.player_name,
+        pts: row.pts,
+        w: row.w,
+        bal: row.bal,
+        played: row.played,
+        updated_at: row.updated_at,
+      })),
+      p_source_versions: sourceVersions,
+    });
+
+    if (!atomicReplaceError) return true;
+
+    const atomicFunctionMissing = /replace_circuit_ranking_history|function.*does not exist|schema cache/i.test(
+      `${atomicReplaceError.message || ""} ${atomicReplaceError.code || ""}`
+    );
+    if (!atomicFunctionMissing) {
+      console.error("Erro ao substituir histórico do circuito em uma transação:", atomicReplaceError);
+      return false;
+    }
+
+    // Compatibilidade temporária enquanto a função transacional ainda não foi
+    // aplicada no banco: grava os dados novos antes de remover os antigos. Uma
+    // falha nunca apaga primeiro o histórico que já estava confirmado.
+    if (sourceVersions.length) {
+      const { data: currentVersions, error: versionsError } = await supabase
+        .from("tournaments")
+        .select("id, updated_at")
+        .eq("user_id", user.id)
+        .in("id", sourceVersions.map((item) => item.tournament_id));
+      const currentVersionById = new Map((currentVersions || []).map((item) => [String(item.id), item.updated_at]));
+      const sourceStillCurrent = !versionsError && sourceVersions.every((item) => (
+        currentVersionById.get(String(item.tournament_id)) === item.updated_at
+      ));
+      if (!sourceStillCurrent) {
+        console.warn("O ranking não foi substituído porque um torneio recebeu dados mais recentes.", versionsError);
+        return false;
+      }
+    }
+
+    if (rows.length) {
+      const { error: upsertError } = await supabase
+        .from("circuit_ranking_history")
+        .upsert(rows, { onConflict: "user_id,circuit_id,tournament_id,group_key,player_key" });
+
+      if (upsertError) {
+        console.error("Erro ao salvar histórico do circuito:", upsertError);
+        return false;
+      }
+    }
 
     const currentKeys = new Set(
       rows.map((row) => `${row.tournament_id}::${row.group_key}::${row.player_key}`)
@@ -7484,52 +7702,40 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (savedRowsError) {
       console.error("Erro ao conferir histórico do circuito:", savedRowsError);
-      success = false;
-    } else {
-      const staleRows = (savedRows || []).filter((row) => {
-        const key = `${row.tournament_id}::${row.group_key || "geral"}::${row.player_key}`;
-        return !currentKeys.has(key);
-      });
-
-      const removalResults = await Promise.all(
-        staleRows.map(async (row) => {
-          const { error } = await supabase
-            .from("circuit_ranking_history")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("circuit_id", circuitId)
-            .eq("tournament_id", row.tournament_id)
-            .eq("group_key", row.group_key || "geral")
-            .eq("player_key", row.player_key);
-
-          if (error) {
-            console.error("Erro ao remover histórico antigo do circuito:", error);
-            return false;
-          }
-          return true;
-        })
-      );
-      if (removalResults.some((result) => result === false)) success = false;
-
-      if (!rows.length) return success;
-    }
-
-    if (!rows.length) return success;
-
-    const { error } = await supabase
-      .from("circuit_ranking_history")
-      .upsert(rows, { onConflict: "user_id,circuit_id,tournament_id,group_key,player_key" });
-
-    if (error) {
-      console.error("Erro ao salvar histórico do circuito:", error);
       return false;
     }
 
-    return success;
+    const staleRows = (savedRows || []).filter((row) => {
+      const key = `${row.tournament_id}::${row.group_key || "geral"}::${row.player_key}`;
+      return !currentKeys.has(key);
+    });
+
+    const removalResults = await Promise.all(
+      staleRows.map(async (row) => {
+        const { error } = await supabase
+          .from("circuit_ranking_history")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("circuit_id", circuitId)
+          .eq("tournament_id", row.tournament_id)
+          .eq("group_key", row.group_key || "geral")
+          .eq("player_key", row.player_key);
+
+        if (error) {
+          console.error("Erro ao remover histórico antigo do circuito:", error);
+          return false;
+        }
+        return true;
+      })
+    );
+
+    return removalResults.every((result) => result !== false);
   }
 
   function saveCircuits(nextCircuits) {
-    setCircuits(sortCircuitsForDisplay(nextCircuits));
+    const sortedCircuits = sortCircuitsForDisplay(nextCircuits);
+    circuitsRef.current = sortedCircuits;
+    setCircuits(sortedCircuits);
   }
 
   function getCircuitSelectedTournaments(circuit, tournamentSource = tournaments) {
@@ -7592,6 +7798,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function saveCircuit(form = circuitForm) {
+    if (!ensureCloudConnection("salvar o circuito")) return;
     if (!form?.name.trim()) {
       showNotice("warning", "Nome obrigatório", "Digite um nome para o circuito.");
       return;
@@ -7625,15 +7832,90 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       updated_at: new Date().toISOString(),
     };
 
-    const query = isEditing
-      ? supabase.from("circuits").update(rowPayload).eq("id", form.id).eq("user_id", user.id).select("*").single()
-      : supabase.from("circuits").insert(rowPayload).select("*").single();
+    let query;
+    if (isEditing) {
+      const currentCircuit = circuitsRef.current.find((item) => item.id === form.id);
+      query = supabase.from("circuits").update(rowPayload).eq("id", form.id).eq("user_id", user.id);
+      if (currentCircuit?.updatedAt) query = query.eq("updated_at", currentCircuit.updatedAt);
+      query = query.select("*").maybeSingle();
+    } else {
+      query = supabase.from("circuits").insert(rowPayload).select("*").single();
+    }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
 
-    if (error) {
+    if (isEditing && !error && !data) {
+      const currentCircuit = circuitsRef.current.find((item) => item.id === form.id);
+      const { data: remoteRow, error: remoteError } = await supabase
+        .from("circuits")
+        .select("*")
+        .eq("id", form.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!remoteError && remoteRow && currentCircuit) {
+        const remoteCircuit = normalizeCircuitRow(remoteRow);
+        const merged = mergeConcurrentTournamentData(
+          {
+            name: currentCircuit.name,
+            startDate: currentCircuit.startDate,
+            endDate: currentCircuit.endDate,
+            tournamentIds: currentCircuit.tournamentIds,
+            rankingCriteria: currentCircuit.rankingCriteria,
+            rankingCriteriaMode: currentCircuit.rankingCriteriaMode,
+          },
+          {
+            name: rowPayload.name,
+            startDate: rowPayload.start_date,
+            endDate: rowPayload.end_date,
+            tournamentIds: rowPayload.tournament_ids,
+            rankingCriteria: rowPayload.ranking_criteria,
+            rankingCriteriaMode: rowPayload.ranking_criteria_mode,
+          },
+          {
+            name: remoteCircuit.name,
+            startDate: remoteCircuit.startDate,
+            endDate: remoteCircuit.endDate,
+            tournamentIds: remoteCircuit.tournamentIds,
+            rankingCriteria: remoteCircuit.rankingCriteria,
+            rankingCriteriaMode: remoteCircuit.rankingCriteriaMode,
+          }
+        );
+
+        if (merged.conflicts.length === 0) {
+          const retryPayload = {
+            ...rowPayload,
+            name: merged.data.name,
+            start_date: merged.data.startDate || null,
+            end_date: merged.data.endDate || null,
+            tournament_ids: merged.data.tournamentIds || [],
+            ranking_criteria: merged.data.rankingCriteria,
+            ranking_criteria_mode: merged.data.rankingCriteriaMode,
+            updated_at: new Date().toISOString(),
+          };
+          ({ data, error } = await supabase
+            .from("circuits")
+            .update(retryPayload)
+            .eq("id", form.id)
+            .eq("user_id", user.id)
+            .eq("updated_at", remoteRow.updated_at)
+            .select("*")
+            .maybeSingle());
+        }
+      } else if (remoteError) {
+        error = remoteError;
+      }
+    }
+
+    if (error || !data) {
       console.error("Erro ao salvar circuito:", error);
-      showNotice("error", "Erro ao salvar", "Não foi possível salvar o circuito no Supabase.");
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Erro ao salvar" : "Circuito atualizado em outro dispositivo",
+        error
+          ? "Não foi possível salvar o circuito no Supabase."
+          : "Outra pessoa alterou este circuito. Feche e abra novamente a edição para continuar com a versão mais recente."
+      );
       return;
     }
 
@@ -7650,7 +7932,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     saveCircuits(nextCircuits);
     const rankingHistorySaved = await saveCircuitHistoryToSupabase(
       finalPayload.id,
-      finalPayload.rankingHistory
+      finalPayload.rankingHistory,
+      getCircuitSelectedTournaments(finalPayload, tournamentsRef.current)
     );
     await syncPublicArenaDirectory(tournaments, nextCircuits);
     if (isEditing) setCircuitEditForm(null);
@@ -7682,6 +7965,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function updateCircuitRankingRule(circuit, rankingCriteria, rankingCriteriaMode = "manual") {
+    if (!ensureCloudConnection("alterar o critério do circuito")) return;
     const nextCircuit = {
       ...circuit,
       rankingCriteria,
@@ -7690,7 +7974,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const nextCircuits = circuits.map((item) => item.id === circuit.id ? nextCircuit : item);
     setCircuits(nextCircuits);
 
-    const { error } = await supabase
+    let criteriaUpdate = supabase
       .from("circuits")
       .update({
         ranking_criteria: rankingCriteria,
@@ -7699,11 +7983,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       })
       .eq("id", circuit.id)
       .eq("user_id", user.id);
+    if (circuit.updatedAt) criteriaUpdate = criteriaUpdate.eq("updated_at", circuit.updatedAt);
+    const { data: criteriaSaved, error } = await criteriaUpdate.select("id").maybeSingle();
 
-    if (error) {
+    if (error || !criteriaSaved) {
       console.error("Erro ao atualizar critério do circuito:", error);
       setCircuits(circuits);
-      showNotice("error", "Critério não alterado", "Não foi possível salvar o critério do circuito.");
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Critério não alterado" : "Circuito atualizado em outro dispositivo",
+        error ? "Não foi possível salvar o critério do circuito." : "Abra novamente o circuito para usar a versão mais recente."
+      );
       return;
     }
 
@@ -7754,16 +8044,23 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function deleteCircuit() {
     if (!circuitDeleteTarget) return;
+    if (!ensureCloudConnection("excluir o circuito")) return;
     const circuitId = circuitDeleteTarget.id;
-    const { error } = await supabase
+    let circuitDelete = supabase
       .from("circuits")
       .delete()
       .eq("id", circuitId)
       .eq("user_id", user.id);
+    if (circuitDeleteTarget.updatedAt) circuitDelete = circuitDelete.eq("updated_at", circuitDeleteTarget.updatedAt);
+    const { data: deletedCircuit, error } = await circuitDelete.select("id").maybeSingle();
 
-    if (error) {
+    if (error || !deletedCircuit) {
       console.error("Erro ao excluir circuito:", error);
-      showNotice("error", "Erro ao excluir", "Não foi possível excluir o circuito no Supabase.");
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Erro ao excluir" : "Circuito atualizado em outro dispositivo",
+        error ? "Não foi possível excluir o circuito no Supabase." : "Confira a versão mais recente antes de excluir."
+      );
       return;
     }
 
@@ -7922,7 +8219,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     if (changed) saveCircuits(nextCircuits);
 
     const persistCurrentSnapshot = () => Promise.all(
-      circuitsToPersist.map((circuit) => saveCircuitHistoryToSupabase(circuit.id, circuit.rankingHistory || {}))
+      circuitsToPersist.map((circuit) => saveCircuitHistoryToSupabase(
+        circuit.id,
+        circuit.rankingHistory || {},
+        getCircuitSelectedTournaments(circuit, tournamentSource || [])
+      ))
     );
     const queuedPersistence = circuitPersistenceQueueRef.current.then(
       persistCurrentSnapshot,
@@ -7975,6 +8276,24 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setOrganizerProfile((prev) => ({ ...prev, [field]: value }));
   }
 
+  function organizerProfileFromRow(row, fallback = {}) {
+    return {
+      photoUrl: row?.photo_url ?? fallback.photoUrl ?? "",
+      arenaName: row?.arena_name ?? fallback.arenaName ?? "",
+      organizerName: row?.name ?? fallback.organizerName ?? "",
+      email: user.email || fallback.email || "",
+      whatsapp: row?.phone ?? fallback.whatsapp ?? "",
+      address: row?.address ?? fallback.address ?? "",
+      mapsLink: row?.maps_link ?? fallback.mapsLink ?? "",
+      city: row?.city ?? fallback.city ?? "",
+      state: row?.state ?? fallback.state ?? "",
+      instagramHandle: row?.instagram_handle ?? fallback.instagramHandle ?? "",
+      instagramLink: row?.instagram_link ?? fallback.instagramLink ?? "",
+      whatsappGroupLink: row?.whatsapp_group_link ?? fallback.whatsappGroupLink ?? "",
+      isPublic: row?.is_public ?? fallback.isPublic ?? true,
+    };
+  }
+
   function openDatePicker(e) {
     e.currentTarget.showPicker?.();
   }
@@ -8016,11 +8335,36 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function saveOrganizerProfile() {
     if (!user?.id || profileSaving) return;
+    if (!ensureCloudConnection("salvar o perfil")) return;
     setProfileSaveSuccess(false);
     if (profileSaveSuccessTimerRef.current) clearTimeout(profileSaveSuccessTimerRef.current);
     setProfileSaving(true);
 
     const publicProfileData = buildOrganizerProfilePayload();
+    const baseProfile = organizerProfileBaseRef.current;
+    const basePublicProfileData = {
+      name: baseProfile.organizerName || profile.name || user.email || "Organizador",
+      arena_name: baseProfile.arenaName || profile.arena_name || profile.name || "Minha arena",
+      phone: baseProfile.whatsapp || "",
+      address: baseProfile.address || "",
+      maps_link: baseProfile.mapsLink || "",
+      city: baseProfile.city || "",
+      state: baseProfile.state || "",
+      photo_url: baseProfile.photoUrl || "",
+      instagram_handle: baseProfile.instagramHandle || "",
+      instagram_link: baseProfile.instagramLink || "",
+      whatsapp_group_link: baseProfile.whatsappGroupLink || "",
+      is_public: baseProfile.isPublic ?? true,
+    };
+    const changedProfileData = Object.fromEntries(
+      Object.entries(publicProfileData).filter(([key, value]) => value !== basePublicProfileData[key])
+    );
+
+    if (Object.keys(changedProfileData).length === 0) {
+      setProfileSaving(false);
+      showNotice("info", "Perfil já está atualizado", "Não há novas alterações para enviar.");
+      return;
+    }
 
     localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify({
       ...organizerProfile,
@@ -8031,7 +8375,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const { data, error } = await supabase
       .from("profiles")
-      .update(publicProfileData)
+      .update(changedProfileData)
       .eq("id", user.id)
       .select("*")
       .single();
@@ -8046,22 +8390,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (data) {
       onProfileChange?.((prev) => ({ ...prev, ...data }));
-      setOrganizerProfile((prev) => ({
-        ...prev,
-        photoUrl: data.photo_url || prev.photoUrl || "",
-        arenaName: data.arena_name || prev.arenaName || "",
-        organizerName: data.name || prev.organizerName || "",
-        email: user.email || prev.email || "",
-        whatsapp: data.phone || prev.whatsapp || "",
-        address: data.address || prev.address || "",
-        mapsLink: data.maps_link || prev.mapsLink || "",
-        city: data.city || prev.city || "",
-        state: data.state || prev.state || "",
-        instagramHandle: data.instagram_handle || prev.instagramHandle || "",
-        instagramLink: data.instagram_link || prev.instagramLink || "",
-        whatsappGroupLink: data.whatsapp_group_link || prev.whatsappGroupLink || "",
-        isPublic: true,
-      }));
+      const savedOrganizerProfile = organizerProfileFromRow(data, organizerProfile);
+      organizerProfileBaseRef.current = savedOrganizerProfile;
+      setOrganizerProfile(savedOrganizerProfile);
+      localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(savedOrganizerProfile));
+      saveCachedProfile(user.id, { ...profile, ...data });
     }
 
     await loadPublicArenaProfiles();
@@ -8123,38 +8456,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       public_id: item.public_id || generatePublicId(),
       is_public: true,
     }));
-    const tournamentDirectory = normalizedTournaments.map(getPublicTournamentDirectoryItem);
-    const circuitDirectory = (nextCircuits || []).map((circuit) => {
-      const criteria = getCircuitEffectiveCriteria(circuit, nextTournaments);
-      return getPublicCircuitDirectoryItem(
-        circuit,
-        getCircuitRanking(circuit, criteria, nextTournaments),
-        criteria
-      );
-    });
-    const currentOrganizer = buildTournamentPublicInfo().organizer;
-
     const updatedTournaments = await Promise.all(normalizedTournaments.map(async (item) => {
-      const existingPublicInfo = item.data?.publicInfo || {};
-      const nextData = {
-        ...(item.data || {}),
-        publicInfo: {
-          ...existingPublicInfo,
-          visibility: existingPublicInfo.visibility || { ...newPublicInfo },
-          organizer: currentOrganizer,
-        },
-        publishedOnProfile: true,
-        publishedAt: item.data?.publishedAt || new Date().toISOString(),
-        publicArenaDirectory: tournamentDirectory,
-        publicArenaCircuits: circuitDirectory,
-      };
-
       let directoryUpdate = supabase
         .from("tournaments")
         .update({
           public_id: item.public_id,
           is_public: true,
-          data: nextData,
         })
         .eq("id", item.id)
         .eq("user_id", user.id);
@@ -8168,7 +8475,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         return item;
       }
 
-      return { ...item, data: nextData };
+      return { ...item, public_id: item.public_id, is_public: true };
     }));
 
     if (updateLocalState) setTournaments(updatedTournaments);
@@ -8334,7 +8641,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         return next;
       });
       setPhotoEditor(null);
-      showNotice("success", "Foto atualizada", "A foto de perfil foi ajustada e salva.");
+      showNotice("info", "Foto preparada", "Ajuste concluído. Clique em “Salvar alterações” para enviar a foto à nuvem.");
     });
   }
 
@@ -8362,26 +8669,166 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (orderedTournaments.length === 0) return { tournaments: [], error: null };
 
-    const { error } = await supabase.rpc("set_tournament_order", {
+    let { error } = await supabase.rpc("set_tournament_order_safe", {
       p_tournament_ids: orderedTournaments.map((tournament) => tournament.id),
     });
 
-    if (!error && manual) {
+    const safeFunctionMissing = error && /set_tournament_order_safe|function.*does not exist|schema cache/i.test(
+      `${error.message || ""} ${error.code || ""}`
+    );
+
+    if (safeFunctionMissing) {
+      ({ error } = await supabase.rpc("set_tournament_order", {
+        p_tournament_ids: orderedTournaments.map((tournament) => tournament.id),
+      }));
+    }
+
+    if (!error && manual && safeFunctionMissing) {
       const updates = await Promise.all(orderedTournaments.map((tournament) => (
-        supabase
+        (() => {
+          let markerUpdate = supabase
           .from("tournaments")
           .update({ data: tournament.data })
           .eq("id", tournament.id)
-          .eq("user_id", user.id)
+          .eq("user_id", user.id);
+          if (tournament.updated_at) markerUpdate = markerUpdate.eq("updated_at", tournament.updated_at);
+          return markerUpdate.select("id").maybeSingle();
+        })()
       )));
       const markerError = updates.find((result) => result.error)?.error || null;
-      if (markerError) return { tournaments: orderedTournaments, error: markerError };
+      const markerConflict = updates.some((result) => !result.error && !result.data);
+      if (markerError || markerConflict) {
+        return {
+          tournaments: orderedTournaments,
+          error: markerError || new Error("A ordem encontrou um torneio alterado em outra aba."),
+        };
+      }
     }
 
     return { tournaments: orderedTournaments, error };
   }
 
-  async function loadTournaments() {
+  async function persistTournamentSnapshot(updated, { expectedUpdatedAt = null, forceOverwrite = false } = {}) {
+    const lifecycleStatus = getTournamentLifecycleStatus(updated);
+    const persistedData = { ...(updated.data || {}), lifecycleStatus };
+    const nextUpdatedAt = new Date().toISOString();
+
+    let query = supabase
+      .from("tournaments")
+      .update({
+        name: updated.name,
+        type: updated.type,
+        data: persistedData,
+        status: lifecycleStatus === "finished" ? "finished" : "active",
+        updated_at: nextUpdatedAt,
+      })
+      .eq("id", updated.id)
+      .eq("user_id", user.id);
+
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+
+    const { data: savedTournament, error } = await query.select("*").maybeSingle();
+
+    if (error) {
+      console.error("Erro ao salvar torneio:", error);
+      return { ok: false, error, retryable: isRetryableConnectionError(error) };
+    }
+
+    if (!savedTournament) {
+      const { data: serverTournament, error: reloadError } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("id", updated.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (reloadError) {
+        console.error("Erro ao conferir versão do torneio:", reloadError);
+        return { ok: false, error: reloadError, retryable: isRetryableConnectionError(reloadError) };
+      }
+
+      return { ok: false, conflict: true, serverTournament };
+    }
+
+    return { ok: true, tournament: savedTournament };
+  }
+
+  async function syncPendingTournamentDrafts(tournamentSource = []) {
+    if (isBrowserOffline()) return { tournaments: tournamentSource, syncedCount: 0, conflictCount: 0 };
+
+    const localDrafts = listLocalTournamentDrafts(user.id);
+    const indexedDrafts = await listPendingTournaments(user.id);
+    const draftsByTournament = new Map();
+
+    [...indexedDrafts, ...localDrafts].forEach((draft) => {
+      if (!draft?.tournamentId || !draft?.data) return;
+      const current = draftsByTournament.get(draft.tournamentId);
+      if (!current || Number(draft.updatedAt || 0) >= Number(current.updatedAt || 0)) {
+        draftsByTournament.set(draft.tournamentId, draft);
+      }
+    });
+
+    if (!draftsByTournament.size) {
+      setPendingSyncCount(0);
+      return { tournaments: tournamentSource, syncedCount: 0, conflictCount: 0 };
+    }
+
+    let nextTournaments = [...tournamentSource];
+    let syncedCount = 0;
+    let conflictCount = 0;
+
+    for (const draft of draftsByTournament.values()) {
+      if (selected?.id && String(selected.id) === String(draft.tournamentId)) continue;
+      const serverTournament = nextTournaments.find((item) => String(item.id) === String(draft.tournamentId));
+      if (!serverTournament) continue;
+
+      if (JSON.stringify(serverTournament.data || {}) === JSON.stringify(draft.data || {})) {
+        clearTournamentDraft(user.id, serverTournament.id);
+        syncedCount += 1;
+        continue;
+      }
+
+      let expectedUpdatedAt = draft.baseUpdatedAt || serverTournament.updated_at || null;
+      let dataToPersist = draft.data;
+      if (draft.baseUpdatedAt && serverTournament.updated_at && draft.baseUpdatedAt !== serverTournament.updated_at) {
+        const merged = mergeConcurrentTournamentData(
+          draft.baseData || {},
+          draft.data,
+          serverTournament.data || {}
+        );
+        if (merged.conflicts.length > 0) {
+          conflictCount += 1;
+          continue;
+        }
+        dataToPersist = merged.data;
+        expectedUpdatedAt = serverTournament.updated_at;
+      }
+
+      const result = await persistTournamentSnapshot({
+        ...serverTournament,
+        name: draft.name || serverTournament.name,
+        type: draft.type || serverTournament.type,
+        data: dataToPersist,
+      }, { expectedUpdatedAt });
+
+      if (result.ok && result.tournament) {
+        nextTournaments = nextTournaments.map((item) => (
+          item.id === result.tournament.id ? result.tournament : item
+        ));
+        clearTournamentDraft(user.id, result.tournament.id);
+        syncedCount += 1;
+      } else if (result.conflict) {
+        conflictCount += 1;
+      } else if (result.retryable) {
+        break;
+      }
+    }
+
+    setPendingSyncCount(listLocalTournamentDrafts(user.id).length);
+    return { tournaments: nextTournaments, syncedCount, conflictCount };
+  }
+
+  async function loadTournaments({ silentError = false } = {}) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -8394,7 +8841,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .order("created_at", { ascending: false });
 
     if (error) {
-      showNotice("error", "Erro ao carregar", "Não foi possível carregar seus torneios.");
+      if (!silentError) showNotice("error", "Erro ao carregar", "Não foi possível carregar seus torneios.");
       console.error(error);
       return;
     }
@@ -8415,9 +8862,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const validTournaments = allTournaments.filter((item) => !item.data?.deletedAt || item.data.deletedAt >= deleteLimit);
     const activeSource = validTournaments.filter((item) => !item.data?.deletedAt);
     const activeTournaments = sortTournamentsByStoredOrder(activeSource);
+    const nextTrashTournaments = validTournaments.filter((item) => item.data?.deletedAt);
 
+    tournamentsRef.current = activeTournaments;
+    trashTournamentsRef.current = nextTrashTournaments;
     setTournaments(activeTournaments);
-    setTrashTournaments(validTournaments.filter((item) => item.data?.deletedAt));
+    setTrashTournaments(nextTrashTournaments);
+    setSelected((current) => {
+      if (!current?.id) return current;
+      return activeTournaments.find((item) => item.id === current.id) || current;
+    });
     return activeTournaments;
   }
 
@@ -8477,30 +8931,254 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   publicArenaProfilesLoaderRef.current = loadPublicArenaProfiles;
 
+  async function loadDashboardData({ reconnecting = false } = {}) {
+    if (dashboardLoadInFlightRef.current) return;
+    dashboardLoadInFlightRef.current = true;
 
-  useEffect(() => {
-    async function loadDashboardData() {
+    try {
+      const cached = await readDashboardCache(user.id);
+      const hasCachedDashboard = Boolean(cached && (
+        Array.isArray(cached.tournaments) || Array.isArray(cached.circuits)
+      ));
+
+      if (hasCachedDashboard && tournamentsRef.current.length === 0 && circuitsRef.current.length === 0) {
+        const cachedTournaments = Array.isArray(cached.tournaments) ? cached.tournaments : [];
+        const cachedTrash = Array.isArray(cached.trashTournaments) ? cached.trashTournaments : [];
+        const cachedCircuits = Array.isArray(cached.circuits) ? cached.circuits : [];
+        tournamentsRef.current = cachedTournaments;
+        trashTournamentsRef.current = cachedTrash;
+        circuitsRef.current = cachedCircuits;
+        setTournaments(cachedTournaments);
+        setTrashTournaments(cachedTrash);
+        setCircuits(cachedCircuits);
+        setDashboardUsingOfflineCache(true);
+      }
+
+      if (isBrowserOffline()) {
+        setNetworkOnline(false);
+        if (!hasCachedDashboard) {
+          showNotice(
+            "warning",
+            "Primeiro acesso precisa de internet",
+            "Este aparelho ainda não possui uma cópia dos seus torneios. Reconecte-se uma vez para preparar o acesso seguro offline."
+          );
+        }
+        return;
+      }
+
       const [loadedTournaments, loadedCircuits] = await Promise.all([
-        loadTournaments(),
-        loadCircuits(),
+        loadTournaments({ silentError: hasCachedDashboard }),
+        loadCircuits({ silentError: hasCachedDashboard }),
       ]);
 
       if (Array.isArray(loadedTournaments) && Array.isArray(loadedCircuits)) {
-        const criteriaCircuits = await syncAutomaticCircuitCriteria(loadedTournaments, loadedCircuits);
+        const pendingSync = await syncPendingTournamentDrafts(loadedTournaments);
+        const synchronizedTournaments = pendingSync.tournaments;
+        tournamentsRef.current = synchronizedTournaments;
+        setTournaments(synchronizedTournaments);
+
+        const criteriaCircuits = await syncAutomaticCircuitCriteria(synchronizedTournaments, loadedCircuits);
         const { circuits: rankedCircuits } = await persistCircuitRankings(
-          loadedTournaments,
+          synchronizedTournaments,
           criteriaCircuits || loadedCircuits
         );
-        if (loadedTournaments.length) {
-          await syncPublicArenaDirectory(loadedTournaments, rankedCircuits);
+        circuitsRef.current = rankedCircuits;
+        setCircuits(rankedCircuits);
+
+        if (synchronizedTournaments.length) {
+          await syncPublicArenaDirectory(synchronizedTournaments, rankedCircuits);
         }
+
+        await saveDashboardCache(user.id, {
+          tournaments: synchronizedTournaments,
+          trashTournaments: trashTournamentsRef.current,
+          circuits: rankedCircuits,
+        });
+        setDashboardUsingOfflineCache(false);
+        setNetworkOnline(true);
+
+        if (pendingSync.conflictCount > 0) {
+          showNotice(
+            "warning",
+            "Alterações preservadas para revisão",
+            "Encontramos uma versão mais nova na nuvem. Nada foi apagado: abra o torneio indicado para escolher qual versão deve prevalecer."
+          );
+        } else if (reconnecting && pendingSync.syncedCount > 0) {
+          showNotice(
+            "success",
+            "Dados sincronizados",
+            `${pendingSync.syncedCount} alteração(ões) guardada(s) neste aparelho foram enviada(s) para a nuvem.`
+          );
+        }
+      } else if (hasCachedDashboard) {
+        setDashboardUsingOfflineCache(true);
       }
 
       await loadPublicArenaProfiles();
+    } finally {
+      dashboardLoadInFlightRef.current = false;
+    }
+  }
+
+  function cacheCurrentDashboard() {
+    void saveDashboardCache(user.id, {
+      tournaments: tournamentsRef.current,
+      trashTournaments: trashTournamentsRef.current,
+      circuits: circuitsRef.current,
+    });
+  }
+
+  function applyRemoteTournamentChange(payload) {
+    const eventType = payload?.eventType;
+    const row = eventType === "DELETE" ? payload?.old : payload?.new;
+    if (!row?.id) return;
+
+    if (eventType === "DELETE") {
+      tournamentsRef.current = tournamentsRef.current.filter((item) => item.id !== row.id);
+      trashTournamentsRef.current = trashTournamentsRef.current.filter((item) => item.id !== row.id);
+      setTournaments(tournamentsRef.current);
+      setTrashTournaments(trashTournamentsRef.current);
+      setSelected((current) => current?.id === row.id ? null : current);
+      cacheCurrentDashboard();
+      return;
     }
 
+    if (row.data?.deletedAt) {
+      tournamentsRef.current = tournamentsRef.current.filter((item) => item.id !== row.id);
+      trashTournamentsRef.current = [
+        row,
+        ...trashTournamentsRef.current.filter((item) => item.id !== row.id),
+      ];
+    } else {
+      const withoutCurrent = tournamentsRef.current.filter((item) => item.id !== row.id);
+      tournamentsRef.current = sortTournamentsByStoredOrder([row, ...withoutCurrent]);
+      trashTournamentsRef.current = trashTournamentsRef.current.filter((item) => item.id !== row.id);
+    }
+
+    setTournaments(tournamentsRef.current);
+    setTrashTournaments(trashTournamentsRef.current);
+    setSelected((current) => current?.id === row.id ? row : current);
+    cacheCurrentDashboard();
+  }
+
+  function applyRemoteCircuitChange(payload) {
+    const eventType = payload?.eventType;
+    const row = eventType === "DELETE" ? payload?.old : payload?.new;
+    if (!row?.id) return;
+
+    if (eventType === "DELETE") {
+      saveCircuits(circuitsRef.current.filter((item) => item.id !== row.id));
+      cacheCurrentDashboard();
+      return;
+    }
+
+    const previous = circuitsRef.current.find((item) => item.id === row.id);
+    const normalized = {
+      ...normalizeCircuitRow(row),
+      rankingHistory: previous?.rankingHistory || {},
+    };
+    saveCircuits([normalized, ...circuitsRef.current.filter((item) => item.id !== row.id)]);
+    cacheCurrentDashboard();
+  }
+
+  function applyRemoteProfileChange(payload) {
+    if (payload?.eventType === "DELETE" || !payload?.new?.id) return;
+    const remoteRow = payload.new;
+    const remoteOrganizerProfile = organizerProfileFromRow(remoteRow, organizerProfileBaseRef.current);
+
+    setOrganizerProfile((current) => {
+      const previousBase = organizerProfileBaseRef.current;
+      const merged = { ...current };
+
+      Object.keys(remoteOrganizerProfile).forEach((field) => {
+        const localFieldWasEdited = current[field] !== previousBase[field];
+        if (!localFieldWasEdited) merged[field] = remoteOrganizerProfile[field];
+      });
+
+      organizerProfileBaseRef.current = remoteOrganizerProfile;
+      try {
+        localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(merged));
+      } catch (error) {
+        console.warn("Não foi possível atualizar a cópia local do perfil.", error);
+      }
+      return merged;
+    });
+
+    onProfileChange?.((current) => ({ ...current, ...remoteRow }));
+    saveCachedProfile(user.id, { ...profile, ...remoteRow });
+  }
+
+  useEffect(() => {
+    void requestDurableOfflineStorage();
     void loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    const refreshPendingCount = async (event) => {
+      if (event?.detail?.userId && event.detail.userId !== user.id) return;
+      const localCount = listLocalTournamentDrafts(user.id).length;
+      const indexedCount = (await listPendingTournaments(user.id)).length;
+      setPendingSyncCount(Math.max(localCount, indexedCount));
+    };
+    const handleOnline = () => {
+      setNetworkOnline(true);
+      void loadDashboardData({ reconnecting: true });
+    };
+    const handleOffline = () => {
+      setNetworkOnline(false);
+      setDashboardUsingOfflineCache(true);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener(TOURNAMENT_DRAFT_CHANGED_EVENT, refreshPendingCount);
+    void refreshPendingCount();
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener(TOURNAMENT_DRAFT_CHANGED_EVENT, refreshPendingCount);
+    };
+  }, [user.id]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`torneio360-collaboration-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tournaments", filter: `user_id=eq.${user.id}` },
+        applyRemoteTournamentChange
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "circuits", filter: `user_id=eq.${user.id}` },
+        applyRemoteCircuitChange
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` },
+        applyRemoteProfileChange
+      )
+      .subscribe((status, error) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("Atualização em tempo real temporariamente indisponível; a conferência periódica continuará ativa.", error);
+        }
+      });
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible" && !isBrowserOffline()) {
+        void loadDashboardData();
+      }
+    };
+    const refreshInterval = window.setInterval(refreshWhenVisible, 30000);
+    window.addEventListener("focus", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      void supabase.removeChannel(channel);
+    };
+  }, [user.id]);
 
   useEffect(() => {
     publicArenaProfilesMountedRef.current = true;
@@ -8534,6 +9212,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }, []);
 
   async function createTournament() {
+    if (!ensureCloudConnection("criar um novo torneio")) return;
     if (!ensureArenaProfileReadyForPublication()) return;
     const isMultiCategory = newMultiCategoryEvent === "sim";
     const validCategorySchedules = newCategorySchedules.filter((item) => item.category.trim());
@@ -8760,6 +9439,7 @@ setNewPublicInfo({
 
   async function confirmDeleteTournament() {
     if (!deleteTarget) return;
+    if (!ensureCloudConnection("mover o torneio para a lixeira")) return;
 
     const target = deleteTarget;
     const previousTournaments = tournaments;
@@ -8782,7 +9462,7 @@ setNewPublicInfo({
     ]);
     setOpenTournamentIds((current) => current.filter((id) => id !== target.id));
 
-    const { error } = await supabase
+    let deleteUpdate = supabase
       .from("tournaments")
       .update({
         is_public: false,
@@ -8791,12 +9471,20 @@ setNewPublicInfo({
       })
       .eq("id", target.id)
       .eq("user_id", user.id);
+    if (target.updated_at) deleteUpdate = deleteUpdate.eq("updated_at", target.updated_at);
+    const { data: movedTournament, error } = await deleteUpdate.select("id").maybeSingle();
 
-    if (error) {
+    if (error || !movedTournament) {
       setTournaments(previousTournaments);
       setTrashTournaments(previousTrashTournaments);
       setOpenTournamentIds(previousOpenTournamentIds);
-      showNotice("error", "Erro ao mover", "Não foi possível mover este torneio para a lixeira.");
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Erro ao mover" : "Torneio atualizado em outro dispositivo",
+        error
+          ? "Não foi possível mover este torneio para a lixeira."
+          : "Recarregamos a proteção porque outra pessoa alterou o torneio. Confira a versão atual antes de excluí-lo."
+      );
       console.error(error);
       return;
     }
@@ -8821,10 +9509,11 @@ setNewPublicInfo({
   }
 
   async function restoreTournament(tournament) {
+    if (!ensureCloudConnection("recuperar o torneio")) return;
     const restoredData = { ...(tournament.data || {}) };
     delete restoredData.deletedAt;
 
-    const { error } = await supabase
+    let restoreUpdate = supabase
       .from("tournaments")
       .update({
         public_id: tournament.public_id || generatePublicId(),
@@ -8834,9 +9523,15 @@ setNewPublicInfo({
       })
       .eq("id", tournament.id)
       .eq("user_id", user.id);
+    if (tournament.updated_at) restoreUpdate = restoreUpdate.eq("updated_at", tournament.updated_at);
+    const { data: restoredRow, error } = await restoreUpdate.select("id").maybeSingle();
 
-    if (error) {
-      showNotice("error", "Erro ao recuperar", "Não foi possível recuperar este torneio.");
+    if (error || !restoredRow) {
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Erro ao recuperar" : "Torneio atualizado em outro dispositivo",
+        error ? "Não foi possível recuperar este torneio." : "Atualize a lixeira e tente novamente."
+      );
       console.error(error);
       return;
     }
@@ -8974,37 +9669,25 @@ setNewPublicInfo({
   }
 
   async function saveTournament(updated) {
-    const lifecycleStatus = getTournamentLifecycleStatus(updated);
-    const persistedData = { ...updated.data, lifecycleStatus };
-    const { data: savedTournament, error } = await supabase
-      .from("tournaments")
-      .update({
-        name: updated.name,
-        type: updated.type,
-        data: persistedData,
-        status: lifecycleStatus === "finished" ? "finished" : "active",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", updated.id)
-      .eq("user_id", user.id)
-      .select("*")
-      .single();
+    if (isBrowserOffline()) return { ok: false, retryable: true, offline: true };
 
-    if (error) {
-      console.error(error);
-      return false;
-    }
+    const saveResult = await persistTournamentSnapshot(updated, {
+      expectedUpdatedAt: updated.updated_at || null,
+      forceOverwrite: updated.forceOverwrite === true,
+    });
+    if (!saveResult.ok) return saveResult;
 
-    const persistedTournament = savedTournament || { ...updated, data: persistedData };
+    const persistedTournament = saveResult.tournament;
     setSelected(persistedTournament);
-    const nextTournaments = tournaments.map((t) => (
+    const nextTournaments = tournamentsRef.current.map((t) => (
       t.id === persistedTournament.id ? persistedTournament : t
     ));
+    tournamentsRef.current = nextTournaments;
     setTournaments(nextTournaments);
-    const criteriaCircuits = await syncAutomaticCircuitCriteria(nextTournaments);
+    const criteriaCircuits = await syncAutomaticCircuitCriteria(nextTournaments, circuitsRef.current);
     const circuitPersistence = await persistCircuitRankings(
       nextTournaments,
-      criteriaCircuits || circuits,
+      criteriaCircuits || circuitsRef.current,
       persistedTournament.id
     );
     if (!circuitPersistence.success) {
@@ -9014,7 +9697,27 @@ setNewPublicInfo({
         "O torneio foi salvo, mas o ranking do circuito não pôde ser sincronizado agora. Mantenha esta tela aberta e tente novamente."
       );
     }
-    return true;
+    await saveDashboardCache(user.id, {
+      tournaments: nextTournaments,
+      trashTournaments: trashTournamentsRef.current,
+      circuits: circuitPersistence.circuits,
+    });
+    return { ok: true, tournament: persistedTournament };
+  }
+
+  function acceptServerTournamentVersion(serverTournament) {
+    if (!serverTournament?.id) return;
+    setSelected(serverTournament);
+    const nextTournaments = tournamentsRef.current.map((item) => (
+      item.id === serverTournament.id ? serverTournament : item
+    ));
+    tournamentsRef.current = nextTournaments;
+    setTournaments(nextTournaments);
+    void saveDashboardCache(user.id, {
+      tournaments: nextTournaments,
+      trashTournaments: trashTournamentsRef.current,
+      circuits: circuitsRef.current,
+    });
   }
 
   function openEditTournament(tournament) {
@@ -9042,6 +9745,7 @@ setNewPublicInfo({
 
   async function saveEditedTournament() {
     if (!editTarget || !editForm) return;
+    if (!ensureCloudConnection("salvar as informações do torneio")) return;
 
     if (!editForm.name.trim()) {
       showNotice("warning", "Nome obrigatório", "Digite um nome para este torneio.");
@@ -9097,28 +9801,55 @@ setNewPublicInfo({
       data: { ...updatedData, lifecycleStatus },
     };
 
-    const { error } = await supabase
-      .from("tournaments")
-      .update({
-        name: updated.name,
-        type: updated.type,
-        data: updated.data,
-        status: updated.status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", updated.id)
-      .eq("user_id", user.id);
+    let finalUpdated = updated;
+    let saveResult = await persistTournamentSnapshot(updated, {
+      expectedUpdatedAt: editTarget.updated_at || null,
+    });
 
-    if (error) {
-      console.error(error);
-      showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
+    if (saveResult.conflict && saveResult.serverTournament) {
+      const merged = mergeConcurrentTournamentData(
+        { name: editTarget.name, type: editTarget.type, data: editTarget.data || {} },
+        { name: updated.name, type: updated.type, data: updated.data || {} },
+        {
+          name: saveResult.serverTournament.name,
+          type: saveResult.serverTournament.type,
+          data: saveResult.serverTournament.data || {},
+        }
+      );
+
+      if (merged.conflicts.length === 0) {
+        finalUpdated = {
+          ...saveResult.serverTournament,
+          name: merged.data.name,
+          type: merged.data.type,
+          data: merged.data.data,
+        };
+        saveResult = await persistTournamentSnapshot(finalUpdated, {
+          expectedUpdatedAt: saveResult.serverTournament.updated_at || null,
+        });
+      }
+    }
+
+    if (!saveResult.ok) {
+      if (saveResult.conflict) {
+        showNotice(
+          "warning",
+          "Outra pessoa alterou estas mesmas informações",
+          "Nada foi apagado. Feche e abra novamente a edição para conferir a versão mais recente antes de salvar."
+        );
+      } else {
+        console.error(saveResult.error);
+        showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
+      }
       return;
     }
 
+    finalUpdated = saveResult.tournament;
+
     const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
     const nextTournaments = manualOrderActive
-      ? tournaments.map((tournament) => tournament.id === updated.id ? updated : tournament)
-      : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === updated.id ? updated : tournament));
+      ? tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament)
+      : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament));
     const savedOrder = manualOrderActive
       ? await persistTournamentOrderSequence(nextTournaments, { manual: true })
       : { tournaments: nextTournaments, error: null };
@@ -9129,7 +9860,7 @@ setNewPublicInfo({
     const { circuits: rankedCircuits, success: circuitRankingSaved } = await persistCircuitRankings(
       orderedTournaments,
       criteriaCircuits || circuits,
-      updated.id
+      finalUpdated.id
     );
     await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
     setEditTarget(null);
@@ -9203,6 +9934,7 @@ setNewPublicInfo({
 
   async function moveTournamentByDrag(fromId, toId) {
     if (!fromId || !toId || fromId === toId) return;
+    if (!ensureCloudConnection("alterar a ordem dos torneios")) return;
 
     const previousTournaments = tournaments;
     const list = [...previousTournaments];
@@ -9285,7 +10017,45 @@ setNewPublicInfo({
     );
   }
 
+  async function logoutSafely() {
+    if (!await guardSelectedTournamentBeforeLeaving()) return;
+
+    if (listLocalTournamentDrafts(user.id).length > 0) {
+      if (isBrowserOffline()) {
+        showNotice(
+          "warning",
+          "Sincronize antes de sair",
+          "Há alterações protegidas somente neste aparelho. Reconecte-se para enviá-las à nuvem antes de encerrar a sessão."
+        );
+        return;
+      }
+
+      await syncPendingTournamentDrafts(tournamentsRef.current);
+      if (listLocalTournamentDrafts(user.id).length > 0) {
+        showNotice(
+          "warning",
+          "Alterações ainda pendentes",
+          "Alguns dados precisam ser revisados ou sincronizados. Abra o torneio indicado antes de sair."
+        );
+        return;
+      }
+    }
+
+    await logout();
+  }
+
   function renderAppTopbar() {
+    const syncStatus = !networkOnline
+      ? {
+          className: "offline",
+          label: pendingSyncCount > 0 ? `${pendingSyncCount} pendente(s) no aparelho` : "Modo offline",
+          Icon: CloudOff,
+        }
+      : pendingSyncCount > 0
+        ? { className: "pending", label: "Sincronizando dados", Icon: RefreshCw }
+        : { className: "synced", label: "Dados sincronizados", Icon: CloudCheck };
+    const SyncStatusIcon = syncStatus.Icon;
+
     return (
       <header className="playTopbar proTopbar">
         <div className="playTopBrand">
@@ -9296,6 +10066,15 @@ setNewPublicInfo({
         </div>
 
         <div className="playUserBox proTopActions">
+          <div
+            className={`cloudSyncStatus ${syncStatus.className}`}
+            role="status"
+            aria-live="polite"
+            title={syncStatus.label}
+          >
+            <SyncStatusIcon aria-hidden="true" />
+            <span>{syncStatus.label}</span>
+          </div>
           <button
             type="button"
             className="themeToggleButton"
@@ -9363,7 +10142,7 @@ setNewPublicInfo({
                   <span><strong>Lixeira</strong><small>Itens excluídos recentemente</small></span>
                 </button>
                 <div className="profileDropdownDivider" />
-                <button type="button" role="menuitem" className="profileDropdownItem profileDropdownLogout" onClick={logout}>
+                <button type="button" role="menuitem" className="profileDropdownItem profileDropdownLogout" onClick={logoutSafely}>
                   <LogOut aria-hidden="true" />
                   <span><strong>Sair</strong><small>Encerrar esta sessão</small></span>
                 </button>
@@ -9375,6 +10154,24 @@ setNewPublicInfo({
     );
   }
 
+  function renderDataSafetyBanner() {
+    if (networkOnline && !dashboardUsingOfflineCache && pendingSyncCount === 0) return null;
+
+    return (
+      <aside className={`dataSafetyBanner ${networkOnline ? "pending" : "offline"}`} role="status" aria-live="polite">
+        {networkOnline ? <RefreshCw aria-hidden="true" /> : <CloudOff aria-hidden="true" />}
+        <div>
+          <strong>{networkOnline ? "Sincronização em andamento" : "Você está sem internet"}</strong>
+          <span>
+            {networkOnline
+              ? "As alterações guardadas neste aparelho estão sendo conferidas com a nuvem."
+              : "Você pode continuar no torneio aberto. Nomes, sorteios, rodadas e placares ficam protegidos neste aparelho e serão enviados quando a conexão voltar."}
+          </span>
+        </div>
+      </aside>
+    );
+  }
+
   if (selected) {
     return (
       <div className={`playAppShell proDashboard theme-${colorMode}`}>
@@ -9382,6 +10179,7 @@ setNewPublicInfo({
         {renderAppSidebar()}
         <div className="playMain">
           {renderAppTopbar()}
+          {renderDataSafetyBanner()}
           <TournamentWorkspaceTabs
             tournaments={tournaments}
             openTournamentIds={openTournamentIds}
@@ -9397,6 +10195,7 @@ setNewPublicInfo({
                 userId={user.id}
                 onBack={closeSelectedTournament}
                 onSave={saveTournament}
+                onServerVersionAccepted={acceptServerTournamentVersion}
                 onNavigationStateChange={rememberTournamentNavigation}
                 onRegisterNavigationGuard={registerTournamentNavigationGuard}
               />
@@ -9656,6 +10455,7 @@ setNewPublicInfo({
 
       <div className="playMain">
         {renderAppTopbar()}
+        {renderDataSafetyBanner()}
 
         <main className="playContent">
           <section className="playTitleBlock">
@@ -11312,6 +12112,7 @@ function TournamentScreen({
   userId,
   onBack,
   onSave,
+  onServerVersionAccepted,
   onNavigationStateChange,
   onRegisterNavigationGuard,
 }) {
@@ -11338,6 +12139,8 @@ function TournamentScreen({
     return {
       data: normalizeTournamentData(tournament.type, draft?.data || tournament.data),
       recoveredDraft: Boolean(draft),
+      baseUpdatedAt: draft?.baseUpdatedAt || tournament.updated_at || null,
+      baseData: draft?.baseData || tournament.data || {},
     };
   }, [tournament.id, tournament.type, userId]);
   const initialDataWasRepairedRef = useRef(
@@ -11346,7 +12149,8 @@ function TournamentScreen({
 
   const [data, setData] = useState(() => initialTournamentState.data);
 
-  const [savingStatus, setSavingStatus] = useState("Salvo");
+  const [savingStatus, setSavingStatus] = useState(initialTournamentState.recoveredDraft ? "Pendente de sincronização" : "Salvo na nuvem");
+  const [syncConflict, setSyncConflict] = useState(null);
   const [shuffleOverlay, setShuffleOverlay] = useState(null);
   const [tieBreakDraw, setTieBreakDraw] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -11433,6 +12237,11 @@ function TournamentScreen({
   const dataVersionRef = useRef(0);
   const hasUnsavedChangesRef = useRef(initialDataWasRepairedRef.current);
   const saveQueueRef = useRef(Promise.resolve(true));
+  const serverUpdatedAtRef = useRef(initialTournamentState.baseUpdatedAt);
+  const baseTournamentDataRef = useRef(initialTournamentState.baseData);
+  const saveRetryTimerRef = useRef(null);
+  const saveRetryAttemptRef = useRef(0);
+  const skipNextDraftSyncRef = useRef(false);
   const tournamentScreenMountedRef = useRef(true);
   const onSaveRef = useRef(onSave);
   const tournamentRef = useRef(tournament);
@@ -11452,27 +12261,109 @@ function TournamentScreen({
     tieBreakDrawTimerRef.current = null;
   }
 
-  function queueTournamentSave(snapshot, version, { updateStatus = true } = {}) {
+  function clearSaveRetryTimer() {
+    if (saveRetryTimerRef.current) clearTimeout(saveRetryTimerRef.current);
+    saveRetryTimerRef.current = null;
+  }
+
+  function scheduleSaveRetry() {
+    if (saveRetryTimerRef.current || syncConflict) return;
+    if (isBrowserOffline()) {
+      setSavingStatus("Salvo neste aparelho");
+      return;
+    }
+
+    const delays = [2000, 5000, 10000, 20000, 30000];
+    const delay = delays[Math.min(saveRetryAttemptRef.current, delays.length - 1)];
+    saveRetryAttemptRef.current += 1;
+    saveRetryTimerRef.current = setTimeout(() => {
+      saveRetryTimerRef.current = null;
+      if (!hasUnsavedChangesRef.current || syncConflict) return;
+      setSavingStatus("Tentando sincronizar...");
+      void queueTournamentSave(latestDataRef.current, dataVersionRef.current);
+    }, delay);
+  }
+
+  function queueTournamentSave(snapshot, version, { updateStatus = true, forceOverwrite = false } = {}) {
     const runSave = async () => {
       try {
-        return await onSaveRef.current({ ...tournamentRef.current, data: snapshot });
+        let result = await onSaveRef.current({
+          ...tournamentRef.current,
+          data: snapshot,
+          updated_at: forceOverwrite ? null : serverUpdatedAtRef.current,
+          forceOverwrite,
+        });
+
+        if (!forceOverwrite && result?.conflict && result.serverTournament?.data) {
+          const merged = mergeConcurrentTournamentData(
+            baseTournamentDataRef.current,
+            snapshot,
+            result.serverTournament.data
+          );
+
+          if (merged.conflicts.length === 0) {
+            if (tournamentScreenMountedRef.current) setSavingStatus("Unindo alterações de outros dispositivos...");
+            serverUpdatedAtRef.current = result.serverTournament.updated_at || null;
+            baseTournamentDataRef.current = result.serverTournament.data;
+            tournamentRef.current = result.serverTournament;
+            result = await onSaveRef.current({
+              ...result.serverTournament,
+              data: merged.data,
+              updated_at: result.serverTournament.updated_at || null,
+              forceOverwrite: false,
+            });
+
+            if (result?.ok) {
+              latestDataRef.current = normalizeTournamentData(tournament.type, merged.data);
+              skipNextDraftSyncRef.current = true;
+              setData(latestDataRef.current);
+            }
+          } else {
+            result = { ...result, mergeConflicts: merged.conflicts };
+          }
+        }
+
+        return result;
       } catch (error) {
         console.error("Erro inesperado ao salvar o torneio:", error);
-        return false;
+        return { ok: false, error, retryable: isRetryableConnectionError(error) };
       }
     };
 
     const queuedSave = saveQueueRef.current.then(runSave, runSave);
     saveQueueRef.current = queuedSave.then(() => true, () => false);
 
-    return queuedSave.then((ok) => {
+    return queuedSave.then((rawResult) => {
+      const result = rawResult === true ? { ok: true } : (rawResult || { ok: false });
+      const ok = result.ok === true;
       const isLatestVersion = version === dataVersionRef.current;
+
+      if (ok && result.tournament) {
+        tournamentRef.current = result.tournament;
+        serverUpdatedAtRef.current = result.tournament.updated_at || serverUpdatedAtRef.current;
+        baseTournamentDataRef.current = result.tournament.data || snapshot;
+      }
+
       if (ok && isLatestVersion) {
         hasUnsavedChangesRef.current = false;
         clearTournamentDraft(userId, tournament.id);
+        clearSaveRetryTimer();
+        saveRetryAttemptRef.current = 0;
+        setSyncConflict(null);
       }
+
+      if (result.conflict && isLatestVersion) {
+        clearSaveRetryTimer();
+        setSyncConflict({ serverTournament: result.serverTournament || null });
+      } else if (!ok && result.retryable && isLatestVersion) {
+        scheduleSaveRetry();
+      }
+
       if (updateStatus && isLatestVersion && tournamentScreenMountedRef.current) {
-        setSavingStatus(ok ? "Salvo automaticamente" : "Erro ao salvar");
+        if (ok) setSavingStatus("Salvo na nuvem");
+        else if (result.conflict) setSavingStatus("Revisão necessária");
+        else if (result.retryable || result.offline) setSavingStatus(isBrowserOffline() ? "Salvo neste aparelho" : "Sincronização pendente");
+        else setSavingStatus("Erro ao salvar");
       }
       return ok;
     });
@@ -11502,6 +12393,59 @@ function TournamentScreen({
     tournamentRef.current = tournament;
   }, [onSave, tournament]);
 
+  useEffect(() => {
+    const incomingUpdatedAt = tournament.updated_at || null;
+    if (!incomingUpdatedAt || incomingUpdatedAt === serverUpdatedAtRef.current) return;
+
+    if (hasUnsavedChangesRef.current) {
+      const merged = mergeConcurrentTournamentData(
+        baseTournamentDataRef.current,
+        latestDataRef.current,
+        tournament.data || {}
+      );
+
+      if (merged.conflicts.length === 0) {
+        serverUpdatedAtRef.current = incomingUpdatedAt;
+        baseTournamentDataRef.current = tournament.data || {};
+        tournamentRef.current = tournament;
+        latestDataRef.current = normalizeTournamentData(tournament.type, merged.data);
+        setSavingStatus("Unindo alterações de outros dispositivos...");
+        setData(latestDataRef.current);
+      } else {
+        setSyncConflict({ serverTournament: tournament, mergeConflicts: merged.conflicts });
+        setSavingStatus("Revisão necessária");
+        clearSaveRetryTimer();
+      }
+      return;
+    }
+
+    serverUpdatedAtRef.current = incomingUpdatedAt;
+    baseTournamentDataRef.current = tournament.data || {};
+    tournamentRef.current = tournament;
+    skipNextDraftSyncRef.current = true;
+    setData(normalizeTournamentData(tournament.type, tournament.data));
+    setSavingStatus("Atualizado de outro dispositivo");
+  }, [tournament.updated_at]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      if (!hasUnsavedChangesRef.current || syncConflict) return;
+      clearSaveRetryTimer();
+      setSavingStatus("Sincronizando...");
+      void queueTournamentSave(latestDataRef.current, dataVersionRef.current);
+    };
+    const handleOffline = () => {
+      if (hasUnsavedChangesRef.current) setSavingStatus("Salvo neste aparelho");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [syncConflict]);
+
   const cearenseCampaignTies = useMemo(() => {
     if (!isCearenseData(data) || !data.schedule?.length) return [];
     if (!data.schedule.flat().every((game) => isGameFinished(game, getWinningScore(data)))) return [];
@@ -11514,23 +12458,28 @@ function TournamentScreen({
 
   useEffect(() => {
     latestDataRef.current = data;
+    if (skipNextDraftSyncRef.current) {
+      skipNextDraftSyncRef.current = false;
+      return;
+    }
     if (firstDraftSyncRef.current) {
       firstDraftSyncRef.current = false;
       if (initialDataWasRepairedRef.current) {
-        saveTournamentDraft(userId, tournament.id, data);
+        saveTournamentDraft(userId, tournamentRef.current, data, serverUpdatedAtRef.current, baseTournamentDataRef.current);
       }
       return;
     }
 
     dataVersionRef.current += 1;
     hasUnsavedChangesRef.current = true;
-    saveTournamentDraft(userId, tournament.id, data);
+    saveTournamentDraft(userId, tournamentRef.current, data, serverUpdatedAtRef.current, baseTournamentDataRef.current);
   }, [data]);
 
   useEffect(() => () => {
     tournamentScreenMountedRef.current = false;
     clearShuffleTimers();
     clearTieBreakDrawTimer();
+    clearSaveRetryTimer();
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (hasUnsavedChangesRef.current) {
       void queueTournamentSave(latestDataRef.current, dataVersionRef.current, { updateStatus: false });
@@ -11617,11 +12566,61 @@ function TournamentScreen({
     onBack();
   }
 
+  async function keepLocalConflictVersion() {
+    const reviewedCloudVersion = syncConflict?.serverTournament;
+    if (reviewedCloudVersion?.updated_at) {
+      serverUpdatedAtRef.current = reviewedCloudVersion.updated_at;
+    }
+    setSavingStatus("Enviando versão deste aparelho...");
+    const ok = await queueTournamentSave(
+      latestDataRef.current,
+      dataVersionRef.current,
+      { updateStatus: true, forceOverwrite: true }
+    );
+    if (!ok) {
+      showNotice(
+        "error",
+        "Ainda não foi possível sincronizar",
+        "A versão deste aparelho continua preservada. Verifique a conexão e tente novamente."
+      );
+    }
+  }
+
+  function loadCloudConflictVersion() {
+    const cloudTournament = syncConflict?.serverTournament;
+    if (!cloudTournament?.data) {
+      showNotice(
+        "warning",
+        "Versão da nuvem indisponível",
+        "Reconecte-se e tente novamente para conferir a atualização feita no outro dispositivo."
+      );
+      return;
+    }
+
+    clearSaveRetryTimer();
+    dataVersionRef.current += 1;
+    hasUnsavedChangesRef.current = false;
+    serverUpdatedAtRef.current = cloudTournament.updated_at || null;
+    baseTournamentDataRef.current = cloudTournament.data || {};
+    tournamentRef.current = cloudTournament;
+    latestDataRef.current = normalizeTournamentData(cloudTournament.type, cloudTournament.data);
+    skipNextDraftSyncRef.current = true;
+    clearTournamentDraft(userId, tournament.id);
+    setData(latestDataRef.current);
+    setSyncConflict(null);
+    setSavingStatus("Versão da nuvem carregada");
+    onServerVersionAccepted?.(cloudTournament);
+  }
+
   function showNotice(type, title, message) {
     setNotice({ type, title, message });
   }
 
   async function enablePublicShare() {
+    if (isBrowserOffline()) {
+      showNotice("warning", "Sem internet", "Reconecte-se para ativar e confirmar o link público na nuvem.");
+      return;
+    }
     setShareLoading(true);
 
     const publicId = shareInfo.public_id || generatePublicId();
@@ -11664,6 +12663,10 @@ function TournamentScreen({
 
   async function disablePublicShare() {
     if (!shareInfo.public_id) return;
+    if (isBrowserOffline()) {
+      showNotice("warning", "Sem internet", "Reconecte-se para desativar o link público com segurança.");
+      return;
+    }
 
     setShareLoading(true);
 
@@ -12449,8 +13452,16 @@ const courtEditorUsedNumbers = courtEditorContext.peers
   .map((game) => getGameCourtNumber(game, data.courtNumbers || []));
 
   function SavingStatusBadge() {
+    const normalizedStatus = savingStatus.toLowerCase();
+    const statusClass = /erro|revisão/.test(normalizedStatus)
+      ? "error"
+      : /salvando|sincronizando|tentando|unindo|enviando|recuperando|pendente/.test(normalizedStatus)
+        ? "saving"
+        : /aparelho|offline/.test(normalizedStatus)
+          ? "offline"
+          : "saved";
     return (
-      <span className={`savingBadge ${savingStatus === "Salvando..." ? "saving" : savingStatus === "Erro ao salvar" ? "error" : "saved"}`}>
+      <span className={`savingBadge ${statusClass}`}>
         💾 {savingStatus}
       </span>
     );
@@ -12459,6 +13470,28 @@ const courtEditorUsedNumbers = courtEditorContext.peers
 return (
   <>
     <NoticeModal notice={notice} onClose={() => setNotice(null)} />
+
+    {syncConflict ? (
+      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="data-conflict-title">
+        <div className="confirmBox dataConflictBox">
+          <div className="confirmIcon"><RefreshCw aria-hidden="true" /></div>
+          <span className="confirmEyebrow">Alteração em outro dispositivo</span>
+          <h2 id="data-conflict-title">Qual versão deseja manter?</h2>
+          <p>
+            Nada foi apagado. Existe uma versão salva na nuvem e outra preservada neste aparelho.
+            Escolha conscientemente para evitar substituir placares, sorteios ou nomes sem perceber.
+          </p>
+          <div className="dataConflictChoices">
+            <button type="button" className="secondaryBtn" onClick={loadCloudConflictVersion}>
+              Usar versão da nuvem
+            </button>
+            <button type="button" onClick={keepLocalConflictVersion}>
+              Manter versão deste aparelho
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
 
     <ConfirmRegenerationModal
       confirmation={regenerationConfirm}

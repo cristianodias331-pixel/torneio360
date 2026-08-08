@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { orderFixedMixedPair } from "../src/fixedMixedTeamOrder.mjs";
 import { super12IndividualTemplate } from "../src/super12Schedule.mjs";
 import { super20MixedTemplate } from "../src/super20MixedSchedule.mjs";
+import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
 
 const root = new URL("../", import.meta.url);
 const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
@@ -19,6 +20,11 @@ const publicArenaMigration = readFileSync(publicArenaMigrationUrl, "utf8");
 const arenaDirectoryRulesMigrationUrl = new URL("supabase/migrations/202608040001_arena_directory_access_rules.sql", root);
 assert.ok(existsSync(fileURLToPath(arenaDirectoryRulesMigrationUrl)), "A migração das regras do diretório de arenas está ausente.");
 const arenaDirectoryRulesMigration = readFileSync(arenaDirectoryRulesMigrationUrl, "utf8");
+const collaborationMigrationUrl = new URL("supabase/migrations/202608080001_data_integrity_and_collaboration.sql", root);
+assert.ok(existsSync(fileURLToPath(collaborationMigrationUrl)), "A migração de integridade e colaboração está ausente.");
+const collaborationMigration = readFileSync(collaborationMigrationUrl, "utf8");
+const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
+const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
 
 const requiredApplicationMarkers = [
   "supabase.auth.signInWithPassword",
@@ -643,10 +649,58 @@ assert.ok(
   "As gravações do torneio podem terminar fora de ordem e sobrescrever dados mais novos."
 );
 assert.ok(
-  mainSource.includes("saveTournamentDraft(userId, tournament.id, data)")
-    && mainSource.includes("readTournamentDraft(userId, tournament)"),
+  mainSource.includes("saveTournamentDraft(userId, tournamentRef.current, data, serverUpdatedAtRef.current")
+    && mainSource.includes("readTournamentDraft(userId, tournament)")
+    && offlineStoreSource.includes('const PENDING_TOURNAMENT_STORE = "pending_tournaments"'),
   "Placares e confrontos ainda não possuem backup local durante uma falha de conexão."
 );
+assert.ok(
+  mainSource.includes('.channel(`torneio360-collaboration-${user.id}`)')
+    && mainSource.includes('"postgres_changes"')
+    && mainSource.includes("syncPendingTournamentDrafts")
+    && mainSource.includes('.eq("updated_at", expectedUpdatedAt)'),
+  "Alterações simultâneas ainda podem sobrescrever uma versão mais nova sem sincronização."
+);
+assert.ok(
+  collaborationMigration.includes("create or replace function public.replace_circuit_ranking_history")
+    && collaborationMigration.includes("create or replace function public.set_tournament_order_safe")
+    && collaborationMigration.includes("p_source_versions jsonb")
+    && collaborationMigration.includes("tournament.updated_at is not distinct from source_version.updated_at")
+    && collaborationMigration.includes("alter publication supabase_realtime add table"),
+  "A migração não protege operações compostas ou não habilita atualização em tempo real."
+);
+assert.ok(
+  serviceWorkerSource.includes('const STATIC_CACHE = "torneio360-app-shell-v3"')
+    && serviceWorkerSource.includes("async function cacheApplicationShell()")
+    && serviceWorkerSource.includes('path.startsWith("/assets/")')
+    && serviceWorkerSource.includes('event.request.mode === "navigate"')
+    && serviceWorkerSource.includes('await caches.match("/")'),
+  "O aplicativo não possui uma base offline para reabrir a interface sem conexão."
+);
+
+const nonOverlappingMerge = mergeConcurrentTournamentData(
+  { name: "Torneio", settings: { court: "1", category: "A" } },
+  { name: "Torneio local", settings: { court: "1", category: "A" } },
+  { name: "Torneio", settings: { court: "2", category: "A" } }
+);
+assert.deepEqual(nonOverlappingMerge.conflicts, [], "Campos diferentes deveriam ser unidos automaticamente.");
+assert.equal(nonOverlappingMerge.data.name, "Torneio local");
+assert.equal(nonOverlappingMerge.data.settings.court, "2");
+
+const scoreMerge = mergeConcurrentTournamentData(
+  { scores: [{ home: 0, away: 0 }, { home: 0, away: 0 }] },
+  { scores: [{ home: 6, away: 2 }, { home: 0, away: 0 }] },
+  { scores: [{ home: 0, away: 0 }, { home: 4, away: 6 }] }
+);
+assert.deepEqual(scoreMerge.conflicts, [], "Placares de jogos diferentes deveriam ser unidos automaticamente.");
+assert.deepEqual(scoreMerge.data.scores, [{ home: 6, away: 2 }, { home: 4, away: 6 }]);
+
+const sameFieldConflict = mergeConcurrentTournamentData(
+  { score: 0 },
+  { score: 6 },
+  { score: 7 }
+);
+assert.deepEqual(sameFieldConflict.conflicts, ["score"], "O mesmo campo alterado em dois dispositivos deve gerar conflito explícito.");
 assert.ok(
   mainSource.includes("function ConfirmRegenerationModal")
     && mainSource.includes("function requestShuffleNames()")
