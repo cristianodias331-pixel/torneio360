@@ -18,6 +18,60 @@ function valuesEqual(first, second) {
   }
 }
 
+function getGameIdentity(value) {
+  if (!isPlainRecord(value)) return null;
+  const identity = {};
+  const matchKey = typeof value.matchKey === "string" ? value.matchKey.trim() : "";
+  const hasIdArrays = Array.isArray(value.ids1) || Array.isArray(value.ids2);
+  const firstSideIds = Array.isArray(value.ids1) ? value.ids1.map(String).sort() : [];
+  const secondSideIds = Array.isArray(value.ids2) ? value.ids2.map(String).sort() : [];
+  const hasParticipantIds = firstSideIds.length > 0 || secondSideIds.length > 0;
+
+  if (matchKey) identity.matchKey = matchKey;
+  if (hasIdArrays) {
+    identity.ids1 = firstSideIds;
+    identity.ids2 = secondSideIds;
+  }
+
+  if (!hasParticipantIds) {
+    const firstSideNames = Array.isArray(value.team1) ? value.team1.map(String).sort() : [];
+    const secondSideNames = Array.isArray(value.team2) ? value.team2.map(String).sort() : [];
+    if (firstSideNames.length > 0 || secondSideNames.length > 0) {
+      identity.team1 = firstSideNames;
+      identity.team2 = secondSideNames;
+    }
+    if (value.entry1 !== undefined || value.entry2 !== undefined) {
+      identity.entry1 = value.entry1 ?? null;
+      identity.entry2 = value.entry2 ?? null;
+    }
+  }
+
+  if (value.source1 !== undefined || value.source2 !== undefined) {
+    identity.source1 = value.source1 ?? null;
+    identity.source2 = value.source2 ?? null;
+  }
+  if (value.source1Mode !== undefined || value.source2Mode !== undefined) {
+    identity.source1Mode = value.source1Mode ?? null;
+    identity.source2Mode = value.source2Mode ?? null;
+  }
+  if (value.isBye !== undefined) identity.isBye = Boolean(value.isBye);
+
+  return Object.keys(identity).length > 0 ? JSON.stringify(identity) : null;
+}
+
+function getGameArrayStructure(values) {
+  if (values.every(Array.isArray)) {
+    const rounds = values.map((round) => (
+      round.every((game) => getGameIdentity(game))
+        ? round.map(getGameIdentity)
+        : null
+    ));
+    return rounds.every((round) => round !== null) ? rounds : null;
+  }
+  if (values.every((value) => getGameIdentity(value))) return values.map(getGameIdentity);
+  return null;
+}
+
 function mergeConcurrentValue(baseValue, localValue, remoteValue, path, conflicts) {
   if (valuesEqual(localValue, remoteValue)) return localValue;
   if (valuesEqual(localValue, baseValue)) return remoteValue;
@@ -27,6 +81,16 @@ function mergeConcurrentValue(baseValue, localValue, remoteValue, path, conflict
     if (baseValue.length !== localValue.length || baseValue.length !== remoteValue.length) {
       conflicts.push(path || "dados");
       return localValue;
+    }
+
+    const baseStructure = getGameArrayStructure(baseValue);
+    const localStructure = getGameArrayStructure(localValue);
+    const remoteStructure = getGameArrayStructure(remoteValue);
+    if (baseStructure && localStructure && remoteStructure) {
+      if (!valuesEqual(baseStructure, localStructure) || !valuesEqual(baseStructure, remoteStructure)) {
+        conflicts.push(path || "jogos");
+        return localValue;
+      }
     }
 
     return baseValue.map((baseItem, index) => mergeConcurrentValue(
@@ -73,6 +137,70 @@ export function mergeConcurrentTournamentData(baseData, localData, remoteData) {
   );
 
   return { data, conflicts: [...new Set(conflicts)] };
+}
+
+function listValidScheduleGames(data, field = "schedule") {
+  if (!Array.isArray(data?.[field])) return [];
+  if (field === "schedule" && data[field].every(isPlainRecord)) return data[field];
+  const rounds = field === "schedule" ? data[field].filter(Array.isArray) : [data[field]];
+  return rounds.flat().filter(isPlainRecord);
+}
+
+function getCriticalGameStructure(game) {
+  return {
+    matchKey: game?.matchKey ?? null,
+    ids1: Array.isArray(game?.ids1) ? game.ids1 : [],
+    ids2: Array.isArray(game?.ids2) ? game.ids2 : [],
+    team1: Array.isArray(game?.team1) ? game.team1 : [],
+    team2: Array.isArray(game?.team2) ? game.team2 : [],
+    source1: game?.source1 ?? null,
+    source2: game?.source2 ?? null,
+    source1Mode: game?.source1Mode ?? null,
+    source2Mode: game?.source2Mode ?? null,
+    entry1: game?.entry1 ?? null,
+    entry2: game?.entry2 ?? null,
+    isBye: game?.isBye ?? false,
+  };
+}
+
+function listParticipantNames(data) {
+  const players = data?.players;
+  if (Array.isArray(players)) return players.filter((item) => typeof item === "string");
+  if (!isPlainRecord(players)) return [];
+
+  return Object.values(players).flatMap((group) => {
+    if (!Array.isArray(group)) return [];
+    return group.flatMap((item) => {
+      if (typeof item === "string") return [item];
+      if (!isPlainRecord(item)) return [];
+      return [item.a, item.b].filter((name) => typeof name === "string");
+    });
+  });
+}
+
+export function preservesTournamentCriticalData(beforeData, afterData) {
+  if (!isPlainRecord(beforeData) || !isPlainRecord(afterData)) return false;
+
+  const beforeSchedule = listValidScheduleGames(beforeData, "schedule");
+  const afterSchedule = listValidScheduleGames(afterData, "schedule");
+  const beforeBrackets = listValidScheduleGames(beforeData, "brackets");
+  const afterBrackets = listValidScheduleGames(afterData, "brackets");
+  if (beforeSchedule.length !== afterSchedule.length || beforeBrackets.length !== afterBrackets.length) {
+    return false;
+  }
+
+  const scoresArePreserved = (beforeGames, afterGames) => beforeGames.every((game, index) => (
+    valuesEqual(game.s1 ?? "", afterGames[index]?.s1 ?? "")
+    && valuesEqual(game.s2 ?? "", afterGames[index]?.s2 ?? "")
+    && valuesEqual(getCriticalGameStructure(game), getCriticalGameStructure(afterGames[index]))
+  ));
+  if (!scoresArePreserved(beforeSchedule, afterSchedule) || !scoresArePreserved(beforeBrackets, afterBrackets)) {
+    return false;
+  }
+
+  const beforeNames = listParticipantNames(beforeData);
+  const afterNames = listParticipantNames(afterData);
+  return beforeNames.every((name, index) => name === afterNames[index]);
 }
 
 function getIndexedDb() {

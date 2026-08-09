@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { orderFixedMixedPair } from "../src/fixedMixedTeamOrder.mjs";
 import { super12IndividualTemplate } from "../src/super12Schedule.mjs";
 import { super20MixedTemplate } from "../src/super20MixedSchedule.mjs";
-import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
+import {
+  mergeConcurrentTournamentData,
+  preservesTournamentCriticalData,
+} from "../src/offlineDataStore.mjs";
 
 const root = new URL("../", import.meta.url);
 const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
@@ -23,6 +26,9 @@ const arenaDirectoryRulesMigration = readFileSync(arenaDirectoryRulesMigrationUr
 const collaborationMigrationUrl = new URL("supabase/migrations/202608080001_data_integrity_and_collaboration.sql", root);
 assert.ok(existsSync(fileURLToPath(collaborationMigrationUrl)), "A migração de integridade e colaboração está ausente.");
 const collaborationMigration = readFileSync(collaborationMigrationUrl, "utf8");
+const serverRevisionMigrationUrl = new URL("supabase/migrations/202608080002_server_revisions.sql", root);
+assert.ok(existsSync(fileURLToPath(serverRevisionMigrationUrl)), "A migração de revisões do servidor está ausente.");
+const serverRevisionMigration = readFileSync(serverRevisionMigrationUrl, "utf8");
 const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
 const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
 
@@ -649,7 +655,8 @@ assert.ok(
   "As gravações do torneio podem terminar fora de ordem e sobrescrever dados mais novos."
 );
 assert.ok(
-  mainSource.includes("saveTournamentDraft(userId, tournamentRef.current, data, serverUpdatedAtRef.current")
+  mainSource.includes("function saveTournamentDraft(")
+    && mainSource.includes("serverRevisionRef.current")
     && mainSource.includes("readTournamentDraft(userId, tournament)")
     && offlineStoreSource.includes('const PENDING_TOURNAMENT_STORE = "pending_tournaments"'),
   "Placares e confrontos ainda não possuem backup local durante uma falha de conexão."
@@ -701,6 +708,141 @@ const sameFieldConflict = mergeConcurrentTournamentData(
   { score: 7 }
 );
 assert.deepEqual(sameFieldConflict.conflicts, ["score"], "O mesmo campo alterado em dois dispositivos deve gerar conflito explícito.");
+assert.equal(sameFieldConflict.data.score, 6, "A alteração que está sendo salva por último deve prevalecer automaticamente.");
+
+const createSuper20Data = () => ({
+  players: {
+    men: Array.from({ length: 10 }, (_, index) => `Homem ${index + 1}`),
+    women: Array.from({ length: 10 }, (_, index) => `Mulher ${index + 1}`),
+  },
+  schedule: super20MixedTemplate.map((round) => round.map((players, courtIndex) => ({
+    court: courtIndex + 1,
+    ids1: [players[0] - 1, players[1] - 1],
+    ids2: [players[2] - 1, players[3] - 1],
+    team1: [],
+    team2: [],
+    s1: "",
+    s2: "",
+  }))),
+  brackets: [],
+});
+const super20BaseData = createSuper20Data();
+const super20LocalData = structuredClone(super20BaseData);
+const super20RemoteData = structuredClone(super20BaseData);
+super20LocalData.schedule[2][3].s1 = 6;
+super20LocalData.schedule[2][3].s2 = 4;
+super20RemoteData.schedule[7][1].s1 = 3;
+super20RemoteData.schedule[7][1].s2 = 6;
+const super20ConcurrentMerge = mergeConcurrentTournamentData(
+  super20BaseData,
+  super20LocalData,
+  super20RemoteData
+);
+assert.equal(super20ConcurrentMerge.data.schedule.length, 10, "A sincronização não pode reduzir as rodadas do Super 20.");
+assert.ok(
+  super20ConcurrentMerge.data.schedule.every((round) => round.length === 5),
+  "A sincronização não pode reduzir os cinco jogos de cada rodada do Super 20."
+);
+assert.deepEqual(
+  [super20ConcurrentMerge.data.schedule[2][3].s1, super20ConcurrentMerge.data.schedule[2][3].s2],
+  [6, 4],
+  "O placar alterado no primeiro aparelho deve permanecer."
+);
+assert.deepEqual(
+  [super20ConcurrentMerge.data.schedule[7][1].s1, super20ConcurrentMerge.data.schedule[7][1].s2],
+  [3, 6],
+  "O placar alterado no segundo aparelho deve permanecer."
+);
+const reorderedSuper20Data = structuredClone(super20BaseData);
+[reorderedSuper20Data.schedule[2][0], reorderedSuper20Data.schedule[2][1]] = [
+  reorderedSuper20Data.schedule[2][1],
+  reorderedSuper20Data.schedule[2][0],
+];
+const structuralSuper20Merge = mergeConcurrentTournamentData(
+  super20BaseData,
+  super20LocalData,
+  reorderedSuper20Data
+);
+assert.deepEqual(
+  structuralSuper20Merge.data.schedule[2],
+  super20LocalData.schedule[2],
+  "Uma tabela reorganizada não pode receber placares por índice em confrontos diferentes."
+);
+const roundReorderedSuper20Data = structuredClone(super20BaseData);
+[roundReorderedSuper20Data.schedule[0], roundReorderedSuper20Data.schedule[1]] = [
+  roundReorderedSuper20Data.schedule[1],
+  roundReorderedSuper20Data.schedule[0],
+];
+const roundStructuralMerge = mergeConcurrentTournamentData(
+  super20BaseData,
+  super20LocalData,
+  roundReorderedSuper20Data
+);
+assert.deepEqual(
+  roundStructuralMerge.data.schedule,
+  super20LocalData.schedule,
+  "A troca de rodadas não pode criar uma tabela híbrida nem duplicar confrontos."
+);
+assert.equal(
+  preservesTournamentCriticalData(super20LocalData, reorderedSuper20Data),
+  false,
+  "A protecao deve rejeitar uma reparacao que troca os confrontos do Super 20."
+);
+const bracketBase = {
+  brackets: [{
+    matchKey: "final",
+    source1: "semi-1",
+    source2: "semi-2",
+    team1: ["Ana", "Bia"],
+    team2: ["Clara", "Duda"],
+    s1: "",
+    s2: "",
+  }],
+};
+const bracketLocal = structuredClone(bracketBase);
+bracketLocal.brackets[0].s1 = 6;
+bracketLocal.brackets[0].s2 = 4;
+const bracketRemote = structuredClone(bracketBase);
+bracketRemote.brackets[0].source1 = "semi-3";
+bracketRemote.brackets[0].team1 = ["Eva", "Fabi"];
+const bracketStructuralMerge = mergeConcurrentTournamentData(bracketBase, bracketLocal, bracketRemote);
+assert.deepEqual(
+  bracketStructuralMerge.data.brackets,
+  bracketLocal.brackets,
+  "Um placar nao pode ser reaproveitado em participantes diferentes da mesma chave."
+);
+assert.ok(
+  preservesTournamentCriticalData(super20LocalData, structuredClone(super20LocalData)),
+  "Uma normalização segura deve preservar todos os placares do Super 20."
+);
+const unsafeSuper20Repair = structuredClone(super20LocalData);
+unsafeSuper20Repair.schedule[2][3].s1 = "";
+assert.equal(
+  preservesTournamentCriticalData(super20LocalData, unsafeSuper20Repair),
+  false,
+  "Uma reparação que apaga placar do Super 20 precisa ser bloqueada."
+);
+assert.ok(
+  serverRevisionMigration.includes("add column if not exists revision bigint not null default 0")
+    && serverRevisionMigration.includes("new.revision := coalesce(old.revision, 0) + 1")
+    && serverRevisionMigration.includes("new.updated_at := clock_timestamp()")
+    && serverRevisionMigration.includes("add column if not exists last_change_id uuid"),
+  "A versão de concorrência ainda depende do relógio dos aparelhos."
+);
+assert.ok(
+  serverRevisionMigration.includes("create trigger tournaments_bump_collaboration_revision")
+    && serverRevisionMigration.includes("create trigger circuits_bump_collaboration_revision"),
+  "As revisões do servidor não estão ligadas às tabelas de torneios e circuitos."
+);
+assert.ok(
+  mainSource.includes('.eq("revision", expectedRevision)')
+    && mainSource.includes("selectedRef.current")
+    && mainSource.includes("Sincronizando a alteração mais recente...")
+    && !mainSource.includes("Qual versão deseja manter?")
+    && !mainSource.includes("Usar versão da nuvem")
+    && !mainSource.includes("Manter versão deste aparelho"),
+  "A sincronização ainda pode pedir escolha manual ou aceitar uma versão antiga."
+);
 assert.ok(
   mainSource.includes("function ConfirmRegenerationModal")
     && mainSource.includes("function requestShuffleNames()")
@@ -709,6 +851,7 @@ assert.ok(
     && mainSource.includes('action: "shuffle"')
     && mainSource.includes('action: "generate"')
     && mainSource.includes('action: "brackets"')
+    && mainSource.includes('action: "group-score"')
     && mainSource.includes("Placares e resultados já preenchidos nas chaves podem ser removidos."),
   "A repetição de sorteios ou gerações não pede confirmação sobre os dados que podem mudar."
 );

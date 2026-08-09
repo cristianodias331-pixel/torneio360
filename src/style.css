@@ -24475,28 +24475,6 @@ html[data-theme="dark"] .formatInfoTrigger,
   background: rgba(124, 45, 18, 0.25);
 }
 
-.dataConflictBox {
-  max-width: 580px;
-  border-top: 4px solid #f97316;
-}
-
-.dataConflictBox .confirmIcon svg {
-  width: 28px;
-  height: 28px;
-  color: #ea580c;
-}
-
-.dataConflictChoices {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.dataConflictChoices button {
-  min-height: 46px;
-}
-
 @keyframes t360SyncSpin {
   to { transform: rotate(360deg); }
 }
@@ -24518,7 +24496,4 @@ html[data-theme="dark"] .formatInfoTrigger,
     padding: 10px 12px;
   }
 
-  .dataConflictChoices {
-    grid-template-columns: 1fr;
-  }
 }
