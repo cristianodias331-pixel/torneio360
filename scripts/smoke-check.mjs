@@ -146,6 +146,8 @@ assert.ok(
   mainSource.includes("function rankOfficialCearenseGroupRows")
     && mainSource.includes("function getOfficialCearenseQualified")
     && mainSource.includes("const cearenseMainBracketPlans")
+    && mainSource.includes("function expandBracketPlanWithVisualByes")
+    && mainSource.includes("isBye: Boolean(firstEntry) !== Boolean(secondEntry)")
     && mainSource.includes('defaultThirdRepechageName: "3ª Disputa Paralela"')
     && mainSource.includes('phase === "thirdParallel"')
     && mainSource.includes('activeMatchesTab === "paralela3"')
