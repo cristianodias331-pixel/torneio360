@@ -16411,16 +16411,18 @@ function prepareParticipantLine(value) {
     .replace(/\s+/g, " ")
     .trim();
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
     const withoutPrefix = line
-      .replace(/^\s*(?:(?:dupla|participante|atleta|jogador|homem|mulher)\s*\p{N}{1,3}\s*[.)\-:]\s*|\p{N}{1,3}\s*[.)\-:]\s*|[-–—•*▪◦]+\s*)/iu, "")
+      .replace(/^\s*(?:(?:dupla|participante|atleta|jogador|homem|mulher)\s*(?:n[º°o.]?\s*)?\p{N}{1,3}\s*[ºª°oa]?\s*[.)\-:]?\s*|\p{N}{1,3}\s*[ºª°oa]?\s*(?:[.)\-:]\s*|\s+)|[-–—•*▪◦]+\s*)/iu, "")
       .trim();
 
     if (withoutPrefix === line) break;
     line = withoutPrefix;
   }
 
-  return line;
+  return line
+    .replace(/^[^\p{L}]+/u, "")
+    .trim();
 }
 
 function sanitizeParticipantName(value) {
@@ -16671,9 +16673,9 @@ function ParticipantImportModal({ type, data, onClose, onApply }) {
             <h2 id="participant-import-title">Colar lista de nomes</h2>
             <p>
               {isFixedMixedTeams
-                ? "Uma dupla mista por linha. O homem será colocado no primeiro campo e a mulher no segundo. Separe os nomes por +, /, -, e ou &."
+                ? "Uma dupla mista por linha. O homem será colocado no primeiro campo e a mulher no segundo. Separe os nomes por +, /, -, e ou &. Símbolos e emojis antes dos nomes serão ignorados."
                 : isTeams
-                ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome."
+                ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis antes dos nomes serão ignorados."
                 : "Numeração, marcadores e emojis serão retirados automaticamente."}
             </p>
           </div>
