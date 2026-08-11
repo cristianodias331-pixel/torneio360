@@ -794,7 +794,17 @@ function getTournamentCompletionState(tournament) {
   const bracketGames = (data.brackets || []).map((game) => (
     resolveBracketGame(game, data.brackets || [], data)
   ));
-  const requiredBracketGames = bracketGames.filter((game) => !isTournamentByeGame(game));
+  const requiredBracketGames = bracketGames.filter((game) => {
+    if (isTournamentByeGame(game)) return false;
+    if (!isCampeonatoCearenseData(data)) return true;
+    const matchKey = String(game.matchKey || "");
+    const phase = game.phase
+      || (matchKey.startsWith("thirdParallel_") ? "thirdParallel" : "")
+      || (matchKey.startsWith("repechage_") ? "repechage" : "");
+    if (phase === "repechage" && !isCearenseSecondParallelEnabled(data)) return false;
+    if (phase === "thirdParallel" && !isCearenseThirdParallelEnabled(data)) return false;
+    return true;
+  });
   const requiredGames = [...scheduleGames, ...requiredBracketGames];
   const needsEliminationBracket = isCupType(config);
   const bracketReady = !needsEliminationBracket || requiredBracketGames.length > 0;
@@ -2366,6 +2376,16 @@ function isCearenseData(data) {
 
 function isCampeonatoCearenseData(data) {
   return getCupFormat(data) === "cearense";
+}
+
+function isCearenseSecondParallelEnabled(data) {
+  return !isCampeonatoCearenseData(data)
+    || data?.cupConfig?.secondRepechageEnabled === true;
+}
+
+function isCearenseThirdParallelEnabled(data) {
+  return isCampeonatoCearenseData(data)
+    && data?.cupConfig?.thirdRepechageEnabled === true;
 }
 
 function isPlayRankingData(data) {
@@ -12735,6 +12755,12 @@ function createInitialData(type, config) {
         ...(config.defaultThirdRepechageName
           ? { thirdRepechageName: config.defaultThirdRepechageName }
           : {}),
+        ...(config.type === "cearense"
+          ? {
+            secondRepechageEnabled: null,
+            thirdRepechageEnabled: null,
+          }
+          : {}),
         tieBreakOverrides: {},
         groupTieBreakOverrides: {},
         campaignTieBreakOverrides: {},
@@ -13023,6 +13049,16 @@ function normalizeTournamentData(type, rawData) {
         thirdRepechageName: typeof sourceCupConfig.thirdRepechageName === "string"
           ? sourceCupConfig.thirdRepechageName
           : defaults.cupConfig.thirdRepechageName,
+        ...(config.type === "cearense"
+          ? {
+            secondRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")
+              ? (typeof sourceCupConfig.secondRepechageEnabled === "boolean" ? sourceCupConfig.secondRepechageEnabled : null)
+              : true,
+            thirdRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "thirdRepechageEnabled")
+              ? (typeof sourceCupConfig.thirdRepechageEnabled === "boolean" ? sourceCupConfig.thirdRepechageEnabled : null)
+              : true,
+          }
+          : {}),
         tieBreakOverrides: isTournamentDataObject(sourceCupConfig.tieBreakOverrides)
           ? sourceCupConfig.tieBreakOverrides
           : {},
@@ -13920,6 +13956,18 @@ function TournamentScreen({
   useEffect(() => {
     updateTournamentUrl();
   }, []);
+
+  useEffect(() => {
+    if (activeMatchesTab === "paralela" && !isCearenseSecondParallelEnabled(data)) {
+      setActiveMatchesTab("chaves");
+    } else if (activeMatchesTab === "paralela3" && !isCearenseThirdParallelEnabled(data)) {
+      setActiveMatchesTab("chaves");
+    }
+  }, [
+    activeMatchesTab,
+    data.cupConfig?.secondRepechageEnabled,
+    data.cupConfig?.thirdRepechageEnabled,
+  ]);
 
   const saveTimerRef = useRef(null);
   const latestDataRef = useRef(data);
@@ -14890,6 +14938,45 @@ function TournamentScreen({
     return false;
   }
 
+  function ensureCearenseParallelChoices() {
+    if (!isCampeonatoCearenseData(data)) return true;
+
+    const cupConfig = data.cupConfig || {};
+    const missingChoices = [];
+    if (typeof cupConfig.secondRepechageEnabled !== "boolean") missingChoices.push("2ª disputa paralela");
+    if (typeof cupConfig.thirdRepechageEnabled !== "boolean") missingChoices.push("3ª disputa paralela");
+
+    if (missingChoices.length > 0) {
+      showNotice(
+        "warning",
+        "Escolha obrigatória",
+        `Defina Sim ou Não para ${missingChoices.join(" e ")} antes de continuar.`
+      );
+      setActiveTournamentTab("participantes");
+      return false;
+    }
+
+    const missingNames = [];
+    if (cupConfig.secondRepechageEnabled && !String(cupConfig.repechageName || "").trim()) {
+      missingNames.push("2ª disputa paralela");
+    }
+    if (cupConfig.thirdRepechageEnabled && !String(cupConfig.thirdRepechageName || "").trim()) {
+      missingNames.push("3ª disputa paralela");
+    }
+
+    if (missingNames.length > 0) {
+      showNotice(
+        "warning",
+        "Nome obrigatório",
+        `Informe o nome da ${missingNames.join(" e da ")} antes de continuar.`
+      );
+      setActiveTournamentTab("participantes");
+      return false;
+    }
+
+    return true;
+  }
+
   function commitDefaultCourtNumber(index, value) {
     const nextNumber = normalizeCourtNumberValue(value) || String(index + 1);
     setData((prev) => {
@@ -15244,6 +15331,8 @@ function generateBrackets() {
 }
 
 function requestShuffleNames() {
+  if (!ensureCearenseParallelChoices()) return;
+
   const alreadyUsed = isCupType(config)
     ? Boolean(data.groupsShuffled || data.schedule?.length || data.brackets?.length)
     : Boolean(data.namesShuffled || data.schedule?.length);
@@ -15277,6 +15366,7 @@ function requestShuffleNames() {
 }
 
 function requestGenerate() {
+  if (!ensureCearenseParallelChoices()) return;
   if (!ensureParticipantsConfirmed()) return;
 
   if (!data.schedule?.length) {
@@ -15308,6 +15398,8 @@ function requestGenerate() {
 }
 
 function requestGenerateBrackets() {
+  if (!ensureCearenseParallelChoices()) return;
+
   if (!data.brackets?.length) {
     generateBrackets();
     return;
@@ -15517,6 +15609,8 @@ function clearTable() {
 }
 
 const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, thirdParallelPodium } = getSafeCupPresentation(data, config);
+const secondParallelVisible = isCearenseSecondParallelEnabled(data);
+const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
 const rankingOrganizer = data.publicInfo?.organizer || {};
 const tournamentRankingShareContext = {
   title: tournament.name,
@@ -15866,8 +15960,8 @@ return (
             <div className="matchesSubTabs">
               <button type="button" className={activeMatchesTab === "grupos" ? "active" : ""} onClick={() => setActiveMatchesTab("grupos")}>Fase de grupos</button>
               <button type="button" className={activeMatchesTab === "chaves" ? "active" : ""} onClick={() => setActiveMatchesTab("chaves")}>Chaves finais</button>
-              <button type="button" className={activeMatchesTab === "paralela" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button>
-              {isCampeonatoCearenseData(data) ? (
+              {secondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button> : null}
+              {thirdParallelVisible ? (
                 <button type="button" className={activeMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela3")}>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</button>
               ) : null}
             </div>
@@ -15988,7 +16082,7 @@ return (
                   )}
                 </div>
 
-                <div className="cupRankingPanel">
+                {secondParallelVisible ? <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.repechageName || "Disputa Paralela"}</h3>
                   {isCopinhaData(data) ? (
                     data.cupConfig?.teamCount === 6 ? (
@@ -16016,8 +16110,8 @@ return (
                   ) : (
                     <p>Gere ou finalize a disputa paralela para ver o ranking separado.</p>
                   )}
-                </div>
-                {isCampeonatoCearenseData(data) ? (
+                </div> : null}
+                {thirdParallelVisible ? (
                   <div className="cupRankingPanel">
                     <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
                     {thirdParallelPodium.length > 0 ? (
@@ -16035,7 +16129,7 @@ return (
               </div>
             </section>
 
-            <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela" ? undefined : "none" }}>
+            {secondParallelVisible ? <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela" ? undefined : "none" }}>
               <div className="cardTitleRow">
                 <h2>{data.cupConfig?.repechageName || "Disputa Paralela"}</h2>
                 <div className="cardTitleControls">
@@ -16064,9 +16158,9 @@ return (
                   ? "A Disputa Paralela será montada automaticamente quando todos os placares da primeira fase da Eliminatória Principal estiverem preenchidos."
                   : "Com 2 grupos, a Copinha segue o modelo da planilha e não possui chave de consolação."}</p>
               )}
-            </section>
+            </section> : null}
 
-            {isCampeonatoCearenseData(data) ? (
+            {thirdParallelVisible ? (
               <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela3" ? undefined : "none" }}>
                 <div className="cardTitleRow">
                   <h2>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h2>
@@ -16102,6 +16196,228 @@ return (
   );
 }
 
+function FormatExplanationButton({
+  label,
+  ariaLabel,
+  eyebrow,
+  title,
+  intro,
+  sections,
+  publicView = false,
+  iconOnly = false,
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    window.setTimeout(() => closeRef.current?.focus(), 0);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      window.setTimeout(() => triggerRef.current?.focus(), 0);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`formatInfoTrigger ${publicView ? "public" : ""} ${iconOnly ? "iconOnly" : ""}`}
+        onClick={() => setOpen(true)}
+        aria-label={ariaLabel || label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        <CircleHelp aria-hidden="true" />
+        {!iconOnly ? <span>{label}</span> : null}
+      </button>
+
+      {open && createPortal(
+        <div
+          className="formatInfoOverlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
+        >
+          <section
+            className="formatInfoDialog formatInfoDialogCompact"
+            role="dialog"
+            aria-modal="true"
+            aria-label={ariaLabel || title}
+          >
+            <header className="formatInfoHeader">
+              <div>
+                <span>{eyebrow}</span>
+                <h2>{title}</h2>
+                {intro ? <p>{intro}</p> : null}
+              </div>
+              <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar explicação">×</button>
+            </header>
+
+            <div className="formatInfoSections">
+              {sections.map((section, index) => (
+                <article key={section.title}>
+                  <span className="formatInfoStep">{index + 1}</span>
+                  <div>
+                    <h3>{section.title}</h3>
+                    {section.content}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <footer className="formatInfoFooter">
+              <span>{publicView ? "Esta explicação é somente para consulta." : "Use esta explicação para escolher o formato do evento."}</span>
+              <button type="button" onClick={() => setOpen(false)}>Entendi</button>
+            </footer>
+          </section>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+function SimpleFormatInfoButton({ data, config, publicView = false }) {
+  const playerCount = getSimplePlayerCount(config, data);
+  const rounds = playerCount - 1;
+  const matchesPerRound = playerCount / 2;
+  const totalMatches = (playerCount * (playerCount - 1)) / 2;
+
+  return (
+    <FormatExplanationButton
+      label={`Como funciona com ${playerCount} jogadores`}
+      ariaLabel={`Explicação da modalidade Simples com ${playerCount} jogadores`}
+      eyebrow={`Formato calculado para ${playerCount} jogadores`}
+      title="Simples — todos contra todos"
+      intro="Veja como o sistema organiza as rodadas e o ranking individual."
+      publicView={publicView}
+      sections={[
+        {
+          title: "Formato",
+          content: <p>Os <strong>{playerCount} jogadores</strong> participam individualmente, sem formação de duplas.</p>,
+        },
+        {
+          title: "Rodadas e partidas",
+          content: <p>Serão <strong>{rounds} rodadas</strong>, com {matchesPerRound} jogos por rodada e <strong>{totalMatches} partidas</strong> no total.</p>,
+        },
+        {
+          title: "Participação e ranking",
+          content: <><p>Cada jogador enfrenta todos os demais exatamente uma vez, sem folgas.</p><p>Os resultados alimentam um único ranking individual conforme os critérios escolhidos pelo organizador.</p></>,
+        },
+      ]}
+    />
+  );
+}
+
+function ParallelDisputeChoice({
+  kind,
+  enabled,
+  onEnabledChange,
+  name,
+  onNameChange,
+  teamCount,
+}) {
+  const isSecond = kind === "second";
+  const ordinal = isSecond ? "2ª" : "3ª";
+  const summary = getCearenseFormatSummary(teamCount, false);
+  const helpSections = isSecond ? [
+    {
+      title: "Quem participa",
+      content: <p>Entram as <strong>{summary.initialParallelCount} duplas abaixo do 2º lugar</strong> na fase de grupos. O 1º e o 2º de cada grupo continuam exclusivamente na Eliminatória Principal.</p>,
+    },
+    {
+      title: "Como funciona",
+      content: <p>É uma chave eliminatória independente, com seus próprios confrontos, BYEs quando necessários, campeão e vice-campeão.</p>,
+    },
+    {
+      title: "Se escolher Não",
+      content: <p>A {ordinal} disputa paralela não aparecerá nas abas, no ranking nem para os visitantes e não impedirá o encerramento do torneio. Ela poderá ser ativada depois sem apagar os dados já salvos.</p>,
+    },
+  ] : [
+    {
+      title: "Quem participa",
+      content: <p>Participam as duplas eliminadas na etapa prevista da Eliminatória Principal. O sistema identifica automaticamente a fase compatível com a quantidade de duplas.</p>,
+    },
+    {
+      title: "Como a chave é montada",
+      content: <p>Com quatro duplas elegíveis, são realizadas semifinais e final. Com duas duplas elegíveis, elas disputam uma final direta.</p>,
+    },
+    {
+      title: "Se escolher Não",
+      content: <p>A {ordinal} disputa paralela não aparecerá nas abas, no ranking nem para os visitantes e não impedirá o encerramento do torneio. Ela poderá ser ativada depois sem apagar os dados já salvos.</p>,
+    },
+  ];
+
+  return (
+    <div className="parallelChoiceCard">
+      <div className="parallelChoiceHeading">
+        <div>
+          <strong>Realizar {ordinal} disputa paralela?</strong>
+          <span>Escolha obrigatória</span>
+        </div>
+        <FormatExplanationButton
+          iconOnly
+          ariaLabel={`Entenda como funciona a ${ordinal} disputa paralela`}
+          eyebrow="Ajuda sobre o formato"
+          title={`Como funciona a ${ordinal} disputa paralela`}
+          intro="Consulte quem participa e o que muda ao ativar ou ocultar esta disputa."
+          sections={helpSections}
+        />
+      </div>
+
+      <div className="parallelChoiceOptions" role="radiogroup" aria-label={`Realizar ${ordinal} disputa paralela?`}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={enabled === true}
+          className={enabled === true ? "selected yes" : ""}
+          onClick={() => onEnabledChange(true)}
+        >
+          Sim
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={enabled === false}
+          className={enabled === false ? "selected no" : ""}
+          onClick={() => onEnabledChange(false)}
+        >
+          Não
+        </button>
+      </div>
+
+      {typeof enabled !== "boolean" ? (
+        <p className="parallelChoiceRequired">Escolha Sim ou Não para continuar.</p>
+      ) : null}
+
+      {enabled === true ? (
+        <div className="parallelChoiceName">
+          <label>Nome da {ordinal} disputa paralela</label>
+          <input
+            value={name}
+            onChange={(event) => onNameChange(event.target.value)}
+            placeholder={`${ordinal} Disputa Paralela`}
+            required
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TournamentFormatInfoButton({ data, config, publicView = false }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
@@ -16113,6 +16429,16 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
     () => getCearenseFormatSummary(teamCount, isPlayRanking),
     [teamCount, isPlayRanking]
   );
+  const secondParallelEnabled = isPlayRanking || isCearenseSecondParallelEnabled(data);
+  const thirdParallelEnabled = !isPlayRanking && isCearenseThirdParallelEnabled(data);
+  const visibleBracketNames = [
+    "a Eliminatória Principal",
+    ...(secondParallelEnabled ? [isPlayRanking ? "a Disputa Paralela" : `a ${data.cupConfig?.repechageName || "2ª Disputa Paralela"}`] : []),
+    ...(thirdParallelEnabled ? [`a ${data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}`] : []),
+  ];
+  const criteriaStepNumber = isPlayRanking
+    ? 6
+    : 4 + Number(secondParallelEnabled) + Number(thirdParallelEnabled);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -16166,7 +16492,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
               <div>
                 <span>Formato calculado para {summary.teamCount} duplas</span>
                 <h2>{isPlayRanking ? "Modelo Torneio 360" : "Torneio modelo Campeonato Cearense"}</h2>
-                <p>Veja o caminho das duplas desde os grupos até {isPlayRanking ? "as duas chaves eliminatórias" : "as três chaves eliminatórias"}.</p>
+                <p>Veja o caminho das duplas desde os grupos até {visibleBracketNames.join(", ").replace(/, ([^,]*)$/, " e $1")}.</p>
               </div>
               <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar explicação">×</button>
             </header>
@@ -16174,9 +16500,9 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
             <div className={`formatInfoHighlights ${isPlayRanking ? "hasTransfer" : ""}`} aria-label="Resumo do formato">
               <div><strong>{summary.groupCount}</strong><span>{summary.groupCount === 1 ? "grupo" : "grupos"}</span></div>
               <div><strong>{summary.mainCount}</strong><span>na principal</span></div>
-              <div><strong>{summary.initialParallelCount}</strong><span>na paralela após os grupos</span></div>
+              {secondParallelEnabled ? <div><strong>{summary.initialParallelCount}</strong><span>na paralela após os grupos</span></div> : null}
               {isPlayRanking ? <div><strong>+{summary.transferredCount}</strong><span>vindas da primeira fase</span></div> : null}
-              {!isPlayRanking ? <div><strong>QF</strong><span>derrotadas na 3ª paralela</span></div> : null}
+              {thirdParallelEnabled ? <div><strong>QF</strong><span>derrotadas na 3ª paralela</span></div> : null}
             </div>
 
             <div className="formatInfoSections">
@@ -16195,7 +16521,11 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                 <div>
                   <h3>Destino depois dos grupos</h3>
                   <p>O 1º e o 2º lugar de cada grupo avançam. Assim, <strong>{summary.mainCount} duplas</strong> entram na Eliminatória Principal.</p>
-                  <p>As outras <strong>{summary.initialParallelCount} duplas</strong> entram na {isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}.</p>
+                  {secondParallelEnabled ? (
+                    <p>As outras <strong>{summary.initialParallelCount} duplas</strong> entram na {isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}.</p>
+                  ) : (
+                    <p>As duplas abaixo do 2º lugar não participam de uma disputa paralela visível neste evento.</p>
+                  )}
                 </div>
               </article>
 
@@ -16221,18 +16551,20 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                 </article>
               ) : null}
 
-              <article>
-                <span className="formatInfoStep">{isPlayRanking ? 5 : 4}</span>
-                <div>
-                  <h3>{isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}</h3>
-                  <p>A chave terá <strong>{summary.finalParallelCount} duplas</strong>{isPlayRanking ? `: ${summary.initialParallelCount} vindas dos grupos e ${summary.transferredCount} da primeira fase da Principal` : " vindas da fase de grupos"}.</p>
-                  <p>{summary.parallelByes > 0 ? `A chave terá ${summary.parallelBracketSize} posições e ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"}.` : `A chave terá ${summary.parallelBracketSize} posições, sem BYEs.`} Sempre que possível, o sistema também evita um confronto imediato entre duplas do mesmo grupo.</p>
-                </div>
-              </article>
-
-              {!isPlayRanking ? (
+              {secondParallelEnabled ? (
                 <article>
-                  <span className="formatInfoStep">5</span>
+                  <span className="formatInfoStep">{isPlayRanking ? 5 : 4}</span>
+                  <div>
+                    <h3>{isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}</h3>
+                    <p>A chave terá <strong>{summary.finalParallelCount} duplas</strong>{isPlayRanking ? `: ${summary.initialParallelCount} vindas dos grupos e ${summary.transferredCount} da primeira fase da Principal` : " vindas da fase de grupos"}.</p>
+                    <p>{summary.parallelByes > 0 ? `A chave terá ${summary.parallelBracketSize} posições e ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"}.` : `A chave terá ${summary.parallelBracketSize} posições, sem BYEs.`} Sempre que possível, o sistema também evita um confronto imediato entre duplas do mesmo grupo.</p>
+                  </div>
+                </article>
+              ) : null}
+
+              {thirdParallelEnabled ? (
+                <article>
+                  <span className="formatInfoStep">{secondParallelEnabled ? 5 : 4}</span>
                   <div>
                     <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
                     <p>Entram somente as duplas derrotadas nas quartas de final da Eliminatória Principal.</p>
@@ -16242,7 +16574,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
               ) : null}
 
               <article>
-                <span className="formatInfoStep">{isPlayRanking ? 6 : 6}</span>
+                <span className="formatInfoStep">{criteriaStepNumber}</span>
                 <div>
                   <h3>Critérios e independência das chaves</h3>
                   {isPlayRanking ? (
@@ -16250,7 +16582,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                   ) : (
                     <p>Os melhores grupos são definidos comparando somente os campeões. O saldo do campeão de grupo com quatro duplas é dividido por 1,5; em empate, o organizador realiza o sorteio. Todo o grupo herda essa posição MG.</p>
                   )}
-                  <p>A Eliminatória Principal e {isPlayRanking ? "a Disputa Paralela" : "as 2ª e 3ª Disputas Paralelas"} seguem separadas, cada uma com seus confrontos, resultados, campeão e vice-campeão.</p>
+                  <p>{visibleBracketNames.length > 1 ? `${visibleBracketNames.slice(0, -1).join(", ")} e ${visibleBracketNames.at(-1)}` : visibleBracketNames[0]} {visibleBracketNames.length > 1 ? "seguem separadas" : "segue independente"}, com confrontos e resultados próprios.</p>
                 </div>
               </article>
             </div>
@@ -16269,7 +16601,6 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
 
 function SimpleConfigPanel({ data, config, onPlayerCountChange }) {
   const playerCount = getSimplePlayerCount(config, data);
-  const totalMatches = (playerCount * (playerCount - 1)) / 2;
 
   return (
     <div className="cupConfigBox simpleConfigBox">
@@ -16286,9 +16617,8 @@ function SimpleConfigPanel({ data, config, onPlayerCountChange }) {
           </select>
         </div>
 
-        <div className="infoBox">
-          <p><strong>Todos contra todos:</strong> {playerCount - 1} rodadas, {playerCount / 2} jogos por rodada e {totalMatches} partidas no total.</p>
-          <p>Cada jogador enfrenta todos os demais exatamente uma vez, sem folgas.</p>
+        <div className="simpleFormatHelp">
+          <SimpleFormatInfoButton data={data} config={config} />
         </div>
       </div>
     </div>
@@ -16333,24 +16663,35 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
           />
         </div>
 
-        <div>
-          <label>{isCopinha ? "Nome da consolação" : isCearense ? "Nome da 2ª disputa paralela" : isCearenseFamily || isCup18 || isCup21 ? "Nome da disputa paralela" : "Nome da repescagem"}</label>
-          <input
-            value={cupConfig.repechageName || config.defaultRepechageName}
-            onChange={(e) => updateCupConfig("repechageName", e.target.value)}
-            placeholder={isCopinha ? "Consolação" : isCearense ? "2ª Disputa Paralela" : isCearenseFamily || isCup18 || isCup21 ? "Disputa Paralela" : "Repescagem"}
-          />
-        </div>
-
         {isCearense ? (
+          <ParallelDisputeChoice
+            kind="second"
+            enabled={cupConfig.secondRepechageEnabled}
+            onEnabledChange={(value) => updateCupConfig("secondRepechageEnabled", value)}
+            name={cupConfig.repechageName ?? config.defaultRepechageName}
+            onNameChange={(value) => updateCupConfig("repechageName", value)}
+            teamCount={cupConfig.teamCount || config.defaultTeams}
+          />
+        ) : (
           <div>
-            <label>Nome da 3ª disputa paralela</label>
+            <label>{isCopinha ? "Nome da consolação" : isCearenseFamily || isCup18 || isCup21 ? "Nome da disputa paralela" : "Nome da repescagem"}</label>
             <input
-              value={cupConfig.thirdRepechageName || config.defaultThirdRepechageName}
-              onChange={(e) => updateCupConfig("thirdRepechageName", e.target.value)}
-              placeholder="3ª Disputa Paralela"
+              value={cupConfig.repechageName || config.defaultRepechageName}
+              onChange={(e) => updateCupConfig("repechageName", e.target.value)}
+              placeholder={isCopinha ? "Consolação" : isCearenseFamily || isCup18 || isCup21 ? "Disputa Paralela" : "Repescagem"}
             />
           </div>
+        )}
+
+        {isCearense ? (
+          <ParallelDisputeChoice
+            kind="third"
+            enabled={cupConfig.thirdRepechageEnabled}
+            onEnabledChange={(value) => updateCupConfig("thirdRepechageEnabled", value)}
+            name={cupConfig.thirdRepechageName ?? config.defaultThirdRepechageName}
+            onNameChange={(value) => updateCupConfig("thirdRepechageName", value)}
+            teamCount={cupConfig.teamCount || config.defaultTeams}
+          />
         ) : null}
       </div>
 
@@ -18814,6 +19155,16 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
   }
   const config = modalityConfig[tournament.type];
   const data = normalizeTournamentData(tournament.type, tournament.data);
+  const secondParallelVisible = isCearenseSecondParallelEnabled(data);
+  const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
+
+  useEffect(() => {
+    if (activePublicMatchesTab === "paralela" && !secondParallelVisible) {
+      setActivePublicMatchesTab("chaves");
+    } else if (activePublicMatchesTab === "paralela3" && !thirdParallelVisible) {
+      setActivePublicMatchesTab("chaves");
+    }
+  }, [activePublicMatchesTab, secondParallelVisible, thirdParallelVisible]);
 
   if (!config) {
     return (
@@ -18949,6 +19300,10 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             <div className="formatInfoPublicPlacement">
               <TournamentFormatInfoButton data={data} config={config} publicView />
             </div>
+          ) : isFlexibleSimpleType(config) ? (
+            <div className="formatInfoPublicPlacement">
+              <SimpleFormatInfoButton data={data} config={config} publicView />
+            </div>
           ) : null}
           <div className="publicAthletesGrid organizerLikeParticipants">
             {publicAthletes.map((group) => (
@@ -19006,8 +19361,8 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             <div className="matchesSubTabs">
               <button type="button" className={activePublicMatchesTab === "grupos" ? "active" : ""} onClick={() => setActivePublicMatchesTab("grupos")}>Fase de grupos</button>
               <button type="button" className={activePublicMatchesTab === "chaves" ? "active" : ""} onClick={() => setActivePublicMatchesTab("chaves")}>Chaves finais</button>
-              <button type="button" className={activePublicMatchesTab === "paralela" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button>
-              {isCampeonatoCearenseData(data) ? (
+              {secondParallelVisible ? <button type="button" className={activePublicMatchesTab === "paralela" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button> : null}
+              {thirdParallelVisible ? (
                 <button type="button" className={activePublicMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela3")}>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</button>
               ) : null}
             </div>
@@ -19033,7 +19388,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             </div>
           ) : null}
 
-          {isCup ? (
+          {isCup && secondParallelVisible ? (
             <div style={{ display: activePublicMatchesTab === "paralela" ? undefined : "none" }}>
               {!currentBrackets
                 ? <p>A disputa paralela ainda não foi gerada pelo organizador.</p>
@@ -19051,7 +19406,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             </div>
           ) : null}
 
-          {isCup && isCampeonatoCearenseData(data) ? (
+          {isCup && thirdParallelVisible ? (
             <div style={{ display: activePublicMatchesTab === "paralela3" ? undefined : "none" }}>
               {!currentBrackets
                 ? <p>A 3ª disputa paralela ainda não foi gerada pelo organizador.</p>
@@ -19092,7 +19447,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
                 <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
                 {mainCupPodium.length > 0 ? <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={publicRankingShareContext} /> : <p>Finalize a chave principal para ver o ranking.</p>}
               </div>
-              <div className="cupRankingPanel">
+              {secondParallelVisible ? <div className="cupRankingPanel">
                 <h3>{data.cupConfig?.repechageName || "Disputa Paralela"}</h3>
                 {isCopinhaData(data)
                   ? (data.cupConfig?.teamCount === 6
@@ -19111,8 +19466,8 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
                         shareContext={publicRankingShareContext}
                       />
                     : <p>A disputa paralela ainda não tem ranking.</p>)}
-              </div>
-              {isCampeonatoCearenseData(data) ? (
+              </div> : null}
+              {thirdParallelVisible ? (
                 <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
                   {thirdParallelPodium.length > 0
