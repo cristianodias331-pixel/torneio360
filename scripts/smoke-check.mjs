@@ -31,6 +31,20 @@ assert.ok(existsSync(fileURLToPath(serverRevisionMigrationUrl)), "A migração d
 const serverRevisionMigration = readFileSync(serverRevisionMigrationUrl, "utf8");
 const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
 const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
+const prepareParticipantLineSource = mainSource.slice(
+  mainSource.indexOf("function prepareParticipantLine(value)"),
+  mainSource.indexOf("function sanitizeParticipantName(value)")
+);
+const prepareParticipantLineForTest = Function(
+  `"use strict"; ${prepareParticipantLineSource}; return prepareParticipantLine;`
+)();
+
+assert.equal(prepareParticipantLineForTest("🏆 1. João da Silva"), "João da Silva");
+assert.equal(prepareParticipantLineForTest("✅✅ 2️⃣ - Maria"), "Maria");
+assert.equal(prepareParticipantLineForTest("• #3 Carlos + Ana"), "Carlos + Ana");
+assert.equal(prepareParticipantLineForTest("👉 (4) Pedro / Beatriz"), "Pedro / Beatriz");
+assert.equal(prepareParticipantLineForTest("⚽ - 5º Lucas e Carla"), "Lucas e Carla");
+assert.equal(prepareParticipantLineForTest("✨ Dupla 12: Roberto & Fernanda"), "Roberto & Fernanda");
 
 const requiredApplicationMarkers = [
   "supabase.auth.signInWithPassword",
