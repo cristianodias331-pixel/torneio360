@@ -15618,7 +15618,7 @@ function SimpleConfigPanel({ data, config, onPlayerCountChange }) {
 
   return (
     <div className="cupConfigBox simpleConfigBox">
-      <div className="twoCols">
+      <div className="twoCols participantAttendanceColumns">
         <div>
           <label>Quantidade de jogadores</label>
           <select
@@ -15652,7 +15652,7 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
 
   return (
     <div className="cupConfigBox">
-      <div className="twoCols">
+      <div className="twoCols participantAttendanceColumns">
         <div>
           <label>Quantidade de duplas</label>
           <select
@@ -16218,7 +16218,7 @@ function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance })
   }
 
   return (
-    <div className="twoCols">
+    <div className="twoCols participantAttendanceColumns">
       {data.players.map((name, i) => (
         <div className="numberedInput participantAttendanceRow" key={i}>
           <span>{i + 1}</span>

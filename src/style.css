@@ -19361,25 +19361,35 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 .proDashboard .participantAttendanceBulkActions .confirmAllParticipantsBtn,
 .proDashboard .participantAttendanceStatus.confirmed {
   border: 1px solid #16a34a !important;
-  background: color-mix(in srgb, #22c55e 18%, var(--ui-surface-raised)) !important;
-  color: color-mix(in srgb, #15803d 88%, var(--ui-text-strong)) !important;
+  background: #dcfce7 !important;
+  background-image: none !important;
+  color: #166534 !important;
 }
 
 .proDashboard.theme-dark .participantAttendanceBulkActions .confirmAllParticipantsBtn,
 .proDashboard.theme-dark .participantAttendanceStatus.confirmed {
+  background: #123b2a !important;
+  background-image: none !important;
   color: #bbf7d0 !important;
 }
 
 .proDashboard .participantAttendanceBulkActions .pendingAllParticipantsBtn,
 .proDashboard .participantAttendanceStatus.pending {
   border: 1px solid #f97316 !important;
-  background: color-mix(in srgb, #f97316 16%, var(--ui-surface-raised)) !important;
-  color: color-mix(in srgb, #c2410c 88%, var(--ui-text-strong)) !important;
+  background: #ffedd5 !important;
+  background-image: none !important;
+  color: #c2410c !important;
 }
 
 .proDashboard.theme-dark .participantAttendanceBulkActions .pendingAllParticipantsBtn,
 .proDashboard.theme-dark .participantAttendanceStatus.pending {
+  background: #452514 !important;
+  background-image: none !important;
   color: #fed7aa !important;
+}
+
+.proDashboard .participantAttendanceColumns > * {
+  min-width: 0;
 }
 
 .proDashboard .numberedInput.participantAttendanceRow {
@@ -19390,16 +19400,28 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 }
 
 .proDashboard .numberedInput.participantAttendanceRow > input {
+  grid-column: 2 !important;
   min-width: 0 !important;
   width: 100% !important;
 }
 
+.proDashboard .numberedInput.participantAttendanceRow > span:first-child {
+  grid-column: 1 !important;
+}
+
 .proDashboard .participantAttendanceStatus {
+  grid-column: 3 !important;
   min-width: 92px !important;
   padding: 7px 11px !important;
   font-size: 11px !important;
   line-height: 1 !important;
   white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+  .proDashboard .participantAttendanceColumns {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 .proDashboard .teamSecondParticipantRow > span {
