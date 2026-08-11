@@ -25061,6 +25061,18 @@ html[data-theme="dark"] .publicPage .cupBrackets .bracketColumn.bracketTree .bra
   flex: 0 0 auto;
 }
 
+.formatInfoTrigger.iconOnly,
+.proDashboard.playAppShell button.formatInfoTrigger.iconOnly,
+.publicPage button.formatInfoTrigger.iconOnly {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+}
+
 .formatInfoTrigger:hover,
 .formatInfoTrigger:focus-visible,
 .proDashboard.playAppShell button.formatInfoTrigger:hover,
@@ -25102,6 +25114,10 @@ html[data-theme="dark"] .publicPage .cupBrackets .bracketColumn.bracketTree .bra
   color: var(--format-text);
   box-shadow: 0 28px 90px rgba(3, 10, 24, .35);
   overscroll-behavior: contain;
+}
+
+.formatInfoDialog.formatInfoDialogCompact {
+  width: min(650px, 100%);
 }
 
 .formatInfoHeader {
@@ -25188,6 +25204,135 @@ html[data-theme="dark"] .publicPage .cupBrackets .bracketColumn.bracketTree .bra
   font-size: 10px;
   font-weight: 800;
   line-height: 1.25;
+}
+
+.formatInfoHighlights {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.simpleFormatHelp {
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding-bottom: 2px;
+}
+
+.simpleFormatHelp .formatInfoTrigger {
+  margin: 0 !important;
+}
+
+.parallelChoiceCard {
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  border: 1px solid var(--ui-border, #d7e0ec);
+  border-radius: 16px;
+  background: var(--ui-surface-raised, #ffffff);
+  color: var(--ui-text, #334155);
+}
+
+.parallelChoiceHeading {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.parallelChoiceHeading > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.parallelChoiceHeading strong {
+  color: var(--ui-text-strong, #0f172a);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.parallelChoiceHeading span {
+  color: var(--ui-text-muted, #64748b);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.parallelChoiceOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.parallelChoiceOptions button,
+.proDashboard.playAppShell .parallelChoiceOptions button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 38px !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  border: 1px solid var(--ui-border, #cbd5e1) !important;
+  border-radius: 11px !important;
+  background: var(--ui-surface-muted, #f1f5f9) !important;
+  color: var(--ui-text, #334155) !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  transform: none !important;
+}
+
+.parallelChoiceOptions button.selected.yes,
+.proDashboard.playAppShell .parallelChoiceOptions button.selected.yes {
+  border-color: #16a34a !important;
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.parallelChoiceOptions button.selected.no,
+.proDashboard.playAppShell .parallelChoiceOptions button.selected.no {
+  border-color: #f97316 !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.parallelChoiceRequired {
+  margin: -3px 0 0 !important;
+  color: #c2410c !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+.parallelChoiceName {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.parallelChoiceName label {
+  margin: 0 !important;
+}
+
+html[data-theme="dark"] .parallelChoiceOptions button,
+.proDashboard.theme-dark .parallelChoiceOptions button {
+  border-color: #40516a !important;
+  background: #172334 !important;
+  color: #d7e1ee !important;
+}
+
+html[data-theme="dark"] .parallelChoiceOptions button.selected.yes,
+.proDashboard.theme-dark .parallelChoiceOptions button.selected.yes {
+  border-color: #22c55e !important;
+  background: #123d2a !important;
+  color: #bbf7d0 !important;
+}
+
+html[data-theme="dark"] .parallelChoiceOptions button.selected.no,
+.proDashboard.theme-dark .parallelChoiceOptions button.selected.no {
+  border-color: #f97316 !important;
+  background: #432313 !important;
+  color: #fed7aa !important;
 }
 
 .formatInfoSections {
@@ -25309,6 +25454,14 @@ html[data-theme="dark"] .formatInfoTrigger,
   .formatInfoSections article { padding: 14px 12px; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; }
   .formatInfoStep { width: 28px; height: 28px; }
   .formatInfoFooter { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
+
+  .simpleFormatHelp {
+    align-items: flex-start;
+  }
+
+  .parallelChoiceCard {
+    padding: 12px;
+  }
 }
 
 @media (max-width: 420px) {

@@ -944,6 +944,34 @@ assert.ok(
   "A repetição de sorteios ou gerações não pede confirmação sobre os dados que podem mudar."
 );
 assert.ok(
+  mainSource.includes("function FormatExplanationButton")
+    && mainSource.includes("function SimpleFormatInfoButton")
+    && mainSource.includes("Como funciona com ${playerCount} jogadores")
+    && !mainSource.includes('<div className="infoBox">\n          <p><strong>Todos contra todos:</strong>'),
+  "A modalidade Simples não está usando o mesmo padrão roxo de explicação dos demais formatos."
+);
+assert.ok(
+  mainSource.includes("function ParallelDisputeChoice")
+    && mainSource.includes("Realizar {ordinal} disputa paralela?")
+    && mainSource.includes("secondRepechageEnabled: null")
+    && mainSource.includes("thirdRepechageEnabled: null")
+    && mainSource.includes('Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")')
+    && mainSource.includes("function ensureCearenseParallelChoices")
+    && mainSource.includes("isCearenseSecondParallelEnabled(data)")
+    && mainSource.includes("isCearenseThirdParallelEnabled(data)"),
+  "As escolhas obrigatórias das disputas paralelas ou a compatibilidade com torneios antigos estão incompletas."
+);
+assert.ok(
+  mainSource.includes('phase === "repechage" && !isCearenseSecondParallelEnabled(data)')
+    && mainSource.includes('phase === "thirdParallel" && !isCearenseThirdParallelEnabled(data)')
+    && mainSource.includes("const secondParallelVisible = isCearenseSecondParallelEnabled(data)")
+    && mainSource.includes("const thirdParallelVisible = isCearenseThirdParallelEnabled(data)")
+    && styleSource.includes(".parallelChoiceCard")
+    && styleSource.includes(".parallelChoiceOptions button.selected.yes")
+    && styleSource.includes("html[data-theme=\"dark\"] .parallelChoiceOptions button.selected.no"),
+  "Disputas desativadas ainda podem aparecer, bloquear o encerramento ou perder a adaptação de tema."
+);
+assert.ok(
   mainSource.includes("const SHUFFLE_DURATION_SECONDS = 5")
     && mainSource.includes("function moveShuffleAnimationItems(items)")
     && mainSource.includes("items: moveShuffleAnimationItems(prev.items)")
