@@ -2221,6 +2221,33 @@ function getCearenseFormatSummary(teamCount, playRanking = false) {
   const finalParallelCount = initialParallelCount + transferredCount;
   const parallelBracketSize = finalParallelCount >= 2 ? getNextPowerOfTwo(finalParallelCount) : finalParallelCount;
   const parallelByes = Math.max(0, parallelBracketSize - finalParallelCount);
+  const thirdParallel = groups.length <= 1
+    ? {
+      eligibleCount: 0,
+      sourceRound: "",
+      openingRound: "Não formada",
+      matchCount: 0,
+    }
+    : groups.length === 2
+      ? {
+        eligibleCount: 2,
+        sourceRound: "semifinais da Eliminatória Principal",
+        openingRound: "Final direta",
+        matchCount: 1,
+      }
+      : groups.length === 3
+        ? {
+          eligibleCount: 2,
+          sourceRound: "quartas de final da Eliminatória Principal",
+          openingRound: "Final direta",
+          matchCount: 1,
+        }
+        : {
+          eligibleCount: 4,
+          sourceRound: "quartas de final da Eliminatória Principal",
+          openingRound: "Semifinais e final",
+          matchCount: 3,
+        };
 
   return {
     teamCount: safeTeamCount,
@@ -2238,6 +2265,8 @@ function getCearenseFormatSummary(teamCount, playRanking = false) {
     finalParallelCount,
     parallelBracketSize,
     parallelByes,
+    parallelOpeningRound: getEliminationRoundName(parallelBracketSize),
+    thirdParallel,
   };
 }
 
@@ -16333,31 +16362,48 @@ function ParallelDisputeChoice({
   const isSecond = kind === "second";
   const ordinal = isSecond ? "2ª" : "3ª";
   const summary = getCearenseFormatSummary(teamCount, false);
+  const thirdSummary = summary.thirdParallel;
   const helpSections = isSecond ? [
     {
-      title: "Quem participa",
-      content: <p>Entram as <strong>{summary.initialParallelCount} duplas abaixo do 2º lugar</strong> na fase de grupos. O 1º e o 2º de cada grupo continuam exclusivamente na Eliminatória Principal.</p>,
+      title: `Quem participa com ${summary.teamCount} duplas`,
+      content: <><p>Depois que todos os jogos dos grupos terminarem, o <strong>1º e o 2º lugar de cada grupo</strong> seguem exclusivamente para a Eliminatória Principal.</p><p>As demais posições — 3º, 4º e seguintes — formam esta disputa. Com a quantidade escolhida, serão <strong>{summary.initialParallelCount} duplas na 2ª disputa paralela</strong>.</p></>,
     },
     {
-      title: "Como funciona",
-      content: <p>É uma chave eliminatória independente, com seus próprios confrontos, BYEs quando necessários, campeão e vice-campeão.</p>,
+      title: "Como as duplas são ordenadas",
+      content: <><p>Primeiro entram os 3º colocados, do melhor grupo para o pior grupo. Depois vêm os 4º colocados, seguindo a mesma ordem, e assim por diante.</p><p>Essa ordem define as cabeças da chave e a prioridade dos BYEs. Sempre que for possível, o sistema evita que duplas do mesmo grupo se enfrentem logo na primeira rodada.</p></>,
     },
     {
-      title: "Se escolher Não",
-      content: <p>A {ordinal} disputa paralela não aparecerá nas abas, no ranking nem para os visitantes e não impedirá o encerramento do torneio. Ela poderá ser ativada depois sem apagar os dados já salvos.</p>,
+      title: "Chave, BYEs e avanço",
+      content: <><p>A disputa começa em <strong>{summary.parallelOpeningRound}</strong>, numa chave de {summary.parallelBracketSize} posições.</p><p>{summary.parallelByes > 0 ? `Como existem ${summary.initialParallelCount} duplas, serão concedidos ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"} às mais bem ordenadas.` : "A chave fica completa e começa sem BYEs."} Quem vence avança; quem perde é eliminado. A última dupla restante será a campeã, e a derrotada da final será a vice-campeã.</p></>,
+    },
+    {
+      title: "Independência da disputa",
+      content: <p>Os confrontos e placares desta chave são separados da Eliminatória Principal e da 3ª disputa paralela. Um resultado aqui não altera nenhuma das outras chaves.</p>,
+    },
+    {
+      title: "O que acontece ao escolher Sim ou Não",
+      content: <><p><strong>Sim:</strong> a plataforma mostra a aba, os jogos, o ranking e o pódio próprios desta disputa para o organizador e os visitantes.</p><p><strong>Não:</strong> ela fica totalmente oculta, não aparece para os visitantes e não impede o encerramento do torneio. Se for ativada depois, os dados internos já calculados serão preservados.</p></>,
     },
   ] : [
     {
-      title: "Quem participa",
-      content: <p>Participam as duplas eliminadas na etapa prevista da Eliminatória Principal. O sistema identifica automaticamente a fase compatível com a quantidade de duplas.</p>,
+      title: `Origem das duplas com ${summary.teamCount} duplas`,
+      content: thirdSummary.eligibleCount > 0
+        ? <><p>Esta disputa não recebe duplas eliminadas na fase de grupos. Ela recebe somente as <strong>{thirdSummary.eligibleCount} duplas derrotadas nas {thirdSummary.sourceRound}</strong>.</p><p>As duplas que vencerem essa fase continuam normalmente na Eliminatória Principal; somente as derrotadas são direcionadas para esta chave separada.</p></>
+        : <p>Com {summary.teamCount} duplas, a Eliminatória Principal possui apenas uma final. Por isso, <strong>não existem derrotadas suficientes para formar a 3ª disputa paralela</strong>.</p>,
     },
     {
-      title: "Como a chave é montada",
-      content: <p>Com quatro duplas elegíveis, são realizadas semifinais e final. Com duas duplas elegíveis, elas disputam uma final direta.</p>,
+      title: "Como a chave será montada",
+      content: thirdSummary.eligibleCount > 0
+        ? <><p>Para esta quantidade, o formato será <strong>{thirdSummary.openingRound}</strong>, com {thirdSummary.matchCount} {thirdSummary.matchCount === 1 ? "partida" : "partidas"} no total.</p><p>{thirdSummary.eligibleCount === 2 ? "As duas derrotadas se enfrentam diretamente, e a vencedora será a campeã desta disputa." : "As quatro derrotadas disputam duas semifinais; as vencedoras avançam para a final."}</p></>
+        : <p>Nenhuma chave será exibida porque não há duplas elegíveis nesta configuração.</p>,
     },
     {
-      title: "Se escolher Não",
-      content: <p>A {ordinal} disputa paralela não aparecerá nas abas, no ranking nem para os visitantes e não impedirá o encerramento do torneio. Ela poderá ser ativada depois sem apagar os dados já salvos.</p>,
+      title: "O que esta disputa não altera",
+      content: <p>Ela é independente da Eliminatória Principal e da 2ª disputa paralela. Seus jogos têm placares, campeão e vice-campeão próprios. Nenhum resultado desta chave muda os confrontos das outras duas.</p>,
+    },
+    {
+      title: "O que acontece ao escolher Sim ou Não",
+      content: <><p><strong>Sim:</strong> quando houver duplas elegíveis, a aba e os confrontos serão mostrados ao organizador e aos visitantes.</p><p><strong>Não:</strong> esta disputa fica totalmente oculta e não impede o encerramento do torneio. Ela poderá ser ativada posteriormente sem apagar os dados internos já calculados.</p></>,
     },
   ];
 
@@ -16373,7 +16419,7 @@ function ParallelDisputeChoice({
           ariaLabel={`Entenda como funciona a ${ordinal} disputa paralela`}
           eyebrow="Ajuda sobre o formato"
           title={`Como funciona a ${ordinal} disputa paralela`}
-          intro="Consulte quem participa e o que muda ao ativar ou ocultar esta disputa."
+          intro={`Explicação calculada para a configuração atual de ${summary.teamCount} duplas.`}
           sections={helpSections}
         />
       </div>
@@ -16502,7 +16548,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
               <div><strong>{summary.mainCount}</strong><span>na principal</span></div>
               {secondParallelEnabled ? <div><strong>{summary.initialParallelCount}</strong><span>na paralela após os grupos</span></div> : null}
               {isPlayRanking ? <div><strong>+{summary.transferredCount}</strong><span>vindas da primeira fase</span></div> : null}
-              {thirdParallelEnabled ? <div><strong>QF</strong><span>derrotadas na 3ª paralela</span></div> : null}
+              {thirdParallelEnabled ? <div><strong>{summary.thirdParallel.eligibleCount}</strong><span>na 3ª paralela</span></div> : null}
             </div>
 
             <div className="formatInfoSections">
@@ -16556,8 +16602,18 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                   <span className="formatInfoStep">{isPlayRanking ? 5 : 4}</span>
                   <div>
                     <h3>{isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}</h3>
-                    <p>A chave terá <strong>{summary.finalParallelCount} duplas</strong>{isPlayRanking ? `: ${summary.initialParallelCount} vindas dos grupos e ${summary.transferredCount} da primeira fase da Principal` : " vindas da fase de grupos"}.</p>
-                    <p>{summary.parallelByes > 0 ? `A chave terá ${summary.parallelBracketSize} posições e ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"}.` : `A chave terá ${summary.parallelBracketSize} posições, sem BYEs.`} Sempre que possível, o sistema também evita um confronto imediato entre duplas do mesmo grupo.</p>
+                    {isPlayRanking ? (
+                      <>
+                        <p>A chave terá <strong>{summary.finalParallelCount} duplas</strong>: {summary.initialParallelCount} vindas dos grupos e {summary.transferredCount} da primeira fase da Principal.</p>
+                        <p>{summary.parallelByes > 0 ? `A chave terá ${summary.parallelBracketSize} posições e ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"}.` : `A chave terá ${summary.parallelBracketSize} posições, sem BYEs.`} Sempre que possível, o sistema também evita um confronto imediato entre duplas do mesmo grupo.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>Participam as <strong>{summary.initialParallelCount} duplas que terminarem abaixo do 2º lugar</strong> nos grupos. Todos os 3º colocados são ordenados primeiro; depois vêm os 4º colocados e as posições seguintes. Dentro de cada posição, vale a ordem do melhor grupo para o pior.</p>
+                        <p>A chave começa em <strong>{summary.parallelOpeningRound}</strong>, com {summary.parallelBracketSize} posições. {summary.parallelByes > 0 ? `As ${summary.parallelByes} duplas mais bem ordenadas recebem BYE.` : "Não haverá BYEs."} Sempre que possível, duplas do mesmo grupo não se enfrentam na abertura.</p>
+                        <p>Quem vence avança e quem perde é eliminado. Esta disputa possui final, campeã e vice-campeã próprias.</p>
+                      </>
+                    )}
                   </div>
                 </article>
               ) : null}
@@ -16567,8 +16623,14 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                   <span className="formatInfoStep">{secondParallelEnabled ? 5 : 4}</span>
                   <div>
                     <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
-                    <p>Entram somente as duplas derrotadas nas quartas de final da Eliminatória Principal.</p>
-                    <p>Quando a chave principal tiver apenas duas partidas de quartas, as duas derrotadas fazem a final direta. Se a Principal começar nas semifinais, as derrotadas dessas semifinais também fazem uma final direta. Quando houver apenas a final principal, esta disputa não é criada.</p>
+                    {summary.thirdParallel.eligibleCount > 0 ? (
+                      <>
+                        <p>Entram exclusivamente as <strong>{summary.thirdParallel.eligibleCount} duplas derrotadas nas {summary.thirdParallel.sourceRound}</strong>. Eliminadas nos grupos ou em outras fases não entram nesta disputa.</p>
+                        <p>Para esta quantidade, o formato será <strong>{summary.thirdParallel.openingRound}</strong>, com {summary.thirdParallel.matchCount} {summary.thirdParallel.matchCount === 1 ? "partida" : "partidas"}. Ela terá campeã e vice-campeã próprias.</p>
+                      </>
+                    ) : (
+                      <p>Com {summary.teamCount} duplas, a Principal possui apenas uma final e não gera participantes suficientes para formar esta disputa.</p>
+                    )}
                   </div>
                 </article>
               ) : null}
