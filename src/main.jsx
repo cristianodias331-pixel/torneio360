@@ -7326,7 +7326,7 @@ const [newCategorySchedules, setNewCategorySchedules] = useState([{
   time: "",
   type: "",
   location: "",
-  winningScore: "",
+  winningScore: "4",
   rankingCriteria: "",
   coverImageUrl: "",
 }]);
@@ -7358,6 +7358,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [editEventGroup, setEditEventGroup] = useState(null);
+  const [editEventGroupSaving, setEditEventGroupSaving] = useState(false);
   const [draggedTournamentId, setDraggedTournamentId] = useState(null);
   const [dragOverTournamentId, setDragOverTournamentId] = useState(null);
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
@@ -9754,7 +9756,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
-    if (!newDate || !newEndDate) {
+    if (!isMultiCategory && (!newDate || !newEndDate)) {
       showNotice("warning", "Datas obrigatórias", "Informe a data de início e a data de encerramento do torneio.");
       return;
     }
@@ -9764,12 +9766,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
-    if (newDate && newEndDate && newEndDate < newDate) {
+    if (!isMultiCategory && newDate && newEndDate && newEndDate < newDate) {
       showNotice("warning", "Período inválido", "A data final do torneio não pode ser anterior à data inicial.");
       return;
     }
 
-    if (newRegistrationDeadline && newDate && newRegistrationDeadline > newDate) {
+    if (!isMultiCategory && newRegistrationDeadline && newDate && newRegistrationDeadline > newDate) {
       showNotice("warning", "Inscrições após o início", "A data de encerramento das inscrições não pode ser depois do início do torneio.");
       return;
     }
@@ -9781,11 +9783,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (isMultiCategory) {
       const incompleteCategory = validCategorySchedules.find((item) => (
-        !allowedTypes.includes(item.type || newType)
-        || !rankingCriteriaOptions.some((option) => option.value === (item.rankingCriteria || newRankingCriteria))
-        || !(item.date || newDate)
-        || Boolean(item.endDate && item.endDate < (item.date || newDate))
-        || Boolean(item.registrationDeadline && item.registrationDeadline > (item.date || newDate))
+        !allowedTypes.includes(item.type)
+        || !rankingCriteriaOptions.some((option) => option.value === item.rankingCriteria)
+        || !item.date
+        || !["4", "6", 4, 6].includes(item.winningScore)
+        || Boolean(item.endDate && item.endDate < item.date)
+        || Boolean(item.registrationDeadline && item.registrationDeadline > item.date)
       ));
       if (incompleteCategory) {
         showNotice("warning", "Categoria incompleta", `Revise modalidade, data e critério de ${incompleteCategory.category}.`);
@@ -9797,27 +9800,38 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const eventGroupKey = isMultiCategory ? generatePublicId() : null;
     const config = modalityConfig[newType];
+    const categoryStartDates = isMultiCategory
+      ? validCategorySchedules.map((item) => item.date).filter(Boolean).sort()
+      : [];
+    const categoryEndDates = isMultiCategory
+      ? validCategorySchedules.map((item) => item.endDate || item.date).filter(Boolean).sort()
+      : [];
+    const eventStartDate = isMultiCategory ? categoryStartDates[0] : newDate;
+    const eventEndDate = isMultiCategory ? categoryEndDates[categoryEndDates.length - 1] : (newEndDate || newDate);
 
     const baseData = {
       eventName: newName.trim(),
       eventGroupKey,
       multiCategoryEvent: isMultiCategory,
-      eventStartDate: newDate,
-      eventEndDate: newEndDate || newDate,
-      eventPeriodLabel: newEndDate && newEndDate !== newDate ? `${formatDateBR(newDate)} até ${formatDateBR(newEndDate)}` : formatDateBR(newDate),
-      registrationDeadline: newRegistrationDeadline,
-      location: newLocation.trim(),
+      eventStartDate,
+      eventEndDate,
+      eventGroupStartDate: isMultiCategory ? eventStartDate : "",
+      eventGroupEndDate: isMultiCategory ? eventEndDate : "",
+      eventPeriodLabel: eventEndDate && eventEndDate !== eventStartDate ? `${formatDateBR(eventStartDate)} até ${formatDateBR(eventEndDate)}` : formatDateBR(eventStartDate),
+      registrationDeadline: isMultiCategory ? "" : newRegistrationDeadline,
+      location: isMultiCategory ? "" : newLocation.trim(),
       publicInfo: buildTournamentPublicInfo(),
       coverImageUrl: newCoverImageUrl,
-      winningScore: Number(newWinningScore) || 4,
-      rankingCriteria: newRankingCriteria,
+      eventCoverImageUrl: newCoverImageUrl,
+      winningScore: isMultiCategory ? 4 : (Number(newWinningScore) || 4),
+      rankingCriteria: isMultiCategory ? defaultRankingCriteria : newRankingCriteria,
       publishedOnProfile: true,
       publishedAt: new Date().toISOString(),
     };
 
     const rowsToInsert = isMultiCategory
       ? validCategorySchedules.map((item) => {
-        const categoryType = item.type || newType;
+        const categoryType = item.type;
         const categoryConfig = modalityConfig[categoryType];
         return ({
           user_id: user.id,
@@ -9829,16 +9843,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             ...createInitialData(categoryType, categoryConfig),
             ...baseData,
             gender: item.category.trim(),
-            eventDate: item.date || newDate,
-            eventStartDate: item.date || newDate,
-            eventEndDate: item.endDate || item.date || newEndDate || newDate,
-            registrationDeadline: item.registrationDeadline || newRegistrationDeadline,
-            eventDay: getWeekdayBR(item.date || newDate),
+            eventDate: item.date,
+            eventStartDate: item.date,
+            eventEndDate: item.endDate || item.date,
+            registrationDeadline: item.registrationDeadline,
+            eventDay: getWeekdayBR(item.date),
             eventStartTime: item.time,
-            location: (item.location || newLocation).trim(),
-            winningScore: Number(item.winningScore || newWinningScore) || 4,
-            rankingCriteria: item.rankingCriteria || newRankingCriteria,
+            location: item.location.trim(),
+            winningScore: Number(item.winningScore) || 4,
+            rankingCriteria: item.rankingCriteria,
             coverImageUrl: item.coverImageUrl || newCoverImageUrl,
+            usesEventCover: !item.coverImageUrl,
           },
           status: "active",
         });
@@ -9896,7 +9911,7 @@ setNewCategorySchedules([{
   time: "",
   type: "",
   location: "",
-  winningScore: "",
+  winningScore: "4",
   rankingCriteria: "",
   coverImageUrl: "",
 }]);
@@ -10399,6 +10414,267 @@ setNewPublicInfo({
     );
   }
 
+  function openEditEventGroup(group) {
+    const groupItems = tournaments.filter((tournament) => (
+      tournament.data?.multiCategoryEvent === true
+      && tournament.data?.eventGroupKey === group.key
+    ));
+    const firstTournament = groupItems[0] || group.items[0];
+    const firstDetails = firstTournament?.data || {};
+    const eventCoverImageUrl = firstDetails.eventCoverImageUrl || firstDetails.coverImageUrl || "";
+
+    setEditEventGroup({
+      key: group.key,
+      eventName: firstDetails.eventName || group.name || "",
+      coverImageUrl: eventCoverImageUrl,
+      publicInfo: firstDetails.publicInfo || buildTournamentPublicInfo(),
+      categories: (groupItems.length ? groupItems : group.items).map((tournament) => {
+        const details = tournament.data || {};
+        const usesEventCover = details.usesEventCover === true
+          || (!details.usesEventCover && Boolean(eventCoverImageUrl) && details.coverImageUrl === eventCoverImageUrl);
+        return {
+          key: tournament.id,
+          id: tournament.id,
+          original: tournament,
+          name: tournament.name || details.gender || "",
+          gender: details.gender || tournament.name || "",
+          type: tournament.type || "",
+          eventDate: details.eventDate || "",
+          eventEndDate: details.eventEndDate || details.eventDate || "",
+          registrationDeadline: details.registrationDeadline || "",
+          eventStartTime: details.eventStartTime || "",
+          location: details.location || "",
+          winningScore: Number(details.winningScore || 4),
+          rankingCriteria: details.rankingCriteria || defaultRankingCriteria,
+          coverImageUrl: usesEventCover ? "" : (details.coverImageUrl || ""),
+          usesEventCover,
+          removed: false,
+          hasGeneratedGames: Boolean(details.schedule?.length || details.brackets?.length),
+        };
+      }),
+    });
+  }
+
+  function updateEventGroupField(field, value) {
+    setEditEventGroup((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateEventGroupCategory(key, field, value) {
+    setEditEventGroup((current) => ({
+      ...current,
+      categories: current.categories.map((category) => (
+        category.key === key
+          ? { ...category, [field]: value, ...(field === "name" ? { gender: value } : {}) }
+          : category
+      )),
+    }));
+  }
+
+  function addEventGroupCategory() {
+    setEditEventGroup((current) => ({
+      ...current,
+      categories: [
+        ...current.categories,
+        {
+          key: `new-${generatePublicId()}`,
+          id: null,
+          original: null,
+          name: "",
+          gender: "",
+          type: "",
+          eventDate: "",
+          eventEndDate: "",
+          registrationDeadline: "",
+          eventStartTime: "",
+          location: "",
+          winningScore: 4,
+          rankingCriteria: "",
+          coverImageUrl: "",
+          usesEventCover: true,
+          removed: false,
+          hasGeneratedGames: false,
+        },
+      ],
+    }));
+  }
+
+  function toggleEventGroupCategoryRemoved(key) {
+    setEditEventGroup((current) => {
+      const category = current.categories.find((item) => item.key === key);
+      if (!category) return current;
+      if (!category.removed && current.categories.filter((item) => !item.removed).length <= 1) {
+        showNotice("warning", "Uma categoria é obrigatória", "O evento precisa permanecer com pelo menos uma categoria.");
+        return current;
+      }
+      if (!category.id) {
+        return { ...current, categories: current.categories.filter((item) => item.key !== key) };
+      }
+      return {
+        ...current,
+        categories: current.categories.map((item) => (
+          item.key === key ? { ...item, removed: !item.removed } : item
+        )),
+      };
+    });
+  }
+
+  async function saveEditedEventGroup() {
+    if (!editEventGroup || editEventGroupSaving) return;
+    if (!ensureCloudConnection("salvar o evento completo")) return;
+
+    const activeCategories = editEventGroup.categories.filter((category) => !category.removed);
+    if (!editEventGroup.eventName.trim()) {
+      showNotice("warning", "Nome obrigatório", "Digite o nome geral do evento.");
+      return;
+    }
+
+    const invalidCategory = activeCategories.find((category) => (
+      !category.name.trim()
+      || (!allowedTypes.includes(category.type) && category.original?.type !== category.type)
+      || !category.eventDate
+      || !rankingCriteriaOptions.some((option) => option.value === category.rankingCriteria)
+      || ![4, 6].includes(Number(category.winningScore))
+      || Boolean(category.eventEndDate && category.eventEndDate < category.eventDate)
+      || Boolean(category.registrationDeadline && category.registrationDeadline > category.eventDate)
+      || Boolean(category.hasGeneratedGames && category.original?.type !== category.type)
+    ));
+
+    if (invalidCategory) {
+      showNotice(
+        "warning",
+        "Categoria incompleta",
+        invalidCategory.hasGeneratedGames && invalidCategory.original?.type !== invalidCategory.type
+          ? `A modalidade de ${invalidCategory.name} não pode ser trocada porque já existem jogos.`
+          : `Revise nome, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
+      );
+      return;
+    }
+
+    setEditEventGroupSaving(true);
+    const startDates = activeCategories.map((category) => category.eventDate).sort();
+    const endDates = activeCategories.map((category) => category.eventEndDate || category.eventDate).sort();
+    const groupStartDate = startDates[0];
+    const groupEndDate = endDates[endDates.length - 1];
+    const savedRows = [];
+
+    for (const category of activeCategories.filter((item) => item.id)) {
+      const original = category.original;
+      const updatedData = {
+        ...(original.data || {}),
+        eventName: editEventGroup.eventName.trim(),
+        eventGroupKey: editEventGroup.key,
+        multiCategoryEvent: true,
+        eventGroupStartDate: groupStartDate,
+        eventGroupEndDate: groupEndDate,
+        eventPeriodLabel: groupEndDate !== groupStartDate
+          ? `${formatDateBR(groupStartDate)} até ${formatDateBR(groupEndDate)}`
+          : formatDateBR(groupStartDate),
+        eventCoverImageUrl: editEventGroup.coverImageUrl || "",
+        usesEventCover: category.usesEventCover,
+        gender: category.gender.trim() || category.name.trim(),
+        eventDate: category.eventDate,
+        eventStartDate: category.eventDate,
+        eventEndDate: category.eventEndDate || category.eventDate,
+        eventDay: getWeekdayBR(category.eventDate),
+        registrationDeadline: category.registrationDeadline,
+        eventStartTime: category.eventStartTime,
+        location: category.location.trim(),
+        winningScore: Number(category.winningScore) || 4,
+        rankingCriteria: category.rankingCriteria,
+        coverImageUrl: category.usesEventCover ? (editEventGroup.coverImageUrl || "") : category.coverImageUrl,
+      };
+      const result = await persistTournamentSnapshot({
+        ...original,
+        name: category.name.trim(),
+        type: category.type,
+        data: updatedData,
+      }, {
+        expectedUpdatedAt: original.updated_at || null,
+        expectedRevision: getCollaborationRevision(original),
+      });
+
+      if (!result.ok) {
+        setEditEventGroupSaving(false);
+        await loadTournaments({ silentError: true });
+        showNotice("error", "Evento não concluído", "Uma categoria foi alterada em outro dispositivo ou não pôde ser salva. Revise o conjunto e tente novamente.");
+        return;
+      }
+      savedRows.push(result.tournament);
+    }
+
+    const newCategories = activeCategories.filter((item) => !item.id);
+    if (newCategories.length > 0) {
+      const rows = newCategories.map((category) => ({
+        user_id: user.id,
+        public_id: generatePublicId(),
+        is_public: true,
+        name: category.name.trim(),
+        type: category.type,
+        data: {
+          ...createInitialData(category.type, modalityConfig[category.type]),
+          eventName: editEventGroup.eventName.trim(),
+          eventGroupKey: editEventGroup.key,
+          multiCategoryEvent: true,
+          eventGroupStartDate: groupStartDate,
+          eventGroupEndDate: groupEndDate,
+          eventPeriodLabel: groupEndDate !== groupStartDate
+            ? `${formatDateBR(groupStartDate)} até ${formatDateBR(groupEndDate)}`
+            : formatDateBR(groupStartDate),
+          eventCoverImageUrl: editEventGroup.coverImageUrl || "",
+          usesEventCover: category.usesEventCover,
+          publicInfo: editEventGroup.publicInfo,
+          publishedOnProfile: true,
+          publishedAt: new Date().toISOString(),
+          gender: category.gender.trim() || category.name.trim(),
+          eventDate: category.eventDate,
+          eventStartDate: category.eventDate,
+          eventEndDate: category.eventEndDate || category.eventDate,
+          eventDay: getWeekdayBR(category.eventDate),
+          registrationDeadline: category.registrationDeadline,
+          eventStartTime: category.eventStartTime,
+          location: category.location.trim(),
+          winningScore: Number(category.winningScore) || 4,
+          rankingCriteria: category.rankingCriteria,
+          coverImageUrl: category.usesEventCover ? (editEventGroup.coverImageUrl || "") : category.coverImageUrl,
+        },
+        status: "active",
+      }));
+      const { data: insertedRows, error } = await supabase.from("tournaments").insert(rows).select("*");
+      if (error) {
+        setEditEventGroupSaving(false);
+        await loadTournaments({ silentError: true });
+        showNotice("error", "Categoria não adicionada", "As alterações existentes foram preservadas, mas não foi possível adicionar a nova categoria.");
+        return;
+      }
+      savedRows.push(...(insertedRows || []));
+    }
+
+    for (const category of editEventGroup.categories.filter((item) => item.id && item.removed)) {
+      const deletedAt = new Date().toISOString();
+      const { error } = await supabase
+        .from("tournaments")
+        .update({
+          is_public: false,
+          data: { ...(category.original.data || {}), deletedAt },
+          updated_at: deletedAt,
+        })
+        .eq("id", category.id)
+        .eq("user_id", user.id);
+      if (error) console.error("Erro ao mover categoria removida para a lixeira:", error);
+    }
+
+    const refreshedTournaments = await loadTournaments({ silentError: true }) || tournamentsRef.current;
+    const criteriaCircuits = await syncAutomaticCircuitCriteria(refreshedTournaments, circuitsRef.current);
+    const { circuits: rankedCircuits } = await persistCircuitRankings(
+      refreshedTournaments,
+      criteriaCircuits || circuitsRef.current
+    );
+    await syncPublicArenaDirectory(refreshedTournaments, rankedCircuits);
+    setEditEventGroupSaving(false);
+    setEditEventGroup(null);
+    showNotice("success", "Evento atualizado", "Os dados gerais e as categorias foram salvos em conjunto.");
+  }
+
   function getEventDateRange() {
     if (!newDate) return [];
 
@@ -10439,7 +10715,7 @@ setNewPublicInfo({
       time: "",
       type: "",
       location: "",
-      winningScore: "",
+      winningScore: "4",
       rankingCriteria: "",
       coverImageUrl: "",
     }]);
@@ -10847,6 +11123,145 @@ setNewPublicInfo({
         </div>
       ) : null}
 
+      {editEventGroup ? (
+        <div className="editTournamentOverlay" role="dialog" aria-modal="true" aria-labelledby="edit-event-group-title">
+          <div className="editTournamentModal editEventGroupModal">
+            <div className="editTournamentHeader">
+              <div>
+                <span className="modalEyebrow">Evento com várias categorias</span>
+                <h2 id="edit-event-group-title">Editar evento completo</h2>
+                <p>Altere os dados gerais e todas as categorias sem abrir cada torneio separadamente.</p>
+              </div>
+              <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Fechar</button>
+            </div>
+
+            <section className="eventGroupGeneralFields">
+              <div className="formField">
+                <label>Nome geral do evento</label>
+                <input value={editEventGroup.eventName} onChange={(event) => updateEventGroupField("eventName", event.target.value)} />
+              </div>
+
+              <div className="formField tournamentCoverField">
+                <div className="tournamentCoverIntro">
+                  <div>
+                    <strong><Camera aria-hidden="true" /> Foto geral do evento</strong>
+                    <span>As categorias configuradas para usar a foto geral serão atualizadas juntas.</span>
+                  </div>
+                  {editEventGroup.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEventGroupField("coverImageUrl", "")}>Remover foto</button> : null}
+                </div>
+                <label className={`tournamentCoverDropzone ${editEventGroup.coverImageUrl ? "hasImage" : ""}`}>
+                  <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupField("coverImageUrl", value))} />
+                  {editEventGroup.coverImageUrl
+                    ? <img src={editEventGroup.coverImageUrl} alt="Prévia da foto geral do evento" />
+                    : <span><Camera aria-hidden="true" /> Escolher foto geral</span>}
+                </label>
+              </div>
+            </section>
+
+            <div className="eventGroupEditIntro">
+              <div>
+                <strong>Categorias do evento</strong>
+                <span>Modalidade, local, datas, games e critério são definidos em cada categoria.</span>
+              </div>
+              <button type="button" className="secondaryBtn" onClick={addEventGroupCategory}>+ Adicionar categoria</button>
+            </div>
+
+            <div className="eventGroupCategoryEditorList">
+              {editEventGroup.categories.map((category, index) => (
+                <section className={`eventGroupCategoryEditor ${category.removed ? "removed" : ""}`} key={category.key}>
+                  <header>
+                    <div>
+                      <span>Categoria {index + 1}</span>
+                      <strong>{category.name || "Nova categoria"}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className={category.removed ? "secondaryBtn" : "deleteBtn"}
+                      onClick={() => toggleEventGroupCategoryRemoved(category.key)}
+                    >
+                      {category.removed ? "Restaurar" : category.id ? "Mover para lixeira" : "Remover"}
+                    </button>
+                  </header>
+
+                  {category.removed ? (
+                    <p className="eventGroupRemovalNotice">Esta categoria será movida para a lixeira quando as alterações forem salvas.</p>
+                  ) : (
+                    <div className="editTournamentGrid eventGroupCategoryFields">
+                      <div className="formField">
+                        <label>Categoria/Gênero</label>
+                        <input value={category.name} onChange={(event) => updateEventGroupCategory(category.key, "name", event.target.value)} />
+                      </div>
+                      <div className="formField">
+                        <label>Modalidade</label>
+                        <select value={category.type} disabled={category.hasGeneratedGames} onChange={(event) => updateEventGroupCategory(category.key, "type", event.target.value)}>
+                          <option value="">Escolha a modalidade</option>
+                          {!allowedTypes.includes(category.type) && category.type ? <option value={category.type}>{getModalityDisplayName(category.type)} (legada)</option> : null}
+                          {allowedTypes.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}
+                        </select>
+                        {category.hasGeneratedGames ? <small>A modalidade fica protegida porque esta categoria já possui jogos.</small> : null}
+                      </div>
+                      <div className="formField">
+                        <label>Início</label>
+                        <input className="clickableDateInput" type="date" value={category.eventDate} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => updateEventGroupCategory(category.key, "eventDate", event.target.value)} />
+                      </div>
+                      <div className="formField">
+                        <label>Fim</label>
+                        <input className="clickableDateInput" type="date" min={category.eventDate || undefined} value={category.eventEndDate} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => updateEventGroupCategory(category.key, "eventEndDate", event.target.value)} />
+                      </div>
+                      <div className="formField">
+                        <label>Inscrições até</label>
+                        <input className="clickableDateInput" type="date" max={category.eventDate || undefined} value={category.registrationDeadline} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => updateEventGroupCategory(category.key, "registrationDeadline", event.target.value)} />
+                      </div>
+                      <div className="formField">
+                        <label>Horário</label>
+                        <input type="time" value={category.eventStartTime} onChange={(event) => updateEventGroupCategory(category.key, "eventStartTime", event.target.value)} />
+                      </div>
+                      <div className="formField">
+                        <label>Local</label>
+                        <input value={category.location} onChange={(event) => updateEventGroupCategory(category.key, "location", event.target.value)} />
+                      </div>
+                      <div className="formField">
+                        <label>Set para vencer</label>
+                        <select value={category.winningScore} onChange={(event) => updateEventGroupCategory(category.key, "winningScore", Number(event.target.value))}>
+                          <option value={4}>4 games</option>
+                          <option value={6}>6 games</option>
+                        </select>
+                      </div>
+                      <div className="formField fullField">
+                        <label>Critério do ranking</label>
+                        <select value={category.rankingCriteria} onChange={(event) => updateEventGroupCategory(category.key, "rankingCriteria", event.target.value)}>
+                          <option value="">Escolha o critério</option>
+                          {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="formField fullField categoryEditCoverField">
+                        <label className="eventCoverToggle">
+                          <input type="checkbox" checked={category.usesEventCover} onChange={(event) => updateEventGroupCategory(category.key, "usesEventCover", event.target.checked)} />
+                          Usar a foto geral do evento
+                        </label>
+                        {!category.usesEventCover ? (
+                          <label className={`categoryCoverPicker ${category.coverImageUrl ? "hasImage" : ""}`}>
+                            <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupCategory(category.key, "coverImageUrl", value))} />
+                            {category.coverImageUrl ? <img src={category.coverImageUrl} alt={`Foto de ${category.name || "categoria"}`} /> : <span><Camera aria-hidden="true" /> Escolher foto própria</span>}
+                          </label>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              ))}
+            </div>
+
+            <div className="editTournamentActions eventGroupEditActions">
+              <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
+              <button type="button" onClick={saveEditedEventGroup} disabled={editEventGroupSaving}>
+                {editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {circuitEditForm ? (
         <div className="editTournamentOverlay" role="dialog" aria-modal="true" aria-labelledby="edit-circuit-title">
           <div className="editTournamentModal circuitEditModal">
@@ -11188,7 +11603,7 @@ setNewPublicInfo({
           <div className="formField compactField categoryWideField">
             <label>Modalidade</label>
             <select value={item.type} onChange={(e) => updateCategorySchedule(index, "type", e.target.value)}>
-              <option value="">Usar modalidade padrão</option>
+              <option value="">Escolha a modalidade</option>
               {allowedTypes.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}
             </select>
           </div>
@@ -11215,13 +11630,12 @@ setNewPublicInfo({
 
           <div className="formField compactField categoryWideField">
             <label>Local</label>
-            <input value={item.location} onChange={(e) => updateCategorySchedule(index, "location", e.target.value)} placeholder="Usar o local padrão" />
+            <input value={item.location} onChange={(e) => updateCategorySchedule(index, "location", e.target.value)} placeholder="Ex: Arena Beach Sports" />
           </div>
 
           <div className="formField compactField">
             <label>Set para vencer</label>
             <select value={item.winningScore} onChange={(e) => updateCategorySchedule(index, "winningScore", e.target.value)}>
-              <option value="">Usar padrão</option>
               <option value="4">4 games</option>
               <option value="6">6 games</option>
             </select>
@@ -11230,7 +11644,7 @@ setNewPublicInfo({
           <div className="formField compactField categoryCriteriaField">
             <label>Critério do ranking</label>
             <select value={item.rankingCriteria} onChange={(e) => updateCategorySchedule(index, "rankingCriteria", e.target.value)}>
-              <option value="">Usar critério padrão</option>
+              <option value="">Escolha o critério</option>
               {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
@@ -11256,6 +11670,7 @@ setNewPublicInfo({
   </div>
   )}
 
+  {newMultiCategoryEvent === "nao" && (
   <div className="formField fullField eventScheduleBox">
     <div className="eventScheduleHeader">
       <strong><CalendarDays aria-hidden="true" /> Datas e horários do evento</strong>
@@ -11340,12 +11755,13 @@ setNewPublicInfo({
       </div>
     )}
   </div>
+  )}
 
   <div className="formField fullField tournamentCoverField">
     <div className="tournamentCoverIntro">
       <div>
-        <strong><Camera aria-hidden="true" /> Foto do torneio</strong>
-        <span>Use uma foto específica do evento. Se não escolher, será usada a foto da arena.</span>
+        <strong><Camera aria-hidden="true" /> {newMultiCategoryEvent === "sim" ? "Foto geral do evento" : "Foto do torneio"}</strong>
+        <span>{newMultiCategoryEvent === "sim" ? "As categorias sem foto própria usarão esta imagem." : "Use uma foto específica do evento. Se não escolher, será usada a foto da arena."}</span>
       </div>
       {newCoverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setNewCoverImageUrl("")}>Remover foto</button> : null}
     </div>
@@ -11359,8 +11775,10 @@ setNewPublicInfo({
     </label>
   </div>
 
+  {newMultiCategoryEvent === "nao" && (
+  <>
   <div className="formField">
-    <label>{newMultiCategoryEvent === "sim" ? "Local padrão do evento" : "Local"}</label>
+    <label>Local</label>
     <input
       value={newLocation}
       onChange={(e) => setNewLocation(e.target.value)}
@@ -11369,7 +11787,7 @@ setNewPublicInfo({
   </div>
 
   <div className="formField fullField">
-    <label>{newMultiCategoryEvent === "sim" ? "Modalidade padrão das categorias" : "Modalidade"}</label>
+    <label>Modalidade</label>
     <select value={newType} onChange={(e) => setNewType(e.target.value)}>
       <option value="">Escolha a modalidade</option>
       {allowedTypes.map((type) => (
@@ -11387,7 +11805,7 @@ setNewPublicInfo({
   </div>
 
   <div className="formField fullField">
-    <label>{newMultiCategoryEvent === "sim" ? "Critério padrão das categorias" : "Critério do ranking"} {newMultiCategoryEvent === "nao" ? <span aria-hidden="true">*</span> : null}</label>
+    <label>Critério do ranking <span aria-hidden="true">*</span></label>
     <select value={newRankingCriteria} onChange={(e) => setNewRankingCriteria(e.target.value)} required aria-required="true">
       <option value="">Escolha a ordem dos critérios</option>
       {rankingCriteriaOptions.map((option) => (
@@ -11395,6 +11813,8 @@ setNewPublicInfo({
       ))}
     </select>
   </div>
+  </>
+  )}
 
  <button type="button" onClick={createTournament} disabled={saving}>
   {saving ? "Salvando..." : "Criar torneio"}
@@ -11497,8 +11917,13 @@ setNewPublicInfo({
       {multiTournamentGroups.map((group) => (
         <div className="eventGroupCard" key={group.key}>
           <div className="eventGroupHeader">
-            <strong>{group.name}</strong>
-            <span>{group.items.length} {group.items.length === 1 ? "categoria" : "categorias"}</span>
+            <div>
+              <strong>{group.name}</strong>
+              <span>{group.items.length} {group.items.length === 1 ? "categoria" : "categorias"}</span>
+            </div>
+            <button type="button" className="editEventGroupBtn" onClick={() => openEditEventGroup(group)}>
+              Editar evento completo
+            </button>
           </div>
 
           <div className="tournamentList eventTournamentGrid">
@@ -12497,41 +12922,54 @@ function normalizeTournamentData(type, rawData) {
       players: {
         teams: normalizeTeams(sourcePlayers.teams, teamCount),
       },
+      participantAttendance: normalizeParticipantAttendance(
+        config,
+        { teams: normalizeTeams(sourcePlayers.teams, teamCount) },
+        source.participantAttendance
+      ),
       brackets: normalizeBrackets(source.brackets),
       groupsShuffled: Boolean(source.groupsShuffled),
     };
   }
 
   if (isFlexibleSimpleType(config)) {
+    const players = normalizeNameList(source.players, simplePlayerCount, config.label);
     return {
       ...normalized,
       simplePlayerCount,
-      players: normalizeNameList(source.players, simplePlayerCount, config.label),
+      players,
+      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
     };
   }
 
   if (isMixedType(config)) {
+    const players = {
+      men: normalizeNameList(sourcePlayers.men, config.men, "Homem"),
+      women: normalizeNameList(sourcePlayers.women, config.women, "Mulher"),
+    };
     return {
       ...normalized,
-      players: {
-        men: normalizeNameList(sourcePlayers.men, config.men, "Homem"),
-        women: normalizeNameList(sourcePlayers.women, config.women, "Mulher"),
-      },
+      players,
+      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
     };
   }
 
   if (config.type === "fixed12" || config.type === "fixed16") {
+    const players = {
+      teams: normalizeTeams(sourcePlayers.teams, config.teams),
+    };
     return {
       ...normalized,
-      players: {
-        teams: normalizeTeams(sourcePlayers.teams, config.teams),
-      },
+      players,
+      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
     };
   }
 
+  const players = normalizeNameList(source.players, config.total, config.label);
   return {
     ...normalized,
-    players: normalizeNameList(source.players, config.total, config.label),
+    players,
+    participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
   };
 }
 
@@ -12721,6 +13159,8 @@ function TournamentScreen({
 
   const [data, setDataState] = useState(() => initialTournamentState.data);
   const currentCourtCount = getTournamentCourtCount(config, data);
+  const participantAttendanceEntries = getParticipantAttendanceEntries(config, data);
+  const pendingParticipantEntries = participantAttendanceEntries.filter((entry) => !entry.confirmed);
 
   const [savingStatus, setSavingStatus] = useState(initialTournamentState.recoveredDraft ? "Pendente de sincronização" : "Salvo na nuvem");
   const [shuffleOverlay, setShuffleOverlay] = useState(null);
@@ -13473,13 +13913,20 @@ function TournamentScreen({
       if (field === "teamCount") {
         const teamCount = Number(value);
         copy.cupConfig.teamCount = teamCount;
-
-        copy.players.teams = Array.from({ length: teamCount }, (_, i) => {
+        const previousPlayers = structuredClone(copy.players);
+        const nextTeams = Array.from({ length: teamCount }, (_, i) => {
           return copy.players.teams[i] || {
             a: `Atleta 1 da dupla ${i + 1}`,
             b: `Atleta 2 da dupla ${i + 1}`,
           };
         });
+        copy.players.teams = nextTeams;
+        copy.participantAttendance = reconcileParticipantAttendance(
+          config,
+          previousPlayers,
+          copy.players,
+          copy.participantAttendance
+        );
 
         copy.schedule = [];
         copy.brackets = [];
@@ -13498,10 +13945,17 @@ function TournamentScreen({
     setParticipantImportBackup(null);
     setData((prev) => {
       const copy = structuredClone(prev);
+      const previousPlayers = structuredClone(copy.players);
       copy.simplePlayerCount = playerCount;
       copy.players = Array.from({ length: playerCount }, (_, index) => (
         copy.players?.[index] || `${config.label} ${index + 1}`
       ));
+      copy.participantAttendance = reconcileParticipantAttendance(
+        config,
+        previousPlayers,
+        copy.players,
+        copy.participantAttendance
+      );
       copy.schedule = [];
       copy.namesShuffled = false;
       copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, playerCount / 2);
@@ -13692,14 +14146,66 @@ function TournamentScreen({
 
   function updatePlayer(path, value) {
     const copy = structuredClone(data);
+    const formattedValue = formatParticipantName(value);
+    copy.participantAttendance = normalizeParticipantAttendance(config, copy.players, copy.participantAttendance);
 
-    if (path.kind === "normal") copy.players[path.index] = value;
-    if (path.kind === "men") copy.players.men[path.index] = value;
-    if (path.kind === "women") copy.players.women[path.index] = value;
-    if (path.kind === "team") copy.players.teams[path.index][path.field] = value;
+    if (path.kind === "normal") copy.players[path.index] = formattedValue;
+    if (path.kind === "men") copy.players.men[path.index] = formattedValue;
+    if (path.kind === "women") copy.players.women[path.index] = formattedValue;
+    if (path.kind === "team") copy.players.teams[path.index][path.field] = formattedValue;
+    setParticipantAttendanceValue(copy.participantAttendance, path, false);
 
     setParticipantImportBackup(null);
     setData(refreshGameParticipantNames(copy));
+  }
+
+  function updateParticipantAttendance(path, confirmed) {
+    setData((prev) => {
+      const copy = structuredClone(prev);
+      copy.participantAttendance = normalizeParticipantAttendance(config, copy.players, copy.participantAttendance);
+      setParticipantAttendanceValue(copy.participantAttendance, path, confirmed);
+      return copy;
+    });
+  }
+
+  function setAllParticipantAttendance(confirmed) {
+    setData((prev) => ({
+      ...prev,
+      participantAttendance: normalizeParticipantAttendance(
+        config,
+        prev.players,
+        confirmed
+          ? (() => {
+              const attendance = normalizeParticipantAttendance(config, prev.players, null);
+              getParticipantAttendanceEntries(config, { players: prev.players, participantAttendance: attendance })
+                .forEach((entry) => setParticipantAttendanceValue(attendance, entry.path, true));
+              return attendance;
+            })()
+          : null
+      ),
+    }));
+    showNotice(
+      "success",
+      confirmed ? "Presenças confirmadas" : "Presenças redefinidas",
+      confirmed ? "Todos os participantes foram marcados como confirmados." : "Todos os participantes foram marcados como pendentes."
+    );
+  }
+
+  function ensureParticipantsConfirmed() {
+    if (pendingParticipantEntries.length === 0) return true;
+
+    const pendingNames = pendingParticipantEntries
+      .slice(0, 5)
+      .map((entry) => entry.name || "Participante sem nome")
+      .join(", ");
+    const remaining = pendingParticipantEntries.length - Math.min(5, pendingParticipantEntries.length);
+    showNotice(
+      "warning",
+      `${pendingParticipantEntries.length} presença${pendingParticipantEntries.length === 1 ? " pendente" : "s pendentes"}`,
+      `Confirme todos antes de criar os jogos. Pendentes: ${pendingNames}${remaining > 0 ? ` e mais ${remaining}` : ""}.`
+    );
+    setActiveTournamentTab("participantes");
+    return false;
   }
 
   function commitDefaultCourtNumber(index, value) {
@@ -13836,7 +14342,16 @@ function TournamentScreen({
   function importParticipants(nextPlayers, summary) {
     const copy = structuredClone(data);
 
-    setParticipantImportBackup(structuredClone(data.players));
+    setParticipantImportBackup({
+      players: structuredClone(data.players),
+      participantAttendance: structuredClone(data.participantAttendance),
+    });
+    copy.participantAttendance = reconcileParticipantAttendance(
+      config,
+      copy.players,
+      nextPlayers,
+      copy.participantAttendance
+    );
     copy.players = structuredClone(nextPlayers);
     setData(refreshGameParticipantNames(copy));
     setParticipantImportOpen(false);
@@ -13851,7 +14366,8 @@ function TournamentScreen({
     if (!participantImportBackup) return;
 
     const copy = structuredClone(data);
-    copy.players = structuredClone(participantImportBackup);
+    copy.players = structuredClone(participantImportBackup.players);
+    copy.participantAttendance = structuredClone(participantImportBackup.participantAttendance);
     setParticipantImportBackup(null);
     setData(refreshGameParticipantNames(copy));
     showNotice("success", "Importação desfeita", "A lista de participantes voltou ao estado anterior.");
@@ -13859,14 +14375,25 @@ function TournamentScreen({
 
   function finishShuffle() {
     const copy = structuredClone(data);
+    copy.participantAttendance = normalizeParticipantAttendance(config, copy.players, copy.participantAttendance);
+
+    const shuffledIndexes = (length) => shuffleArray(Array.from({ length }, (_, index) => index));
 
     if (isMixedType(config)) {
-      copy.players.men = shuffleArray(copy.players.men);
-      copy.players.women = shuffleArray(copy.players.women);
+      const menOrder = shuffledIndexes(copy.players.men.length);
+      const womenOrder = shuffledIndexes(copy.players.women.length);
+      copy.players.men = menOrder.map((index) => copy.players.men[index]);
+      copy.participantAttendance.men = menOrder.map((index) => copy.participantAttendance.men[index]);
+      copy.players.women = womenOrder.map((index) => copy.players.women[index]);
+      copy.participantAttendance.women = womenOrder.map((index) => copy.participantAttendance.women[index]);
     } else if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
-      copy.players.teams = shuffleArray(copy.players.teams);
+      const teamOrder = shuffledIndexes(copy.players.teams.length);
+      copy.players.teams = teamOrder.map((index) => copy.players.teams[index]);
+      copy.participantAttendance.teams = teamOrder.map((index) => copy.participantAttendance.teams[index]);
     } else {
-      copy.players = shuffleArray(copy.players);
+      const playerOrder = shuffledIndexes(copy.players.length);
+      copy.players = playerOrder.map((index) => copy.players[index]);
+      copy.participantAttendance = playerOrder.map((index) => copy.participantAttendance[index]);
     }
 
     copy.schedule = [];
@@ -14063,6 +14590,8 @@ function requestShuffleNames() {
 }
 
 function requestGenerate() {
+  if (!ensureParticipantsConfirmed()) return;
+
   if (!data.schedule?.length) {
     generate();
     return;
@@ -14137,6 +14666,118 @@ function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clear
 
     return copy;
   });
+}
+
+function formatParticipantName(value) {
+  const connectors = new Set(["da", "das", "de", "do", "dos", "e"]);
+  const words = String(value || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .split(" ");
+
+  return words.map((word, index) => {
+    if (!word || (index > 0 && connectors.has(word))) return word;
+    return word.replace(/(^|[-'’])(\p{L})/gu, (_, prefix, letter) => (
+      `${prefix}${letter.toLocaleUpperCase("pt-BR")}`
+    ));
+  }).join(" ");
+}
+
+function normalizeAttendanceList(values, count) {
+  const source = Array.isArray(values) ? values : [];
+  return Array.from({ length: count }, (_, index) => source[index] === true);
+}
+
+function normalizeParticipantAttendance(config, players, attendance) {
+  const source = attendance && typeof attendance === "object" ? attendance : {};
+
+  if (isMixedType(config)) {
+    return {
+      men: normalizeAttendanceList(source.men, players?.men?.length || config.men || 0),
+      women: normalizeAttendanceList(source.women, players?.women?.length || config.women || 0),
+    };
+  }
+
+  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
+    const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
+    return {
+      teams: (players?.teams || []).map((_, index) => ({
+        a: sourceTeams[index]?.a === true,
+        b: sourceTeams[index]?.b === true,
+      })),
+    };
+  }
+
+  return normalizeAttendanceList(attendance, Array.isArray(players) ? players.length : 0);
+}
+
+function getParticipantAttendanceEntries(config, data) {
+  const attendance = normalizeParticipantAttendance(config, data?.players, data?.participantAttendance);
+
+  if (isMixedType(config)) {
+    return [
+      ...(data.players?.men || []).map((name, index) => ({
+        path: { kind: "men", index },
+        name,
+        confirmed: attendance.men[index] === true,
+      })),
+      ...(data.players?.women || []).map((name, index) => ({
+        path: { kind: "women", index },
+        name,
+        confirmed: attendance.women[index] === true,
+      })),
+    ];
+  }
+
+  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
+    return (data.players?.teams || []).flatMap((team, index) => ([
+      {
+        path: { kind: "team", index, field: "a" },
+        name: team.a,
+        confirmed: attendance.teams[index]?.a === true,
+      },
+      {
+        path: { kind: "team", index, field: "b" },
+        name: team.b,
+        confirmed: attendance.teams[index]?.b === true,
+      },
+    ]));
+  }
+
+  return (data.players || []).map((name, index) => ({
+    path: { kind: "normal", index },
+    name,
+    confirmed: attendance[index] === true,
+  }));
+}
+
+function setParticipantAttendanceValue(attendance, path, confirmed) {
+  if (path.kind === "normal") attendance[path.index] = confirmed;
+  if (path.kind === "men") attendance.men[path.index] = confirmed;
+  if (path.kind === "women") attendance.women[path.index] = confirmed;
+  if (path.kind === "team") attendance.teams[path.index][path.field] = confirmed;
+}
+
+function reconcileParticipantAttendance(config, currentPlayers, nextPlayers, attendance) {
+  const currentData = { players: currentPlayers, participantAttendance: attendance };
+  const entries = getParticipantAttendanceEntries(config, currentData);
+  const nextAttendance = normalizeParticipantAttendance(config, nextPlayers, null);
+
+  entries.forEach((entry) => {
+    let nextName = "";
+    if (entry.path.kind === "normal") nextName = nextPlayers?.[entry.path.index];
+    if (entry.path.kind === "men") nextName = nextPlayers?.men?.[entry.path.index];
+    if (entry.path.kind === "women") nextName = nextPlayers?.women?.[entry.path.index];
+    if (entry.path.kind === "team") nextName = nextPlayers?.teams?.[entry.path.index]?.[entry.path.field];
+
+    if (formatParticipantName(entry.name) === formatParticipantName(nextName)) {
+      setParticipantAttendanceValue(nextAttendance, entry.path, entry.confirmed);
+    }
+  });
+
+  return nextAttendance;
 }
 
 function updateScore(roundIndex, gameIndex, field, value) {
@@ -14497,10 +15138,26 @@ return (
             </div>
           </div>
 
+          <div className="participantAttendanceToolbar">
+            <div>
+              <strong>Presença no local</strong>
+              <span>{participantAttendanceEntries.length - pendingParticipantEntries.length} de {participantAttendanceEntries.length} confirmados</span>
+            </div>
+            <div className="participantAttendanceBulkActions">
+              <button type="button" className="confirmAllParticipantsBtn" onClick={() => setAllParticipantAttendance(true)}>
+                Confirmar todos
+              </button>
+              <button type="button" className="pendingAllParticipantsBtn" onClick={() => setAllParticipantAttendance(false)}>
+                Marcar todos como pendentes
+              </button>
+            </div>
+          </div>
+
           <PlayerInputs
             type={tournament.type}
             data={data}
             updatePlayer={updatePlayer}
+            updateParticipantAttendance={updateParticipantAttendance}
           />
 
           {!isCupType(config) && (
@@ -15112,13 +15769,15 @@ function prepareParticipantLine(value) {
 }
 
 function sanitizeParticipantName(value) {
-  return String(value || "")
+  const sanitized = String(value || "")
     .normalize("NFKC")
     .replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, " ")
     .replace(/[^\p{L}\p{M}\s'’.]/gu, " ")
     .replace(/\s+/g, " ")
     .replace(/^[.'’]+|[.'’]+$/g, "")
     .trim();
+
+  return formatParticipantName(sanitized);
 }
 
 function parseParticipantList(value, { splitTeams = false, fixedMixedTeams = false } = {}) {
@@ -15458,8 +16117,39 @@ function ParticipantImportModal({ type, data, onClose, onApply }) {
   );
 }
 
-function PlayerInputs({ type, data, updatePlayer }) {
+function ParticipantAttendanceButton({ confirmed, onChange }) {
+  return (
+    <button
+      type="button"
+      className={`participantAttendanceStatus ${confirmed ? "confirmed" : "pending"}`}
+      onClick={() => onChange(!confirmed)}
+      aria-pressed={confirmed}
+      title={confirmed ? "Clique para marcar como pendente" : "Clique para confirmar a presença"}
+    >
+      {confirmed ? "Confirmado" : "Pendente"}
+    </button>
+  );
+}
+
+function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance }) {
   const config = modalityConfig[type];
+  const attendance = normalizeParticipantAttendance(config, data.players, data.participantAttendance);
+
+  function isConfirmed(path) {
+    if (path.kind === "normal") return attendance[path.index] === true;
+    if (path.kind === "men") return attendance.men[path.index] === true;
+    if (path.kind === "women") return attendance.women[path.index] === true;
+    return attendance.teams[path.index]?.[path.field] === true;
+  }
+
+  function renderAttendance(path) {
+    return (
+      <ParticipantAttendanceButton
+        confirmed={isConfirmed(path)}
+        onChange={(confirmed) => updateParticipantAttendance(path, confirmed)}
+      />
+    );
+  }
 
   if (isMixedType(config)) {
     return (
@@ -15468,12 +16158,13 @@ function PlayerInputs({ type, data, updatePlayer }) {
           <h3>Homens</h3>
 
           {data.players.men.map((name, i) => (
-            <div className="numberedInput" key={i}>
+            <div className="numberedInput participantAttendanceRow" key={i}>
               <span>{i + 1}</span>
               <input
                 value={name}
                 onChange={(e) => updatePlayer({ kind: "men", index: i }, e.target.value)}
               />
+              {renderAttendance({ kind: "men", index: i })}
             </div>
           ))}
         </div>
@@ -15482,12 +16173,13 @@ function PlayerInputs({ type, data, updatePlayer }) {
           <h3>Mulheres</h3>
 
           {data.players.women.map((name, i) => (
-            <div className="numberedInput" key={i}>
+            <div className="numberedInput participantAttendanceRow" key={i}>
               <span>{config.men + i + 1}</span>
               <input
                 value={name}
                 onChange={(e) => updatePlayer({ kind: "women", index: i }, e.target.value)}
               />
+              {renderAttendance({ kind: "women", index: i })}
             </div>
           ))}
         </div>
@@ -15502,18 +16194,23 @@ function PlayerInputs({ type, data, updatePlayer }) {
           <div key={i} className="miniCard">
             <h3>Dupla {i + 1}</h3>
 
-            <div className="numberedInput">
+            <div className="numberedInput participantAttendanceRow">
               <span>{i + 1}</span>
               <input
                 value={team.a}
                 onChange={(e) => updatePlayer({ kind: "team", index: i, field: "a" }, e.target.value)}
               />
+              {renderAttendance({ kind: "team", index: i, field: "a" })}
             </div>
 
-            <input
-              value={team.b}
-              onChange={(e) => updatePlayer({ kind: "team", index: i, field: "b" }, e.target.value)}
-            />
+            <div className="numberedInput participantAttendanceRow teamSecondParticipantRow">
+              <span aria-hidden="true" />
+              <input
+                value={team.b}
+                onChange={(e) => updatePlayer({ kind: "team", index: i, field: "b" }, e.target.value)}
+              />
+              {renderAttendance({ kind: "team", index: i, field: "b" })}
+            </div>
           </div>
         ))}
       </div>
@@ -15523,12 +16220,13 @@ function PlayerInputs({ type, data, updatePlayer }) {
   return (
     <div className="twoCols">
       {data.players.map((name, i) => (
-        <div className="numberedInput" key={i}>
+        <div className="numberedInput participantAttendanceRow" key={i}>
           <span>{i + 1}</span>
           <input
             value={name}
             onChange={(e) => updatePlayer({ kind: "normal", index: i }, e.target.value)}
           />
+          {renderAttendance({ kind: "normal", index: i })}
         </div>
       ))}
     </div>
@@ -17443,6 +18141,11 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
     : storedOrganizer;
   const registrationClosed = data.registrationDeadline ? new Date() > new Date(`${data.registrationDeadline}T23:59:59`) : false;
   const ranking = calculateRanking(data, tournament.type, data.rankingCriteria);
+  const publicCompletionState = getTournamentCompletionState({
+    type: tournament.type,
+    data,
+  });
+  const publicRankingReady = publicCompletionState.completed;
 
   const isCup = isCupType(config);
 
@@ -17579,7 +18282,15 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
               <h2>Grupos</h2>
               <span className="readOnlyBadge">Somente visualização</span>
             </div>
-            {cupGroupRankings.length > 0 ? (
+            {!publicRankingReady ? (
+              <div className="publicRankingLocked">
+                <LockKeyhole aria-hidden="true" />
+                <div>
+                  <strong>Classificação ainda não liberada</strong>
+                  <p>Ela ficará disponível após o preenchimento do último placar do torneio.</p>
+                </div>
+              </div>
+            ) : cupGroupRankings.length > 0 ? (
               <div className="groupsPreviewBox">
                 <h3>Classificação dos grupos</h3>
                 <CupGroupRankingView
@@ -17670,7 +18381,20 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             <h2>{isCup ? "Ranking das chaves" : "Ranking do dia"}</h2>
             <span className="readOnlyBadge">Somente visualização</span>
           </div>
-          {isCup ? (
+          {!publicRankingReady ? (
+            <div className="publicRankingLocked">
+              <LockKeyhole aria-hidden="true" />
+              <div>
+                <strong>Ranking ainda não liberado</strong>
+                <p>
+                  O ranking será exibido quando todos os jogos reais estiverem concluídos.
+                  {publicCompletionState.requiredGames > 0
+                    ? ` ${publicCompletionState.completedGames} de ${publicCompletionState.requiredGames} placares foram finalizados.`
+                    : " As partidas ainda não foram geradas pelo organizador."}
+                </p>
+              </div>
+            </div>
+          ) : isCup ? (
             <div className="cupRankingSplit">
               <div className="cupRankingPanel">
                 <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
