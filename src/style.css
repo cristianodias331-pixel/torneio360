@@ -24372,6 +24372,12 @@ html[data-theme="dark"] .formatInfoTrigger,
   .formatInfoFooter button { width: 100% !important; }
 }
 
+.cearenseGroupRankingStack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
 /* PROTEÇÃO DE DADOS — OFFLINE E COLABORAÇÃO ENTRE DISPOSITIVOS */
 .cloudSyncStatus {
   min-height: 38px;

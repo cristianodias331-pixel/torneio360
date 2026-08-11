@@ -142,6 +142,22 @@ assert.ok(mainSource.includes("getCearenseFormatSummary(teamCount, isPlayRanking
 assert.ok(mainSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
 assert.ok(styleSource.includes(".formatInfoDialog"), "A explicação dinâmica está sem acabamento responsivo.");
 
+assert.ok(
+  mainSource.includes("function rankOfficialCearenseGroupRows")
+    && mainSource.includes("function getOfficialCearenseQualified")
+    && mainSource.includes("const cearenseMainBracketPlans")
+    && mainSource.includes('defaultThirdRepechageName: "3ª Disputa Paralela"')
+    && mainSource.includes('phase === "thirdParallel"')
+    && mainSource.includes('activeMatchesTab === "paralela3"')
+    && mainSource.includes('activePublicMatchesTab === "paralela3"'),
+  "O Campeonato Cearense perdeu a classificação oficial, o chaveamento definido ou a 3ª disputa paralela."
+);
+assert.ok(
+  styleSource.includes(".cearenseGroupRankingStack")
+    && mainSource.includes("melhor grupo ·"),
+  "A ordem visual dos melhores grupos do Campeonato Cearense está ausente."
+);
+
 for (const removedType of ["Copa - 12 ou 24 duplas", "Copa - 21 duplas", "Copinha - grupos de 3"]) {
   assert.ok(!premiumModalities.includes(`"${removedType}"`), `A modalidade removida ainda pode ser criada: ${removedType}`);
 }
