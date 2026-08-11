@@ -378,10 +378,33 @@ assert.ok(
 assert.ok(mainSource.includes(': "Compartilhar ranking";'), "O botão compacto não identifica que compartilha o ranking.");
 assert.ok(
   mainSource.includes('const [newRankingCriteria, setNewRankingCriteria] = useState("");')
+    && mainSource.includes('if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === newRankingCriteria))')
+    && mainSource.includes('!rankingCriteriaOptions.some((option) => option.value === item.rankingCriteria)')
     && mainSource.includes('showNotice("warning", "Critério obrigatório"')
     && mainSource.includes('<option value="">Escolha a ordem dos critérios</option>')
-    && mainSource.includes('rankingCriteria: newRankingCriteria,'),
+    && mainSource.includes('rankingCriteria: isMultiCategory ? defaultRankingCriteria : newRankingCriteria,'),
   "A criação do torneio ainda permite salvar sem escolher explicitamente o critério do ranking."
+);
+assert.ok(
+  mainSource.includes('function formatParticipantName(value)')
+    && mainSource.includes('function normalizeParticipantAttendance(config, players, attendance)')
+    && mainSource.includes('function ensureParticipantsConfirmed()')
+    && mainSource.includes('Confirmar todos')
+    && mainSource.includes('Marcar todos como pendentes'),
+  "A padronização dos nomes ou o controle de presença dos participantes está ausente."
+);
+assert.ok(
+    mainSource.includes('const publicRankingReady = publicCompletionState.completed;')
+    && mainSource.includes('className="publicRankingLocked"')
+    && mainSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
+  "O ranking público não está protegido até a conclusão dos placares."
+);
+assert.ok(
+  mainSource.includes('Editar evento completo')
+    && mainSource.includes('function openEditEventGroup(group)')
+    && mainSource.includes('function saveEditedEventGroup()')
+    && mainSource.includes('Adicionar categoria'),
+  "A edição conjunta de eventos com várias categorias está ausente."
 );
 assert.ok(mainSource.includes('allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4)'), "O Campeonato Cearense não aceita todas as quantidades de 4 a 32 duplas.");
 assert.ok(mainSource.includes('function createCearenseGroups(teamCount)'), "A distribuição própria de grupos do Campeonato Cearense está ausente.");
