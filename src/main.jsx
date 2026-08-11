@@ -12845,6 +12845,118 @@ function normalizeBrackets(brackets) {
     .map((game, index) => normalizeGame(game, index));
 }
 
+function formatParticipantName(value) {
+  const connectors = new Set(["da", "das", "de", "do", "dos", "e"]);
+  const words = String(value || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .split(" ");
+
+  return words.map((word, index) => {
+    if (!word || (index > 0 && connectors.has(word))) return word;
+    return word.replace(/(^|[-'’])(\p{L})/gu, (_, prefix, letter) => (
+      `${prefix}${letter.toLocaleUpperCase("pt-BR")}`
+    ));
+  }).join(" ");
+}
+
+function normalizeAttendanceList(values, count) {
+  const source = Array.isArray(values) ? values : [];
+  return Array.from({ length: count }, (_, index) => source[index] === true);
+}
+
+function normalizeParticipantAttendance(config, players, attendance) {
+  const source = attendance && typeof attendance === "object" ? attendance : {};
+
+  if (isMixedType(config)) {
+    return {
+      men: normalizeAttendanceList(source.men, players?.men?.length || config.men || 0),
+      women: normalizeAttendanceList(source.women, players?.women?.length || config.women || 0),
+    };
+  }
+
+  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
+    const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
+    return {
+      teams: (players?.teams || []).map((_, index) => ({
+        a: sourceTeams[index]?.a === true,
+        b: sourceTeams[index]?.b === true,
+      })),
+    };
+  }
+
+  return normalizeAttendanceList(attendance, Array.isArray(players) ? players.length : 0);
+}
+
+function getParticipantAttendanceEntries(config, data) {
+  const attendance = normalizeParticipantAttendance(config, data?.players, data?.participantAttendance);
+
+  if (isMixedType(config)) {
+    return [
+      ...(data.players?.men || []).map((name, index) => ({
+        path: { kind: "men", index },
+        name,
+        confirmed: attendance.men[index] === true,
+      })),
+      ...(data.players?.women || []).map((name, index) => ({
+        path: { kind: "women", index },
+        name,
+        confirmed: attendance.women[index] === true,
+      })),
+    ];
+  }
+
+  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
+    return (data.players?.teams || []).flatMap((team, index) => ([
+      {
+        path: { kind: "team", index, field: "a" },
+        name: team.a,
+        confirmed: attendance.teams[index]?.a === true,
+      },
+      {
+        path: { kind: "team", index, field: "b" },
+        name: team.b,
+        confirmed: attendance.teams[index]?.b === true,
+      },
+    ]));
+  }
+
+  return (data.players || []).map((name, index) => ({
+    path: { kind: "normal", index },
+    name,
+    confirmed: attendance[index] === true,
+  }));
+}
+
+function setParticipantAttendanceValue(attendance, path, confirmed) {
+  if (path.kind === "normal") attendance[path.index] = confirmed;
+  if (path.kind === "men") attendance.men[path.index] = confirmed;
+  if (path.kind === "women") attendance.women[path.index] = confirmed;
+  if (path.kind === "team") attendance.teams[path.index][path.field] = confirmed;
+}
+
+function reconcileParticipantAttendance(config, currentPlayers, nextPlayers, attendance) {
+  const currentData = { players: currentPlayers, participantAttendance: attendance };
+  const entries = getParticipantAttendanceEntries(config, currentData);
+  const nextAttendance = normalizeParticipantAttendance(config, nextPlayers, null);
+
+  entries.forEach((entry) => {
+    let nextName = "";
+    if (entry.path.kind === "normal") nextName = nextPlayers?.[entry.path.index];
+    if (entry.path.kind === "men") nextName = nextPlayers?.men?.[entry.path.index];
+    if (entry.path.kind === "women") nextName = nextPlayers?.women?.[entry.path.index];
+    if (entry.path.kind === "team") nextName = nextPlayers?.teams?.[entry.path.index]?.[entry.path.field];
+
+    if (formatParticipantName(entry.name) === formatParticipantName(nextName)) {
+      setParticipantAttendanceValue(nextAttendance, entry.path, entry.confirmed);
+    }
+  });
+
+  return nextAttendance;
+}
+
 function normalizeTournamentData(type, rawData) {
   const config = modalityConfig[type];
 
@@ -14666,118 +14778,6 @@ function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clear
 
     return copy;
   });
-}
-
-function formatParticipantName(value) {
-  const connectors = new Set(["da", "das", "de", "do", "dos", "e"]);
-  const words = String(value || "")
-    .normalize("NFKC")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLocaleLowerCase("pt-BR")
-    .split(" ");
-
-  return words.map((word, index) => {
-    if (!word || (index > 0 && connectors.has(word))) return word;
-    return word.replace(/(^|[-'’])(\p{L})/gu, (_, prefix, letter) => (
-      `${prefix}${letter.toLocaleUpperCase("pt-BR")}`
-    ));
-  }).join(" ");
-}
-
-function normalizeAttendanceList(values, count) {
-  const source = Array.isArray(values) ? values : [];
-  return Array.from({ length: count }, (_, index) => source[index] === true);
-}
-
-function normalizeParticipantAttendance(config, players, attendance) {
-  const source = attendance && typeof attendance === "object" ? attendance : {};
-
-  if (isMixedType(config)) {
-    return {
-      men: normalizeAttendanceList(source.men, players?.men?.length || config.men || 0),
-      women: normalizeAttendanceList(source.women, players?.women?.length || config.women || 0),
-    };
-  }
-
-  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
-    const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
-    return {
-      teams: (players?.teams || []).map((_, index) => ({
-        a: sourceTeams[index]?.a === true,
-        b: sourceTeams[index]?.b === true,
-      })),
-    };
-  }
-
-  return normalizeAttendanceList(attendance, Array.isArray(players) ? players.length : 0);
-}
-
-function getParticipantAttendanceEntries(config, data) {
-  const attendance = normalizeParticipantAttendance(config, data?.players, data?.participantAttendance);
-
-  if (isMixedType(config)) {
-    return [
-      ...(data.players?.men || []).map((name, index) => ({
-        path: { kind: "men", index },
-        name,
-        confirmed: attendance.men[index] === true,
-      })),
-      ...(data.players?.women || []).map((name, index) => ({
-        path: { kind: "women", index },
-        name,
-        confirmed: attendance.women[index] === true,
-      })),
-    ];
-  }
-
-  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
-    return (data.players?.teams || []).flatMap((team, index) => ([
-      {
-        path: { kind: "team", index, field: "a" },
-        name: team.a,
-        confirmed: attendance.teams[index]?.a === true,
-      },
-      {
-        path: { kind: "team", index, field: "b" },
-        name: team.b,
-        confirmed: attendance.teams[index]?.b === true,
-      },
-    ]));
-  }
-
-  return (data.players || []).map((name, index) => ({
-    path: { kind: "normal", index },
-    name,
-    confirmed: attendance[index] === true,
-  }));
-}
-
-function setParticipantAttendanceValue(attendance, path, confirmed) {
-  if (path.kind === "normal") attendance[path.index] = confirmed;
-  if (path.kind === "men") attendance.men[path.index] = confirmed;
-  if (path.kind === "women") attendance.women[path.index] = confirmed;
-  if (path.kind === "team") attendance.teams[path.index][path.field] = confirmed;
-}
-
-function reconcileParticipantAttendance(config, currentPlayers, nextPlayers, attendance) {
-  const currentData = { players: currentPlayers, participantAttendance: attendance };
-  const entries = getParticipantAttendanceEntries(config, currentData);
-  const nextAttendance = normalizeParticipantAttendance(config, nextPlayers, null);
-
-  entries.forEach((entry) => {
-    let nextName = "";
-    if (entry.path.kind === "normal") nextName = nextPlayers?.[entry.path.index];
-    if (entry.path.kind === "men") nextName = nextPlayers?.men?.[entry.path.index];
-    if (entry.path.kind === "women") nextName = nextPlayers?.women?.[entry.path.index];
-    if (entry.path.kind === "team") nextName = nextPlayers?.teams?.[entry.path.index]?.[entry.path.field];
-
-    if (formatParticipantName(entry.name) === formatParticipantName(nextName)) {
-      setParticipantAttendanceValue(nextAttendance, entry.path, entry.confirmed);
-    }
-  });
-
-  return nextAttendance;
 }
 
 function updateScore(roundIndex, gameIndex, field, value) {
