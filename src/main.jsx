@@ -1733,7 +1733,7 @@ const modalityDisplayNames = {
   "Super 20 Mista (Dupla Aleatória)": "Super 20 mista",
   "Super 12 Mista (Dupla Fixa)": "Super 6 (dupla fixa)",
   "Super 16 Mista (Dupla Fixa)": "Super 8 (dupla fixa)",
-  "Simples 8": "Simples 8 (1 contra 1 por jogo)",
+  "Simples 8": "Simples (1 contra 1 por jogo)",
   "Campeonato Cearense": "Torneio modelo Campeonato Cearense",
   "Modelo Play Ranking": "Modelo Torneio 360",
 };
@@ -1850,6 +1850,8 @@ const modalityConfig = {
 
   "Simples 8": {
     type: "simple8",
+    allowedPlayerCounts: [4, 6, 8, 10, 12, 14],
+    defaultPlayers: 8,
     total: 8,
     label: "Jogador",
     courts: 4,
@@ -1959,6 +1961,31 @@ function isMixedType(config) {
     || config?.type === "mixed12"
     || config?.type === "mixed16"
     || config?.type === "mixed20";
+}
+
+function isFlexibleSimpleType(config) {
+  return config?.type === "simple8";
+}
+
+function getSimplePlayerCount(config, data = null) {
+  const allowedCounts = config?.allowedPlayerCounts || [config?.total || 8];
+  const storedCount = Number(
+    data?.simplePlayerCount
+      ?? (Array.isArray(data?.players) ? data.players.length : null)
+      ?? config?.defaultPlayers
+      ?? config?.total
+      ?? 8
+  );
+
+  return allowedCounts.includes(storedCount)
+    ? storedCount
+    : (config?.defaultPlayers || config?.total || allowedCounts[0] || 8);
+}
+
+function getTournamentCourtCount(config, data = null) {
+  return isFlexibleSimpleType(config)
+    ? Math.max(1, getSimplePlayerCount(config, data) / 2)
+    : Math.max(1, config?.courts || 1);
 }
 
 const super8Template = [
@@ -6448,7 +6475,7 @@ function Login({
               <div>2</div>
               <h3>Escolha o formato</h3>
               <p>
-                Selecione Super 6, Super 8, Super 12, modalidades mistas, Simples 8, Copa 18, Torneio modelo Campeonato Cearense ou Modelo Torneio 360 conforme a realidade do evento.
+                Selecione Super 6, Super 8, Super 12, modalidades mistas, Simples, Copa 18, Torneio modelo Campeonato Cearense ou Modelo Torneio 360 conforme a realidade do evento.
               </p>
             </div>
 
@@ -6568,7 +6595,7 @@ function Login({
                 "Super 12 mista",
                 "Super 16 mista",
                 "Super 20 mista",
-                "Simples 8 (1 contra 1 por jogo)",
+                "Simples (1 contra 1 por jogo)",
                 "Copa - 18 duplas",
                 "Torneio modelo Campeonato Cearense",
                 "Gerencie vários campeonatos ao mesmo tempo",
@@ -6626,8 +6653,8 @@ function Login({
             />
 
             <Info
-              title="Simples 8 (1 contra 1 por jogo)"
-              text="Formato individual com 8 jogadores, sem formação de duplas. Cada atleta compete por conta própria, e o sistema monta a tabela de jogos automaticamente. É ideal para torneios de simples, desafios internos ou eventos menores. Os placares alimentam um ranking geral individual, permitindo acompanhar vitórias, total de games e saldo de games até definir os melhores colocados."
+              title="Simples (1 contra 1 por jogo)"
+              text="Formato individual para 4, 6, 8, 10, 12 ou 14 jogadores, sem formação de duplas. O organizador escolhe a quantidade e o sistema monta automaticamente todos contra todos, com cada atleta enfrentando cada adversário exatamente uma vez e sem folgas nas rodadas. Os placares alimentam um ranking geral individual por vitórias, total de games e saldo de games."
             />
 
             <Info
@@ -11884,8 +11911,8 @@ setNewPublicInfo({
 
     {allowedTypes.includes("Simples 8") && (
       <Info
-        title="Simples 8 (1 contra 1 por jogo)"
-        text="Formato individual com 8 jogadores, sem formação de duplas. Cada atleta compete por conta própria, e o sistema monta a tabela de jogos automaticamente. É ideal para torneios de simples, desafios internos ou eventos menores. Os placares alimentam um ranking geral individual, permitindo acompanhar vitórias, total de games e saldo de games até definir os melhores colocados."
+        title="Simples (1 contra 1 por jogo)"
+        text="Formato individual para 4, 6, 8, 10, 12 ou 14 jogadores. O organizador escolhe a quantidade e o sistema monta automaticamente todos contra todos: cada atleta enfrenta todos os demais exatamente uma vez, sem folgas nas rodadas. O ranking geral individual acompanha vitórias, total de games e saldo de games."
       />
     )}
 
@@ -12228,6 +12255,9 @@ setNewPublicInfo({
 }
 
 function createInitialData(type, config) {
+  const simplePlayerCount = isFlexibleSimpleType(config)
+    ? getSimplePlayerCount(config)
+    : null;
   const base = {
   rankingCriteria: defaultRankingCriteria,
   winningScore: 4,
@@ -12236,7 +12266,9 @@ function createInitialData(type, config) {
   eventDay: "",
   location: "",
   schedule: [],
-  courtNumbers: createDefaultCourtNumbers(config?.courts || 1),
+  courtNumbers: createDefaultCourtNumbers(
+    getTournamentCourtCount(config, simplePlayerCount ? { simplePlayerCount } : null)
+  ),
 };
 
   if (!config) {
@@ -12287,6 +12319,14 @@ function createInitialData(type, config) {
         })),
       },
       brackets: [],
+    };
+  }
+
+  if (isFlexibleSimpleType(config)) {
+    return {
+      ...base,
+      simplePlayerCount,
+      players: Array.from({ length: simplePlayerCount }, (_, i) => `${config.label} ${i + 1}`),
     };
   }
 
@@ -12390,6 +12430,9 @@ function normalizeTournamentData(type, rawData) {
   const defaults = createInitialData(type, config);
   const source = isTournamentDataObject(rawData) ? rawData : {};
   const sourcePlayers = isTournamentDataObject(source.players) ? source.players : {};
+  const simplePlayerCount = isFlexibleSimpleType(config)
+    ? getSimplePlayerCount(config, source)
+    : null;
   const validWinningScore = [4, 6].includes(Number(source.winningScore));
   const validRankingCriteria = rankingCriteriaOptions.some((item) => item.value === source.rankingCriteria);
   const usedCourtNumbers = [
@@ -12399,7 +12442,12 @@ function normalizeTournamentData(type, rawData) {
     .map((game) => Number(game?.court))
     .filter((court) => Number.isFinite(court) && court > 0);
   const sourceCourtNumbers = Array.isArray(source.courtNumbers) ? source.courtNumbers : source.courtLabels;
-  const courtCount = Math.max(config.courts || 1, sourceCourtNumbers?.length || 0, ...usedCourtNumbers, 1);
+  const courtCount = Math.max(
+    getTournamentCourtCount(config, simplePlayerCount ? { ...source, simplePlayerCount } : source),
+    sourceCourtNumbers?.length || 0,
+    ...usedCourtNumbers,
+    1
+  );
   const normalized = {
     ...defaults,
     ...source,
@@ -12454,6 +12502,14 @@ function normalizeTournamentData(type, rawData) {
     };
   }
 
+  if (isFlexibleSimpleType(config)) {
+    return {
+      ...normalized,
+      simplePlayerCount,
+      players: normalizeNameList(source.players, simplePlayerCount, config.label),
+    };
+  }
+
   if (isMixedType(config)) {
     return {
       ...normalized,
@@ -12493,6 +12549,13 @@ function needsTournamentDataRepair(type, rawData) {
       || !config.allowedTeamCounts.includes(teamCount)
       || players.teams.length !== teamCount
       || !Array.isArray(rawData.brackets);
+  }
+
+  if (isFlexibleSimpleType(config)) {
+    const playerCount = getSimplePlayerCount(config, rawData);
+    return !config.allowedPlayerCounts.includes(playerCount)
+      || !Array.isArray(rawData.players)
+      || rawData.players.length !== playerCount;
   }
 
   if (isMixedType(config)) {
@@ -12657,6 +12720,7 @@ function TournamentScreen({
   );
 
   const [data, setDataState] = useState(() => initialTournamentState.data);
+  const currentCourtCount = getTournamentCourtCount(config, data);
 
   const [savingStatus, setSavingStatus] = useState(initialTournamentState.recoveredDraft ? "Pendente de sincronização" : "Salvo na nuvem");
   const [shuffleOverlay, setShuffleOverlay] = useState(null);
@@ -13427,6 +13491,53 @@ function TournamentScreen({
     });
   }
 
+  function applySimplePlayerCount(value) {
+    const playerCount = Number(value);
+    if (!isFlexibleSimpleType(config) || !config.allowedPlayerCounts.includes(playerCount)) return;
+
+    setParticipantImportBackup(null);
+    setData((prev) => {
+      const copy = structuredClone(prev);
+      copy.simplePlayerCount = playerCount;
+      copy.players = Array.from({ length: playerCount }, (_, index) => (
+        copy.players?.[index] || `${config.label} ${index + 1}`
+      ));
+      copy.schedule = [];
+      copy.namesShuffled = false;
+      copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, playerCount / 2);
+      return copy;
+    });
+    setCourtConfigRevision((revision) => revision + 1);
+    showNotice(
+      "success",
+      "Quantidade atualizada",
+      `${playerCount} jogadores selecionados. Cada atleta enfrentará os outros ${playerCount - 1} uma vez.`
+    );
+  }
+
+  function requestSimplePlayerCount(value) {
+    const playerCount = Number(value);
+    if (playerCount === getSimplePlayerCount(config, data)) return;
+
+    if (!data.schedule?.length) {
+      applySimplePlayerCount(playerCount);
+      return;
+    }
+
+    setRegenerationConfirm({
+      action: "simple-player-count",
+      playerCount,
+      title: "Alterar a quantidade de jogadores?",
+      message: `O torneio passará a ter ${playerCount} jogadores no formato todos contra todos.`,
+      impacts: [
+        "As rodadas, os jogos e os placares atuais serão apagados.",
+        "Os nomes que ainda couberem nas novas vagas serão preservados.",
+        "Será necessário criar novamente as rodadas e os jogos.",
+      ],
+      confirmLabel: "Alterar e recriar os jogos",
+    });
+  }
+
   function startTieBreakDraw({ kind, tieKey, ids, candidates, title }) {
     if (!Array.isArray(ids) || ids.length < 2 || tieBreakDrawTimerRef.current) return;
 
@@ -13595,7 +13706,7 @@ function TournamentScreen({
     const nextNumber = normalizeCourtNumberValue(value) || String(index + 1);
     setData((prev) => {
       const copy = structuredClone(prev);
-      copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, Math.max(config.courts || 1, index + 1));
+      copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, Math.max(currentCourtCount, index + 1));
       copy.courtNumbers[index] = nextNumber;
       return copy;
     });
@@ -13603,7 +13714,7 @@ function TournamentScreen({
 
   function requestDefaultCourtNumber(index, value) {
     const nextNumber = normalizeCourtNumberValue(value) || String(index + 1);
-    const numbers = normalizeCourtNumbers(data.courtNumbers, config.courts || 1);
+    const numbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
     if (numbers[index] === nextNumber) return;
 
     const duplicateIndex = numbers.findIndex((number, currentIndex) => currentIndex !== index && number === nextNumber);
@@ -13624,7 +13735,7 @@ function TournamentScreen({
   function resetDefaultCourtNumbers() {
     setData((prev) => {
       const copy = structuredClone(prev);
-      copy.courtNumbers = createDefaultCourtNumbers(Math.max(config.courts || 1, prev.courtNumbers?.length || 0));
+      copy.courtNumbers = createDefaultCourtNumbers(Math.max(currentCourtCount, prev.courtNumbers?.length || 0));
       copy.schedule = (copy.schedule || []).map((round) => round.map((game) => {
         const nextGame = { ...game };
         delete nextGame.courtLabelOverride;
@@ -13663,7 +13774,7 @@ function TournamentScreen({
     if (!editor || !nextNumber) return;
     setData((prev) => {
       const copy = structuredClone(prev);
-      const courtNumbers = normalizeCourtNumbers(copy.courtNumbers, config.courts || 1);
+      const courtNumbers = normalizeCourtNumbers(copy.courtNumbers, getTournamentCourtCount(config, copy));
       const { game } = getCourtAssignmentContext(copy, editor);
       if (!game) return prev;
       applyCourtNumberToGame(game, nextNumber, courtNumbers);
@@ -13683,7 +13794,7 @@ function TournamentScreen({
     const nextNumber = normalizeCourtNumberValue(value);
     if (!courtEditor || !nextNumber) return;
 
-    const courtNumbers = normalizeCourtNumbers(data.courtNumbers, config.courts || 1);
+    const courtNumbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
     const context = getCourtAssignmentContext(data, courtEditor);
     if (context.game && getGameCourtNumber(context.game, courtNumbers) === nextNumber) {
       setCourtEditor(null);
@@ -14002,12 +14113,14 @@ function requestGenerateBrackets() {
 function confirmRegeneration() {
   const action = regenerationConfirm?.action;
   const scoreChange = regenerationConfirm?.scoreChange;
+  const simplePlayerCount = regenerationConfirm?.playerCount;
   setRegenerationConfirm(null);
 
   if (action === "shuffle") shuffleNames();
   if (action === "generate") generate();
   if (action === "brackets") generateBrackets();
   if (action === "group-score" && scoreChange) applyScheduleScoreChange(scoreChange, true);
+  if (action === "simple-player-count" && simplePlayerCount) applySimplePlayerCount(simplePlayerCount);
 }
 
 function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clearCupBrackets = false) {
@@ -14183,7 +14296,7 @@ return (
     {courtEditor && courtEditorGame && createPortal(
       <CourtAssignmentModal
         editor={{ ...courtEditor, game: courtEditorGame }}
-        courtNumbers={normalizeCourtNumbers(data.courtNumbers, config.courts || 1)}
+        courtNumbers={normalizeCourtNumbers(data.courtNumbers, currentCourtCount)}
         currentNumber={getGameCourtNumber(courtEditorGame, data.courtNumbers || [])}
         usedNumbers={courtEditorUsedNumbers}
         onSelect={requestGameCourtNumber}
@@ -14351,9 +14464,17 @@ return (
             />
           )}
 
+          {isFlexibleSimpleType(config) && (
+            <SimpleConfigPanel
+              data={data}
+              config={config}
+              onPlayerCountChange={requestSimplePlayerCount}
+            />
+          )}
+
           <CourtConfigPanel
             key={`court-config-${courtConfigRevision}`}
-            courtNumbers={data.courtNumbers || createDefaultCourtNumbers(config.courts || 1)}
+            courtNumbers={data.courtNumbers || createDefaultCourtNumbers(currentCourtCount)}
             onCommit={requestDefaultCourtNumber}
             onReset={resetDefaultCourtNumbers}
           />
@@ -14831,6 +14952,34 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
         document.body
       )}
     </>
+  );
+}
+
+function SimpleConfigPanel({ data, config, onPlayerCountChange }) {
+  const playerCount = getSimplePlayerCount(config, data);
+  const totalMatches = (playerCount * (playerCount - 1)) / 2;
+
+  return (
+    <div className="cupConfigBox simpleConfigBox">
+      <div className="twoCols">
+        <div>
+          <label>Quantidade de jogadores</label>
+          <select
+            value={playerCount}
+            onChange={(event) => onPlayerCountChange(Number(event.target.value))}
+          >
+            {config.allowedPlayerCounts.map((count) => (
+              <option key={count} value={count}>{count} jogadores</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="infoBox">
+          <p><strong>Todos contra todos:</strong> {playerCount - 1} rodadas, {playerCount / 2} jogos por rodada e {totalMatches} partidas no total.</p>
+          <p>Cada jogador enfrenta todos os demais exatamente uma vez, sem folgas.</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -15500,7 +15649,7 @@ function generateSchedule(type, players) {
   }
 
   if (config.type === "simple8") {
-    const schedule = berger(8).map((round) =>
+    const schedule = berger(players.length).map((round) =>
       round.map((game, index) => ({
         court: index + 1,
         team1: [players[game[0]]],

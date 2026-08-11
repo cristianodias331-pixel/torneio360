@@ -101,7 +101,7 @@ const expectedModalityLabels = [
   "Super 12 mista",
   "Super 16 mista",
   "Super 20 mista",
-  "Simples 8 (1 contra 1 por jogo)",
+  "Simples (1 contra 1 por jogo)",
   "Torneio modelo Campeonato Cearense",
   "Modelo Torneio 360",
 ];
@@ -132,6 +132,12 @@ assert.ok(premiumModalities.includes('"Modelo Play Ranking"'), "O Modelo Play Ra
 assert.ok(
   mainSource.includes('"Modelo Play Ranking": "Modelo Torneio 360"'),
   "O nome público do Modelo Torneio 360 não preserva a modalidade interna existente."
+);
+assert.ok(
+  mainSource.includes("allowedPlayerCounts: [4, 6, 8, 10, 12, 14]")
+    && mainSource.includes("function SimpleConfigPanel")
+    && mainSource.includes("berger(players.length)"),
+  "A modalidade Simples não permite escolher as quantidades pares de 4 a 14 ou perdeu o todos contra todos."
 );
 
 assert.ok(mainSource.includes('type: "playranking"'), "A configuração do Modelo Play Ranking está ausente.");
