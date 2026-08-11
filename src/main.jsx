@@ -4597,6 +4597,7 @@ function rebuildCupBracketGames(currentData, existingScores = {}) {
     ...game,
     s1: existingScores[game.matchKey]?.s1 ?? game.s1 ?? "",
     s2: existingScores[game.matchKey]?.s2 ?? game.s2 ?? "",
+    inProgress: existingScores[game.matchKey]?.inProgress === true,
     ...(existingScores[game.matchKey]?.courtNumberOverride
       ? { courtNumberOverride: existingScores[game.matchKey].courtNumberOverride }
       : {}),
@@ -4631,6 +4632,7 @@ function syncCupBracketScores(currentData) {
       s2: game.s2,
       ids1: game.ids1,
       ids2: game.ids2,
+      inProgress: game.inProgress === true,
       courtNumberOverride: game.courtNumberOverride,
     };
   });
@@ -14770,6 +14772,9 @@ function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clear
     const winningScore = getWinningScore(copy);
 
     copy.schedule[roundIndex][gameIndex][field] = normalizeScoreInput(value, winningScore);
+    if (getScoreWinnerSide(copy.schedule[roundIndex][gameIndex], winningScore) !== null) {
+      copy.schedule[roundIndex][gameIndex].inProgress = false;
+    }
 
     if (isCupType(config) && (clearCupBrackets || !copy.brackets?.some((game) => game.s1 !== "" || game.s2 !== ""))) {
       copy.brackets = [];
@@ -14803,6 +14808,49 @@ function updateScore(roundIndex, gameIndex, field, value) {
   applyScheduleScoreChange({ roundIndex, gameIndex, field, value });
 }
 
+function toggleScheduleGameStatus(roundIndex, gameIndex) {
+  setData((prev) => {
+    const copy = structuredClone(prev);
+    const game = copy.schedule?.[roundIndex]?.[gameIndex];
+
+    if (!game || getScoreWinnerSide(game, getWinningScore(copy)) !== null) return prev;
+
+    game.inProgress = game.inProgress !== true;
+    return copy;
+  });
+}
+
+function toggleBracketGameStatus(matchKey) {
+  setData((prev) => {
+    const copy = structuredClone(prev);
+
+    if (!copy.brackets || copy.brackets.length === 0) {
+      copy.brackets = rebuildCupBracketGames(copy);
+    }
+
+    const resolvedGames = copy.brackets.map((game) => resolveBracketGame(game, copy.brackets, copy));
+    const targetGame = resolvedGames.find((game) => game.matchKey === matchKey);
+
+    if (
+      !targetGame
+      || targetGame.isBye
+      || !targetGame.ids1?.length
+      || !targetGame.ids2?.length
+      || getScoreWinnerSide(targetGame, getWinningScore(copy)) !== null
+    ) {
+      return prev;
+    }
+
+    copy.brackets = copy.brackets.map((game) =>
+      game.matchKey === matchKey
+        ? { ...game, inProgress: game.inProgress !== true }
+        : game
+    );
+
+    return copy;
+  });
+}
+
 function updateBracketScore(matchKey, field, value) {
   setData((prev) => {
     const copy = structuredClone(prev);
@@ -14823,11 +14871,13 @@ function updateBracketScore(matchKey, field, value) {
 
   const winningScore = getWinningScore(copy);
 
-    copy.brackets = copy.brackets.map((game) =>
-      game.matchKey === matchKey
-        ? { ...game, [field]: normalizeScoreInput(value, winningScore) }
-        : game
-    );
+    copy.brackets = copy.brackets.map((game) => {
+      if (game.matchKey !== matchKey) return game;
+
+      const updatedGame = { ...game, [field]: normalizeScoreInput(value, winningScore) };
+      if (getScoreWinnerSide(updatedGame, winningScore) !== null) updatedGame.inProgress = false;
+      return updatedGame;
+    });
 
     if (isCampeonatoCearenseData(copy) && copy.cupConfig?.cearenseBracketVersion !== 2) {
       const resolvedStoredGames = copy.brackets.map((game) => resolveBracketGame(game, copy.brackets, copy));
@@ -14843,6 +14893,7 @@ function updateBracketScore(matchKey, field, value) {
         s2: game.s2,
         ids1: game.ids1,
         ids2: game.ids2,
+        inProgress: game.inProgress === true,
         courtNumberOverride: game.courtNumberOverride,
       };
     });
@@ -14856,7 +14907,7 @@ function clearScores() {
   const copy = structuredClone(data);
 
   copy.schedule = (copy.schedule || []).map((round) =>
-    round.map((game) => ({ ...game, s1: "", s2: "" }))
+    round.map((game) => ({ ...game, s1: "", s2: "", inProgress: false }))
   );
 
   if (isCupType(config)) {
@@ -15228,6 +15279,7 @@ return (
              <ScheduleView
   schedule={data.schedule}
   updateScore={updateScore}
+  onStatusToggle={toggleScheduleGameStatus}
   showGroupName={isCupType(config)}
   voiceRepeat={voiceRepeat}
   setVoiceRepeat={setVoiceRepeat}
@@ -15307,6 +15359,7 @@ return (
     groupedBrackets={{ main: currentBrackets.main, repechage: [] }}
     data={data}
     updateBracketScore={updateBracketScore}
+    toggleBracketGameStatus={toggleBracketGameStatus}
     voiceRepeat={voiceRepeat}
     setVoiceRepeat={setVoiceRepeat}
     winningScore={getWinningScore(data)}
@@ -15403,7 +15456,7 @@ return (
                   </div>
                 </>
               ) : currentBrackets.repechage?.length > 0 ? (
-                <CupBracketView groupedBrackets={{ main: [], repechage: currentBrackets.repechage }} data={data} updateBracketScore={updateBracketScore} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
+                <CupBracketView groupedBrackets={{ main: [], repechage: currentBrackets.repechage }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
               ) : (
                 <p>{isPlayRankingData(data)
                   ? "A Disputa Paralela será montada automaticamente quando todos os placares da primeira fase da Eliminatória Principal estiverem preenchidos."
@@ -15420,7 +15473,7 @@ return (
                 {!currentBrackets ? (
                   <p>Gere as chaves finais para visualizar a 3ª disputa paralela.</p>
                 ) : currentBrackets.thirdParallel?.length > 0 ? (
-                  <CupBracketView groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }} data={data} updateBracketScore={updateBracketScore} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
+                  <CupBracketView groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
                 ) : (
                   <p>Nesta quantidade de grupos não há duplas elegíveis para a 3ª disputa paralela.</p>
                 )}
@@ -16567,9 +16620,11 @@ function UniversalMatchCard({
   onEditCourt = null,
   onScoreChange = null,
   onCallGame = null,
+  onStatusToggle = null,
 }) {
   const winnerSide = isBye ? null : getScoreWinnerSide(game, winningScore);
   const isFinished = winnerSide !== null;
+  const isInProgress = !isBye && !isFinished && !blocked && game?.inProgress === true;
   const hasScore = game?.s1 !== "" && game?.s1 != null && game?.s2 !== "" && game?.s2 != null;
   const qualifiedTeam = game?.ids1?.length
     ? game?.team1
@@ -16595,7 +16650,21 @@ function UniversalMatchCard({
       ? "Finalizado"
       : blocked
         ? "Aguardando definição"
-        : "Aguardando placar";
+        : isInProgress
+          ? "Jogo em andamento"
+          : "Aguardando placar";
+  const statusClassName = `matchCardStatus ${
+    isBye
+      ? "is-bye"
+      : isFinished
+        ? "is-finished"
+        : blocked
+          ? "is-blocked"
+          : isInProgress
+            ? "is-in-progress"
+            : "is-waiting"
+  }`;
+  const canToggleStatus = !readOnly && !isBye && !isFinished && !blocked && Boolean(onStatusToggle);
 
   const renderScore = (field, value, side) => {
     if (isBye) {
@@ -16633,7 +16702,19 @@ function UniversalMatchCard({
     >
       <div className="matchCardMeta">
         <span className="matchCardPhase" title={phaseLabel}>{phaseLabel}</span>
-        <span className={`matchCardStatus ${isBye ? "is-bye" : isFinished ? "is-finished" : "is-waiting"}`}>{statusLabel}</span>
+        {canToggleStatus ? (
+          <button
+            type="button"
+            className={statusClassName}
+            onClick={onStatusToggle}
+            aria-pressed={isInProgress}
+            title={isInProgress ? "Marcar como aguardando placar" : "Marcar como jogo em andamento"}
+          >
+            {statusLabel}
+          </button>
+        ) : (
+          <span className={statusClassName}>{statusLabel}</span>
+        )}
       </div>
 
       {!isBye ? (
@@ -16671,6 +16752,7 @@ function UniversalMatchCard({
 function ScheduleView({
   schedule,
   updateScore = () => {},
+  onStatusToggle = null,
   showGroupName = false,
   voiceRepeat = 1,
   setVoiceRepeat = () => {},
@@ -16731,6 +16813,7 @@ function ScheduleView({
                 readOnly={readOnly}
                 onEditCourt={!readOnly && onEditCourt ? () => onEditCourt({ scope: "schedule", roundIndex, gameIndex, game }) : null}
                 onScoreChange={!readOnly ? (field, value) => updateScore(roundIndex, gameIndex, field, value) : null}
+                onStatusToggle={!readOnly && onStatusToggle ? () => onStatusToggle(roundIndex, gameIndex) : null}
                 onCallGame={!readOnly ? () => speakGame(game, {
                   roundLabel: `Rodada ${roundIndex + 1}`,
                   includeGroup: showGroupName,
@@ -17256,6 +17339,7 @@ function CupBracketView({
   groupedBrackets,
   data,
   updateBracketScore,
+  toggleBracketGameStatus = null,
   voiceRepeat = 1,
   setVoiceRepeat,
   winningScore = 4,
@@ -17274,6 +17358,7 @@ function CupBracketView({
             title={data.cupConfig?.mainBracketName || "Principal"}
             rounds={groupedBrackets.main}
             updateBracketScore={updateBracketScore}
+            toggleBracketGameStatus={toggleBracketGameStatus}
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={data.courtNumbers || []}
@@ -17286,6 +17371,7 @@ function CupBracketView({
             title={data.cupConfig?.repechageName || "Repescagem"}
             rounds={groupedBrackets.repechage}
             updateBracketScore={updateBracketScore}
+            toggleBracketGameStatus={toggleBracketGameStatus}
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={data.courtNumbers || []}
@@ -17298,6 +17384,7 @@ function CupBracketView({
             title={data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}
             rounds={groupedBrackets.thirdParallel}
             updateBracketScore={updateBracketScore}
+            toggleBracketGameStatus={toggleBracketGameStatus}
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={data.courtNumbers || []}
@@ -17313,6 +17400,7 @@ function BracketColumn({
   title,
   rounds,
   updateBracketScore,
+  toggleBracketGameStatus = null,
   voiceRepeat = 1,
   winningScore = 4,
   courtNumbers = [],
@@ -17346,6 +17434,7 @@ function BracketColumn({
         isBye={Boolean(game.isBye)}
         onEditCourt={onEditCourt && !game.isBye ? () => onEditCourt({ scope: "bracket", matchKey: game.matchKey, game }) : null}
         onScoreChange={!game.isBye ? (field, value) => updateBracketScore(game.matchKey, field, value) : null}
+        onStatusToggle={!game.isBye && toggleBracketGameStatus ? () => toggleBracketGameStatus(game.matchKey) : null}
         onCallGame={!game.isBye ? () => speakGame(game, {
           roundLabel: `${round.title} da chave ${title}`,
           includeGroup: false,
@@ -18141,13 +18230,12 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
     : storedOrganizer;
   const registrationClosed = data.registrationDeadline ? new Date() > new Date(`${data.registrationDeadline}T23:59:59`) : false;
   const ranking = calculateRanking(data, tournament.type, data.rankingCriteria);
+  const isCup = isCupType(config);
   const publicCompletionState = getTournamentCompletionState({
     type: tournament.type,
     data,
   });
-  const publicRankingReady = publicCompletionState.completed;
-
-  const isCup = isCupType(config);
+  const publicRankingReady = isCup || publicCompletionState.completed;
 
   const cupGroupRankings = isCup
     ? calculateCupGroupRankings(data, data.rankingCriteria)
