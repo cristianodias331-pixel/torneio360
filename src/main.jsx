@@ -3666,6 +3666,42 @@ const cearenseMainBracketPlans = {
   ],
 };
 
+function expandBracketPlanWithVisualByes(roundPlan) {
+  const expandedPlan = structuredClone(roundPlan || []);
+  const treeRounds = expandedPlan.filter((round) => !String(round.title || "").includes("3º"));
+
+  for (let roundIndex = 0; roundIndex < treeRounds.length - 1; roundIndex += 1) {
+    const currentRound = treeRounds[roundIndex];
+    const nextRound = treeRounds[roundIndex + 1];
+    const currentByKey = new Map(currentRound.games.map((game) => [game[0], game]));
+    const orderedCurrentGames = [];
+
+    nextRound.games = nextRound.games.map(([nextKey, firstReference, secondReference], nextGameIndex) => {
+      const nextReferences = [firstReference, secondReference];
+      const normalizedReferences = nextReferences.map((reference, sideIndex) => {
+        if (typeof reference === "string" && reference.startsWith("w:")) {
+          const sourceKey = reference.slice(2);
+          const sourceGame = currentByKey.get(sourceKey);
+          if (sourceGame) orderedCurrentGames.push(sourceGame);
+          return reference;
+        }
+
+        const byeKey = `visual_bye_${roundIndex + 1}_${nextGameIndex + 1}_${sideIndex + 1}`;
+        orderedCurrentGames.push([byeKey, reference, null]);
+        return `w:${byeKey}`;
+      });
+
+      return [nextKey, ...normalizedReferences];
+    });
+
+    if (orderedCurrentGames.length === nextRound.games.length * 2) {
+      currentRound.games = orderedCurrentGames;
+    }
+  }
+
+  return expandedPlan;
+}
+
 function getCopinhaEntryCode(entry) {
   const prefix = entry?.groupPosition === 1 ? "c" : entry?.groupPosition === 2 ? "r" : "t";
   return prefix ? `${prefix}${entry.groupRank}` : "";
@@ -3692,16 +3728,21 @@ function buildCopinhaBracketFromPlan(entries, bracketType, bracketTitle, roundPl
   return roundPlan.map((round) => ({
     title: round.title,
     bracketTitle,
-    games: round.games.map(([key, first, second], index) => (
-      createCopinhaBracketGame({
-        bracketType,
-        roundName: round.title,
-        matchKey: `${bracketType}_${key}`,
-        entry1: getCopinhaPlanEntry(first, entryByCode, bracketType),
-        entry2: getCopinhaPlanEntry(second, entryByCode, bracketType),
-        court: index + 1,
-      })
-    )),
+    games: round.games.map(([key, first, second], index) => {
+      const firstEntry = getCopinhaPlanEntry(first, entryByCode, bracketType);
+      const secondEntry = getCopinhaPlanEntry(second, entryByCode, bracketType);
+      return {
+        ...createCopinhaBracketGame({
+          bracketType,
+          roundName: round.title,
+          matchKey: `${bracketType}_${key}`,
+          entry1: firstEntry,
+          entry2: secondEntry,
+          court: index + 1,
+        }),
+        isBye: Boolean(firstEntry) !== Boolean(secondEntry),
+      };
+    }),
   }));
 }
 
@@ -4192,7 +4233,7 @@ function generateCearenseBrackets(data) {
   const groupCount = createCearenseGroups(cupConfig.teamCount || 4).length;
   const mainPlan = cearenseMainBracketPlans[groupCount];
   const mainRounds = mainPlan
-    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, mainPlan)
+    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
     : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
   const repechageRounds = buildCearenseEliminationRounds(qualified.repechage, "repechage", repechageName);
   const thirdParallelRounds = buildCearenseThirdParallelRounds(mainRounds, thirdRepechageName);
@@ -16344,12 +16385,15 @@ function getSafeCupPresentation(data, config) {
   }
 
   try {
+    const presentationData = isCampeonatoCearenseData(data) && data.cupConfig?.cearenseBracketVersion === 2
+      ? syncCupBracketScores(data)
+      : data;
     return {
-      currentBrackets: groupStoredBracketGames(data),
-      parallelRanking: calculateParallelRanking(data, data.rankingCriteria || defaultRankingCriteria),
-      mainCupPodium: calculateMainCupPodium(data),
-      consolationCupPodium: isCopinhaData(data) ? calculateCopinhaConsolationPodium(data) : [],
-      thirdParallelPodium: isCampeonatoCearenseData(data) ? calculateCupBracketPodium(data, "thirdParallel") : [],
+      currentBrackets: groupStoredBracketGames(presentationData),
+      parallelRanking: calculateParallelRanking(presentationData, data.rankingCriteria || defaultRankingCriteria),
+      mainCupPodium: calculateMainCupPodium(presentationData),
+      consolationCupPodium: isCopinhaData(data) ? calculateCopinhaConsolationPodium(presentationData) : [],
+      thirdParallelPodium: isCampeonatoCearenseData(data) ? calculateCupBracketPodium(presentationData, "thirdParallel") : [],
     };
   } catch (error) {
     console.error("Chaves salvas inválidas; exibindo a Copa sem as chaves", error);
