@@ -14290,7 +14290,7 @@ html[data-theme="dark"] {
 }
 
 /* Botões com uma hierarquia única */
-.proDashboard.playAppShell button:where(:not(.playNavItem):not(.moveLineBtn):not(.themeToggleButton):not(.profileTrigger):not(.profileMenuToggle):not(.profileVisibilitySwitch)) {
+.proDashboard.playAppShell button:where(:not(.playNavItem):not(.moveLineBtn):not(.themeToggleButton):not(.profileTrigger):not(.profileMenuToggle):not(.profileVisibilitySwitch):not(.participantAttendanceStatus):not(.confirmAllParticipantsBtn):not(.pendingAllParticipantsBtn)) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -23351,6 +23351,43 @@ html[data-theme="dark"] .circuitStageList button,
 html[data-theme="dark"] .circuitStageList button small,
 .proDashboard.theme-dark .circuitStageList button small { color: #b4c2d4; }
 @media (max-width: 620px) { .circuitStageList { grid-template-columns: 1fr; } }
+
+/* Presença: não herda a ação azul global em nenhum tema. */
+.proDashboard.playAppShell:not(.theme-dark) button.confirmAllParticipantsBtn,
+.proDashboard.playAppShell:not(.theme-dark) button.participantAttendanceStatus.confirmed {
+  border-color: #16a34a !important;
+  background-color: #dcfce7 !important;
+  background-image: none !important;
+  color: #166534 !important;
+}
+
+.proDashboard.playAppShell:not(.theme-dark) button.pendingAllParticipantsBtn,
+.proDashboard.playAppShell:not(.theme-dark) button.participantAttendanceStatus.pending {
+  border-color: #f97316 !important;
+  background-color: #ffedd5 !important;
+  background-image: none !important;
+  color: #c2410c !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.confirmAllParticipantsBtn,
+html[data-theme="dark"] .proDashboard.playAppShell button.participantAttendanceStatus.confirmed,
+.proDashboard.playAppShell.theme-dark button.confirmAllParticipantsBtn,
+.proDashboard.playAppShell.theme-dark button.participantAttendanceStatus.confirmed {
+  border-color: #22c55e !important;
+  background-color: #123b2a !important;
+  background-image: none !important;
+  color: #bbf7d0 !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.pendingAllParticipantsBtn,
+html[data-theme="dark"] .proDashboard.playAppShell button.participantAttendanceStatus.pending,
+.proDashboard.playAppShell.theme-dark button.pendingAllParticipantsBtn,
+.proDashboard.playAppShell.theme-dark button.participantAttendanceStatus.pending {
+  border-color: #f97316 !important;
+  background-color: #452514 !important;
+  background-image: none !important;
+  color: #fed7aa !important;
+}
 
 /* =========================================================
    CARTÃO UNIVERSAL DE PARTIDA + CHAVE VISUAL DE COPA
