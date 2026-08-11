@@ -962,6 +962,15 @@ assert.ok(
   "As escolhas obrigatórias das disputas paralelas ou a compatibilidade com torneios antigos estão incompletas."
 );
 assert.ok(
+  mainSource.includes("parallelOpeningRound: getEliminationRoundName(parallelBracketSize)")
+    && mainSource.includes("const thirdParallel = groups.length <= 1")
+    && mainSource.includes("Todos os 3º colocados são ordenados primeiro")
+    && mainSource.includes("summary.thirdParallel.sourceRound")
+    && mainSource.includes("summary.thirdParallel.matchCount")
+    && mainSource.includes("O que acontece ao escolher Sim ou Não"),
+  "As explicações das disputas paralelas deixaram de detalhar participantes, ordem, chave, BYEs ou efeitos da escolha."
+);
+assert.ok(
   mainSource.includes('phase === "repechage" && !isCearenseSecondParallelEnabled(data)')
     && mainSource.includes('phase === "thirdParallel" && !isCearenseThirdParallelEnabled(data)')
     && mainSource.includes("const secondParallelVisible = isCearenseSecondParallelEnabled(data)")
