@@ -413,6 +413,12 @@ assert.ok(
   "O status persistente de jogo em andamento está ausente."
 );
 assert.ok(
+  styleSource.includes('.proDashboard.playAppShell button.matchCardStatus.is-waiting')
+    && styleSource.includes('-webkit-text-fill-color: #52657b !important;')
+    && styleSource.includes('.proDashboard.playAppShell button.matchCardStatus.is-in-progress'),
+  "Os textos dos status das partidas podem desaparecer no tema claro."
+);
+assert.ok(
   mainSource.includes('Editar evento completo')
     && mainSource.includes('function openEditEventGroup(group)')
     && mainSource.includes('function saveEditedEventGroup()')

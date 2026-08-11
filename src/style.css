@@ -24944,28 +24944,37 @@ button.matchCardStatus:focus-visible {
 }
 
 .matchCardStatus.is-waiting,
-.matchCardStatus.is-blocked {
+.matchCardStatus.is-blocked,
+.proDashboard.playAppShell button.matchCardStatus.is-waiting,
+.proDashboard.playAppShell button.matchCardStatus.is-blocked {
   border-color: #cbd5e1 !important;
-  background-color: #f8fafc !important;
+  background: #f8fafc !important;
   color: #52657b !important;
+  -webkit-text-fill-color: #52657b !important;
 }
 
-.matchCardStatus.is-in-progress {
+.matchCardStatus.is-in-progress,
+.proDashboard.playAppShell button.matchCardStatus.is-in-progress {
   border-color: #a78bfa !important;
-  background-color: #f3e8ff !important;
+  background: #f3e8ff !important;
   color: #6d28d9 !important;
+  -webkit-text-fill-color: #6d28d9 !important;
 }
 
-.matchCardStatus.is-finished {
+.matchCardStatus.is-finished,
+.proDashboard.playAppShell button.matchCardStatus.is-finished {
   border-color: #86efac !important;
-  background-color: #ecfdf5 !important;
+  background: #ecfdf5 !important;
   color: #15803d !important;
+  -webkit-text-fill-color: #15803d !important;
 }
 
-.matchCardStatus.is-bye {
+.matchCardStatus.is-bye,
+.proDashboard.playAppShell button.matchCardStatus.is-bye {
   border-color: #fbbf24 !important;
-  background-color: #fff7d6 !important;
+  background: #fff7d6 !important;
   color: #a34b00 !important;
+  -webkit-text-fill-color: #a34b00 !important;
 }
 
 html[data-theme="dark"] .matchCardStatus.is-waiting,
@@ -24973,29 +24982,33 @@ html[data-theme="dark"] .matchCardStatus.is-blocked,
 .proDashboard.theme-dark .matchCardStatus.is-waiting,
 .proDashboard.theme-dark .matchCardStatus.is-blocked {
   border-color: #41566f !important;
-  background-color: #182638 !important;
+  background: #182638 !important;
   color: #cbd5e1 !important;
+  -webkit-text-fill-color: #cbd5e1 !important;
 }
 
 html[data-theme="dark"] .matchCardStatus.is-in-progress,
 .proDashboard.theme-dark .matchCardStatus.is-in-progress {
   border-color: #8b5cf6 !important;
-  background-color: #33205f !important;
+  background: #33205f !important;
   color: #e9d5ff !important;
+  -webkit-text-fill-color: #e9d5ff !important;
 }
 
 html[data-theme="dark"] .matchCardStatus.is-finished,
 .proDashboard.theme-dark .matchCardStatus.is-finished {
   border-color: #267a59 !important;
-  background-color: #103027 !important;
+  background: #103027 !important;
   color: #86efac !important;
+  -webkit-text-fill-color: #86efac !important;
 }
 
 html[data-theme="dark"] .matchCardStatus.is-bye,
 .proDashboard.theme-dark .matchCardStatus.is-bye {
   border-color: #b7791f !important;
-  background-color: #3b2a0c !important;
+  background: #3b2a0c !important;
   color: #fde68a !important;
+  -webkit-text-fill-color: #fde68a !important;
 }
 
 .bracketTree .matchCardStatus,
