@@ -413,6 +413,12 @@ assert.ok(
   "O status persistente de jogo em andamento está ausente."
 );
 assert.ok(
+  mainSource.includes('function prepareEditableBracketData(currentData)')
+    && mainSource.includes('return syncCupBracketScores(copy);')
+    && mainSource.includes('const copy = prepareEditableBracketData(prev);'),
+  "A 3ª Disputa Paralela exibida dinamicamente não pode receber placares persistentes."
+);
+assert.ok(
   styleSource.includes('.proDashboard.playAppShell button.matchCardStatus.is-waiting')
     && styleSource.includes('-webkit-text-fill-color: #52657b !important;')
     && styleSource.includes('.proDashboard.playAppShell button.matchCardStatus.is-in-progress'),
