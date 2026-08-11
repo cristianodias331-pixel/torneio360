@@ -14290,7 +14290,7 @@ html[data-theme="dark"] {
 }
 
 /* Botões com uma hierarquia única */
-.proDashboard.playAppShell button:where(:not(.playNavItem):not(.moveLineBtn):not(.themeToggleButton):not(.profileTrigger):not(.profileMenuToggle):not(.profileVisibilitySwitch):not(.participantAttendanceStatus):not(.confirmAllParticipantsBtn):not(.pendingAllParticipantsBtn)) {
+.proDashboard.playAppShell button:where(:not(.playNavItem):not(.moveLineBtn):not(.themeToggleButton):not(.profileTrigger):not(.profileMenuToggle):not(.profileVisibilitySwitch):not(.participantAttendanceStatus):not(.confirmAllParticipantsBtn):not(.pendingAllParticipantsBtn):not(.matchCardStatus)) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -24904,4 +24904,112 @@ html[data-theme="dark"] .formatInfoTrigger,
     padding: 10px 12px;
   }
 
+}
+
+/* =========================================================
+   STATUS PERSISTENTE DAS PARTIDAS
+   O mesmo selo informa espera, jogo em andamento e conclusão.
+   O botão existe apenas para o organizador; a visão pública é leitura.
+   ========================================================= */
+.matchCardStatus,
+.proDashboard.playAppShell button.matchCardStatus {
+  width: fit-content !important;
+  min-width: 0 !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 5px 10px !important;
+  border-radius: 999px !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  font-size: 9.5px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: .045em !important;
+  white-space: nowrap !important;
+}
+
+button.matchCardStatus {
+  appearance: none;
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, background-color .16s ease;
+}
+
+button.matchCardStatus:hover {
+  transform: translateY(-1px);
+}
+
+button.matchCardStatus:focus-visible {
+  outline: 3px solid rgba(124, 58, 237, .22) !important;
+  outline-offset: 2px;
+}
+
+.matchCardStatus.is-waiting,
+.matchCardStatus.is-blocked {
+  border-color: #cbd5e1 !important;
+  background-color: #f8fafc !important;
+  color: #52657b !important;
+}
+
+.matchCardStatus.is-in-progress {
+  border-color: #a78bfa !important;
+  background-color: #f3e8ff !important;
+  color: #6d28d9 !important;
+}
+
+.matchCardStatus.is-finished {
+  border-color: #86efac !important;
+  background-color: #ecfdf5 !important;
+  color: #15803d !important;
+}
+
+.matchCardStatus.is-bye {
+  border-color: #fbbf24 !important;
+  background-color: #fff7d6 !important;
+  color: #a34b00 !important;
+}
+
+html[data-theme="dark"] .matchCardStatus.is-waiting,
+html[data-theme="dark"] .matchCardStatus.is-blocked,
+.proDashboard.theme-dark .matchCardStatus.is-waiting,
+.proDashboard.theme-dark .matchCardStatus.is-blocked {
+  border-color: #41566f !important;
+  background-color: #182638 !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .matchCardStatus.is-in-progress,
+.proDashboard.theme-dark .matchCardStatus.is-in-progress {
+  border-color: #8b5cf6 !important;
+  background-color: #33205f !important;
+  color: #e9d5ff !important;
+}
+
+html[data-theme="dark"] .matchCardStatus.is-finished,
+.proDashboard.theme-dark .matchCardStatus.is-finished {
+  border-color: #267a59 !important;
+  background-color: #103027 !important;
+  color: #86efac !important;
+}
+
+html[data-theme="dark"] .matchCardStatus.is-bye,
+.proDashboard.theme-dark .matchCardStatus.is-bye {
+  border-color: #b7791f !important;
+  background-color: #3b2a0c !important;
+  color: #fde68a !important;
+}
+
+.bracketTree .matchCardStatus,
+.proDashboard.playAppShell .bracketTree button.matchCardStatus {
+  min-height: 25px !important;
+  padding: 4px 8px !important;
+  font-size: 8.5px !important;
+}
+
+@media (max-width: 640px) {
+  .proDashboard .tournamentWorkspaceContent .schedule > .roundCard:not(.bracketRoundLane) .matchCardStatus,
+  .publicPage .schedule > .roundCard:not(.bracketRoundLane) .matchCardStatus {
+    min-height: 25px !important;
+    padding: 4px 8px !important;
+    font-size: 8.5px !important;
+  }
 }

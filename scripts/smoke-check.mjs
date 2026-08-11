@@ -400,10 +400,17 @@ assert.ok(
   "Os utilitários de participantes precisam permanecer no escopo global antes da normalização dos torneios."
 );
 assert.ok(
-    mainSource.includes('const publicRankingReady = publicCompletionState.completed;')
+    mainSource.includes('const publicRankingReady = isCup || publicCompletionState.completed;')
     && mainSource.includes('className="publicRankingLocked"')
     && mainSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
-  "O ranking público não está protegido até a conclusão dos placares."
+  "O ranking público das modalidades comuns não está protegido, ou a Copa continua bloqueada indevidamente."
+);
+assert.ok(
+  mainSource.includes('function toggleScheduleGameStatus(roundIndex, gameIndex)')
+    && mainSource.includes('function toggleBracketGameStatus(matchKey)')
+    && mainSource.includes('Jogo em andamento')
+    && mainSource.includes('is-in-progress'),
+  "O status persistente de jogo em andamento está ausente."
 );
 assert.ok(
   mainSource.includes('Editar evento completo')
