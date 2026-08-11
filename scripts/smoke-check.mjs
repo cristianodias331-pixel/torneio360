@@ -394,6 +394,12 @@ assert.ok(
   "A padronização dos nomes ou o controle de presença dos participantes está ausente."
 );
 assert.ok(
+  mainSource.indexOf('function formatParticipantName(value)') < mainSource.indexOf('function normalizeTournamentData(type, rawData)')
+    && mainSource.indexOf('function normalizeParticipantAttendance(config, players, attendance)') < mainSource.indexOf('function normalizeTournamentData(type, rawData)')
+    && mainSource.indexOf('function normalizeTournamentData(type, rawData)') < mainSource.indexOf('function TournamentScreen('),
+  "Os utilitários de participantes precisam permanecer no escopo global antes da normalização dos torneios."
+);
+assert.ok(
     mainSource.includes('const publicRankingReady = publicCompletionState.completed;')
     && mainSource.includes('className="publicRankingLocked"')
     && mainSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
