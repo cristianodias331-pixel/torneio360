@@ -14808,6 +14808,23 @@ function updateScore(roundIndex, gameIndex, field, value) {
   applyScheduleScoreChange({ roundIndex, gameIndex, field, value });
 }
 
+function prepareEditableBracketData(currentData) {
+  const copy = structuredClone(currentData);
+
+  // Torneios cearenses antigos podem exibir a 3ª disputa gerada em memória,
+  // embora os novos jogos ainda não existam no array salvo. Sincronizar antes
+  // da edição torna esses jogos persistentes sem perder placares anteriores.
+  if (isCampeonatoCearenseData(copy) && copy.cupConfig?.cearenseBracketVersion === 2) {
+    return syncCupBracketScores(copy);
+  }
+
+  if (!copy.brackets || copy.brackets.length === 0) {
+    copy.brackets = rebuildCupBracketGames(copy);
+  }
+
+  return copy;
+}
+
 function toggleScheduleGameStatus(roundIndex, gameIndex) {
   setData((prev) => {
     const copy = structuredClone(prev);
@@ -14822,11 +14839,7 @@ function toggleScheduleGameStatus(roundIndex, gameIndex) {
 
 function toggleBracketGameStatus(matchKey) {
   setData((prev) => {
-    const copy = structuredClone(prev);
-
-    if (!copy.brackets || copy.brackets.length === 0) {
-      copy.brackets = rebuildCupBracketGames(copy);
-    }
+    const copy = prepareEditableBracketData(prev);
 
     const resolvedGames = copy.brackets.map((game) => resolveBracketGame(game, copy.brackets, copy));
     const targetGame = resolvedGames.find((game) => game.matchKey === matchKey);
@@ -14853,11 +14866,7 @@ function toggleBracketGameStatus(matchKey) {
 
 function updateBracketScore(matchKey, field, value) {
   setData((prev) => {
-    const copy = structuredClone(prev);
-
-    if (!copy.brackets || copy.brackets.length === 0) {
-      copy.brackets = rebuildCupBracketGames(copy);
-    }
+    const copy = prepareEditableBracketData(prev);
 
     const allResolved = copy.brackets.map((game) =>
       resolveBracketGame(game, copy.brackets, copy)
