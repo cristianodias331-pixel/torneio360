@@ -944,15 +944,22 @@ assert.ok(
   mainSource.includes("function createShuffleVideoSnapshot")
     && mainSource.includes("function createShuffleVideoFile")
     && mainSource.includes("function ShuffleVideoModal")
+    && mainSource.includes("function getShuffleVideoMotionOrder")
+    && mainSource.includes("const previousOrder = getShuffleVideoMotionOrder")
+    && mainSource.includes("const nextOrder = getShuffleVideoMotionOrder")
     && mainSource.includes("copy.lastShuffleVideo = videoSnapshot")
     && mainSource.includes("Continuar sem gerar")
-    && mainSource.includes("Fechar sem compartilhar")
+    && mainSource.includes("Baixar vídeo")
+    && !mainSource.includes("Compartilhar vídeo")
+    && !mainSource.includes("function shareShuffleVideo")
     && mainSource.includes("const SHUFFLE_VIDEO_WIDTH = 720")
     && mainSource.includes("const SHUFFLE_VIDEO_HEIGHT = 1280")
     && styleSource.includes(".shuffleVideoOverlay")
     && styleSource.includes("html[data-theme=\"dark\"] .shuffleVideoModal")
-    && styleSource.includes("width: min(240px, 72vw)"),
-  "O vídeo opcional do sorteio perdeu o resultado registrado, o formato vertical ou a adaptação aos temas e ao celular."
+    && styleSource.includes("width: min(240px, 72vw)")
+    && styleSource.includes("max-height: calc(100dvh - 20px)")
+    && styleSource.includes("html[data-theme=\"dark\"] .confirmBox"),
+  "O vídeo do sorteio perdeu o embaralhamento real, o download confiável, o formato vertical ou a adaptação dos modais aos temas e ao celular."
 );
 assert.ok(
   styleSource.includes("JOGOS NO CELULAR — CABEÇALHO EM DUAS LINHAS")

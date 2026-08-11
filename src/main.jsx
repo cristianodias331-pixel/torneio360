@@ -13391,6 +13391,42 @@ function getShuffleVideoEntries(snapshot) {
   return (snapshot?.sections || []).flatMap((section) => section.entries || []);
 }
 
+function getShuffleVideoMotionSeed(value) {
+  return String(value || "Torneio360").split("").reduce(
+    (seed, character) => ((seed * 31) + character.charCodeAt(0)) >>> 0,
+    2166136261
+  );
+}
+
+function getShuffleVideoMotionOrder(length, seed) {
+  const order = Array.from({ length }, (_, index) => index);
+  let state = seed >>> 0;
+
+  for (let index = order.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const targetIndex = state % (index + 1);
+    [order[index], order[targetIndex]] = [order[targetIndex], order[index]];
+  }
+
+  return order;
+}
+
+function getShuffleVideoMotionSlots(length, cardWidth) {
+  const columns = length <= 8 ? 2 : length <= 15 ? 3 : 4;
+  const rows = Math.ceil(length / columns);
+  const left = 48 + cardWidth / 2;
+  const right = 672 - cardWidth / 2;
+  const top = 430;
+  const bottom = 1010;
+  const columnGap = columns > 1 ? (right - left) / (columns - 1) : 0;
+  const rowGap = rows > 1 ? (bottom - top) / (rows - 1) : 0;
+
+  return Array.from({ length }, (_, index) => ({
+    x: left + (index % columns) * columnGap,
+    y: top + Math.floor(index / columns) * rowGap,
+  }));
+}
+
 function drawShuffleVideoMotion(context, snapshot, elapsedMs) {
   drawRoundedRect(context, 36, 278, 648, 870, 32, "rgba(4, 15, 48, 0.7)", "rgba(255, 255, 255, 0.16)");
   const secondsLeft = Math.max(0, Math.ceil((5000 - elapsedMs) / 1000));
@@ -13409,19 +13445,40 @@ function drawShuffleVideoMotion(context, snapshot, elapsedMs) {
   context.fillText(`${secondsLeft}s`, 607, 346);
 
   const entries = getShuffleVideoEntries(snapshot).slice(0, 20);
-  const columns = 4;
-  const rowHeight = 118;
+  const cardWidth = entries.length <= 8 ? 252 : entries.length <= 15 ? 184 : 138;
+  const cardHeight = entries.length <= 8 ? 62 : 54;
+  const slots = getShuffleVideoMotionSlots(entries.length, cardWidth);
+  const movementDuration = 520;
+  const movementStep = Math.floor(elapsedMs / movementDuration);
+  const movementProgress = (elapsedMs % movementDuration) / movementDuration;
+  const easedProgress = movementProgress * movementProgress * (3 - 2 * movementProgress);
+  const baseSeed = getShuffleVideoMotionSeed(snapshot.id);
+  const previousOrder = getShuffleVideoMotionOrder(entries.length, baseSeed + movementStep * 7919);
+  const nextOrder = getShuffleVideoMotionOrder(entries.length, baseSeed + (movementStep + 1) * 7919);
+
   entries.forEach((entry, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    const phase = elapsedMs / 430 + index * 0.88;
-    const x = 52 + column * 158 + Math.sin(phase) * 18;
-    const y = 416 + row * rowHeight + Math.cos(phase * 0.83) * 24;
-    drawRoundedRect(context, x, y, 142, 54, 18, index % 2 === 0 ? "rgba(255,255,255,0.96)" : "rgba(219,234,254,0.96)", "rgba(103,232,249,0.55)");
+    const previousSlot = slots[previousOrder[index]] || slots[index];
+    const nextSlot = slots[nextOrder[index]] || slots[index];
+    const arc = Math.sin(movementProgress * Math.PI) * (index % 2 === 0 ? -24 : 24);
+    const centerX = previousSlot.x + (nextSlot.x - previousSlot.x) * easedProgress;
+    const centerY = previousSlot.y + (nextSlot.y - previousSlot.y) * easedProgress + arc;
+    const x = centerX - cardWidth / 2;
+    const y = centerY - cardHeight / 2;
+    const activeColor = (index + movementStep) % 3 === 0 ? "rgba(221,214,254,0.98)" : (index + movementStep) % 2 === 0 ? "rgba(255,255,255,0.98)" : "rgba(207,250,254,0.98)";
+
+    context.save();
+    context.translate(centerX, centerY);
+    context.rotate(Math.sin(movementProgress * Math.PI) * (index % 2 === 0 ? -0.045 : 0.045));
+    context.translate(-centerX, -centerY);
+    context.shadowColor = "rgba(2, 6, 23, 0.28)";
+    context.shadowBlur = 18;
+    context.shadowOffsetY = 8;
+    drawRoundedRect(context, x, y, cardWidth, cardHeight, 18, activeColor, "rgba(103,232,249,0.72)");
+    context.restore();
     context.fillStyle = "#111b3f";
-    context.font = "800 15px Arial";
+    context.font = entries.length <= 8 ? "900 18px Arial" : "800 15px Arial";
     context.textAlign = "center";
-    context.fillText(truncateCanvasText(context, entry, 120), x + 71, y + 34);
+    context.fillText(truncateCanvasText(context, entry, cardWidth - 22), centerX, centerY + 5);
   });
 
   drawRoundedRect(context, 64, 1082, 592, 12, 6, "rgba(255,255,255,0.18)");
@@ -13585,26 +13642,6 @@ async function createShuffleVideoFile({ snapshot, arenaName, arenaPhotoUrl, onPr
   return new File([blob], `${safeTournamentName || "sorteio"}-sorteio-torneio360.${extension}`, { type: resolvedType });
 }
 
-function canNativeShareShuffleVideo(file) {
-  if (!file || typeof navigator.share !== "function") return false;
-  if (typeof navigator.canShare !== "function") return true;
-  try {
-    return navigator.canShare({ files: [file] });
-  } catch {
-    return false;
-  }
-}
-
-async function shareShuffleVideo(file, snapshot) {
-  if (!canNativeShareShuffleVideo(file)) return false;
-  await navigator.share({
-    title: `Sorteio — ${snapshot.tournamentName}`,
-    text: `Confira o sorteio oficial realizado no Torneio360. Código ${snapshot.id}.`,
-    files: [file],
-  });
-  return true;
-}
-
 function downloadShuffleVideo(file) {
   const url = URL.createObjectURL(file);
   const link = document.createElement("a");
@@ -13647,21 +13684,6 @@ function ShuffleVideoModal({ snapshot, arenaName, arenaPhotoUrl, onClose }) {
     }
   }
 
-  async function handleShare() {
-    if (!videoFile) return;
-    try {
-      const shared = await shareShuffleVideo(videoFile, snapshot);
-      if (!shared) {
-        setMessage("O compartilhamento direto não está disponível neste aparelho. Baixe o vídeo e envie pelo WhatsApp.");
-        return;
-      }
-      setMessage("Compartilhamento aberto. O envio continua sob seu controle.");
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-      setMessage("Não foi possível abrir o compartilhamento. Você ainda pode baixar o vídeo.");
-    }
-  }
-
   const sections = Array.isArray(snapshot?.sections) ? snapshot.sections : [];
   const entryCount = sections.reduce((total, section) => total + section.entries.length, 0);
 
@@ -13672,9 +13694,9 @@ function ShuffleVideoModal({ snapshot, arenaName, arenaPhotoUrl, onClose }) {
           <div>
             <span>Sorteio concluído</span>
             <h2>Vídeo do sorteio</h2>
-            <p>Gerar, compartilhar ou baixar é opcional. Nada será publicado automaticamente.</p>
+            <p>Gerar e baixar é opcional. Nada será publicado automaticamente.</p>
           </div>
-          <button type="button" className="shuffleVideoClose" onClick={onClose} disabled={status === "generating"} aria-label="Fechar sem compartilhar"><X /></button>
+          <button type="button" className="shuffleVideoClose" onClick={onClose} disabled={status === "generating"} aria-label="Fechar vídeo do sorteio"><X /></button>
         </div>
 
         {status === "idle" || status === "error" ? (
@@ -13693,7 +13715,7 @@ function ShuffleVideoModal({ snapshot, arenaName, arenaPhotoUrl, onClose }) {
             </div>
             {message ? <p className="shuffleVideoMessage error">{message}</p> : null}
             <div className="shuffleVideoActions">
-              <button type="button" className="shuffleVideoGenerate" onClick={generateVideo}><Share2 /> Gerar vídeo</button>
+              <button type="button" className="shuffleVideoGenerate" onClick={generateVideo}><Dices /> Gerar vídeo</button>
               <button type="button" className="shuffleVideoSecondary" onClick={onClose}>Continuar sem gerar</button>
             </div>
           </div>
@@ -13716,9 +13738,8 @@ function ShuffleVideoModal({ snapshot, arenaName, arenaPhotoUrl, onClose }) {
             </div>
             {message ? <p className="shuffleVideoMessage">{message}</p> : null}
             <div className="shuffleVideoActions">
-              {canNativeShareShuffleVideo(videoFile) ? <button type="button" className="shuffleVideoShare" onClick={handleShare}><Share2 /> Compartilhar vídeo</button> : null}
               <button type="button" className="shuffleVideoDownload" onClick={() => downloadShuffleVideo(videoFile)}><Download /> Baixar vídeo</button>
-              <button type="button" className="shuffleVideoSecondary" onClick={onClose}>Fechar sem compartilhar</button>
+              <button type="button" className="shuffleVideoSecondary" onClick={onClose}>Fechar</button>
             </div>
           </div>
         ) : null}
