@@ -941,6 +941,20 @@ assert.ok(
   "O sorteio visual não está animado por 5 segundos ou ainda pode ficar coberto no celular."
 );
 assert.ok(
+  mainSource.includes("function createShuffleVideoSnapshot")
+    && mainSource.includes("function createShuffleVideoFile")
+    && mainSource.includes("function ShuffleVideoModal")
+    && mainSource.includes("copy.lastShuffleVideo = videoSnapshot")
+    && mainSource.includes("Continuar sem gerar")
+    && mainSource.includes("Fechar sem compartilhar")
+    && mainSource.includes("const SHUFFLE_VIDEO_WIDTH = 720")
+    && mainSource.includes("const SHUFFLE_VIDEO_HEIGHT = 1280")
+    && styleSource.includes(".shuffleVideoOverlay")
+    && styleSource.includes("html[data-theme=\"dark\"] .shuffleVideoModal")
+    && styleSource.includes("width: min(240px, 72vw)"),
+  "O vídeo opcional do sorteio perdeu o resultado registrado, o formato vertical ou a adaptação aos temas e ao celular."
+);
+assert.ok(
   styleSource.includes("JOGOS NO CELULAR — CABEÇALHO EM DUAS LINHAS")
     && styleSource.includes('"match-meta"')
     && styleSource.includes('"match-controls"')
