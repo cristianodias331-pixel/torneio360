@@ -4176,11 +4176,15 @@ function generatePlayRankingBrackets(data) {
 function buildCearenseThirdParallelRounds(mainRounds, bracketTitle) {
   const quarterfinal = mainRounds.find((round) => String(round.title).toLocaleLowerCase("pt-BR").includes("quartas"));
   const semifinal = mainRounds.find((round) => String(round.title).toLocaleLowerCase("pt-BR").includes("semifinal"));
-  const sourceGames = quarterfinal?.games?.length >= 2
-    ? quarterfinal.games
-    : !quarterfinal && semifinal?.games?.length === 2
-      ? semifinal.games
-      : [];
+  const realQuarterfinalGames = (quarterfinal?.games || []).filter((game) => !game.isBye);
+  const realSemifinalGames = (semifinal?.games || []).filter((game) => !game.isBye);
+  const sourceGames = realQuarterfinalGames.length === 4
+    ? realQuarterfinalGames
+    : realQuarterfinalGames.length === 2
+      ? realQuarterfinalGames
+      : !quarterfinal && realSemifinalGames.length === 2
+        ? realSemifinalGames
+        : [];
 
   if (sourceGames.length < 2) return [];
 
