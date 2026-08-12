@@ -26123,3 +26123,231 @@ html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
   background: rgba(109, 40, 217, .24) !important;
   color: #ddd6fe !important;
 }
+
+/* =========================================================
+   SELETOR DE MODALIDADES: BUSCA, GRUPOS E RESPONSIVIDADE
+   ========================================================= */
+.modalityPicker {
+  position: relative;
+  min-width: 0;
+}
+
+.proDashboard.playAppShell .modalityPickerTrigger {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 66px;
+  padding: 10px 14px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 14px !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: none !important;
+  text-align: left;
+}
+
+.proDashboard.playAppShell .modalityPickerTrigger:hover,
+.proDashboard.playAppShell .modalityPicker.isOpen .modalityPickerTrigger {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #8b5cf6 16%, transparent) !important;
+}
+
+.proDashboard.playAppShell .modalityPickerTrigger:disabled {
+  cursor: not-allowed;
+  opacity: .68;
+}
+
+.modalityPickerTriggerIcon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-muted);
+}
+
+.modalityPickerTriggerIcon.hasValue {
+  border-color: color-mix(in srgb, #8b5cf6 55%, var(--ui-border));
+  background: color-mix(in srgb, #8b5cf6 14%, var(--ui-surface-raised));
+  color: #7c3aed;
+}
+
+.modalityPickerTriggerIcon svg { width: 20px; height: 20px; }
+.modalityPickerTriggerText { display: grid; gap: 3px; min-width: 0; }
+.modalityPickerTriggerText strong { overflow: hidden; color: var(--ui-text-strong); font-size: .88rem; text-overflow: ellipsis; white-space: nowrap; }
+.modalityPickerTriggerText small { overflow: hidden; color: var(--ui-muted); font-size: .72rem; font-weight: 700; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.modalityPickerChevron { width: 19px; height: 19px; color: var(--ui-muted); transition: transform .2s ease; }
+.modalityPicker.isOpen .modalityPickerChevron { transform: rotate(180deg); }
+
+.modalityPickerBackdrop { display: none; }
+
+.proDashboard.playAppShell .modalityPickerPanel {
+  position: fixed;
+  z-index: 2400;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  max-height: min(620px, calc(100vh - 32px));
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 20px;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: 0 24px 70px rgba(2, 12, 27, .28) !important;
+}
+
+.modalityPickerPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modalityPickerPanelHeader > div { display: grid; gap: 3px; }
+.modalityPickerPanelHeader strong { color: var(--ui-text-strong); font-size: 1rem; }
+.modalityPickerPanelHeader span { color: var(--ui-muted); font-size: .75rem; font-weight: 700; }
+.proDashboard.playAppShell .modalityPickerClose {
+  display: grid !important;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 0 !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 11px !important;
+  background: var(--ui-surface-muted) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: none !important;
+}
+.modalityPickerClose svg { width: 18px; height: 18px; }
+
+.modalityPickerSearch {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 13px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-muted);
+}
+.modalityPickerSearch:focus-within { border-color: #8b5cf6; box-shadow: 0 0 0 3px color-mix(in srgb, #8b5cf6 14%, transparent); }
+.modalityPickerSearch > svg { width: 18px; height: 18px; }
+.proDashboard.playAppShell .modalityPickerSearch input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: none !important;
+}
+.proDashboard.playAppShell .modalityPickerSearch button {
+  display: grid !important;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--ui-muted) !important;
+  box-shadow: none !important;
+}
+.modalityPickerSearch button svg { width: 16px; height: 16px; }
+
+.modalityPickerGroups {
+  display: grid;
+  gap: 16px;
+  padding-right: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.modalityPickerGroup { display: grid; gap: 9px; }
+.modalityPickerGroup > header { display: grid; gap: 2px; padding: 0 2px; }
+.modalityPickerGroup > header strong { color: var(--ui-text-strong); font-size: .82rem; }
+.modalityPickerGroup > header span { color: var(--ui-muted); font-size: .69rem; font-weight: 700; }
+.modalityPickerItems { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.proDashboard.playAppShell .modalityPickerItems > button {
+  display: grid !important;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 66px;
+  padding: 10px 12px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 13px !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: none !important;
+  text-align: left;
+}
+.proDashboard.playAppShell .modalityPickerItems > button:hover { border-color: #a78bfa !important; background: color-mix(in srgb, #8b5cf6 7%, var(--ui-surface-raised)) !important; }
+.proDashboard.playAppShell .modalityPickerItems > button.selected {
+  border: 2px solid #7c3aed !important;
+  background: color-mix(in srgb, #8b5cf6 16%, var(--ui-surface-raised)) !important;
+  box-shadow: inset 3px 0 0 #7c3aed !important;
+}
+.modalityPickerItems > button > span:last-child { display: grid; gap: 3px; min-width: 0; }
+.modalityPickerItems > button strong { overflow: hidden; color: var(--ui-text-strong); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.modalityPickerItems > button small { color: var(--ui-muted); font-size: .67rem; font-weight: 700; line-height: 1.35; }
+.modalityPickerCheck {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: 9px;
+  background: var(--ui-surface-muted);
+  color: transparent;
+  font-size: 17px;
+  font-weight: 950;
+}
+.modalityPickerItems > button.selected .modalityPickerCheck { border-color: #7c3aed; background: #7c3aed; color: #fff; }
+.modalityPickerEmpty { display: grid; place-items: center; gap: 6px; min-height: 180px; padding: 24px; color: var(--ui-muted); text-align: center; }
+.modalityPickerEmpty svg { width: 28px; height: 28px; }
+.modalityPickerEmpty strong { color: var(--ui-text-strong); }
+.modalityPickerEmpty span { font-size: .75rem; }
+
+@media (max-width: 680px) {
+  .proDashboard.playAppShell .modalityPickerTrigger { grid-template-columns: 38px minmax(0, 1fr) 20px; min-height: 60px; padding: 8px 10px !important; }
+  .modalityPickerTriggerIcon { width: 38px; height: 38px; }
+  .modalityPickerTriggerText small { white-space: normal; }
+  .proDashboard.playAppShell .modalityPickerBackdrop {
+    position: fixed;
+    z-index: 2390;
+    display: block !important;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgba(2, 8, 23, .58) !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(3px);
+  }
+  .proDashboard.playAppShell .modalityPickerPanel {
+    top: auto !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    left: 10px !important;
+    width: auto !important;
+    max-height: min(82vh, 680px);
+    padding: 14px;
+    border-radius: 22px;
+  }
+  .modalityPickerItems { grid-template-columns: 1fr; }
+  .proDashboard.playAppShell .modalityPickerItems > button { min-height: 62px; }
+}
