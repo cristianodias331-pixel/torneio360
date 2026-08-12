@@ -565,6 +565,9 @@ assert.ok(
   mainSource.includes('.filter((game) => game.phase === "main")')
     && mainSource.includes("function calculateCircuitPlacementRows")
     && mainSource.includes("function CircuitRankingSettingsEditor")
+    && mainSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
+    && mainSource.includes('role="radiogroup" aria-label="Modelo dos critérios de desempate"')
+    && styleSource.includes('button:is(.selected, [aria-checked="true"])')
     && mainSource.includes("Disputas paralelas não pontuam"),
   "O ranking configurável não exclui as paralelas ou perdeu sua configuração explicativa."
 );

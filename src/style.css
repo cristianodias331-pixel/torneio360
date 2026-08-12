@@ -1980,6 +1980,7 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
     max-width: 100%;
   }
 }
+
 .appPage header .actions button {
   position: relative;
   z-index: 90;
@@ -14918,10 +14919,10 @@ html[data-theme="dark"] {
 
 .proDashboard.playAppShell button.actionOpenBtn,
 .proDashboard.playAppShell button.actionNavigateBtn {
-  border-color: #0f766e !important;
-  background: #0f766e !important;
+  border-color: #1d4ed8 !important;
+  background: linear-gradient(135deg, #1d4ed8, #0891b2) !important;
   color: #ffffff !important;
-  box-shadow: 0 9px 20px rgba(15, 118, 110, .18) !important;
+  box-shadow: 0 9px 20px rgba(29, 78, 216, .20) !important;
 }
 
 .proDashboard.playAppShell button:is(
@@ -14940,7 +14941,7 @@ html[data-theme="dark"] {
 .proDashboard.theme-dark button:is(.actionConfirmBtn, .actionRestoreBtn) { border-color: #4ade80 !important; background: #166534 !important; }
 .proDashboard.theme-dark button.actionShuffleBtn { border-color: #a78bfa !important; background: #6d28d9 !important; }
 .proDashboard.theme-dark button.actionGenerateBtn { border-color: #22d3ee !important; background: #0e7490 !important; }
-.proDashboard.theme-dark button:is(.actionOpenBtn, .actionNavigateBtn) { border-color: #2dd4bf !important; background: #115e59 !important; }
+.proDashboard.theme-dark button:is(.actionOpenBtn, .actionNavigateBtn) { border-color: #38bdf8 !important; background: linear-gradient(135deg, #1d4ed8, #0e7490) !important; }
 
 /* Ações rápidas */
 .proDashboard .homeQuickActionsThree {
@@ -25883,5 +25884,139 @@ html[data-theme="dark"] .matchCardStatus.is-bye,
     min-height: 25px !important;
     padding: 4px 8px !important;
     font-size: 8.5px !important;
+  }
+}
+
+/* =========================================================
+   CIRCUITOS: SELECAO VISIVEL E CONTRASTE CLARO/ESCURO
+   ========================================================= */
+.proDashboard.playAppShell .circuitRankingModeOptions button,
+.proDashboard.playAppShell .circuitCompactChoices button {
+  position: relative !important;
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: none !important;
+}
+
+.proDashboard.playAppShell .circuitRankingModeOptions button span {
+  color: var(--ui-muted) !important;
+}
+
+.proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"]),
+.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"]) {
+  border: 2px solid #7c3aed !important;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 9px 22px rgba(109, 40, 217, .24), inset 0 0 0 1px rgba(255, 255, 255, .14) !important;
+  transform: translateY(-1px);
+}
+
+.proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"]) span {
+  color: #ede9fe !important;
+}
+
+.proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"])::after,
+.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"])::after {
+  content: "\2713  Selecionado";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, .42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  color: #ffffff;
+  font-size: .67rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"]) {
+  flex-wrap: wrap !important;
+}
+
+.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"])::after {
+  margin: 0 0 0 8px;
+}
+
+.proDashboard.playAppShell .circuitRankingSettings,
+.proDashboard.playAppShell .circuitPlacementSettings,
+.proDashboard.playAppShell .circuitPlacementSettings > section {
+  color: var(--ui-text) !important;
+}
+
+.proDashboard.playAppShell .circuitSettingsTitleRow strong,
+.proDashboard.playAppShell .circuitRankingSettings label,
+.proDashboard.playAppShell .circuitStagesSummary h4,
+.proDashboard.playAppShell .circuitPickerTitle strong {
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard.playAppShell .circuitSettingsTitleRow span,
+.proDashboard.playAppShell .circuitIdentityHint,
+.proDashboard.playAppShell .circuitRankingRuleBadge span,
+.proDashboard.playAppShell .circuitRankingRuleBadge small {
+  color: var(--ui-muted) !important;
+}
+
+.proDashboard.playAppShell .circuitPickerTitle span {
+  border-color: color-mix(in srgb, #8b5cf6 45%, var(--ui-border)) !important;
+  background: color-mix(in srgb, #8b5cf6 13%, var(--ui-surface-raised)) !important;
+  color: color-mix(in srgb, #7c3aed 78%, var(--ui-text-strong)) !important;
+}
+
+.proDashboard.playAppShell .circuitTournamentOption.selected {
+  border: 2px solid #7c3aed !important;
+  background: color-mix(in srgb, #8b5cf6 16%, var(--ui-surface-raised)) !important;
+  box-shadow: inset 4px 0 0 #7c3aed, 0 8px 20px rgba(109, 40, 217, .14) !important;
+}
+
+.proDashboard.playAppShell .circuitTournamentOption.selected .circuitCheckVisual {
+  border-color: #7c3aed !important;
+  background: #7c3aed !important;
+  color: #ffffff !important;
+}
+
+.proDashboard.playAppShell .circuitStageList button {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard.playAppShell .circuitStageList button small {
+  color: var(--ui-muted) !important;
+}
+
+.proDashboard.playAppShell button.rankingShareButton {
+  border-color: #38bdf8 !important;
+  background: linear-gradient(135deg, #1d4ed8, #0891b2) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(29, 78, 216, .20) !important;
+}
+
+.proDashboard.theme-dark .circuitRankingRuleBadge,
+html[data-theme="dark"] .proDashboard .circuitRankingRuleBadge {
+  border-color: #a78bfa !important;
+  background: rgba(109, 40, 217, .24) !important;
+}
+
+.proDashboard.theme-dark .circuitRankingRuleBadge strong,
+html[data-theme="dark"] .proDashboard .circuitRankingRuleBadge strong {
+  color: #ddd6fe !important;
+}
+
+.proDashboard.theme-dark .circuitPickerTitle span,
+html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
+  border-color: #7c3aed !important;
+  background: rgba(109, 40, 217, .24) !important;
+  color: #ddd6fe !important;
+}
+
+@media (max-width: 760px) {
+  .proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"])::after {
+    margin-left: 6px;
   }
 }
