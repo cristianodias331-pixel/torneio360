@@ -29,6 +29,9 @@ const collaborationMigration = readFileSync(collaborationMigrationUrl, "utf8");
 const serverRevisionMigrationUrl = new URL("supabase/migrations/202608080002_server_revisions.sql", root);
 assert.ok(existsSync(fileURLToPath(serverRevisionMigrationUrl)), "A migração de revisões do servidor está ausente.");
 const serverRevisionMigration = readFileSync(serverRevisionMigrationUrl, "utf8");
+const circuitScoringMigrationUrl = new URL("supabase/migrations/202608120001_circuit_scoring_models.sql", root);
+assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração dos modelos de pontuação dos circuitos está ausente.");
+const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
 const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
 const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
 const prepareParticipantLineSource = mainSource.slice(
@@ -358,14 +361,13 @@ assert.ok(
   "O perfil público não consulta o pacote seguro e atualizado da arena."
 );
 assert.ok(mainSource.includes('title="Ranking do dia"'), "O ranking do torneio não usa o título Ranking do dia.");
-assert.ok(mainSource.includes('<h2>Ranking geral acumulado</h2>'), "O ranking público do circuito não usa o título acumulado correto.");
+assert.ok(mainSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
 assert.ok(mainSource.includes('tournaments={tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
 assert.ok(mainSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
 assert.ok(mainSource.includes('pts: "Total de Games"'), "A coluna de games ainda usa a nomenclatura antiga.");
-assert.ok(!/\bpontos\b/i.test(mainSource), "A nomenclatura Pontos ainda aparece na interface.");
 assert.ok(
-  mainSource.includes("const stats = criteria.order")
-    && mainSource.includes("`Critério: ${criteria.label}`"),
+  mainSource.includes("const stats = exportColumns")
+    && mainSource.includes("criteriaLabel || criteria.label"),
   "A imagem compartilhada não respeita nem identifica a ordem de critérios do ranking."
 );
 assert.ok(
@@ -537,6 +539,19 @@ assert.ok(
 assert.ok(
   mainSource.includes("const games = [...(data.schedule || []).flat(), ...bracketGames];"),
   "O ranking do circuito não soma a fase de grupos e o mata-mata das Copas."
+);
+assert.ok(
+  mainSource.includes('.filter((game) => game.phase === "main")')
+    && mainSource.includes("function calculateCircuitPlacementRows")
+    && mainSource.includes("function CircuitRankingSettingsEditor")
+    && mainSource.includes("Disputas paralelas não pontuam"),
+  "O ranking configurável não exclui as paralelas ou perdeu sua configuração explicativa."
+);
+assert.ok(
+  circuitScoringMigration.includes("add column if not exists ranking_settings jsonb")
+    && circuitScoringMigration.includes("add column if not exists circuit_points integer")
+    && circuitScoringMigration.includes("get_public_arena_bundle_base"),
+  "A persistência ou a visualização pública do novo modelo de pontuação está incompleta."
 );
 assert.ok(
   publicArenaMigration.includes("selected_tournament.value = history.tournament_id::text"),

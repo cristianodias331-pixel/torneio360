@@ -17366,6 +17366,95 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
   line-height: 1.45;
 }
 .circuitCriteriaCardModal { margin: 18px 0 0; }
+
+.circuitRankingSettings {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid var(--line, #d7e0ec);
+  border-radius: 20px;
+  background: var(--surface, #fff);
+}
+
+.circuitSettingsTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.circuitSettingsTitleRow > div { display: grid; gap: 3px; }
+.circuitSettingsTitleRow strong { color: var(--text, #0d1b36); }
+.circuitSettingsTitleRow span { color: var(--muted, #687992); font-size: .78rem; font-weight: 700; }
+
+.circuitRankingModeOptions,
+.circuitCompactChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.circuitRankingModeOptions button,
+.circuitCompactChoices button {
+  min-width: 0;
+  border: 1px solid var(--line, #cfdaea);
+  background: var(--soft-surface, #f5f8fc);
+  color: var(--text, #0d1b36);
+  box-shadow: none;
+  text-align: left;
+}
+
+.circuitRankingModeOptions button { display: grid; gap: 5px; min-height: 78px; padding: 14px 16px; }
+.circuitRankingModeOptions button span { color: var(--muted, #687992); font-size: .78rem; }
+.circuitRankingModeOptions button.selected,
+.circuitCompactChoices button.selected {
+  border-color: #8b5cf6;
+  background: color-mix(in srgb, #8b5cf6 12%, var(--surface, #fff));
+  color: var(--text, #0d1b36);
+  box-shadow: inset 3px 0 0 #8b5cf6;
+}
+
+.circuitPerformanceSettings,
+.circuitPlacementSettings,
+.circuitPlacementSettings > section { display: grid; gap: 14px; }
+.circuitPlacementSettings > section { padding-top: 16px; border-top: 1px solid var(--line, #d7e0ec); }
+.circuitPerformanceSettings > label:not(.circuitAutomaticToggle),
+.circuitTieBreakOrder label,
+.circuitPointsGrid label { display: grid; gap: 6px; color: var(--text, #0d1b36); font-size: .77rem; font-weight: 800; }
+.circuitPerformanceSettings select,
+.circuitTieBreakOrder select,
+.circuitPointsGrid input { width: 100%; min-width: 0; }
+
+.circuitPointsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.circuitPointsGrid.positions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.circuitPointsGrid input { border-color: var(--line, #cfdaea); background: var(--input-bg, #f7f9fc); color: var(--text, #0d1b36); }
+.circuitTieBreakOrder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.circuitRuleSummary { margin: 0; padding: 12px 14px; border: 1px solid #a78bfa; border-radius: 12px; background: color-mix(in srgb, #8b5cf6 10%, var(--surface, #fff)); color: var(--text, #0d1b36); font-weight: 800; }
+
+.circuitRankingRuleBadge { display: grid; gap: 3px; min-width: 230px; padding: 10px 13px; border: 1px solid #8b5cf6; border-radius: 13px; background: color-mix(in srgb, #8b5cf6 10%, var(--surface, #fff)); }
+.circuitRankingRuleBadge strong { color: #7c3aed; }
+.circuitRankingRuleBadge span, .circuitRankingRuleBadge small { color: var(--muted, #687992); font-size: .72rem; font-weight: 700; }
+.publicCircuitRankingRule { margin: 4px 0 0; color: #6d28d9; font-size: .78rem; font-weight: 800; }
+
+html[data-theme="dark"] .circuitRankingSettings,
+html[data-theme="dark"] .circuitRankingModeOptions button,
+html[data-theme="dark"] .circuitCompactChoices button {
+  background: #111d2d;
+  border-color: #304158;
+  color: #f8fafc;
+}
+html[data-theme="dark"] .circuitRankingModeOptions button.selected,
+html[data-theme="dark"] .circuitCompactChoices button.selected,
+html[data-theme="dark"] .circuitRuleSummary,
+html[data-theme="dark"] .circuitRankingRuleBadge { background: rgba(139, 92, 246, .15); border-color: #a78bfa; }
+html[data-theme="dark"] .circuitRankingRuleBadge strong,
+html[data-theme="dark"] .publicCircuitRankingRule { color: #c4b5fd; }
 .blockedBrowseButton { width: 100%; margin-top: 12px; }
 .circuitRankingIdentity { display: grid; gap: 3px; min-width: 0; }
 .circuitRankingIdentity > span,
@@ -18061,6 +18150,15 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 }
 
 @media (max-width: 760px) {
+  .circuitRankingSettings { padding: 14px; border-radius: 16px; }
+  .circuitSettingsTitleRow { align-items: flex-start; }
+  .circuitRankingModeOptions,
+  .circuitCompactChoices,
+  .circuitTieBreakOrder { grid-template-columns: 1fr; }
+  .circuitPointsGrid,
+  .circuitPointsGrid.positions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .circuitRankingModeOptions button { min-height: 68px; }
+  .circuitRankingRuleBadge { width: 100%; min-width: 0; }
   .rankingTableHeading,
   .cupPodiumHeading {
     align-items: stretch;
