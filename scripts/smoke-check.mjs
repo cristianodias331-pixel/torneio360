@@ -89,7 +89,11 @@ assert.ok(
     && mainSource.includes("<ModalityPicker value={item.type}")
     && styleSource.includes(".modalityPickerPanel")
     && styleSource.includes(".modalityPickerItems > button.selected")
-    && styleSource.includes("max-height: min(82vh, 680px)"),
+    && styleSource.includes("z-index: 15000")
+    && styleSource.includes('html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTrigger')
+    && styleSource.includes("top: max(10px, env(safe-area-inset-top)) !important")
+    && styleSource.includes("max-height: none !important")
+    && mainSource.includes('querySelector(".playTopbar")'),
   "O seletor de modalidades perdeu a busca, os grupos, a seleção lilás ou a adaptação para celular."
 );
 

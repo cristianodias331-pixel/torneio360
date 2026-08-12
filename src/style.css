@@ -26187,7 +26187,7 @@ html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
 
 .proDashboard.playAppShell .modalityPickerPanel {
   position: fixed;
-  z-index: 2400;
+  z-index: 15000;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
@@ -26320,13 +26320,81 @@ html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
 .modalityPickerEmpty strong { color: var(--ui-text-strong); }
 .modalityPickerEmpty span { font-size: .75rem; }
 
+.proDashboard.playAppShell.theme-dark .modalityPickerTrigger,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTrigger,
+.proDashboard.playAppShell.theme-dark .modalityPickerPanel,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerPanel,
+.proDashboard.playAppShell.theme-dark .modalityPickerItems > button,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button {
+  border-color: #334155 !important;
+  background: #18222f !important;
+  color: #f8fafc !important;
+}
+
+.proDashboard.playAppShell.theme-dark .modalityPickerTriggerIcon,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTriggerIcon,
+.proDashboard.playAppShell.theme-dark .modalityPickerSearch,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerSearch,
+.proDashboard.playAppShell.theme-dark .modalityPickerCheck,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerCheck,
+.proDashboard.playAppShell.theme-dark .modalityPickerClose,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerClose {
+  border-color: #3b4a5f !important;
+  background: #111b28 !important;
+  color: #b9c5d4 !important;
+}
+
+.proDashboard.playAppShell.theme-dark .modalityPickerTriggerText strong,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTriggerText strong,
+.proDashboard.playAppShell.theme-dark .modalityPickerPanelHeader strong,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerPanelHeader strong,
+.proDashboard.playAppShell.theme-dark .modalityPickerGroup > header strong,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerGroup > header strong,
+.proDashboard.playAppShell.theme-dark .modalityPickerItems > button strong,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button strong,
+.proDashboard.playAppShell.theme-dark .modalityPickerSearch input,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerSearch input {
+  color: #f8fafc !important;
+}
+
+.proDashboard.playAppShell.theme-dark .modalityPickerTriggerText small,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTriggerText small,
+.proDashboard.playAppShell.theme-dark .modalityPickerPanelHeader span,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerPanelHeader span,
+.proDashboard.playAppShell.theme-dark .modalityPickerGroup > header span,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerGroup > header span,
+.proDashboard.playAppShell.theme-dark .modalityPickerItems > button small,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button small {
+  color: #aebdce !important;
+}
+
+.proDashboard.playAppShell.theme-dark .modalityPickerItems > button:hover,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button:hover {
+  border-color: #8b5cf6 !important;
+  background: #20283e !important;
+}
+
+.proDashboard.playAppShell.theme-dark .modalityPickerItems > button.selected,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button.selected {
+  border-color: #a78bfa !important;
+  background: #2c2350 !important;
+  box-shadow: inset 3px 0 0 #a78bfa !important;
+}
+
+.proDashboard.playAppShell.theme-dark .modalityPickerItems > button.selected .modalityPickerCheck,
+html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button.selected .modalityPickerCheck {
+  border-color: #a78bfa !important;
+  background: #7c3aed !important;
+  color: #ffffff !important;
+}
+
 @media (max-width: 680px) {
   .proDashboard.playAppShell .modalityPickerTrigger { grid-template-columns: 38px minmax(0, 1fr) 20px; min-height: 60px; padding: 8px 10px !important; }
   .modalityPickerTriggerIcon { width: 38px; height: 38px; }
   .modalityPickerTriggerText small { white-space: normal; }
   .proDashboard.playAppShell .modalityPickerBackdrop {
     position: fixed;
-    z-index: 2390;
+    z-index: 14990;
     display: block !important;
     inset: 0;
     width: 100%;
@@ -26337,14 +26405,15 @@ html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
     background: rgba(2, 8, 23, .58) !important;
     box-shadow: none !important;
     backdrop-filter: blur(3px);
+    touch-action: none;
   }
   .proDashboard.playAppShell .modalityPickerPanel {
-    top: auto !important;
-    right: 10px !important;
-    bottom: 10px !important;
-    left: 10px !important;
+    top: max(10px, env(safe-area-inset-top)) !important;
+    right: 8px !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    left: 8px !important;
     width: auto !important;
-    max-height: min(82vh, 680px);
+    max-height: none !important;
     padding: 14px;
     border-radius: 22px;
   }
