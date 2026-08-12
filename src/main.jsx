@@ -721,10 +721,10 @@ const circuitTieBreakOptions = [
   { value: "runnerUps", label: "Maior quantidade de vice-campeonatos", key: "runnerUps" },
   { value: "thirdPlaces", label: "Maior quantidade de terceiros lugares", key: "thirdPlaces" },
   { value: "bestStage", label: "Melhores pontuações obtidas nas etapas", key: "bestStagePoints" },
-  { value: "none", label: "Sem critério adicional", key: null },
 ];
 
-const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140, 120, 100, 80, 60];
+const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140];
+const defaultCircuitOtherPositionPoints = 120;
 const defaultCircuitCupPoints = {
   champion: 1000,
   runnerUp: 800,
@@ -746,11 +746,11 @@ function normalizeCircuitTieBreakOrder(value) {
   const allowed = new Set(circuitTieBreakOptions.map((option) => option.value));
   const source = Array.isArray(value) ? value : [];
   const unique = source.filter((item, index) => allowed.has(item) && source.indexOf(item) === index);
-  const fallback = ["wins", "bestStage", "none"];
+  const fallback = ["wins", "bestStage"];
   fallback.forEach((item) => {
     if (!unique.includes(item)) unique.push(item);
   });
-  return unique.slice(0, 3);
+  return unique.slice(0, 2);
 }
 
 function normalizeCircuitRankingSettings(value) {
@@ -766,7 +766,7 @@ function normalizeCircuitRankingSettings(value) {
       : (source.tournamentFormat === circuitTournamentFormats.placement ? circuitTournamentFormats.placement : ""),
     identity: source.identity === "team" ? "team" : "individual",
     tieBreakOrder: source.tieBreakMode === "cearense"
-      ? ["wins", "bestStage", "none"]
+      ? ["wins", "bestStage"]
       : normalizeCircuitTieBreakOrder(source.tieBreakOrder),
     tieBreakDrawOrder: Array.isArray(source.tieBreakDrawOrder)
       ? source.tieBreakDrawOrder.map((item) => String(item)).filter(Boolean)
@@ -780,6 +780,11 @@ function normalizeCircuitRankingSettings(value) {
           ? normalizeCircuitPointValue(sourcePositions[index])
           : fallback
       )),
+      otherPositions: Object.prototype.hasOwnProperty.call(sourcePoints, "otherPositions")
+        ? normalizeCircuitPointValue(sourcePoints.otherPositions)
+        : (Object.prototype.hasOwnProperty.call(sourcePositions, 10)
+          ? normalizeCircuitPointValue(sourcePositions[10])
+          : defaultCircuitOtherPositionPoints),
       cup: Object.fromEntries(Object.entries(defaultCircuitCupPoints).map(([key, fallback]) => ([
         key,
         Object.prototype.hasOwnProperty.call(sourceCup, key)
@@ -791,7 +796,7 @@ function normalizeCircuitRankingSettings(value) {
 }
 
 function getCircuitTieBreakOrder(settings) {
-  return normalizeCircuitRankingSettings(settings).tieBreakOrder.filter((criterion) => criterion !== "none");
+  return normalizeCircuitRankingSettings(settings).tieBreakOrder;
 }
 
 function compareCircuitStageScores(first, second) {
@@ -1116,7 +1121,9 @@ function calculateRankPlacementRows(tournament, settings) {
 
   return Array.from(groupedRows.entries()).flatMap(([groupKey, groupRows]) => groupRows.flatMap((row, index) => {
     const position = index + 1;
-    const points = normalizedSettings.points.positions[index] || 0;
+    const points = index < normalizedSettings.points.positions.length
+      ? normalizedSettings.points.positions[index]
+      : normalizedSettings.points.otherPositions;
     const base = {
       ...row,
       groupKey,
@@ -16902,14 +16909,12 @@ function CircuitTournamentFormatSelector({ value, onChange }) {
       </div>
       <div className="circuitFormatOptions" role="radiogroup" aria-label="Formato das etapas do circuito">
         <button type="button" role="radio" aria-checked={value === circuitTournamentFormats.placement} className={value === circuitTournamentFormats.placement ? "selected" : ""} onClick={() => onChange(circuitTournamentFormats.placement)}>
-          <strong>Classificação final</strong>
-          <span>Super e Simples</span>
-          <small>Pontos conforme 1º, 2º, 3º lugar e demais colocações.</small>
+          <span className="circuitChoiceCheck circuitFormatCheck" aria-hidden="true">{value === circuitTournamentFormats.placement ? "✓" : ""}</span>
+          <span className="circuitChoiceText circuitFormatText"><strong>Classificação final</strong><em>Super e Simples</em><small>Pontos conforme 1º, 2º, 3º lugar e demais colocações.</small></span>
         </button>
         <button type="button" role="radio" aria-checked={value === circuitTournamentFormats.cup} className={value === circuitTournamentFormats.cup ? "selected" : ""} onClick={() => onChange(circuitTournamentFormats.cup)}>
-          <strong>Fases alcançadas</strong>
-          <span>Copas</span>
-          <small>Pontos conforme campeão, vice, semifinal, quartas e outras fases.</small>
+          <span className="circuitChoiceCheck circuitFormatCheck" aria-hidden="true">{value === circuitTournamentFormats.cup ? "✓" : ""}</span>
+          <span className="circuitChoiceText circuitFormatText"><strong>Fases alcançadas</strong><em>Copas</em><small>Pontos conforme campeão, vice, semifinal, quartas e outras fases.</small></span>
         </button>
       </div>
     </section>
@@ -16937,7 +16942,9 @@ function CircuitRankingSettingsEditor({
       ...settings.points,
       [group]: group === "positions"
         ? settings.points.positions.map((item, index) => index === key ? normalizeCircuitPointValue(pointValue) : item)
-        : { ...settings.points.cup, [key]: normalizeCircuitPointValue(pointValue) },
+        : (group === "cup"
+          ? { ...settings.points.cup, [key]: normalizeCircuitPointValue(pointValue) }
+          : normalizeCircuitPointValue(pointValue)),
     };
     updateSettings({ points });
   }
@@ -16970,10 +16977,12 @@ function CircuitRankingSettingsEditor({
 
       <div className="circuitRankingModeOptions" role="radiogroup" aria-label="Modelo do ranking do circuito">
         <button type="button" role="radio" aria-checked={settings.mode === "performance"} className={settings.mode === "performance" ? "selected" : ""} onClick={() => updateSettings({ mode: "performance" })}>
-          <strong>Desempenho acumulado</strong><span>Vitórias, Saldo e Total de Games.</span>
+          <span className="circuitChoiceCheck" aria-hidden="true">{settings.mode === "performance" ? "✓" : ""}</span>
+          <span className="circuitChoiceText"><strong>Desempenho acumulado</strong><small>Vitórias, Saldo e Total de Games.</small></span>
         </button>
         <button type="button" role="radio" aria-checked={settings.mode === "placement"} className={settings.mode === "placement" ? "selected" : ""} onClick={() => updateSettings({ mode: "placement" })}>
-          <strong>Pontuação por colocação</strong><span>Tabela de pontos definida pelo organizador.</span>
+          <span className="circuitChoiceCheck" aria-hidden="true">{settings.mode === "placement" ? "✓" : ""}</span>
+          <span className="circuitChoiceText"><strong>Pontuação por colocação</strong><small>Tabela de pontos definida pelo organizador.</small></span>
         </button>
       </div>
 
@@ -16996,12 +17005,18 @@ function CircuitRankingSettingsEditor({
                 { title: "Por dupla", content: <p>Os dois nomes formam uma única inscrição no ranking. Para acumular corretamente, a escrita da dupla deve permanecer igual nas etapas.</p> },
               ]} />
             </div>
-            <div className="circuitCompactChoices" role="radiogroup" aria-label="Quem acumula os pontos"><button type="button" role="radio" aria-checked={settings.identity === "individual"} className={settings.identity === "individual" ? "selected" : ""} onClick={() => updateSettings({ identity: "individual" })}>Individual</button><button type="button" role="radio" aria-checked={settings.identity === "team"} className={settings.identity === "team" ? "selected" : ""} onClick={() => updateSettings({ identity: "team" })}>Por dupla</button></div>
+            <div className="circuitCompactChoices" role="radiogroup" aria-label="Quem acumula os pontos">
+              <button type="button" role="radio" aria-checked={settings.identity === "individual"} className={settings.identity === "individual" ? "selected" : ""} onClick={() => updateSettings({ identity: "individual" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.identity === "individual" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Individual</strong></span></button>
+              <button type="button" role="radio" aria-checked={settings.identity === "team"} className={settings.identity === "team" ? "selected" : ""} onClick={() => updateSettings({ identity: "team" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.identity === "team" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Por dupla</strong></span></button>
+            </div>
           </section>
 
           {tournamentFormat === circuitTournamentFormats.placement ? <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por classificação final</strong><span>Super, Simples e formatos sem eliminatória</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por classificação final" eyebrow="Classificação final" title="Pontuação conforme a posição na etapa" intro="A classificação definitiva da etapa determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Como aplicar", content: <p>O 1º colocado recebe o valor do 1º lugar, o 2º recebe o valor do 2º e assim sucessivamente. Campos com zero não concedem pontos.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades Super, Simples e outras que terminem com uma classificação final, sem chave eliminatória.</p> }]} /></div>
-            <div className="circuitPointsGrid positions">{settings.points.positions.map((point, index) => <label key={index}><span>{index + 1}º lugar</span><input type="number" min="0" step="1" value={point} onChange={(event) => updatePoint("positions", index, event.target.value)} /></label>)}</div>
+            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por classificação final</strong><span>Super, Simples e formatos sem eliminatória</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por classificação final" eyebrow="Classificação final" title="Pontuação conforme a posição na etapa" intro="A classificação definitiva da etapa determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Do 1º ao 10º lugar", content: <p>Cada colocação recebe o valor definido em seu próprio campo.</p> }, { title: "Outras colocações", content: <p>Do 11º lugar em diante, todos recebem o mesmo valor configurado em “Outras colocações”, sem limite de participantes. Se o valor for zero, essas posições não concedem pontos.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades Super, Simples e outras que terminem com uma classificação final, sem chave eliminatória.</p> }]} /></div>
+            <div className="circuitPointsGrid positions">
+              {settings.points.positions.map((point, index) => <label key={index}><span>{index + 1}º lugar</span><input type="number" min="0" step="1" value={point} onChange={(event) => updatePoint("positions", index, event.target.value)} /></label>)}
+              <label className="otherPositions"><span>Outras colocações</span><input type="number" min="0" step="1" value={settings.points.otherPositions} onChange={(event) => updatePoint("otherPositions", null, event.target.value)} /></label>
+            </div>
           </section> : null}
 
           {tournamentFormat === circuitTournamentFormats.cup ? <section>
@@ -17010,7 +17025,7 @@ function CircuitRankingSettingsEditor({
           </section> : null}
 
           <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>Todas as pontuações sempre vêm primeiro</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="O total de todas as pontuações é o primeiro critério. Os campos abaixo definem apenas a sequência usada quando esse total for igual." sections={[{ title: "Vitórias", content: <p>Soma cada partida vencida nos jogos válidos dos torneios. Nas modalidades de Copa, entram apenas a fase de grupos e a chave principal.</p> }, { title: "Melhores pontuações nas etapas", content: <p>Compara a maior pontuação obtida em uma etapa; persistindo o empate, compara a segunda maior, depois a terceira e assim sucessivamente.</p> }, { title: "Títulos, vices e terceiros lugares", content: <p>Quando selecionados, comparam quantas vezes o participante alcançou cada colocação na chave principal.</p> }, { title: "Sem critério adicional", content: <p>Encerra a sequência naquele ponto. Se o empate continuar, o sistema solicitará o sorteio.</p> }, { title: "Sorteio", content: <p>É sempre o último recurso. Só aparece quando todos os critérios escolhidos permanecerem exatamente empatados.</p> }, { title: "Disputas paralelas", content: <p>Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa do ranking ou dos desempates.</p> }]} /></div>
+            <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>Todas as pontuações sempre vêm primeiro</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="O total de todas as pontuações é o primeiro critério. Em caso de igualdade, o sistema aplica o 1º e depois o 2º critério escolhidos abaixo." sections={[{ title: "Vitórias", content: <p>Soma cada partida vencida nos jogos válidos dos torneios. Nas modalidades de Copa, entram apenas a fase de grupos e a chave principal.</p> }, { title: "Melhores pontuações nas etapas", content: <p>Compara a maior pontuação obtida em uma etapa; persistindo o empate, compara a segunda maior, depois a terceira e assim sucessivamente.</p> }, { title: "Títulos, vices e terceiros lugares", content: <p>Quando selecionados, comparam quantas vezes o participante alcançou cada colocação na chave principal.</p> }, { title: "Sorteio", content: <p>É sempre o último recurso e só aparece quando o empate permanecer depois dos dois critérios escolhidos.</p> }, { title: "Disputas paralelas", content: <p>Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa do ranking ou dos desempates.</p> }]} /></div>
             <div className="circuitTieBreakOrder">{settings.tieBreakOrder.map((criterion, index) => <label key={index}><span>{index + 1}º critério</span><select value={criterion} onChange={(event) => { const next = [...settings.tieBreakOrder]; next[index] = event.target.value; updateSettings({ tieBreakOrder: next, tieBreakDrawOrder: [], tieBreakDrawSignatures: {} }); }}>{circuitTieBreakOptions.filter((option) => option.value === criterion || !settings.tieBreakOrder.includes(option.value)).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}</div>
             <p className="circuitRuleSummary">{getCircuitTieBreakLabel(settings)}</p>
           </section>

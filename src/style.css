@@ -17482,12 +17482,12 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 }
 
 .circuitFormatOptions button {
-  position: relative;
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
-  min-height: 96px;
-  padding: 15px 46px 15px 16px;
+  min-height: 88px;
+  padding: 14px;
   border: 1px solid var(--line, #cfdaea);
   background: var(--soft-surface, #f5f8fc);
   color: var(--text, #0d1b36);
@@ -17495,24 +17495,33 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
   text-align: left;
 }
 
-.circuitFormatOptions button > span { color: #2563eb; font-size: .78rem; font-weight: 900; }
-.circuitFormatOptions button > small { color: var(--muted, #687992); font-size: .74rem; font-weight: 700; line-height: 1.4; }
+.circuitChoiceCheck {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 2px solid var(--line, #cbd5e1);
+  border-radius: 10px;
+  background: var(--input-bg, #f8fafc);
+  color: transparent;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1;
+}
+.circuitChoiceText { display: grid; gap: 4px; min-width: 0; }
+.circuitChoiceText strong { color: var(--text, #0d1b36); }
+.circuitFormatText em { color: #2563eb; font-size: .78rem; font-style: normal; font-weight: 900; }
+.circuitChoiceText small { color: var(--muted, #687992); font-size: .74rem; font-weight: 700; line-height: 1.4; }
 .circuitFormatOptions button.selected {
   border-color: #8b5cf6;
-  background: color-mix(in srgb, #8b5cf6 12%, var(--surface, #fff));
-  box-shadow: inset 3px 0 0 #8b5cf6, 0 10px 24px rgba(109, 40, 217, .12);
+  background: color-mix(in srgb, #8b5cf6 16%, var(--surface, #fff));
+  box-shadow: inset 4px 0 0 #7c3aed, 0 8px 20px rgba(109, 40, 217, .14);
 }
-.circuitFormatOptions button.selected::after {
-  content: "✓ Selecionado";
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 7px;
-  border-radius: 999px;
+.circuitFormatOptions button.selected .circuitChoiceCheck {
+  border-color: #7c3aed;
   background: #7c3aed;
   color: #fff;
-  font-size: .62rem;
-  font-weight: 900;
 }
 
 .circuitSettingsTitleRow {
@@ -17535,6 +17544,9 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 
 .circuitRankingModeOptions button,
 .circuitCompactChoices button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
   border: 1px solid var(--line, #cfdaea);
   background: var(--soft-surface, #f5f8fc);
@@ -17543,15 +17555,17 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
   text-align: left;
 }
 
-.circuitRankingModeOptions button { display: grid; gap: 5px; min-height: 78px; padding: 14px 16px; }
-.circuitRankingModeOptions button span { color: var(--muted, #687992); font-size: .78rem; }
+.circuitRankingModeOptions button { min-height: 78px; padding: 14px 16px; }
+.circuitCompactChoices button { min-height: 58px; padding: 12px 16px; }
 .circuitRankingModeOptions button.selected,
 .circuitCompactChoices button.selected {
   border-color: #8b5cf6;
-  background: color-mix(in srgb, #8b5cf6 12%, var(--surface, #fff));
+  background: color-mix(in srgb, #8b5cf6 16%, var(--surface, #fff));
   color: var(--text, #0d1b36);
-  box-shadow: inset 3px 0 0 #8b5cf6;
+  box-shadow: inset 4px 0 0 #7c3aed, 0 8px 20px rgba(109, 40, 217, .14);
 }
+.circuitRankingModeOptions button.selected .circuitChoiceCheck,
+.circuitCompactChoices button.selected .circuitChoiceCheck { border-color: #7c3aed; background: #7c3aed; color: #fff; }
 
 .circuitPerformanceSettings,
 .circuitPlacementSettings,
@@ -17571,8 +17585,14 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 }
 
 .circuitPointsGrid.positions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.circuitPointsGrid .otherPositions {
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, #8b5cf6 44%, var(--line, #cfdaea));
+  border-radius: 12px;
+  background: color-mix(in srgb, #8b5cf6 9%, var(--surface, #fff));
+}
 .circuitPointsGrid input { border-color: var(--line, #cfdaea); background: var(--input-bg, #f7f9fc); color: var(--text, #0d1b36); }
-.circuitTieBreakOrder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.circuitTieBreakOrder { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .circuitRuleSummary { margin: 0; padding: 12px 14px; border: 1px solid #a78bfa; border-radius: 12px; background: color-mix(in srgb, #8b5cf6 10%, var(--surface, #fff)); color: var(--text, #0d1b36); font-weight: 800; }
 
 .circuitRankingRuleBadge { display: grid; gap: 3px; min-width: 230px; padding: 10px 13px; border: 1px solid #8b5cf6; border-radius: 13px; background: color-mix(in srgb, #8b5cf6 10%, var(--surface, #fff)); }
@@ -17596,6 +17616,10 @@ html[data-theme="dark"] .circuitRuleSummary,
 html[data-theme="dark"] .circuitRankingRuleBadge { background: rgba(139, 92, 246, .15); border-color: #a78bfa; }
 html[data-theme="dark"] .circuitRankingRuleBadge strong,
 html[data-theme="dark"] .publicCircuitRankingRule { color: #c4b5fd; }
+html[data-theme="dark"] .circuitChoiceText strong { color: #f8fafc; }
+html[data-theme="dark"] .circuitFormatText em { color: #c4b5fd; }
+html[data-theme="dark"] .circuitChoiceText small { color: #aebdd0; }
+html[data-theme="dark"] .circuitChoiceCheck { border-color: #475569; background: #172436; }
 .blockedBrowseButton { width: 100%; margin-top: 12px; }
 .circuitRankingIdentity { display: grid; gap: 3px; min-width: 0; }
 .circuitRankingIdentity > span,
@@ -25969,56 +25993,62 @@ html[data-theme="dark"] .matchCardStatus.is-bye,
 /* =========================================================
    CIRCUITOS: SELECAO VISIVEL E CONTRASTE CLARO/ESCURO
    ========================================================= */
-.proDashboard.playAppShell .circuitRankingModeOptions button,
-.proDashboard.playAppShell .circuitCompactChoices button {
-  position: relative !important;
+.proDashboard.playAppShell .circuitTournamentFormatSelector {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text) !important;
+}
+
+.proDashboard.playAppShell .circuitFormatOptions button {
   border: 1px solid var(--ui-border) !important;
   background: var(--ui-surface-raised) !important;
   color: var(--ui-text-strong) !important;
   box-shadow: none !important;
 }
 
-.proDashboard.playAppShell .circuitRankingModeOptions button span {
-  color: var(--ui-muted) !important;
+.proDashboard.playAppShell .circuitFormatOptions button:is(.selected, [aria-checked="true"]) {
+  border: 2px solid #7c3aed !important;
+  background: color-mix(in srgb, #8b5cf6 16%, var(--ui-surface-raised)) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: inset 4px 0 0 #7c3aed, 0 8px 20px rgba(109, 40, 217, .14) !important;
+  transform: none !important;
+}
+
+.proDashboard.playAppShell .circuitChoiceCheck {
+  border-color: var(--ui-border-strong) !important;
+  background: var(--ui-surface-muted) !important;
+  color: transparent !important;
+}
+
+.proDashboard.playAppShell :is(.circuitFormatOptions, .circuitRankingModeOptions, .circuitCompactChoices) button:is(.selected, [aria-checked="true"]) .circuitChoiceCheck {
+  border-color: #7c3aed !important;
+  background: #7c3aed !important;
+  color: #ffffff !important;
+}
+
+.proDashboard.playAppShell .circuitChoiceText strong { color: var(--ui-text-strong) !important; }
+.proDashboard.playAppShell .circuitFormatText em { color: color-mix(in srgb, #7c3aed 72%, var(--ui-text-strong)) !important; }
+.proDashboard.playAppShell .circuitChoiceText small { color: var(--ui-muted) !important; }
+
+.proDashboard.playAppShell .circuitRankingModeOptions button,
+.proDashboard.playAppShell .circuitCompactChoices button {
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: none !important;
 }
 
 .proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"]),
 .proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"]) {
   border: 2px solid #7c3aed !important;
-  background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
-  color: #ffffff !important;
-  box-shadow: 0 9px 22px rgba(109, 40, 217, .24), inset 0 0 0 1px rgba(255, 255, 255, .14) !important;
-  transform: translateY(-1px);
+  background: color-mix(in srgb, #8b5cf6 16%, var(--ui-surface-raised)) !important;
+  color: var(--ui-text-strong) !important;
+  box-shadow: inset 4px 0 0 #7c3aed, 0 8px 20px rgba(109, 40, 217, .14) !important;
+  transform: none !important;
 }
 
-.proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"]) span {
-  color: #ede9fe !important;
-}
-
-.proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"])::after,
-.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"])::after {
-  content: "\2713  Selecionado";
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: fit-content;
-  margin-top: 5px;
-  padding: 3px 8px;
-  border: 1px solid rgba(255, 255, 255, .42);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .14);
-  color: #ffffff;
-  font-size: .67rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"]) {
-  flex-wrap: wrap !important;
-}
-
-.proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"])::after {
-  margin: 0 0 0 8px;
+.proDashboard.playAppShell .circuitRankingModeOptions button:is(.selected, [aria-checked="true"]) .circuitChoiceText small {
+  color: var(--ui-muted) !important;
 }
 
 .proDashboard.playAppShell .circuitRankingSettings,
@@ -26092,10 +26122,4 @@ html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
   border-color: #7c3aed !important;
   background: rgba(109, 40, 217, .24) !important;
   color: #ddd6fe !important;
-}
-
-@media (max-width: 760px) {
-  .proDashboard.playAppShell .circuitCompactChoices button:is(.selected, [aria-checked="true"])::after {
-    margin-left: 6px;
-  }
 }

@@ -392,11 +392,32 @@ assert.ok(
   "O circuito não separa classificação final e fases alcançadas antes da escolha dos torneios."
 );
 assert.ok(
+  mainSource.includes("const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140]")
+    && mainSource.includes("defaultCircuitOtherPositionPoints")
+    && mainSource.includes("normalizedSettings.points.otherPositions")
+    && mainSource.includes("Outras colocações"),
+  "A pontuação por classificação final não limita os campos individuais ao 10º lugar ou não pontua as demais colocações."
+);
+assert.ok(
+  mainSource.includes("return unique.slice(0, 2)")
+    && !mainSource.includes('{ value: "none", label: "Sem critério adicional"')
+    && styleSource.includes("grid-template-columns: repeat(2, minmax(0, 1fr))"),
+  "O ranking do circuito ainda permite um terceiro critério de desempate."
+);
+assert.ok(
   mainSource.includes("tournamentFormat === circuitTournamentFormats.placement ? <section>")
     && mainSource.includes("tournamentFormat === circuitTournamentFormats.cup ? <section>")
     && mainSource.includes("Disputas paralelas")
     && mainSource.includes("nunca pontuam"),
   "As configurações exclusivas de cada formato ou a explicação das disputas paralelas estão incompletas."
+);
+assert.ok(
+  mainSource.includes('className="circuitChoiceCheck circuitFormatCheck"')
+    && mainSource.includes('className="circuitChoiceCheck"')
+    && styleSource.includes(".circuitFormatOptions button:is(.selected, [aria-checked=\"true\"])")
+    && styleSource.includes(".circuitChoiceCheck")
+    && styleSource.includes("var(--ui-surface-raised)"),
+  "Os cartões de escolha não seguem a seleção com quadradinho, lilás e contraste nos dois temas."
 );
 assert.ok(mainSource.includes('tournaments={tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
 assert.ok(mainSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
