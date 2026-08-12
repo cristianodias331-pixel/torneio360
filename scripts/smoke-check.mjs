@@ -78,6 +78,21 @@ for (const marker of requiredApplicationMarkers) {
   assert.ok(mainSource.includes(marker), `Fluxo essencial ausente: ${marker}`);
 }
 
+assert.ok(
+  mainSource.includes("function ModalityPicker(")
+    && mainSource.includes('title: "Duplas fixas"')
+    && mainSource.includes('title: "Ranking individual"')
+    && mainSource.includes('title: "Mistas"')
+    && mainSource.includes('title: "Copas e modelos"')
+    && mainSource.includes('placeholder="Buscar modalidade..."')
+    && mainSource.includes("<ModalityPicker value={newType}")
+    && mainSource.includes("<ModalityPicker value={item.type}")
+    && styleSource.includes(".modalityPickerPanel")
+    && styleSource.includes(".modalityPickerItems > button.selected")
+    && styleSource.includes("max-height: min(82vh, 680px)"),
+  "O seletor de modalidades perdeu a busca, os grupos, a seleção lilás ou a adaptação para celular."
+);
+
 for (const actionClass of [
   "actionCreateBtn",
   "actionConfirmBtn",
