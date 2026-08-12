@@ -710,6 +710,11 @@ const circuitRankingModes = {
   placement: "placement",
 };
 
+const circuitTournamentFormats = {
+  placement: "placement",
+  cup: "cup",
+};
+
 const circuitTieBreakOptions = [
   { value: "wins", label: "Maior quantidade de vitórias", key: "w" },
   { value: "titles", label: "Maior quantidade de títulos", key: "titles" },
@@ -756,6 +761,9 @@ function normalizeCircuitRankingSettings(value) {
 
   return {
     mode: source.mode === circuitRankingModes.placement ? circuitRankingModes.placement : circuitRankingModes.performance,
+    tournamentFormat: source.tournamentFormat === circuitTournamentFormats.cup
+      ? circuitTournamentFormats.cup
+      : (source.tournamentFormat === circuitTournamentFormats.placement ? circuitTournamentFormats.placement : ""),
     identity: source.identity === "team" ? "team" : "individual",
     tieBreakOrder: source.tieBreakMode === "cearense"
       ? ["wins", "bestStage", "none"]
@@ -8560,6 +8568,57 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .filter(Boolean);
   }
 
+  function getTournamentCircuitFormat(tournament) {
+    return isCupType(modalityConfig[tournament?.type])
+      ? circuitTournamentFormats.cup
+      : circuitTournamentFormats.placement;
+  }
+
+  function getCircuitFormFormat(form, tournamentSource = tournaments) {
+    const explicitFormat = normalizeCircuitRankingSettings(form?.rankingSettings).tournamentFormat;
+    if (explicitFormat) return explicitFormat;
+    const selectedTournament = (form?.tournamentIds || [])
+      .map((id) => tournamentSource.find((tournament) => String(tournament.id) === String(id)))
+      .find(Boolean);
+    return selectedTournament ? getTournamentCircuitFormat(selectedTournament) : "";
+  }
+
+  function getCircuitCompatibleTournaments(form, tournamentSource = tournaments) {
+    const format = getCircuitFormFormat(form, tournamentSource);
+    return format
+      ? tournamentSource.filter((tournament) => getTournamentCircuitFormat(tournament) === format)
+      : [];
+  }
+
+  function changeCircuitTournamentFormat(format, editing = false) {
+    const updateForm = editing ? setCircuitEditForm : setCircuitForm;
+    const currentForm = editing ? circuitEditForm : circuitForm;
+    const compatibleIds = new Set(
+      tournaments
+        .filter((tournament) => getTournamentCircuitFormat(tournament) === format)
+        .map((tournament) => String(tournament.id))
+    );
+    const incompatibleCount = (currentForm?.tournamentIds || []).filter((id) => !compatibleIds.has(String(id))).length;
+    if (incompatibleCount > 0 && !window.confirm(`Ao trocar o formato, ${incompatibleCount} torneio(s) incompatível(is) serão retirados deste circuito. Os torneios e seus resultados continuarão preservados. Deseja continuar?`)) {
+      return;
+    }
+    updateForm((previous) => {
+      if (!previous) return previous;
+      const tournamentIds = (previous.tournamentIds || []).filter((id) => compatibleIds.has(String(id)));
+      const rankingSettings = normalizeCircuitRankingSettings({
+        ...previous.rankingSettings,
+        tournamentFormat: format,
+      });
+      const inheritedCriteria = getCircuitCriteriaInfo(tournamentIds).value;
+      return {
+        ...previous,
+        tournamentIds,
+        rankingSettings,
+        rankingCriteria: previous.rankingCriteriaMode === "manual" ? previous.rankingCriteria : inheritedCriteria,
+      };
+    });
+  }
+
   function resetCircuitForm() {
     setCircuitForm({
       id: null,
@@ -8630,6 +8689,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
+    const tournamentFormat = getCircuitFormFormat(form);
+    if (!tournamentFormat) {
+      showNotice("warning", "Formato obrigatório", "Escolha se o circuito pontuará por classificação final ou por fases alcançadas.");
+      return;
+    }
+
+    const incompatibleTournamentCount = (form.tournamentIds || []).filter((id) => {
+      const tournament = tournaments.find((item) => String(item.id) === String(id));
+      return tournament && getTournamentCircuitFormat(tournament) !== tournamentFormat;
+    }).length;
+    if (incompatibleTournamentCount > 0) {
+      showNotice("warning", "Torneios incompatíveis", "Escolha novamente o formato das etapas para retirar os torneios incompatíveis antes de salvar.");
+      return;
+    }
+
     const isEditing = Boolean(form.id);
 
     if (!isEditing && !ensureArenaProfileReadyForPublication()) return;
@@ -8645,7 +8719,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         ? form.rankingCriteria
         : getCircuitCriteriaInfo(form.tournamentIds || []).value,
       ranking_criteria_mode: form.rankingCriteriaMode === "manual" ? "manual" : "automatic",
-      ranking_settings: normalizeCircuitRankingSettings(form.rankingSettings),
+      ranking_settings: normalizeCircuitRankingSettings({ ...form.rankingSettings, tournamentFormat }),
       updated_at: new Date().toISOString(),
     };
 
@@ -11802,16 +11876,23 @@ setNewPublicInfo({
               </div>
             </div>
 
+            <CircuitTournamentFormatSelector
+              value={getCircuitFormFormat(circuitEditForm)}
+              onChange={(format) => changeCircuitTournamentFormat(format, true)}
+            />
+
             <div className="circuitTournamentPicker circuitEditTournamentPicker">
               <div className="circuitPickerTitle">
-                <strong>Torneios deste circuito</strong>
+                <strong>Torneios compatíveis</strong>
                 <span>{circuitEditForm.tournamentIds.length} selecionado(s)</span>
               </div>
-              {tournaments.length === 0 ? (
+              {!getCircuitFormFormat(circuitEditForm) ? (
+                <p>Escolha primeiro o formato das etapas do circuito.</p>
+              ) : getCircuitCompatibleTournaments(circuitEditForm).length === 0 ? (
                 <p>Nenhum torneio criado ainda.</p>
               ) : (
                 <div className="circuitTournamentList">
-                  {tournaments.map((t) => {
+                  {getCircuitCompatibleTournaments(circuitEditForm).map((t) => {
                     const details = t.data || {};
                     const checked = circuitEditForm.tournamentIds.includes(t.id);
                     return (
@@ -11829,15 +11910,16 @@ setNewPublicInfo({
               )}
             </div>
 
-            <CircuitRankingSettingsEditor
+            {getCircuitFormFormat(circuitEditForm) ? <CircuitRankingSettingsEditor
               value={circuitEditForm.rankingSettings}
               onChange={(rankingSettings) => setCircuitEditForm((prev) => ({ ...prev, rankingSettings }))}
               rankingCriteria={circuitEditForm.rankingCriteria}
               rankingCriteriaMode={circuitEditForm.rankingCriteriaMode}
               inheritedCriteria={getCircuitCriteriaInfo(circuitEditForm.tournamentIds).value}
               mixedCriteria={getCircuitCriteriaInfo(circuitEditForm.tournamentIds).mixed}
+              tournamentFormat={getCircuitFormFormat(circuitEditForm)}
               onRankingCriteriaChange={(rankingCriteria, rankingCriteriaMode) => setCircuitEditForm((prev) => ({ ...prev, rankingCriteria, rankingCriteriaMode }))}
-            />
+            /> : null}
 
             <div className="editTournamentActions">
               <button type="button" className="secondaryBtn" onClick={() => setCircuitEditForm(null)}>Cancelar</button>
@@ -12533,16 +12615,23 @@ setNewPublicInfo({
       </div>
     </div>
 
+    <CircuitTournamentFormatSelector
+      value={getCircuitFormFormat(circuitForm)}
+      onChange={(format) => changeCircuitTournamentFormat(format)}
+    />
+
     <div className="circuitTournamentPicker">
       <div className="circuitPickerTitle">
-        <strong>Torneios deste circuito</strong>
+        <strong>Torneios compatíveis</strong>
         <span>{circuitForm.tournamentIds.length} selecionado(s)</span>
       </div>
-      {tournaments.length === 0 ? (
+      {!getCircuitFormFormat(circuitForm) ? (
+        <p>Escolha primeiro o formato das etapas do circuito.</p>
+      ) : getCircuitCompatibleTournaments(circuitForm).length === 0 ? (
         <p>Nenhum torneio criado ainda.</p>
       ) : (
         <div className="circuitTournamentList">
-          {tournaments.map((t) => {
+          {getCircuitCompatibleTournaments(circuitForm).map((t) => {
             const details = t.data || {};
             const checked = circuitForm.tournamentIds.includes(t.id);
             return (
@@ -12560,15 +12649,16 @@ setNewPublicInfo({
       )}
     </div>
 
-    <CircuitRankingSettingsEditor
+    {getCircuitFormFormat(circuitForm) ? <CircuitRankingSettingsEditor
       value={circuitForm.rankingSettings}
       onChange={(rankingSettings) => setCircuitForm((prev) => ({ ...prev, rankingSettings }))}
       rankingCriteria={circuitForm.rankingCriteria}
       rankingCriteriaMode={circuitForm.rankingCriteriaMode}
       inheritedCriteria={getCircuitCriteriaInfo(circuitForm.tournamentIds).value}
       mixedCriteria={getCircuitCriteriaInfo(circuitForm.tournamentIds).mixed}
+      tournamentFormat={getCircuitFormFormat(circuitForm)}
       onRankingCriteriaChange={(rankingCriteria, rankingCriteriaMode) => setCircuitForm((prev) => ({ ...prev, rankingCriteria, rankingCriteriaMode }))}
-    />
+    /> : null}
 
     <div className="circuitFormActions">
       <button type="button" className="actionCreateBtn" onClick={() => saveCircuit()}>Criar circuito</button>
@@ -16788,6 +16878,44 @@ function SimpleFormatInfoButton({ data, config, publicView = false }) {
   );
 }
 
+function CircuitTournamentFormatSelector({ value, onChange }) {
+  return (
+    <section className="circuitTournamentFormatSelector">
+      <div className="circuitSettingsTitleRow">
+        <div>
+          <strong>Formato das etapas do circuito</strong>
+          <span>Escolha primeiro para visualizar somente os torneios compatíveis.</span>
+        </div>
+        <FormatExplanationButton
+          iconOnly
+          ariaLabel="Entenda os formatos das etapas do circuito"
+          eyebrow="Formato das etapas"
+          title="Quais torneios podem fazer parte deste circuito?"
+          intro="Um circuito reúne etapas do mesmo formato. Os dois formatos não podem ser misturados no mesmo circuito."
+          sections={[
+            { title: "Classificação final — Super e Simples", content: <p>Use para modalidades sem chave eliminatória. Cada etapa termina com uma classificação do 1º ao último colocado, e a pontuação do circuito pode ser definida conforme essa posição final.</p> },
+            { title: "Fases alcançadas — Copas", content: <p>Use para torneios com fase de grupos e chave principal. A pontuação do circuito pode considerar campeão, vice, semifinal, quartas, oitavas e as demais fases alcançadas.</p> },
+            { title: "Lista de torneios", content: <p>Depois da escolha, aparecem somente os torneios compatíveis. Para reunir torneios do outro formato, crie outro circuito.</p> },
+            { title: "Disputas paralelas", content: <p>Nunca pontuam e nenhum resultado, vitória, game, saldo ou colocação das paralelas entra no ranking do circuito.</p> },
+          ]}
+        />
+      </div>
+      <div className="circuitFormatOptions" role="radiogroup" aria-label="Formato das etapas do circuito">
+        <button type="button" role="radio" aria-checked={value === circuitTournamentFormats.placement} className={value === circuitTournamentFormats.placement ? "selected" : ""} onClick={() => onChange(circuitTournamentFormats.placement)}>
+          <strong>Classificação final</strong>
+          <span>Super e Simples</span>
+          <small>Pontos conforme 1º, 2º, 3º lugar e demais colocações.</small>
+        </button>
+        <button type="button" role="radio" aria-checked={value === circuitTournamentFormats.cup} className={value === circuitTournamentFormats.cup ? "selected" : ""} onClick={() => onChange(circuitTournamentFormats.cup)}>
+          <strong>Fases alcançadas</strong>
+          <span>Copas</span>
+          <small>Pontos conforme campeão, vice, semifinal, quartas e outras fases.</small>
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function CircuitRankingSettingsEditor({
   value,
   onChange,
@@ -16796,6 +16924,7 @@ function CircuitRankingSettingsEditor({
   onRankingCriteriaChange,
   inheritedCriteria,
   mixedCriteria = false,
+  tournamentFormat = "",
 }) {
   const settings = normalizeCircuitRankingSettings(value);
 
@@ -16870,15 +16999,15 @@ function CircuitRankingSettingsEditor({
             <div className="circuitCompactChoices" role="radiogroup" aria-label="Quem acumula os pontos"><button type="button" role="radio" aria-checked={settings.identity === "individual"} className={settings.identity === "individual" ? "selected" : ""} onClick={() => updateSettings({ identity: "individual" })}>Individual</button><button type="button" role="radio" aria-checked={settings.identity === "team"} className={settings.identity === "team" ? "selected" : ""} onClick={() => updateSettings({ identity: "team" })}>Por dupla</button></div>
           </section>
 
-          <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Pontos nas modalidades com Ranking do Dia</strong><span>Super, Simples e formatos sem eliminatória</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os pontos por posição" eyebrow="Ranking do Dia" title="Pontos por posição final" intro="A posição definitiva do Ranking do Dia determina quantos pontos serão concedidos." sections={[{ title: "Como aplicar", content: <p>O 1º colocado recebe o valor do 1º lugar, o 2º recebe o valor do 2º e assim sucessivamente. Campos com zero não concedem pontos.</p> }]} /></div>
+          {tournamentFormat === circuitTournamentFormats.placement ? <section>
+            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por classificação final</strong><span>Super, Simples e formatos sem eliminatória</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por classificação final" eyebrow="Classificação final" title="Pontuação conforme a posição na etapa" intro="A classificação definitiva da etapa determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Como aplicar", content: <p>O 1º colocado recebe o valor do 1º lugar, o 2º recebe o valor do 2º e assim sucessivamente. Campos com zero não concedem pontos.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades Super, Simples e outras que terminem com uma classificação final, sem chave eliminatória.</p> }]} /></div>
             <div className="circuitPointsGrid positions">{settings.points.positions.map((point, index) => <label key={index}><span>{index + 1}º lugar</span><input type="number" min="0" step="1" value={point} onChange={(event) => updatePoint("positions", index, event.target.value)} /></label>)}</div>
-          </section>
+          </section> : null}
 
-          <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Pontos nas modalidades de copa</strong><span>Somente fase de grupos e chave principal</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os pontos nas copas" eyebrow="Copas" title="Pontuação pela fase alcançada" intro="A última fase disputada na chave principal define a pontuação." sections={[{ title: "Chave principal", content: <p>Campeão, vice e eliminados recebem o valor configurado para o resultado alcançado. Se houver disputa de 3º lugar, 3º e 4º usam os campos próprios.</p> }, { title: "Fase de grupos", content: <p>Quem não avançar recebe o valor definido pelo organizador para eliminação nos grupos, inclusive zero.</p> }, { title: "Paralelas", content: <p>Resultados e jogos das disputas paralelas são ignorados integralmente.</p> }]} /></div>
+          {tournamentFormat === circuitTournamentFormats.cup ? <section>
+            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por fases alcançadas</strong><span>Copas com grupos e chave principal</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por fases alcançadas" eyebrow="Fases alcançadas" title="Pontuação conforme o avanço na copa" intro="A última fase atingida na chave principal determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Chave principal", content: <p>Campeão, vice e eliminados recebem o valor configurado para o resultado alcançado. Se houver disputa de 3º lugar, 3º e 4º usam os campos próprios.</p> }, { title: "Fase de grupos", content: <p>Quem não avançar recebe o valor definido pelo organizador para eliminação nos grupos, inclusive zero.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades de copa com fase de grupos e chave eliminatória principal.</p> }, { title: "Disputas paralelas", content: <p>Resultados e jogos das disputas paralelas são ignorados integralmente e nunca pontuam.</p> }]} /></div>
             <div className="circuitPointsGrid">{cupPointFields.map(([key, label]) => <label key={key}><span>{label}</span><input type="number" min="0" step="1" value={settings.points.cup[key]} onChange={(event) => updatePoint("cup", key, event.target.value)} /></label>)}</div>
-          </section>
+          </section> : null}
 
           <section>
             <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>Todas as pontuações sempre vêm primeiro</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="O total de todas as pontuações é o primeiro critério. Os campos abaixo definem apenas a sequência usada quando esse total for igual." sections={[{ title: "Vitórias", content: <p>Soma cada partida vencida nos jogos válidos dos torneios. Nas modalidades de Copa, entram apenas a fase de grupos e a chave principal.</p> }, { title: "Melhores pontuações nas etapas", content: <p>Compara a maior pontuação obtida em uma etapa; persistindo o empate, compara a segunda maior, depois a terceira e assim sucessivamente.</p> }, { title: "Títulos, vices e terceiros lugares", content: <p>Quando selecionados, comparam quantas vezes o participante alcançou cada colocação na chave principal.</p> }, { title: "Sem critério adicional", content: <p>Encerra a sequência naquele ponto. Se o empate continuar, o sistema solicitará o sorteio.</p> }, { title: "Sorteio", content: <p>É sempre o último recurso. Só aparece quando todos os critérios escolhidos permanecerem exatamente empatados.</p> }, { title: "Disputas paralelas", content: <p>Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa do ranking ou dos desempates.</p> }]} /></div>

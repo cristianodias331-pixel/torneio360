@@ -383,6 +383,21 @@ assert.ok(
 );
 assert.ok(mainSource.includes('title="Ranking do dia"'), "O ranking do torneio não usa o título Ranking do dia.");
 assert.ok(mainSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
+assert.ok(
+  mainSource.includes("function CircuitTournamentFormatSelector")
+    && mainSource.includes("Classificação final")
+    && mainSource.includes("Fases alcançadas")
+    && mainSource.includes("getCircuitCompatibleTournaments")
+    && mainSource.includes("getTournamentCircuitFormat"),
+  "O circuito não separa classificação final e fases alcançadas antes da escolha dos torneios."
+);
+assert.ok(
+  mainSource.includes("tournamentFormat === circuitTournamentFormats.placement ? <section>")
+    && mainSource.includes("tournamentFormat === circuitTournamentFormats.cup ? <section>")
+    && mainSource.includes("Disputas paralelas")
+    && mainSource.includes("nunca pontuam"),
+  "As configurações exclusivas de cada formato ou a explicação das disputas paralelas estão incompletas."
+);
 assert.ok(mainSource.includes('tournaments={tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
 assert.ok(mainSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
 assert.ok(mainSource.includes('pts: "Total de Games"'), "A coluna de games ainda usa a nomenclatura antiga.");

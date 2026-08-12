@@ -17465,6 +17465,56 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
   background: var(--surface, #fff);
 }
 
+.circuitTournamentFormatSelector {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line, #d7e0ec);
+  border-radius: 20px;
+  background: var(--surface, #fff);
+}
+
+.circuitFormatOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.circuitFormatOptions button {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 96px;
+  padding: 15px 46px 15px 16px;
+  border: 1px solid var(--line, #cfdaea);
+  background: var(--soft-surface, #f5f8fc);
+  color: var(--text, #0d1b36);
+  box-shadow: none;
+  text-align: left;
+}
+
+.circuitFormatOptions button > span { color: #2563eb; font-size: .78rem; font-weight: 900; }
+.circuitFormatOptions button > small { color: var(--muted, #687992); font-size: .74rem; font-weight: 700; line-height: 1.4; }
+.circuitFormatOptions button.selected {
+  border-color: #8b5cf6;
+  background: color-mix(in srgb, #8b5cf6 12%, var(--surface, #fff));
+  box-shadow: inset 3px 0 0 #8b5cf6, 0 10px 24px rgba(109, 40, 217, .12);
+}
+.circuitFormatOptions button.selected::after {
+  content: "✓ Selecionado";
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 900;
+}
+
 .circuitSettingsTitleRow {
   display: flex;
   align-items: center;
@@ -17531,6 +17581,8 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .publicCircuitRankingRule { margin: 4px 0 0; color: #6d28d9; font-size: .78rem; font-weight: 800; }
 
 html[data-theme="dark"] .circuitRankingSettings,
+html[data-theme="dark"] .circuitTournamentFormatSelector,
+html[data-theme="dark"] .circuitFormatOptions button,
 html[data-theme="dark"] .circuitRankingModeOptions button,
 html[data-theme="dark"] .circuitCompactChoices button {
   background: #111d2d;
@@ -17538,6 +17590,7 @@ html[data-theme="dark"] .circuitCompactChoices button {
   color: #f8fafc;
 }
 html[data-theme="dark"] .circuitRankingModeOptions button.selected,
+html[data-theme="dark"] .circuitFormatOptions button.selected,
 html[data-theme="dark"] .circuitCompactChoices button.selected,
 html[data-theme="dark"] .circuitRuleSummary,
 html[data-theme="dark"] .circuitRankingRuleBadge { background: rgba(139, 92, 246, .15); border-color: #a78bfa; }
@@ -18238,14 +18291,17 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 }
 
 @media (max-width: 760px) {
-  .circuitRankingSettings { padding: 14px; border-radius: 16px; }
+  .circuitRankingSettings,
+  .circuitTournamentFormatSelector { padding: 14px; border-radius: 16px; }
   .circuitSettingsTitleRow { align-items: flex-start; }
   .circuitRankingModeOptions,
+  .circuitFormatOptions,
   .circuitCompactChoices,
   .circuitTieBreakOrder { grid-template-columns: 1fr; }
   .circuitPointsGrid,
   .circuitPointsGrid.positions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .circuitRankingModeOptions button { min-height: 68px; }
+  .circuitFormatOptions button { min-height: 88px; }
   .circuitRankingRuleBadge { width: 100%; min-width: 0; }
   .rankingTableHeading,
   .cupPodiumHeading {
