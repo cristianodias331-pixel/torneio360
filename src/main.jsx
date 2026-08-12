@@ -2188,14 +2188,18 @@ function ModalityPicker({ value, onChange, options = [], disabled = false, legac
       const rect = trigger.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
+      const topbar = pickerRef.current?.closest(".playAppShell")?.querySelector(".playTopbar");
+      const topbarBottom = topbar?.getBoundingClientRect().bottom || 0;
+      const safeTop = Math.max(16, topbarBottom + 8);
       const width = Math.min(720, Math.max(280, viewportWidth - 32));
       const left = Math.min(Math.max(16, rect.left), Math.max(16, viewportWidth - width - 16));
-      const estimatedHeight = Math.min(620, viewportHeight - 32);
+      const availableHeight = Math.max(260, viewportHeight - safeTop - 16);
+      const estimatedHeight = Math.min(620, availableHeight);
       const below = rect.bottom + 8;
       const top = below + estimatedHeight <= viewportHeight - 16
         ? below
-        : Math.max(16, Math.min(below, rect.top - estimatedHeight - 8));
-      setPanelPosition({ top, left, width });
+        : safeTop;
+      setPanelPosition({ top, left, width, maxHeight: Math.max(260, viewportHeight - top - 16) });
     };
     const closeOnOutsideClick = (event) => {
       if (!pickerRef.current?.contains(event.target) && !panelRef.current?.contains(event.target)) setOpen(false);
