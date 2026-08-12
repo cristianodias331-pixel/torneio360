@@ -716,6 +716,7 @@ const circuitTieBreakOptions = [
   { value: "runnerUps", label: "Maior quantidade de vice-campeonatos", key: "runnerUps" },
   { value: "thirdPlaces", label: "Maior quantidade de terceiros lugares", key: "thirdPlaces" },
   { value: "bestStage", label: "Melhores pontuações obtidas nas etapas", key: "bestStagePoints" },
+  { value: "none", label: "Sem critério adicional", key: null },
 ];
 
 const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140, 120, 100, 80, 60];
@@ -740,7 +741,7 @@ function normalizeCircuitTieBreakOrder(value) {
   const allowed = new Set(circuitTieBreakOptions.map((option) => option.value));
   const source = Array.isArray(value) ? value : [];
   const unique = source.filter((item, index) => allowed.has(item) && source.indexOf(item) === index);
-  const fallback = ["wins", "bestStage", "titles"];
+  const fallback = ["wins", "bestStage", "none"];
   fallback.forEach((item) => {
     if (!unique.includes(item)) unique.push(item);
   });
@@ -756,8 +757,15 @@ function normalizeCircuitRankingSettings(value) {
   return {
     mode: source.mode === circuitRankingModes.placement ? circuitRankingModes.placement : circuitRankingModes.performance,
     identity: source.identity === "team" ? "team" : "individual",
-    tieBreakMode: source.tieBreakMode === "custom" ? "custom" : "cearense",
-    tieBreakOrder: normalizeCircuitTieBreakOrder(source.tieBreakOrder),
+    tieBreakOrder: source.tieBreakMode === "cearense"
+      ? ["wins", "bestStage", "none"]
+      : normalizeCircuitTieBreakOrder(source.tieBreakOrder),
+    tieBreakDrawOrder: Array.isArray(source.tieBreakDrawOrder)
+      ? source.tieBreakDrawOrder.map((item) => String(item)).filter(Boolean)
+      : [],
+    tieBreakDrawSignatures: source.tieBreakDrawSignatures && typeof source.tieBreakDrawSignatures === "object"
+      ? Object.fromEntries(Object.entries(source.tieBreakDrawSignatures).map(([key, signature]) => [String(key), String(signature)]))
+      : {},
     points: {
       positions: defaultCircuitPositionPoints.map((fallback, index) => (
         Object.prototype.hasOwnProperty.call(sourcePositions, index)
@@ -775,10 +783,83 @@ function normalizeCircuitRankingSettings(value) {
 }
 
 function getCircuitTieBreakOrder(settings) {
+  return normalizeCircuitRankingSettings(settings).tieBreakOrder.filter((criterion) => criterion !== "none");
+}
+
+function compareCircuitStageScores(first, second) {
+  const firstScores = Array.isArray(first?.stageScores) && first.stageScores.length
+    ? first.stageScores
+    : [Number(first?.bestStagePoints || 0)];
+  const secondScores = Array.isArray(second?.stageScores) && second.stageScores.length
+    ? second.stageScores
+    : [Number(second?.bestStagePoints || 0)];
+  const length = Math.max(firstScores.length, secondScores.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = Number(secondScores[index] || 0) - Number(firstScores[index] || 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function getCircuitTieSignature(row, settings) {
+  const values = [Number(row?.circuitPoints || row?.circuit_points || 0)];
+  getCircuitTieBreakOrder(settings).forEach((criterion) => {
+    if (criterion === "bestStage") {
+      const scores = Array.isArray(row?.stageScores)
+        ? row.stageScores.map((score) => Number(score || 0))
+        : [Number(row?.bestStagePoints || 0)];
+      while (scores.length > 0 && scores[scores.length - 1] === 0) scores.pop();
+      values.push(...scores);
+      return;
+    }
+    const option = circuitTieBreakOptions.find((item) => item.value === criterion);
+    values.push(Number(row?.[option?.key] || 0));
+  });
+  return JSON.stringify(values);
+}
+
+function getCircuitTieBreakLabel(settings, { compact = false } = {}) {
+  const labels = getCircuitTieBreakOrder(settings).map((criterion) => {
+    if (criterion === "wins") return "Vitórias";
+    if (criterion === "bestStage") return compact ? "Melhores etapas" : "Melhores pontuações nas etapas";
+    const option = circuitTieBreakOptions.find((item) => item.value === criterion);
+    return option?.label?.replace(/^Maior (?:quantidade de )?/i, "") || criterion;
+  });
+  return [compact ? "Pontos" : "Todas as pontuações", ...labels, "Sorteio"].join(" → ");
+}
+
+function applyCircuitDrawOrder(first, second, settings) {
   const normalized = normalizeCircuitRankingSettings(settings);
-  return normalized.tieBreakMode === "cearense"
-    ? ["wins", "bestStage"]
-    : normalizeCircuitTieBreakOrder(normalized.tieBreakOrder);
+  const drawOrder = normalized.tieBreakDrawOrder;
+  const firstId = String(first?.id || "");
+  const secondId = String(second?.id || "");
+  if (normalized.tieBreakDrawSignatures[firstId] !== getCircuitTieSignature(first, normalized)) return 0;
+  if (normalized.tieBreakDrawSignatures[secondId] !== getCircuitTieSignature(second, normalized)) return 0;
+  const firstIndex = drawOrder.indexOf(firstId);
+  const secondIndex = drawOrder.indexOf(secondId);
+  if (firstIndex >= 0 && secondIndex >= 0) return firstIndex - secondIndex;
+  return 0;
+}
+
+function getUnresolvedCircuitTieGroups(groups, settings) {
+  const normalized = normalizeCircuitRankingSettings(settings);
+  const drawOrder = normalized.tieBreakDrawOrder;
+  return (groups || []).flatMap((group) => {
+    const bySignature = new Map();
+    (group.rows || []).forEach((row) => {
+      const signature = getCircuitTieSignature(row, settings);
+      if (!bySignature.has(signature)) bySignature.set(signature, []);
+      bySignature.get(signature).push(row);
+    });
+    return Array.from(bySignature.values()).filter((rows) => (
+      rows.length > 1
+      && rows.some((row) => {
+        const id = String(row.id || "");
+        return !drawOrder.includes(id)
+          || normalized.tieBreakDrawSignatures[id] !== getCircuitTieSignature(row, normalized);
+      })
+    ));
+  });
 }
 
 function getCircuitPlacementColumns(settings) {
@@ -1311,6 +1392,7 @@ function getPublicCircuitDirectoryItem(circuit, rankingGroups = [], rankingCrite
         runnerUps: Number(row.runnerUps || 0),
         thirdPlaces: Number(row.thirdPlaces || 0),
         bestStagePoints: Number(row.stageScores?.[0] || row.bestStagePoints || 0),
+        stageScores: Array.isArray(row.stageScores) ? row.stageScores.map((score) => Number(score || 0)) : [],
       })),
     })),
   };
@@ -8747,6 +8829,67 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     await syncPublicArenaDirectory(tournaments, synchronizedCircuits);
   }
 
+  async function updateCircuitRankingSettings(circuit, rankingSettings) {
+    if (!ensureCloudConnection("atualizar o ranking do circuito")) return false;
+    const normalizedSettings = normalizeCircuitRankingSettings(rankingSettings);
+    const previousCircuits = circuitsRef.current;
+    const nextCircuit = { ...circuit, rankingSettings: normalizedSettings };
+    const nextCircuits = previousCircuits.map((item) => item.id === circuit.id ? nextCircuit : item);
+    saveCircuits(nextCircuits);
+
+    const { data: savedCircuit, error } = await supabase
+      .from("circuits")
+      .update({ ranking_settings: normalizedSettings, updated_at: new Date().toISOString() })
+      .eq("id", circuit.id)
+      .eq("user_id", user.id)
+      .select("*")
+      .maybeSingle();
+
+    if (error || !savedCircuit) {
+      console.error("Erro ao atualizar desempate do circuito:", error);
+      saveCircuits(previousCircuits);
+      showNotice("error", "Desempate não atualizado", "Não foi possível salvar o sorteio do circuito.");
+      return false;
+    }
+
+    const normalizedCircuit = {
+      ...normalizeCircuitRow(savedCircuit),
+      rankingHistory: circuit.rankingHistory || {},
+    };
+    const savedCircuits = nextCircuits.map((item) => item.id === circuit.id ? normalizedCircuit : item);
+    saveCircuits(savedCircuits);
+    await syncPublicArenaDirectory(tournamentsRef.current, savedCircuits);
+    return true;
+  }
+
+  async function drawCircuitRankingTies(circuit, rankingGroups) {
+    const settings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+    const tieGroups = getUnresolvedCircuitTieGroups(rankingGroups, settings);
+    if (tieGroups.length === 0) return;
+    const shuffledIds = tieGroups.flatMap((rows) => {
+      const ids = rows.map((row) => String(row.id || ""));
+      for (let index = ids.length - 1; index > 0; index -= 1) {
+        const randomValues = new Uint32Array(1);
+        globalThis.crypto.getRandomValues(randomValues);
+        const swapIndex = randomValues[0] % (index + 1);
+        [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+      }
+      return ids;
+    });
+    const tieBreakDrawSignatures = Object.fromEntries(
+      tieGroups.flatMap((rows) => rows.map((row) => ([
+        String(row.id || ""),
+        getCircuitTieSignature(row, settings),
+      ])))
+    );
+    const success = await updateCircuitRankingSettings(circuit, {
+      ...settings,
+      tieBreakDrawOrder: shuffledIds,
+      tieBreakDrawSignatures,
+    });
+    if (success) showNotice("success", "Sorteio concluído", "A ordem do empate foi sorteada e salva no circuito.");
+  }
+
   async function syncAutomaticCircuitCriteria(nextTournaments, circuitSource = circuits) {
     const changedCircuits = [];
     const nextCircuits = (circuitSource || []).map((circuit) => {
@@ -8958,17 +9101,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
         for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
           if (criterion === "bestStage") {
-            const length = Math.max(a.stageScores.length, b.stageScores.length);
-            for (let index = 0; index < length; index += 1) {
-              const difference = Number(b.stageScores[index] || 0) - Number(a.stageScores[index] || 0);
-              if (difference !== 0) return difference;
-            }
+            const difference = compareCircuitStageScores(a, b);
+            if (difference !== 0) return difference;
             continue;
           }
           const option = circuitTieBreakOptions.find((item) => item.value === criterion);
           const difference = Number(b[option?.key] || 0) - Number(a[option?.key] || 0);
           if (difference !== 0) return difference;
         }
+        const drawDifference = applyCircuitDrawOrder(a, b, rankingSettings);
+        if (drawDifference !== 0) return drawDifference;
         return a.name.localeCompare(b.name, "pt-BR");
       }
       for (const key of criteria.order) {
@@ -12511,8 +12653,11 @@ setNewPublicInfo({
               const placementMode = rankingSettings.mode === circuitRankingModes.placement;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
+              const unresolvedTieGroups = placementMode
+                ? getUnresolvedCircuitTieGroups(circuitRankingGroups, rankingSettings)
+                : [];
               const circuitCriteriaLabel = placementMode
-                ? (rankingSettings.tieBreakMode === "cearense" ? "Pontos → Vitórias → Melhores etapas" : "Pontos → Critérios personalizados")
+                ? getCircuitTieBreakLabel(rankingSettings, { compact: true })
                 : getRankingCriteria(effectiveCircuitCriteria).label;
               return circuitRankingGroups.length ? (
                 <div className="circuitRankingBox">
@@ -12554,6 +12699,15 @@ setNewPublicInfo({
                         </button>
                       ) : null}
                     </label> : <div className="circuitRankingRuleBadge"><strong>Pontuação por colocação</strong><span>{circuitCriteriaLabel}</span><small>Disputas paralelas não pontuam.</small></div>}
+                    {unresolvedTieGroups.length > 0 ? (
+                      <button
+                        type="button"
+                        className="circuitTieDrawButton"
+                        onClick={() => void drawCircuitRankingTies(circuit, circuitRankingGroups)}
+                      >
+                        <Dices aria-hidden="true" /> Sortear desempate
+                      </button>
+                    ) : null}
                   </div>
                   {/* Legacy card-style circuit ranking kept here only as a reference.
                   {circuitRankingGroups.map((group) => (
@@ -16727,9 +16881,9 @@ function CircuitRankingSettingsEditor({
           </section>
 
           <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>O total de pontos sempre vem primeiro</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="Os critérios abaixo só são usados quando o total de pontos for igual." sections={[{ title: "Modelo Campeonato Cearense", content: <p>Compara primeiro a quantidade de vitórias e depois as melhores pontuações obtidas nas etapas, da maior para a menor. Persistindo o empate, a decisão fica com o organizador.</p> }, { title: "Personalizado", content: <p>O organizador escolhe três critérios e a ordem de aplicação. Se todos continuarem iguais, a decisão final permanece manual.</p> }, { title: "Paralelas", content: <p>Vitórias, colocações e resultados das disputas paralelas não participam de nenhum desempate.</p> }]} /></div>
-            <div className="circuitCompactChoices" role="radiogroup" aria-label="Modelo dos critérios de desempate"><button type="button" role="radio" aria-checked={settings.tieBreakMode === "cearense"} className={settings.tieBreakMode === "cearense" ? "selected" : ""} onClick={() => updateSettings({ tieBreakMode: "cearense" })}>Modelo Campeonato Cearense</button><button type="button" role="radio" aria-checked={settings.tieBreakMode === "custom"} className={settings.tieBreakMode === "custom" ? "selected" : ""} onClick={() => updateSettings({ tieBreakMode: "custom" })}>Personalizar</button></div>
-            {settings.tieBreakMode === "custom" ? <div className="circuitTieBreakOrder">{settings.tieBreakOrder.map((criterion, index) => <label key={index}><span>{index + 1}º critério</span><select value={criterion} onChange={(event) => { const next = [...settings.tieBreakOrder]; next[index] = event.target.value; updateSettings({ tieBreakOrder: next }); }}>{circuitTieBreakOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}</div> : <p className="circuitRuleSummary">Pontos → Vitórias → Melhores pontuações nas etapas → Decisão do organizador.</p>}
+            <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>Todas as pontuações sempre vêm primeiro</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="O total de todas as pontuações é o primeiro critério. Os campos abaixo definem apenas a sequência usada quando esse total for igual." sections={[{ title: "Vitórias", content: <p>Soma cada partida vencida nos jogos válidos dos torneios. Nas modalidades de Copa, entram apenas a fase de grupos e a chave principal.</p> }, { title: "Melhores pontuações nas etapas", content: <p>Compara a maior pontuação obtida em uma etapa; persistindo o empate, compara a segunda maior, depois a terceira e assim sucessivamente.</p> }, { title: "Títulos, vices e terceiros lugares", content: <p>Quando selecionados, comparam quantas vezes o participante alcançou cada colocação na chave principal.</p> }, { title: "Sem critério adicional", content: <p>Encerra a sequência naquele ponto. Se o empate continuar, o sistema solicitará o sorteio.</p> }, { title: "Sorteio", content: <p>É sempre o último recurso. Só aparece quando todos os critérios escolhidos permanecerem exatamente empatados.</p> }, { title: "Disputas paralelas", content: <p>Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa do ranking ou dos desempates.</p> }]} /></div>
+            <div className="circuitTieBreakOrder">{settings.tieBreakOrder.map((criterion, index) => <label key={index}><span>{index + 1}º critério</span><select value={criterion} onChange={(event) => { const next = [...settings.tieBreakOrder]; next[index] = event.target.value; updateSettings({ tieBreakOrder: next, tieBreakDrawOrder: [], tieBreakDrawSignatures: {} }); }}>{circuitTieBreakOptions.filter((option) => option.value === criterion || !settings.tieBreakOrder.includes(option.value)).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}</div>
+            <p className="circuitRuleSummary">{getCircuitTieBreakLabel(settings)}</p>
           </section>
         </div>
       )}
@@ -18311,8 +18465,9 @@ function calculateCircuitTournamentRanking(data, type, rankingCriteriaValue = de
     bal: 0,
     played: 0,
   }));
-  const bracketGames = (data.brackets || []).map((game) => (
-    resolveBracketGame(game, data.brackets || [], data)
+  const mainBracketGames = (data.brackets || []).filter((game) => game.phase === "main");
+  const bracketGames = mainBracketGames.map((game) => (
+    resolveBracketGame(game, mainBracketGames, data)
   ));
   const games = [...(data.schedule || []).flat(), ...bracketGames];
   const winningScore = getWinningScore(data);
@@ -18435,17 +18590,16 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
       if (pointDifference !== 0) return pointDifference;
       for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
         if (criterion === "bestStage") {
-          const length = Math.max(first.stageScores.length, second.stageScores.length);
-          for (let index = 0; index < length; index += 1) {
-            const difference = Number(second.stageScores[index] || 0) - Number(first.stageScores[index] || 0);
-            if (difference !== 0) return difference;
-          }
+          const difference = compareCircuitStageScores(first, second);
+          if (difference !== 0) return difference;
           continue;
         }
         const option = circuitTieBreakOptions.find((item) => item.value === criterion);
         const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
         if (difference !== 0) return difference;
       }
+      const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
+      if (drawDifference !== 0) return drawDifference;
       return first.name.localeCompare(second.name, "pt-BR");
     }
     for (const key of criteria.order) {
@@ -19085,10 +19239,17 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
               const pointDifference = Number(second.circuitPoints || second.circuit_points || 0) - Number(first.circuitPoints || first.circuit_points || 0);
               if (pointDifference !== 0) return pointDifference;
               for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
+                if (criterion === "bestStage") {
+                  const difference = compareCircuitStageScores(first, second);
+                  if (difference !== 0) return difference;
+                  continue;
+                }
                 const option = circuitTieBreakOptions.find((item) => item.value === criterion);
                 const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
                 if (difference !== 0) return difference;
               }
+              const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
+              if (drawDifference !== 0) return drawDifference;
             }
             for (const key of criteria.order) {
               const difference = Number(second[key] || 0) - Number(first[key] || 0);
@@ -19497,7 +19658,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
   const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
   const circuitCriteriaLabel = placementMode
-    ? (rankingSettings.tieBreakMode === "cearense" ? "Pontos → Vitórias → Melhores etapas" : "Pontos → Critérios personalizados")
+    ? getCircuitTieBreakLabel(rankingSettings, { compact: true })
     : getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria).label;
   const arenaName = organizer.arenaName || "Arena Torneio360";
   const selectedTournamentIds = new Set((circuit?.tournament_ids || circuit?.tournamentIds || []).map((id) => String(id)));

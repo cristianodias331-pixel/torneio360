@@ -17419,6 +17419,29 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .circuitCriteriaCard p { margin: 5px 0 0; color: var(--muted, #74849a); }
 .circuitCriteriaCard select { min-width: 0; width: 100%; }
 .circuitAutomaticToggle { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; cursor: pointer; }
+
+.circuitTieDrawButton,
+.proDashboard.playAppShell .circuitTieDrawButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 15px;
+  border: 1px solid #7c3aed;
+  border-radius: 13px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(124, 58, 237, .22);
+}
+
+.circuitTieDrawButton svg { width: 17px; height: 17px; }
+
+@media (max-width: 640px) {
+  .circuitTieDrawButton,
+  .proDashboard.playAppShell .circuitTieDrawButton { width: 100%; }
+}
 .circuitAutomaticToggle input { width: 20px; height: 20px; }
 .circuitCriteriaWarning { grid-column: 1 / -1; padding: 10px 12px; border-radius: 10px; color: #9a5200; background: #fff1d2; }
 .circuitIdentityHint {
