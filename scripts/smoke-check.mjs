@@ -566,9 +566,11 @@ assert.ok(
     && mainSource.includes("function calculateCircuitPlacementRows")
     && mainSource.includes("function CircuitRankingSettingsEditor")
     && mainSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
-    && mainSource.includes('role="radiogroup" aria-label="Modelo dos critérios de desempate"')
+    && mainSource.includes('className="circuitTieBreakOrder"')
+    && mainSource.includes("getCircuitTieBreakLabel(settings)")
+    && mainSource.includes('const mainBracketGames = (data.brackets || []).filter((game) => game.phase === "main")')
     && styleSource.includes('button:is(.selected, [aria-checked="true"])')
-    && mainSource.includes("Disputas paralelas não pontuam"),
+    && mainSource.includes("Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa"),
   "O ranking configurável não exclui as paralelas ou perdeu sua configuração explicativa."
 );
 assert.ok(
