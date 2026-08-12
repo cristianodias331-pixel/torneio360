@@ -78,6 +78,27 @@ for (const marker of requiredApplicationMarkers) {
   assert.ok(mainSource.includes(marker), `Fluxo essencial ausente: ${marker}`);
 }
 
+for (const actionClass of [
+  "actionCreateBtn",
+  "actionConfirmBtn",
+  "actionRestoreBtn",
+  "actionShuffleBtn",
+  "actionGenerateBtn",
+  "actionOpenBtn",
+  "actionNavigateBtn",
+]) {
+  assert.ok(
+    mainSource.includes(actionClass) && styleSource.includes(`button.${actionClass}`),
+    `A cor semantica da acao ${actionClass} esta ausente.`
+  );
+}
+
+assert.ok(
+  styleSource.includes("background: var(--ui-surface-raised) !important;")
+    && styleSource.includes("color: var(--ui-text-strong) !important;"),
+  "A base visual dos botoes voltou a impor uma cor de acao generica."
+);
+
 assert.ok(
   mainSource.includes("ensureArenaProfileReadyForPublication")
     && mainSource.includes("Informe o nome da arena e o nome do responsável"),

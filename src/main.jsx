@@ -11484,7 +11484,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="cancelBtn" onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
-              <button type="button" onClick={saveEditedTournament}>Salvar alterações</button>
+              <button type="button" className="actionConfirmBtn" onClick={saveEditedTournament}>Salvar alterações</button>
             </div>
           </div>
         </div>
@@ -11699,7 +11699,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="secondaryBtn" onClick={() => setCircuitEditForm(null)}>Cancelar</button>
-              <button type="button" onClick={() => saveCircuit(circuitEditForm)}>Salvar alterações</button>
+              <button type="button" className="actionConfirmBtn" onClick={() => saveCircuit(circuitEditForm)}>Salvar alterações</button>
             </div>
           </div>
         </div>
@@ -11876,7 +11876,7 @@ setNewPublicInfo({
         <strong>{arena.arena_name || arena.name || "Arena cadastrada"}</strong>
         <small className="arenaFeedOrganizer"><UserRound aria-hidden="true" /> Organizador: {arena.name || "Não informado"}</small>
         <small><MapPin aria-hidden="true" /> {[arena.city, arena.state].filter(Boolean).join("/") || "Local não informado"}</small>
-        <button type="button" onClick={() => openArenaProfile(arena)}>Acessar arena</button>
+        <button type="button" className="actionNavigateBtn" onClick={() => openArenaProfile(arena)}>Acessar arena</button>
       </article>
     ))}
   </div>
@@ -11891,7 +11891,7 @@ setNewPublicInfo({
         <h2>Meus torneios</h2>
         <p>Acompanhe os eventos em andamento, os próximos e o histórico encerrado.</p>
       </div>
-      <button type="button" onClick={() => setCreateTournamentOpen(true)}>+ Criar torneio</button>
+      <button type="button" className="actionCreateBtn" onClick={() => setCreateTournamentOpen(true)}>+ Criar torneio</button>
     </section>
 
     {createTournamentOpen ? (
@@ -12161,7 +12161,7 @@ setNewPublicInfo({
   </>
   )}
 
- <button type="button" onClick={createTournament} disabled={saving}>
+ <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving}>
   {saving ? "Salvando..." : "Criar torneio"}
 </button>
       </section>
@@ -12249,7 +12249,7 @@ setNewPublicInfo({
 
                   <div className="tournamentActions">
                     <button type="button" className="editBtn" onClick={() => openEditTournament(t)}>Editar</button>
-                    <button type="button" onClick={() => openTournament(t)}>Abrir</button>
+                    <button type="button" className="actionOpenBtn" onClick={() => openTournament(t)}>Abrir</button>
                     <button type="button" className="shareTournamentBtn" onClick={shareArenaProfile}><Share2 aria-hidden="true" /> Compartilhar</button>
                     <button type="button" className="deleteBtn" onClick={() => setDeleteTarget(t)}>Excluir</button>
                   </div>
@@ -12331,7 +12331,7 @@ setNewPublicInfo({
 
                   <div className="tournamentActions">
                     <button type="button" className="editBtn" onClick={() => openEditTournament(t)}>Editar</button>
-                    <button type="button" onClick={() => openTournament(t)}>Abrir</button>
+                    <button type="button" className="actionOpenBtn" onClick={() => openTournament(t)}>Abrir</button>
                     <button type="button" className="shareTournamentBtn" onClick={shareArenaProfile}><Share2 aria-hidden="true" /> Compartilhar</button>
                     <button type="button" className="deleteBtn" onClick={() => setDeleteTarget(t)}>Excluir</button>
                   </div>
@@ -12429,7 +12429,7 @@ setNewPublicInfo({
     />
 
     <div className="circuitFormActions">
-      <button type="button" onClick={() => saveCircuit()}>Criar circuito</button>
+      <button type="button" className="actionCreateBtn" onClick={() => saveCircuit()}>Criar circuito</button>
     </div>
   </section>
   </div>
@@ -12735,7 +12735,7 @@ setNewPublicInfo({
             </div>
 
             <div className="tournamentActions">
-              <button type="button" onClick={() => restoreTournament(t)}>Recuperar</button>
+              <button type="button" className="actionRestoreBtn" onClick={() => restoreTournament(t)}>Recuperar</button>
             </div>
           </div>
         );
@@ -12837,7 +12837,7 @@ setNewPublicInfo({
             </div>
             <div className="tournamentActions">
               <button type="button" className="editBtn" onClick={() => openEditTournament(t)}>Editar</button>
-              <button type="button" onClick={() => openTournament(t)}>Abrir</button>
+              <button type="button" className="actionOpenBtn" onClick={() => openTournament(t)}>Abrir</button>
               <button type="button" className="shareTournamentBtn" onClick={shareArenaProfile}><Share2 aria-hidden="true" /> Compartilhar</button>
               <button type="button" className="deleteBtn" onClick={() => setDeleteTarget(t)}>Excluir</button>
             </div>
@@ -12953,7 +12953,7 @@ setNewPublicInfo({
 
     </div>
 
-    <button className="saveProfileBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+    <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
     {profileSaveSuccess ? (
       <div className="profileSaveMiniNotice" role="status" aria-live="polite">
         ✅ Alterado com sucesso
@@ -16211,8 +16211,8 @@ return (
 
           {!isCupType(config) && (
             <div className="actions">
-              <button type="button" onClick={requestShuffleNames}>Sortear nomes</button>
-              <button type="button" onClick={requestGenerate}>Criar rodadas e jogos</button>
+              <button type="button" className="actionShuffleBtn" onClick={requestShuffleNames}>Sortear nomes</button>
+              <button type="button" className="actionGenerateBtn" onClick={requestGenerate}>Criar rodadas e jogos</button>
               {data.namesShuffled && data.lastShuffleVideo ? (
                 <button type="button" className="shuffleVideoReopenButton" onClick={() => setShuffleVideoSnapshot(data.lastShuffleVideo)}>
                   <Share2 aria-hidden="true" /> Vídeo do último sorteio
@@ -16230,8 +16230,8 @@ return (
             </div>
             <p>Use o sorteio para embaralhar as duplas e depois gere a fase de grupos.</p>
             <div className="actions">
-              <button type="button" onClick={requestShuffleNames}>Sortear grupos</button>
-              <button type="button" onClick={requestGenerate}>Gerar fase de grupos</button>
+              <button type="button" className="actionShuffleBtn" onClick={requestShuffleNames}>Sortear grupos</button>
+              <button type="button" className="actionGenerateBtn" onClick={requestGenerate}>Gerar fase de grupos</button>
               {data.groupsShuffled && data.lastShuffleVideo ? (
                 <button type="button" className="shuffleVideoReopenButton" onClick={() => setShuffleVideoSnapshot(data.lastShuffleVideo)}>
                   <Share2 aria-hidden="true" /> Vídeo do último sorteio
@@ -16329,7 +16329,7 @@ return (
               />
 
               <div className="actions">
-                <button type="button" onClick={requestGenerateBrackets}>
+                <button type="button" className="actionGenerateBtn" onClick={requestGenerateBrackets}>
                   Gerar chaves finais
                 </button>
               </div>
@@ -16356,7 +16356,7 @@ return (
                   </p>
 
                   <div className="actions">
-                    <button type="button" onClick={requestGenerateBrackets}>
+                    <button type="button" className="actionGenerateBtn" onClick={requestGenerateBrackets}>
                       Gerar chaves finais
                     </button>
                   </div>
@@ -16458,7 +16458,7 @@ return (
                   <p>Gere as chaves finais para visualizar a disputa paralela.</p>
 
                   <div className="actions">
-                    <button type="button" onClick={requestGenerateBrackets}>
+                    <button type="button" className="actionGenerateBtn" onClick={requestGenerateBrackets}>
                       Gerar chaves finais
                     </button>
                   </div>
