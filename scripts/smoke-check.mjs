@@ -1183,6 +1183,7 @@ assert.ok(
     && mainSource.includes("Cadastros manuais")
     && mainSource.includes("applyCircuitManualParticipants(groups, rankingSettings)")
     && mainSource.includes("getCircuitPlacementColumns(rankingSettings, { includeManual: true })")
+    && !mainSource.includes('columns.push({ key: "manualPoints", label: "Manual" })')
     && styleSource.includes(".circuitManualParticipantContent")
     && styleSource.includes("--bracket-node-height: 226px"),
   "A inclusão manual no ranking ou o espaçamento seguro dos confrontos ficou incompleto."

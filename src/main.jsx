@@ -908,7 +908,6 @@ function getCircuitPlacementColumns(settings, { includeManual = false } = {}) {
     { key: "circuitPoints", label: "Total de pontos" },
     { key: "extraPoints", label: "Extras" },
   ];
-  if (includeManual) columns.push({ key: "manualPoints", label: "Manual" });
   keys.forEach((criterion) => {
     const option = circuitTieBreakOptions.find((item) => item.value === criterion);
     if (option && !columns.some((column) => column.key === option.key)) {
