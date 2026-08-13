@@ -26403,37 +26403,45 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   margin-bottom: 10px !important;
 }
 
-.proDashboard.playAppShell button.sidebarExpandToggle {
-  display: grid !important;
-  flex: 0 0 46px !important;
-  place-items: center !important;
-  width: 46px !important;
-  min-width: 46px !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  padding: 0 !important;
-  border: 1px solid transparent !important;
-  border-radius: 11px !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: rgba(226, 236, 248, .72) !important;
-}
-
-.proDashboard.playAppShell button.sidebarExpandToggle:hover,
-.proDashboard.playAppShell button.sidebarExpandToggle:focus-visible {
-  border-color: rgba(255, 255, 255, .12) !important;
-  background: rgba(255, 255, 255, .08) !important;
-  color: #fff !important;
-}
-
-.proDashboard .sidebarExpandToggle svg {
-  width: 19px !important;
-  height: 19px !important;
-}
-
 @media (min-width: 1025px) {
   .proDashboard.playAppShell button.sidebarMobileToggle {
-    display: none !important;
+    position: static !important;
+    display: grid !important;
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    place-items: center !important;
+    border: 1px solid rgba(255, 255, 255, .14) !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, .07) !important;
+    box-shadow: none !important;
+    color: #fff !important;
+  }
+
+  .proDashboard.playAppShell button.sidebarMobileToggle:hover,
+  .proDashboard.playAppShell button.sidebarMobileToggle:focus-visible,
+  .proDashboard.playAppShell button.sidebarMobileToggle[aria-expanded="true"] {
+    border-color: rgba(255, 126, 55, .68) !important;
+    background: rgba(255, 126, 55, .16) !important;
+  }
+
+  .proDashboard .sidebarMobileToggle svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .proDashboard .sidebarMobileToggle span {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
   }
 
   .proDashboard .playMain {
@@ -27223,4 +27231,67 @@ html[data-theme="dark"] .proDashboard.playAppShell .courtOccupancyActions button
 
   .matchCardStatus small { display: none; }
   .courtOccupancyActions { grid-template-columns: 1fr !important; }
+}
+
+/* Central de abas: ocupa menos espaço e aproxima as ações das extremidades. */
+@media (min-width: 701px) {
+  .proDashboard .tournamentWorkspaceTabsShell {
+    margin: 7px 9px 10px !important;
+    padding: 5px 6px !important;
+    border: 1px solid #d8e3f2 !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .proDashboard .desktopTournamentTabs {
+    gap: 5px !important;
+    max-width: none !important;
+  }
+
+  .proDashboard .openTournamentTabsTrack {
+    gap: 6px !important;
+    padding: 1px 0 4px !important;
+  }
+
+  .proDashboard .openTournamentTab {
+    border-radius: 14px !important;
+  }
+
+  .proDashboard .openTournamentTab::after {
+    right: 4px;
+    left: 4px;
+    border-radius: 999px;
+  }
+
+  .proDashboard.playAppShell button.tournamentTabsScrollButton {
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: 10px !important;
+  }
+
+  .proDashboard .tournamentTabsScrollButton svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  .proDashboard.playAppShell button.addOpenTournamentButton {
+    min-height: 32px !important;
+    height: 32px !important;
+    gap: 5px !important;
+    padding: 6px 9px !important;
+    border-radius: 10px !important;
+    font-size: 10px !important;
+  }
+
+  .proDashboard .addOpenTournamentButton svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  html[data-theme="dark"] .proDashboard .tournamentWorkspaceTabsShell,
+  .proDashboard.theme-dark .tournamentWorkspaceTabsShell {
+    border-color: #26384d !important;
+  }
 }
