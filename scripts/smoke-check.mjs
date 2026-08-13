@@ -115,7 +115,7 @@ assert.ok(
     && mainSource.includes("<ModalityPicker value={item.type}")
     && styleSource.includes(".modalityPickerPanel")
     && styleSource.includes(".modalityPickerItems > button.selected")
-    && styleSource.includes("z-index: 15000")
+    && styleSource.includes("z-index: 22010")
     && styleSource.includes('html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTrigger')
     && styleSource.includes("top: max(10px, env(safe-area-inset-top)) !important")
     && styleSource.includes("max-height: none !important")
@@ -388,6 +388,11 @@ assert.ok(
     && mainSource.includes("confirmModalityChanges: true")
     && mainSource.includes("Trocar modalidade"),
   "A edição segura da modalidade de um torneio existente está ausente."
+);
+assert.ok(
+  styleSource.includes("z-index: 22010")
+    && styleSource.includes("z-index: 22000"),
+  "O seletor de modalidades precisa permanecer acima do modal de edição."
 );
 
 assert.deepEqual(
