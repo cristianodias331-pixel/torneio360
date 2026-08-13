@@ -97,6 +97,13 @@ assert.ok(
 );
 
 assert.ok(
+  mainSource.includes('event.target.closest("#torneio360-main-sidebar, .sidebarMobileToggle")')
+    && mainSource.includes('document.addEventListener("pointerdown", closeOnOutsidePress)')
+    && mainSource.includes('document.removeEventListener("pointerdown", closeOnOutsidePress)'),
+  "O menu principal deve ser recolhido ao clicar ou tocar fora dele."
+);
+
+assert.ok(
   mainSource.includes("function ModalityPicker(")
     && mainSource.includes('title: "Duplas fixas"')
     && mainSource.includes('title: "Ranking individual"')
