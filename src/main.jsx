@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
+import { buildReizinhoGames } from "./reizinhoSchedule.mjs";
 import {
   AtSign,
   Camera,
@@ -2185,6 +2186,7 @@ function normalizeScoreInput(value, winningScore = 4) {
 const modalityDisplayNames = {
   "Super 08": "Super 8",
   "Super 12": "Super 12",
+  "Reizinho": "Reizinho",
   "Super 10 Mista (Dupla Aleatória)": "Super 10 mista",
   "Super 12 Mista (Dupla Aleatória)": "Super 12 mista",
   "Super 16 Mista (Dupla Aleatória)": "Super 16 mista",
@@ -2193,6 +2195,7 @@ const modalityDisplayNames = {
   "Super 16 Mista (Dupla Fixa)": "Super 8 (dupla fixa)",
   "Simples 8": "Simples (1 contra 1 por jogo)",
   "Campeonato Cearense": "Torneio modelo Campeonato Cearense",
+  "Campeonato Cearense Individual": "Torneio modelo Campeonato Cearense — Individual",
   "Modelo Play Ranking": "Modelo Torneio 360",
 };
 
@@ -2211,7 +2214,7 @@ const modalityPickerGroups = [
     id: "individual",
     title: "Ranking individual",
     subtitle: "O desempenho é acumulado separadamente por atleta.",
-    types: ["Super 08", "Super 12", "Simples 8"],
+    types: ["Reizinho", "Super 08", "Super 12", "Simples 8"],
   },
   {
     id: "mixed",
@@ -2228,7 +2231,7 @@ const modalityPickerGroups = [
     id: "cups",
     title: "Copas e modelos",
     subtitle: "Formatos com grupos, eliminatórias ou regras especiais.",
-    types: ["Copa - 18 duplas", "Campeonato Cearense", "Modelo Play Ranking"],
+    types: ["Copa - 18 duplas", "Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking"],
   },
 ];
 
@@ -2237,6 +2240,7 @@ const modalityPickerDescriptions = {
   "Super 16 Mista (Dupla Fixa)": "8 duplas definidas e classificação por equipe.",
   "Super 08": "8 participantes, parceiros variados e um ranking individual.",
   "Super 12": "12 participantes, parceiros variados e um ranking individual.",
+  "Reizinho": "Escolha 4 atletas no formato tradicional ou 6 conforme o Super 6.",
   "Simples 8": "De 4 a 14 jogadores em partidas individuais de todos contra todos.",
   "Super 10 Mista (Dupla Aleatória)": "5 homens e 5 mulheres, com rankings separados.",
   "Super 12 Mista (Dupla Aleatória)": "6 homens e 6 mulheres, com rankings separados.",
@@ -2244,6 +2248,7 @@ const modalityPickerDescriptions = {
   "Super 20 Mista (Dupla Aleatória)": "10 homens e 10 mulheres, com rankings separados.",
   "Copa - 18 duplas": "Fase de grupos seguida por chave eliminatória.",
   "Campeonato Cearense": "Grupos, chave principal e disputas paralelas configuráveis.",
+  "Campeonato Cearense Individual": "O modelo cearense completo em partidas individuais, um contra um.",
   "Modelo Play Ranking": "Modelo Torneio 360 com chave principal e disputa paralela.",
 };
 
@@ -2407,6 +2412,7 @@ function sortCircuitsForDisplay(items) {
 
 const allowedByPlan = {
   basic: [
+    "Reizinho",
     "Super 08",
     "Super 12",
     "Super 10 Mista (Dupla Aleatória)",
@@ -2416,6 +2422,7 @@ const allowedByPlan = {
   ],
   pro: [
     "Super 12 Mista (Dupla Fixa)",
+    "Reizinho",
     "Super 08",
     "Super 16 Mista (Dupla Fixa)",
     "Super 12",
@@ -2426,6 +2433,7 @@ const allowedByPlan = {
   ],
   premium: [
     "Super 12 Mista (Dupla Fixa)",
+    "Reizinho",
     "Super 08",
     "Super 16 Mista (Dupla Fixa)",
     "Super 12",
@@ -2436,11 +2444,21 @@ const allowedByPlan = {
     "Simples 8",
     "Copa - 18 duplas",
     "Campeonato Cearense",
+    "Campeonato Cearense Individual",
     "Modelo Play Ranking",
   ],
 };
 
 const modalityConfig = {
+  "Reizinho": {
+    type: "reizinho",
+    allowedPlayerCounts: [4, 6],
+    defaultPlayers: 4,
+    total: 4,
+    label: "Atleta",
+    courts: 1,
+  },
+
   "Super 08": {
     type: "super8",
     total: 8,
@@ -2551,6 +2569,18 @@ const modalityConfig = {
   "Campeonato Cearense": {
     type: "cearense",
     cupMode: "cearense",
+    allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
+    defaultTeams: 4,
+    defaultMainBracketName: "Eliminatória Principal",
+    defaultRepechageName: "2ª Disputa Paralela",
+    defaultThirdRepechageName: "3ª Disputa Paralela",
+    courts: 6,
+  },
+
+  "Campeonato Cearense Individual": {
+    type: "cearenseIndividual",
+    cupMode: "cearense-individual",
+    individualCup: true,
     allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
     defaultTeams: 4,
     defaultMainBracketName: "Eliminatória Principal",
@@ -2704,7 +2734,7 @@ function TournamentMatchStatusSummary({ data, compact = false, vertical = false 
 }
 
 function isCupType(config) {
-  return config?.type === "cup" || config?.type === "cup18" || config?.type === "cup21" || config?.type === "copinha" || config?.type === "cearense" || config?.type === "playranking";
+  return config?.type === "cup" || config?.type === "cup18" || config?.type === "cup21" || config?.type === "copinha" || config?.type === "cearense" || config?.type === "cearenseIndividual" || config?.type === "playranking";
 }
 
 function isMixedType(config) {
@@ -2716,6 +2746,14 @@ function isMixedType(config) {
 
 function isFlexibleSimpleType(config) {
   return config?.type === "simple8";
+}
+
+function isReizinhoType(config) {
+  return config?.type === "reizinho";
+}
+
+function isIndividualCupType(config) {
+  return config?.type === "cearenseIndividual" || config?.individualCup === true;
 }
 
 function getSimplePlayerCount(config, data = null) {
@@ -2733,10 +2771,21 @@ function getSimplePlayerCount(config, data = null) {
     : (config?.defaultPlayers || config?.total || allowedCounts[0] || 8);
 }
 
+function getReizinhoPlayerCount(config, data = null) {
+  const allowedCounts = config?.allowedPlayerCounts || [4, 6];
+  const storedCount = Number(
+    data?.reizinhoPlayerCount
+      ?? (Array.isArray(data?.players) ? data.players.length : null)
+      ?? config?.defaultPlayers
+      ?? 4
+  );
+  return allowedCounts.includes(storedCount) ? storedCount : (config?.defaultPlayers || 4);
+}
+
 function getTournamentCourtCount(config, data = null) {
-  return isFlexibleSimpleType(config)
-    ? Math.max(1, getSimplePlayerCount(config, data) / 2)
-    : Math.max(1, config?.courts || 1);
+  if (isFlexibleSimpleType(config)) return Math.max(1, getSimplePlayerCount(config, data) / 2);
+  if (isReizinhoType(config)) return 1;
+  return Math.max(1, config?.courts || 1);
 }
 
 const super8Template = [
@@ -2890,7 +2939,7 @@ function optimizeCourts(schedule) {
 
 function getTeamName(team) {
   if (!team) return "";
-  return `${team.a || ""} + ${team.b || ""}`.trim();
+  return [team.a, team.b].filter((name) => String(name || "").trim()).join(" + ");
 }
 
 function getCupTeams(data) {
@@ -2934,7 +2983,7 @@ function createCearenseGroups(teamCount) {
   });
 }
 
-function describeCearenseGroupSizes(groups) {
+function describeCearenseGroupSizes(groups, participantPlural = "duplas") {
   const countsBySize = groups.reduce((summary, group) => {
     const size = group.teamIds.length;
     summary[size] = (summary[size] || 0) + 1;
@@ -2943,11 +2992,11 @@ function describeCearenseGroupSizes(groups) {
 
   return Object.entries(countsBySize)
     .sort(([firstSize], [secondSize]) => Number(firstSize) - Number(secondSize))
-    .map(([size, count]) => `${count} ${count === 1 ? "grupo" : "grupos"} de ${size} duplas`)
+    .map(([size, count]) => `${count} ${count === 1 ? "grupo" : "grupos"} de ${size} ${participantPlural}`)
     .join(" e ");
 }
 
-function getCearenseFormatSummary(teamCount, playRanking = false) {
+function getCearenseFormatSummary(teamCount, playRanking = false, individual = false) {
   const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
   const groups = createCearenseGroups(safeTeamCount);
   const groupSizes = groups.map((group) => group.teamIds.length);
@@ -2986,7 +3035,7 @@ function getCearenseFormatSummary(teamCount, playRanking = false) {
   return {
     teamCount: safeTeamCount,
     groupCount: groups.length,
-    groupDescription: describeCearenseGroupSizes(groups),
+    groupDescription: describeCearenseGroupSizes(groups, individual ? "jogadores" : "duplas"),
     gamesPerTeamDescription: gamesPerTeam.join(" ou "),
     groupMatches,
     mainCount,
@@ -3005,7 +3054,7 @@ function getCearenseFormatSummary(teamCount, playRanking = false) {
 }
 
 function createCupGroups(teamCount, format = "") {
-  if (format === "cearense" || format === "playranking") {
+  if (format === "cearense" || format === "cearense-individual" || format === "playranking") {
     return createCearenseGroups(teamCount);
   }
 
@@ -3082,7 +3131,7 @@ function generateCupGroupSchedule(players, cupConfig) {
   const teamCount = cupConfig.teamCount || 12;
   const format = cupConfig.format || cupConfig.cupMode || "";
 
-  if (format === "cearense" || format === "playranking") {
+  if (format === "cearense" || format === "cearense-individual" || format === "playranking") {
     return generateCearenseGroupSchedule(players, cupConfig);
   }
 
@@ -3134,11 +3183,11 @@ function isCopinhaData(data) {
 }
 
 function isCearenseData(data) {
-  return getCupFormat(data) === "cearense" || getCupFormat(data) === "playranking";
+  return getCupFormat(data) === "cearense" || getCupFormat(data) === "cearense-individual" || getCupFormat(data) === "playranking";
 }
 
 function isCampeonatoCearenseData(data) {
-  return getCupFormat(data) === "cearense";
+  return getCupFormat(data) === "cearense" || getCupFormat(data) === "cearense-individual";
 }
 
 function isCearenseSecondParallelEnabled(data) {
@@ -3908,7 +3957,7 @@ function getCupQualified(data) {
   const format = getCupFormat(data);
   const teamCount = data.cupConfig?.teamCount || 12;
 
-  if (format === "cearense" || format === "playranking") {
+  if (format === "cearense" || format === "cearense-individual" || format === "playranking") {
     return getCearenseQualified(data);
   }
 
@@ -8186,6 +8235,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [modalityChangeConfirmation, setModalityChangeConfirmation] = useState(null);
+  const [eventGroupModalityConfirmation, setEventGroupModalityConfirmation] = useState(null);
   const [editEventGroup, setEditEventGroup] = useState(null);
   const [editEventGroupSaving, setEditEventGroupSaving] = useState(false);
   const [draggedTournamentId, setDraggedTournamentId] = useState(null);
@@ -9645,7 +9696,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       }
       const config = modalityConfig[tournament.type];
       const separated = isMixedType(config);
-      const teamRanking = (isCupType(config) || config?.type === "fixed12" || config?.type === "fixed16")
+      const teamRanking = ((isCupType(config) && !isIndividualCupType(config)) || config?.type === "fixed12" || config?.type === "fixed16")
         && (!placementMode || rankingSettings.identity === "team");
       const nameOccurrences = new Map();
 
@@ -11465,7 +11516,7 @@ setNewPublicInfo({
     setEditForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function saveEditedTournament() {
+  async function saveEditedTournament({ confirmModalityChange = false } = {}) {
     if (!editTarget || !editForm) return;
     if (!ensureCloudConnection("salvar as informações do torneio")) return;
 
@@ -11484,9 +11535,28 @@ setNewPublicInfo({
       return;
     }
 
+    const modalityChanged = editForm.type !== editTarget.type;
+    const nextModalityConfig = modalityConfig[editForm.type];
+    if (modalityChanged && !nextModalityConfig) {
+      showNotice("warning", "Modalidade obrigatória", "Escolha uma modalidade válida para continuar.");
+      return;
+    }
+    if (modalityChanged && !confirmModalityChange) {
+      setModalityChangeConfirmation({ fromType: editTarget.type, toType: editForm.type });
+      return;
+    }
+
     const isGroupedCategory = Boolean(editTarget.data?.multiCategoryEvent);
+    const structuralData = modalityChanged
+      ? createInitialData(editForm.type, nextModalityConfig)
+      : (editTarget.data || {});
     const updatedData = {
-      ...(editTarget.data || {}),
+      ...structuralData,
+      publicInfo: editTarget.data?.publicInfo || structuralData.publicInfo,
+      multiCategoryEvent: editTarget.data?.multiCategoryEvent,
+      eventGroupKey: editTarget.data?.eventGroupKey,
+      eventCoverImageUrl: editTarget.data?.eventCoverImageUrl,
+      usesEventCover: editTarget.data?.usesEventCover,
       eventName: editForm.eventName.trim(),
       gender: editForm.gender,
       eventDate: editForm.eventDate,
@@ -11588,6 +11658,7 @@ setNewPublicInfo({
     await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
     setEditTarget(null);
     setEditForm(null);
+    setModalityChangeConfirmation(null);
     showNotice(
       circuitRankingSaved ? "success" : "warning",
       circuitRankingSaved ? "Torneio atualizado" : "Torneio atualizado; ranking pendente",
@@ -11701,7 +11772,7 @@ setNewPublicInfo({
     });
   }
 
-  async function saveEditedEventGroup() {
+  async function saveEditedEventGroup({ confirmModalityChanges = false } = {}) {
     if (!editEventGroup || editEventGroupSaving) return;
     if (!ensureCloudConnection("salvar o evento completo")) return;
 
@@ -11719,17 +11790,22 @@ setNewPublicInfo({
       || ![4, 6].includes(Number(category.winningScore))
       || Boolean(category.eventEndDate && category.eventEndDate < category.eventDate)
       || Boolean(category.registrationDeadline && category.registrationDeadline > category.eventDate)
-      || Boolean(category.hasGeneratedGames && category.original?.type !== category.type)
     ));
 
     if (invalidCategory) {
       showNotice(
         "warning",
         "Categoria incompleta",
-        invalidCategory.hasGeneratedGames && invalidCategory.original?.type !== invalidCategory.type
-          ? `A modalidade de ${invalidCategory.name} não pode ser trocada porque já existem jogos.`
-          : `Revise nome, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
+        `Revise nome, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
       );
+      return;
+    }
+
+    const changedModalities = activeCategories.filter((category) => (
+      category.id && category.original?.type !== category.type
+    ));
+    if (changedModalities.length > 0 && !confirmModalityChanges) {
+      setEventGroupModalityConfirmation({ count: changedModalities.length });
       return;
     }
 
@@ -11742,8 +11818,13 @@ setNewPublicInfo({
 
     for (const category of activeCategories.filter((item) => item.id)) {
       const original = category.original;
+      const modalityChanged = original.type !== category.type;
+      const structuralData = modalityChanged
+        ? createInitialData(category.type, modalityConfig[category.type])
+        : (original.data || {});
       const updatedData = {
-        ...(original.data || {}),
+        ...structuralData,
+        publicInfo: original.data?.publicInfo || structuralData.publicInfo,
         eventName: editEventGroup.eventName.trim(),
         eventGroupKey: editEventGroup.key,
         multiCategoryEvent: true,
@@ -11855,6 +11936,7 @@ setNewPublicInfo({
     await syncPublicArenaDirectory(refreshedTournaments, rankedCircuits);
     setEditEventGroupSaving(false);
     setEditEventGroup(null);
+    setEventGroupModalityConfirmation(null);
     showNotice("success", "Evento atualizado", "Os dados gerais e as categorias foram salvos em conjunto.");
   }
 
@@ -12238,6 +12320,18 @@ setNewPublicInfo({
         onConfirm={deleteCircuit}
       />
 
+      <ConfirmModalityChangeModal
+        confirmation={modalityChangeConfirmation}
+        onCancel={() => setModalityChangeConfirmation(null)}
+        onConfirm={() => void saveEditedTournament({ confirmModalityChange: true })}
+      />
+
+      <ConfirmEventGroupModalityChangeModal
+        confirmation={eventGroupModalityConfirmation}
+        onCancel={() => setEventGroupModalityConfirmation(null)}
+        onConfirm={() => void saveEditedEventGroup({ confirmModalityChanges: true })}
+      />
+
       {editTarget && editForm ? (
         <div className="editTournamentOverlay" role="dialog" aria-modal="true">
           <div className="editTournamentModal">
@@ -12328,7 +12422,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="cancelBtn" onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" onClick={saveEditedTournament}>Salvar alterações</button>
+              <button type="button" className="actionConfirmBtn" onClick={() => void saveEditedTournament()}>Salvar alterações</button>
             </div>
           </div>
         </div>
@@ -12404,8 +12498,8 @@ setNewPublicInfo({
                       </div>
                       <div className="formField">
                         <label>Modalidade</label>
-                        <ModalityPicker value={category.type} options={allowedTypes} disabled={category.hasGeneratedGames} onChange={(type) => updateEventGroupCategory(category.key, "type", type)} legacyLabel="Modalidade legada preservada nesta categoria." />
-                        {category.hasGeneratedGames ? <small>A modalidade fica protegida porque esta categoria já possui jogos.</small> : null}
+                        <ModalityPicker value={category.type} options={allowedTypes} onChange={(type) => updateEventGroupCategory(category.key, "type", type)} legacyLabel="Modalidade legada preservada nesta categoria." />
+                        {category.hasGeneratedGames ? <small>Ao trocar a modalidade, a confirmação explicará quais dados esportivos serão reiniciados.</small> : null}
                       </div>
                       <div className="formField">
                         <label>Início</label>
@@ -12461,7 +12555,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions eventGroupEditActions">
               <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
-              <button type="button" onClick={saveEditedEventGroup} disabled={editEventGroupSaving}>
+              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving}>
                 {editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
               </button>
             </div>
@@ -13915,6 +14009,9 @@ function createInitialData(type, config) {
   const simplePlayerCount = isFlexibleSimpleType(config)
     ? getSimplePlayerCount(config)
     : null;
+  const reizinhoPlayerCount = isReizinhoType(config)
+    ? getReizinhoPlayerCount(config)
+    : null;
   const base = {
   rankingCriteria: defaultRankingCriteria,
   winningScore: 4,
@@ -13924,7 +14021,9 @@ function createInitialData(type, config) {
   location: "",
   schedule: [],
   courtNumbers: createDefaultCourtNumbers(
-    getTournamentCourtCount(config, simplePlayerCount ? { simplePlayerCount } : null)
+    getTournamentCourtCount(config, simplePlayerCount
+      ? { simplePlayerCount }
+      : reizinhoPlayerCount ? { reizinhoPlayerCount } : null)
   ),
 };
 
@@ -13965,7 +14064,7 @@ function createInitialData(type, config) {
         ...(config.defaultThirdRepechageName
           ? { thirdRepechageName: config.defaultThirdRepechageName }
           : {}),
-        ...(config.type === "cearense"
+        ...(config.type === "cearense" || config.type === "cearenseIndividual"
           ? {
             secondRepechageEnabled: null,
             thirdRepechageEnabled: null,
@@ -13977,8 +14076,8 @@ function createInitialData(type, config) {
       },
       players: {
         teams: Array.from({ length: config.defaultTeams }, (_, i) => ({
-          a: `Atleta 1 da dupla ${i + 1}`,
-          b: `Atleta 2 da dupla ${i + 1}`,
+          a: isIndividualCupType(config) ? `Jogador ${i + 1}` : `Atleta 1 da dupla ${i + 1}`,
+          b: isIndividualCupType(config) ? "" : `Atleta 2 da dupla ${i + 1}`,
         })),
       },
       brackets: [],
@@ -13990,6 +14089,14 @@ function createInitialData(type, config) {
       ...base,
       simplePlayerCount,
       players: Array.from({ length: simplePlayerCount }, (_, i) => `${config.label} ${i + 1}`),
+    };
+  }
+
+  if (isReizinhoType(config)) {
+    return {
+      ...base,
+      reizinhoPlayerCount,
+      players: Array.from({ length: reizinhoPlayerCount }, (_, i) => `${config.label} ${i + 1}`),
     };
   }
 
@@ -14115,6 +14222,16 @@ function normalizeParticipantAttendance(config, players, attendance) {
     };
   }
 
+  if (isIndividualCupType(config)) {
+    const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
+    return {
+      teams: (players?.teams || []).map((_, index) => ({
+        a: sourceTeams[index]?.a === true,
+        b: false,
+      })),
+    };
+  }
+
   if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
     const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
     return {
@@ -14144,6 +14261,14 @@ function getParticipantAttendanceEntries(config, data) {
         confirmed: attendance.women[index] === true,
       })),
     ];
+  }
+
+  if (isIndividualCupType(config)) {
+    return (data.players?.teams || []).map((participant, index) => ({
+      path: { kind: "team", index, field: "a" },
+      name: participant.a,
+      confirmed: attendance.teams[index]?.a === true,
+    }));
   }
 
   if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
@@ -14208,6 +14333,9 @@ function normalizeTournamentData(type, rawData) {
   const simplePlayerCount = isFlexibleSimpleType(config)
     ? getSimplePlayerCount(config, source)
     : null;
+  const reizinhoPlayerCount = isReizinhoType(config)
+    ? getReizinhoPlayerCount(config, source)
+    : null;
   const validWinningScore = [4, 6].includes(Number(source.winningScore));
   const validRankingCriteria = rankingCriteriaOptions.some((item) => item.value === source.rankingCriteria);
   const usedCourtNumbers = [
@@ -14218,7 +14346,9 @@ function normalizeTournamentData(type, rawData) {
     .filter((court) => Number.isFinite(court) && court > 0);
   const sourceCourtNumbers = Array.isArray(source.courtNumbers) ? source.courtNumbers : source.courtLabels;
   const courtCount = Math.max(
-    getTournamentCourtCount(config, simplePlayerCount ? { ...source, simplePlayerCount } : source),
+    getTournamentCourtCount(config, simplePlayerCount
+      ? { ...source, simplePlayerCount }
+      : reizinhoPlayerCount ? { ...source, reizinhoPlayerCount } : source),
     sourceCourtNumbers?.length || 0,
     ...usedCourtNumbers,
     1
@@ -14259,7 +14389,7 @@ function normalizeTournamentData(type, rawData) {
         thirdRepechageName: typeof sourceCupConfig.thirdRepechageName === "string"
           ? sourceCupConfig.thirdRepechageName
           : defaults.cupConfig.thirdRepechageName,
-        ...(config.type === "cearense"
+        ...(config.type === "cearense" || config.type === "cearenseIndividual"
           ? {
             secondRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")
               ? (typeof sourceCupConfig.secondRepechageEnabled === "boolean" ? sourceCupConfig.secondRepechageEnabled : null)
@@ -14280,11 +14410,15 @@ function normalizeTournamentData(type, rawData) {
           : {},
       },
       players: {
-        teams: normalizeTeams(sourcePlayers.teams, teamCount),
+        teams: isIndividualCupType(config)
+          ? normalizeIndividualCupPlayers(sourcePlayers.teams, teamCount)
+          : normalizeTeams(sourcePlayers.teams, teamCount),
       },
       participantAttendance: normalizeParticipantAttendance(
         config,
-        { teams: normalizeTeams(sourcePlayers.teams, teamCount) },
+        { teams: isIndividualCupType(config)
+          ? normalizeIndividualCupPlayers(sourcePlayers.teams, teamCount)
+          : normalizeTeams(sourcePlayers.teams, teamCount) },
         source.participantAttendance
       ),
       brackets: normalizeBrackets(source.brackets),
@@ -14297,6 +14431,16 @@ function normalizeTournamentData(type, rawData) {
     return {
       ...normalized,
       simplePlayerCount,
+      players,
+      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
+    };
+  }
+
+  if (isReizinhoType(config)) {
+    const players = normalizeNameList(source.players, reizinhoPlayerCount, config.label);
+    return {
+      ...normalized,
+      reizinhoPlayerCount,
       players,
       participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
     };
@@ -14356,6 +14500,13 @@ function needsTournamentDataRepair(type, rawData) {
       || rawData.players.length !== playerCount;
   }
 
+  if (isReizinhoType(config)) {
+    const playerCount = getReizinhoPlayerCount(config, rawData);
+    return !config.allowedPlayerCounts.includes(playerCount)
+      || !Array.isArray(rawData.players)
+      || rawData.players.length !== playerCount;
+  }
+
   if (isMixedType(config)) {
     return !Array.isArray(players.men)
       || !Array.isArray(players.women)
@@ -14377,8 +14528,12 @@ function getShuffleNames(data, config) {
     return [...data.players.men, ...data.players.women];
   }
 
+  if (isIndividualCupType(config)) {
+    return data.players.teams.map((participant) => participant.a);
+  }
+
   if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
-    return data.players.teams.map((team, index) => `Dupla ${index + 1}: ${team.a} + ${team.b}`);
+    return data.players.teams.map((team, index) => `Dupla ${index + 1}: ${getTeamName(team)}`);
   }
 
   return data.players || [];
@@ -15118,7 +15273,7 @@ function TournamentScreen({
     const params = new URLSearchParams(window.location.search);
     return params.get("partidas") || "grupos";
   });
-  const supportsTournamentFormatConfiguration = isCupType(config) || isFlexibleSimpleType(config);
+  const supportsTournamentFormatConfiguration = isCupType(config) || isFlexibleSimpleType(config) || isReizinhoType(config);
   const [activeOrganizationTab, setActiveOrganizationTab] = useState(() => (
     supportsTournamentFormatConfiguration ? "formato" : "participantes"
   ));
@@ -15855,8 +16010,8 @@ function TournamentScreen({
         const previousPlayers = structuredClone(copy.players);
         const nextTeams = Array.from({ length: teamCount }, (_, i) => {
           return copy.players.teams[i] || {
-            a: `Atleta 1 da dupla ${i + 1}`,
-            b: `Atleta 2 da dupla ${i + 1}`,
+            a: isIndividualCupType(config) ? `Jogador ${i + 1}` : `Atleta 1 da dupla ${i + 1}`,
+            b: isIndividualCupType(config) ? "" : `Atleta 2 da dupla ${i + 1}`,
           };
         });
         copy.players.teams = nextTeams;
@@ -15930,6 +16085,61 @@ function TournamentScreen({
         "Será necessário criar novamente as rodadas e os jogos.",
       ],
       confirmLabel: "Alterar e recriar os jogos",
+    });
+  }
+
+  function applyReizinhoPlayerCount(value) {
+    const playerCount = Number(value);
+    if (!isReizinhoType(config) || !config.allowedPlayerCounts.includes(playerCount)) return;
+
+    setParticipantImportBackup(null);
+    setData((prev) => {
+      const copy = structuredClone(prev);
+      const previousPlayers = structuredClone(copy.players);
+      copy.reizinhoPlayerCount = playerCount;
+      copy.players = Array.from({ length: playerCount }, (_, index) => (
+        copy.players?.[index] || `${config.label} ${index + 1}`
+      ));
+      copy.participantAttendance = reconcileParticipantAttendance(
+        config,
+        previousPlayers,
+        copy.players,
+        copy.participantAttendance
+      );
+      copy.schedule = [];
+      copy.namesShuffled = false;
+      delete copy.lastShuffleVideo;
+      copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, 1);
+      return copy;
+    });
+    setCourtConfigRevision((revision) => revision + 1);
+    showNotice(
+      "success",
+      "Formato atualizado",
+      playerCount === 4
+        ? "Reizinho tradicional com 4 atletas selecionado."
+        : "Reizinho com 6 atletas selecionado conforme o modelo da planilha."
+    );
+  }
+
+  function requestReizinhoPlayerCount(value) {
+    const playerCount = Number(value);
+    if (playerCount === getReizinhoPlayerCount(config, data)) return;
+    const alreadyUsed = Boolean(data.schedule?.length || data.namesShuffled);
+    if (!alreadyUsed) {
+      applyReizinhoPlayerCount(playerCount);
+      return;
+    }
+    setRegenerationConfirm({
+      action: "reizinhoPlayerCount",
+      playerCount,
+      title: `Alterar para ${playerCount} atletas?`,
+      message: "A quantidade de atletas define todo o formato do Reizinho.",
+      impacts: [
+        "As rodadas, os jogos e os placares atuais serão removidos.",
+        "Os nomes compatíveis já preenchidos serão preservados.",
+      ],
+      confirmLabel: "Sim, alterar formato",
     });
   }
 
@@ -16753,6 +16963,7 @@ function confirmRegeneration() {
   if (action === "brackets") generateBrackets();
   if (action === "group-score" && scoreChange) applyScheduleScoreChange(scoreChange, true);
   if (action === "simple-player-count" && simplePlayerCount) applySimplePlayerCount(simplePlayerCount);
+  if (action === "reizinhoPlayerCount" && simplePlayerCount) applyReizinhoPlayerCount(simplePlayerCount);
 }
 
 function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clearCupBrackets = false) {
@@ -17153,6 +17364,14 @@ return (
               onPlayerCountChange={requestSimplePlayerCount}
             />
           )}
+
+          {isReizinhoType(config) && (
+            <ReizinhoConfigPanel
+              data={data}
+              config={config}
+              onPlayerCountChange={requestReizinhoPlayerCount}
+            />
+          )}
           </div>
 
           <div className="organizationPanel" style={{ display: activeOrganizationTab === "quadras" ? undefined : "none" }}>
@@ -17225,7 +17444,7 @@ return (
               <h2>Grupos</h2>
               <SavingStatusBadge />
             </div>
-            <p>Use o sorteio para embaralhar as duplas e depois gere a fase de grupos.</p>
+            <p>Use o sorteio para embaralhar os participantes e depois gere a fase de grupos.</p>
             <div className="actions">
               <button type="button" className="actionShuffleBtn" onClick={requestShuffleNames}>Sortear grupos</button>
               <button type="button" className="actionGenerateBtn" onClick={requestGenerate}>Gerar fase de grupos</button>
@@ -17978,6 +18197,69 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
   </div>;
 }
 
+function normalizeIndividualCupPlayers(values, count) {
+  const source = Array.isArray(values) ? values : [];
+  return Array.from({ length: count }, (_, index) => {
+    const participant = isTournamentDataObject(source[index]) ? source[index] : {};
+    return {
+      a: typeof participant.a === "string" ? participant.a : `Jogador ${index + 1}`,
+      b: "",
+    };
+  });
+}
+
+function ConfirmModalityChangeModal({ confirmation, onCancel, onConfirm }) {
+  if (!confirmation) return null;
+
+  return createPortal(
+    <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="modality-change-title">
+      <div className="confirmBox regenerationConfirmBox">
+        <div className="confirmIcon" aria-hidden="true">⚠️</div>
+        <span className="confirmEyebrow">Alteração estrutural</span>
+        <h2 id="modality-change-title">Trocar a modalidade deste torneio?</h2>
+        <p>
+          A modalidade será alterada de <strong>{getModalityDisplayName(confirmation.fromType)}</strong> para <strong>{getModalityDisplayName(confirmation.toType)}</strong>.
+        </p>
+        <ul className="regenerationImpactList">
+          <li>Nome, datas, local, foto e informações do evento serão preservados.</li>
+          <li>Participantes serão reiniciados conforme a nova modalidade.</li>
+          <li>Rodadas, chaves, sorteios e placares incompatíveis serão removidos.</li>
+        </ul>
+        <div className="confirmActions">
+          <button type="button" className="secondaryBtn" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="regenerationConfirmBtn" onClick={onConfirm}>Trocar modalidade</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function ConfirmEventGroupModalityChangeModal({ confirmation, onCancel, onConfirm }) {
+  if (!confirmation) return null;
+
+  return createPortal(
+    <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="event-group-modality-change-title">
+      <div className="confirmBox regenerationConfirmBox">
+        <div className="confirmIcon" aria-hidden="true">⚠️</div>
+        <span className="confirmEyebrow">Alteração estrutural</span>
+        <h2 id="event-group-modality-change-title">Trocar {confirmation.count === 1 ? "a modalidade desta categoria" : `as modalidades de ${confirmation.count} categorias`}?</h2>
+        <p>Os dados gerais do evento serão preservados, mas cada categoria alterada será preparada para seu novo formato.</p>
+        <ul className="regenerationImpactList">
+          <li>Nomes, datas, locais, fotos e informações públicas serão preservados.</li>
+          <li>Participantes serão reiniciados nas categorias cuja modalidade mudou.</li>
+          <li>Rodadas, chaves, sorteios e placares incompatíveis dessas categorias serão removidos.</li>
+        </ul>
+        <div className="confirmActions">
+          <button type="button" className="secondaryBtn" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="regenerationConfirmBtn" onClick={onConfirm}>Trocar modalidade</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function ParallelDisputeChoice({
   kind,
   enabled,
@@ -17985,23 +18267,25 @@ function ParallelDisputeChoice({
   name,
   onNameChange,
   teamCount,
+  individual = false,
 }) {
   const isSecond = kind === "second";
   const ordinal = isSecond ? "2ª" : "3ª";
-  const summary = getCearenseFormatSummary(teamCount, false);
+  const summary = getCearenseFormatSummary(teamCount, false, individual);
+  const participantPlural = individual ? "jogadores" : "duplas";
   const thirdSummary = summary.thirdParallel;
   const helpSections = isSecond ? [
     {
-      title: `Quem participa com ${summary.teamCount} duplas`,
-      content: <><p>Depois que todos os jogos dos grupos terminarem, o <strong>1º e o 2º lugar de cada grupo</strong> seguem exclusivamente para a Eliminatória Principal.</p><p>As demais posições — 3º, 4º e seguintes — formam esta disputa. Com a quantidade escolhida, serão <strong>{summary.initialParallelCount} duplas na 2ª disputa paralela</strong>.</p></>,
+      title: `Quem participa com ${summary.teamCount} ${participantPlural}`,
+      content: <><p>Depois que todos os jogos dos grupos terminarem, o <strong>1º e o 2º lugar de cada grupo</strong> seguem exclusivamente para a Eliminatória Principal.</p><p>As demais posições — 3º, 4º e seguintes — formam esta disputa. Com a quantidade escolhida, serão <strong>{summary.initialParallelCount} participantes na 2ª disputa paralela</strong>.</p></>,
     },
     {
-      title: "Como as duplas são ordenadas",
-      content: <><p>Primeiro entram os 3º colocados, do melhor grupo para o pior grupo. Depois vêm os 4º colocados, seguindo a mesma ordem, e assim por diante.</p><p>Essa ordem define as cabeças da chave e a prioridade dos BYEs. Sempre que for possível, o sistema evita que duplas do mesmo grupo se enfrentem logo na primeira rodada.</p></>,
+      title: "Como os participantes são ordenados",
+      content: <><p>Primeiro entram os 3º colocados, do melhor grupo para o pior grupo. Depois vêm os 4º colocados, seguindo a mesma ordem, e assim por diante.</p><p>Essa ordem define as cabeças da chave e a prioridade dos BYEs. Sempre que for possível, o sistema evita que participantes do mesmo grupo se enfrentem logo na primeira rodada.</p></>,
     },
     {
       title: "Chave, BYEs e avanço",
-      content: <><p>A disputa começa em <strong>{summary.parallelOpeningRound}</strong>, numa chave de {summary.parallelBracketSize} posições.</p><p>{summary.parallelByes > 0 ? `Como existem ${summary.initialParallelCount} duplas, serão concedidos ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"} às mais bem ordenadas.` : "A chave fica completa e começa sem BYEs."} Quem vence avança; quem perde é eliminado. A última dupla restante será a campeã, e a derrotada da final será a vice-campeã.</p></>,
+      content: <><p>A disputa começa em <strong>{summary.parallelOpeningRound}</strong>, numa chave de {summary.parallelBracketSize} posições.</p><p>{summary.parallelByes > 0 ? `Como existem ${summary.initialParallelCount} participantes, serão concedidos ${summary.parallelByes} BYE${summary.parallelByes === 1 ? "" : "s"} aos mais bem ordenados.` : "A chave fica completa e começa sem BYEs."} Quem vence avança; quem perde é eliminado. O último participante restante será campeão, e o derrotado da final será vice-campeão.</p></>,
     },
     {
       title: "Independência da disputa",
@@ -18013,16 +18297,16 @@ function ParallelDisputeChoice({
     },
   ] : [
     {
-      title: `Origem das duplas com ${summary.teamCount} duplas`,
+      title: `Origem dos participantes com ${summary.teamCount} ${participantPlural}`,
       content: thirdSummary.eligibleCount > 0
-        ? <><p>Esta disputa não recebe duplas eliminadas na fase de grupos. Ela recebe <strong>{thirdSummary.eligibleCount} duplas</strong>: as derrotadas nas quartas de final e, quando existir, também as derrotadas na fase imediatamente anterior.</p><p>Nesta quantidade, as fases de origem são: <strong>{thirdSummary.sourceRound}</strong>. Se não houver quartas, entram as duas derrotadas das semifinais.</p></>
-        : <p>Com {summary.teamCount} duplas, a Eliminatória Principal possui apenas uma final. Por isso, <strong>não existem derrotadas suficientes para formar a 3ª disputa paralela</strong>.</p>,
+        ? <><p>Esta disputa não recebe participantes eliminados na fase de grupos. Ela recebe <strong>{thirdSummary.eligibleCount} participantes</strong>: os derrotados nas quartas de final e, quando existir, também os derrotados na fase imediatamente anterior.</p><p>Nesta quantidade, as fases de origem são: <strong>{thirdSummary.sourceRound}</strong>. Se não houver quartas, entram os dois derrotados das semifinais.</p></>
+        : <p>Com {summary.teamCount} {participantPlural}, a Eliminatória Principal possui apenas uma final. Por isso, <strong>não existem participantes derrotados suficientes para formar a 3ª disputa paralela</strong>.</p>,
     },
     {
       title: "Como a chave será montada",
       content: thirdSummary.eligibleCount > 0
         ? <><p>Para esta quantidade, o formato começa em <strong>{thirdSummary.openingRound}</strong>, com {thirdSummary.matchCount} {thirdSummary.matchCount === 1 ? "partida" : "partidas"} no total.</p><p>{thirdSummary.byeCount > 0 ? `A chave terá ${thirdSummary.byeCount} BYE${thirdSummary.byeCount === 1 ? "" : "s"}, entregues primeiro às duplas eliminadas nas quartas.` : "A chave começa sem BYEs."} Quando houver eliminadas da fase anterior, elas entram antes; as eliminadas nas quartas entram depois ou recebem a prioridade disponível.</p></>
-        : <p>Nenhuma chave será exibida porque não há duplas elegíveis nesta configuração.</p>,
+        : <p>Nenhuma chave será exibida porque não há participantes elegíveis nesta configuração.</p>,
     },
     {
       title: "O que esta disputa não altera",
@@ -18030,7 +18314,7 @@ function ParallelDisputeChoice({
     },
     {
       title: "O que acontece ao escolher Sim ou Não",
-      content: <><p><strong>Sim:</strong> quando houver duplas elegíveis, a aba e os confrontos serão mostrados ao organizador e aos visitantes.</p><p><strong>Não:</strong> esta disputa fica totalmente oculta e não impede o encerramento do torneio. Ela poderá ser ativada posteriormente sem apagar os dados internos já calculados.</p></>,
+      content: <><p><strong>Sim:</strong> quando houver participantes elegíveis, a aba e os confrontos serão mostrados ao organizador e aos visitantes.</p><p><strong>Não:</strong> esta disputa fica totalmente oculta e não impede o encerramento do torneio. Ela poderá ser ativada posteriormente sem apagar os dados internos já calculados.</p></>,
     },
   ];
 
@@ -18046,7 +18330,7 @@ function ParallelDisputeChoice({
           ariaLabel={`Entenda como funciona a ${ordinal} disputa paralela`}
           eyebrow="Ajuda sobre o formato"
           title={`Como funciona a ${ordinal} disputa paralela`}
-          intro={`Explicação calculada para a configuração atual de ${summary.teamCount} duplas.`}
+          intro={`Explicação calculada para a configuração atual de ${summary.teamCount} ${participantPlural}.`}
           sections={helpSections}
         />
       </div>
@@ -18096,11 +18380,13 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
   const triggerRef = useRef(null);
   const closeRef = useRef(null);
   const isPlayRanking = config.type === "playranking";
-  const isSupported = config.type === "cearense" || isPlayRanking;
+  const isIndividualCup = isIndividualCupType(config);
+  const isSupported = config.type === "cearense" || isIndividualCup || isPlayRanking;
+  const participantPlural = isIndividualCup ? "jogadores" : "duplas";
   const teamCount = data.cupConfig?.teamCount || config.defaultTeams;
   const summary = useMemo(
-    () => getCearenseFormatSummary(teamCount, isPlayRanking),
-    [teamCount, isPlayRanking]
+    () => getCearenseFormatSummary(teamCount, isPlayRanking, isIndividualCup),
+    [teamCount, isPlayRanking, isIndividualCup]
   );
   const secondParallelEnabled = isPlayRanking || isCearenseSecondParallelEnabled(data);
   const thirdParallelEnabled = !isPlayRanking && isCearenseThirdParallelEnabled(data);
@@ -18145,7 +18431,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
         aria-expanded={open}
       >
         <CircleHelp aria-hidden="true" />
-        <span>Como funciona com {summary.teamCount} duplas</span>
+        <span>Como funciona com {summary.teamCount} {participantPlural}</span>
       </button>
 
       {open && createPortal(
@@ -18163,9 +18449,9 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
           >
             <header className="formatInfoHeader">
               <div>
-                <span>Formato calculado para {summary.teamCount} duplas</span>
-                <h2>{isPlayRanking ? "Modelo Torneio 360" : "Torneio modelo Campeonato Cearense"}</h2>
-                <p>Veja o caminho das duplas desde os grupos até {visibleBracketNames.join(", ").replace(/, ([^,]*)$/, " e $1")}.</p>
+                <span>Formato calculado para {summary.teamCount} {participantPlural}</span>
+                <h2>{isPlayRanking ? "Modelo Torneio 360" : isIndividualCup ? "Torneio modelo Campeonato Cearense — Individual" : "Torneio modelo Campeonato Cearense"}</h2>
+                <p>Veja o caminho dos participantes desde os grupos até {visibleBracketNames.join(", ").replace(/, ([^,]*)$/, " e $1")}.</p>
               </div>
               <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar explicação">×</button>
             </header>
@@ -18183,9 +18469,9 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                 <span className="formatInfoStep">1</span>
                 <div>
                   <h3>Fase de grupos</h3>
-                  <p>As {summary.teamCount} duplas serão distribuídas em <strong>{summary.groupDescription}</strong>.</p>
-                  <p>Cada dupla fará <strong>{summary.gamesPerTeamDescription} jogos</strong> na fase de grupos, totalizando {summary.groupMatches} partidas.</p>
-                  {!isPlayRanking ? <p>A classificação de cada grupo segue: vitórias, saldo de games, confronto direto quando restarem exatamente duas duplas empatadas e sorteio quando três ou mais permanecerem empatadas.</p> : null}
+                  <p>Os {summary.teamCount} participantes serão distribuídos em <strong>{summary.groupDescription}</strong>.</p>
+                  <p>Cada participante fará <strong>{summary.gamesPerTeamDescription} jogos</strong> na fase de grupos, totalizando {summary.groupMatches} partidas.</p>
+                  {!isPlayRanking ? <p>A classificação de cada grupo segue: vitórias, saldo de games, confronto direto quando restarem exatamente dois participantes empatados e sorteio quando três ou mais permanecerem empatados.</p> : null}
                 </div>
               </article>
 
@@ -18193,11 +18479,11 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                 <span className="formatInfoStep">2</span>
                 <div>
                   <h3>Destino depois dos grupos</h3>
-                  <p>O 1º e o 2º lugar de cada grupo avançam. Assim, <strong>{summary.mainCount} duplas</strong> entram na Eliminatória Principal.</p>
+                  <p>O 1º e o 2º lugar de cada grupo avançam. Assim, <strong>{summary.mainCount} participantes</strong> entram na Eliminatória Principal.</p>
                   {secondParallelEnabled ? (
-                    <p>As outras <strong>{summary.initialParallelCount} duplas</strong> entram na {isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}.</p>
+                    <p>Os outros <strong>{summary.initialParallelCount} participantes</strong> entram na {isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}.</p>
                   ) : (
-                    <p>As duplas abaixo do 2º lugar não participam de uma disputa paralela visível neste evento.</p>
+                    <p>Os participantes abaixo do 2º lugar não participam de uma disputa paralela visível neste evento.</p>
                   )}
                 </div>
               </article>
@@ -18207,7 +18493,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                 <div>
                   <h3>Eliminatória Principal</h3>
                   <p>A chave começa em <strong>{summary.mainOpeningRound}</strong>, com tamanho de {summary.mainBracketSize} posições.</p>
-                  <p>{summary.mainByes > 0 ? `${summary.mainByes} dupla${summary.mainByes === 1 ? " recebe" : "s recebem"} BYE nessa abertura.` : "A primeira fase começa sem BYEs."}</p>
+                  <p>{summary.mainByes > 0 ? `${summary.mainByes} participante${summary.mainByes === 1 ? " recebe" : "s recebem"} BYE nessa abertura.` : "A primeira fase começa sem BYEs."}</p>
                 </div>
               </article>
 
@@ -18236,8 +18522,8 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                       </>
                     ) : (
                       <>
-                        <p>Participam as <strong>{summary.initialParallelCount} duplas que terminarem abaixo do 2º lugar</strong> nos grupos. Todos os 3º colocados são ordenados primeiro; depois vêm os 4º colocados e as posições seguintes. Dentro de cada posição, vale a ordem do melhor grupo para o pior.</p>
-                        <p>A chave começa em <strong>{summary.parallelOpeningRound}</strong>, com {summary.parallelBracketSize} posições. {summary.parallelByes > 0 ? `As ${summary.parallelByes} duplas mais bem ordenadas recebem BYE.` : "Não haverá BYEs."} Sempre que possível, duplas do mesmo grupo não se enfrentam na abertura.</p>
+                        <p>Participam os <strong>{summary.initialParallelCount} participantes que terminarem abaixo do 2º lugar</strong> nos grupos. Todos os 3º colocados são ordenados primeiro; depois vêm os 4º colocados e as posições seguintes. Dentro de cada posição, vale a ordem do melhor grupo para o pior.</p>
+                        <p>A chave começa em <strong>{summary.parallelOpeningRound}</strong>, com {summary.parallelBracketSize} posições. {summary.parallelByes > 0 ? `Os ${summary.parallelByes} participantes mais bem ordenados recebem BYE.` : "Não haverá BYEs."} Sempre que possível, participantes do mesmo grupo não se enfrentam na abertura.</p>
                         <p>Quem vence avança e quem perde é eliminado. Esta disputa possui final, campeã e vice-campeã próprias.</p>
                       </>
                     )}
@@ -18252,11 +18538,11 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                     <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
                     {summary.thirdParallel.eligibleCount > 0 ? (
                       <>
-                        <p>Entram <strong>{summary.thirdParallel.eligibleCount} duplas</strong> derrotadas em {summary.thirdParallel.sourceRound}: as eliminadas nas quartas e, quando existir, também as eliminadas na fase imediatamente anterior.</p>
+                        <p>Entram <strong>{summary.thirdParallel.eligibleCount} participantes</strong> derrotados em {summary.thirdParallel.sourceRound}: os eliminados nas quartas e, quando existir, também os eliminados na fase imediatamente anterior.</p>
                         <p>A chave começa em <strong>{summary.thirdParallel.openingRound}</strong>, com {summary.thirdParallel.matchCount} {summary.thirdParallel.matchCount === 1 ? "partida" : "partidas"}. {summary.thirdParallel.byeCount > 0 ? `Os ${summary.thirdParallel.byeCount} BYE${summary.thirdParallel.byeCount === 1 ? "" : "s"} são destinados primeiro às eliminadas nas quartas.` : "Não haverá BYEs."} Ela terá campeã e vice-campeã próprias.</p>
                       </>
                     ) : (
-                      <p>Com {summary.teamCount} duplas, a Principal possui apenas uma final e não gera participantes suficientes para formar esta disputa.</p>
+                      <p>Com {summary.teamCount} {participantPlural}, a Principal possui apenas uma final e não gera participantes suficientes para formar esta disputa.</p>
                     )}
                   </div>
                 </article>
@@ -18269,7 +18555,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                   {isPlayRanking ? (
                     <p>Dentro de cada grupo continuam valendo os critérios escolhidos pelo organizador. Entre grupos, o sistema compara percentual de vitórias, saldo médio e média de games.</p>
                   ) : (
-                    <p>Os melhores grupos são definidos comparando somente os campeões. O saldo do campeão de grupo com quatro duplas é dividido por 1,5; em empate, o organizador realiza o sorteio. Todo o grupo herda essa posição MG.</p>
+                    <p>Os melhores grupos são definidos comparando somente os campeões. O saldo do campeão de grupo com quatro participantes é dividido por 1,5; em empate, o organizador realiza o sorteio. Todo o grupo herda essa posição MG.</p>
                   )}
                   <p>{visibleBracketNames.length > 1 ? `${visibleBracketNames.slice(0, -1).join(", ")} e ${visibleBracketNames.at(-1)}` : visibleBracketNames[0]} {visibleBracketNames.length > 1 ? "seguem separadas" : "segue independente"}, com confrontos e resultados próprios.</p>
                 </div>
@@ -18277,7 +18563,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
             </div>
 
             <footer className="formatInfoFooter">
-              {publicView ? <span>Esta explicação é somente para consulta.</span> : <span>O resumo se atualiza automaticamente quando a quantidade de duplas muda.</span>}
+              {publicView ? <span>Esta explicação é somente para consulta.</span> : <span>O resumo se atualiza automaticamente quando a quantidade de participantes muda.</span>}
               <button type="button" onClick={() => setOpen(false)}>Entendi</button>
             </footer>
           </section>
@@ -18314,13 +18600,46 @@ function SimpleConfigPanel({ data, config, onPlayerCountChange }) {
   );
 }
 
+function ReizinhoConfigPanel({ data, config, onPlayerCountChange }) {
+  const playerCount = getReizinhoPlayerCount(config, data);
+  const isTraditional = playerCount === 4;
+
+  return (
+    <div className="cupConfigBox simpleConfigBox reizinhoConfigBox">
+      <div className="twoCols participantAttendanceColumns">
+        <div>
+          <label>Quantidade de atletas</label>
+          <select value={playerCount} onChange={(event) => onPlayerCountChange(Number(event.target.value))}>
+            <option value={4}>4 atletas — Reizinho tradicional</option>
+            <option value={6}>6 atletas — modelo da planilha</option>
+          </select>
+        </div>
+        <div className="infoBox reizinhoFormatSummary">
+          {isTraditional ? (
+            <>
+              <p><strong>Reizinho tradicional:</strong> 3 rodadas e 3 partidas.</p>
+              <p>Cada atleta forma dupla exatamente uma vez com cada outro atleta.</p>
+            </>
+          ) : (
+            <>
+              <p><strong>Formato com 6 atletas:</strong> 5 rodadas e 15 partidas, conforme a planilha.</p>
+              <p>Em cada rodada são formadas 3 duplas, que jogam entre si. Cada atleta faz dupla exatamente uma vez com cada outro atleta.</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
   const cupConfig = data.cupConfig || {};
   const isFixedCupSize = config.type === "cup18" || config.type === "cup21";
   const isCup18 = config.type === "cup18";
   const isCup21 = config.type === "cup21";
   const isCopinha = config.type === "copinha";
-  const isCearense = config.type === "cearense";
+  const isCearense = config.type === "cearense" || config.type === "cearenseIndividual";
+  const isIndividualCup = isIndividualCupType(config);
   const isPlayRanking = config.type === "playranking";
   const isCearenseFamily = isCearense || isPlayRanking;
 
@@ -18328,14 +18647,14 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
     <div className="cupConfigBox">
       <div className="twoCols participantAttendanceColumns">
         <div>
-          <label>Quantidade de duplas</label>
+          <label>Quantidade de {isIndividualCup ? "jogadores" : "duplas"}</label>
           <select
             value={cupConfig.teamCount || config.defaultTeams}
             onChange={(e) => updateCupConfig("teamCount", Number(e.target.value))}
             disabled={isFixedCupSize}
           >
             {config.allowedTeamCounts.map((count) => (
-              <option key={count} value={count}>{count} duplas</option>
+              <option key={count} value={count}>{count} {isIndividualCup ? "jogadores" : "duplas"}</option>
             ))}
           </select>
           {showInfo && isCearenseFamily ? (
@@ -18360,6 +18679,7 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
             name={cupConfig.repechageName ?? config.defaultRepechageName}
             onNameChange={(value) => updateCupConfig("repechageName", value)}
             teamCount={cupConfig.teamCount || config.defaultTeams}
+            individual={isIndividualCup}
           />
         ) : (
           <div>
@@ -18380,6 +18700,7 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
             name={cupConfig.thirdRepechageName ?? config.defaultThirdRepechageName}
             onNameChange={(value) => updateCupConfig("thirdRepechageName", value)}
             teamCount={cupConfig.teamCount || config.defaultTeams}
+            individual={isIndividualCup}
           />
         ) : null}
       </div>
@@ -18426,7 +18747,7 @@ function isMixedParticipantConfig(config) {
 }
 
 function isTeamParticipantConfig(config) {
-  return config.type === "fixed12" || config.type === "fixed16" || isCupType(config);
+  return config.type === "fixed12" || config.type === "fixed16" || (isCupType(config) && !isIndividualCupType(config));
 }
 
 function isFixedMixedTeamConfig(config) {
@@ -18619,6 +18940,30 @@ function buildParticipantImportPreview(config, data, drafts, mode) {
         label: "Duplas",
         values: nextTeams.map((team) => `${team.a} + ${team.b}`),
       }],
+    };
+  }
+
+  if (isIndividualCupType(config)) {
+    const parsed = parseParticipantList(drafts.general);
+    const currentValues = data.players.teams.map((participant) => participant.a);
+    const result = fillParticipantSlots(
+      currentValues,
+      parsed.names,
+      (index) => `Jogador ${index + 1}`,
+      replaceAll
+    );
+    const nextTeams = result.nextValues.map((name) => ({ a: name, b: "" }));
+    return {
+      nextPlayers: { teams: nextTeams },
+      imported: result.imported,
+      preserved: result.preserved,
+      vacancies: result.vacancies,
+      overflow: result.overflow,
+      ignored: parsed.ignored,
+      duplicates: countDuplicateParticipantNames(parsed.names),
+      oddTeamList: false,
+      recognizedTeams: 0,
+      groups: [{ label: "Jogadores", values: result.nextValues }],
     };
   }
 
@@ -18874,6 +19219,23 @@ function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance })
     );
   }
 
+  if (isIndividualCupType(config)) {
+    return (
+      <div className="twoCols participantAttendanceColumns">
+        {data.players.teams.map((participant, i) => (
+          <div className="numberedInput participantAttendanceRow" key={i}>
+            <span>{i + 1}</span>
+            <input
+              value={participant.a}
+              onChange={(e) => updatePlayer({ kind: "team", index: i, field: "a" }, e.target.value)}
+            />
+            {renderAttendance({ kind: "team", index: i, field: "a" })}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
     return (
       <div className="twoCols">
@@ -18972,6 +19334,23 @@ function buildFromMixedTemplate(template, players) {
 
 function generateSchedule(type, players) {
   const config = modalityConfig[type];
+
+  if (config.type === "reizinho") {
+    return buildReizinhoGames(players.length).map((round) => (
+      round.map((game) => {
+        const [firstPair, secondPair] = game;
+        return {
+          court: 1,
+          team1: firstPair.map((playerNumber) => players[playerNumber - 1]),
+          ids1: firstPair.map((playerNumber) => playerNumber - 1),
+          team2: secondPair.map((playerNumber) => players[playerNumber - 1]),
+          ids2: secondPair.map((playerNumber) => playerNumber - 1),
+          s1: "",
+          s2: "",
+        };
+      })
+    ));
+  }
 
   if (config.type === "super8") {
     return optimizeCourts(buildFromPairTemplate(super8Template, players));
@@ -19696,7 +20075,7 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
           tournament.data?.rankingCriteria || defaultRankingCriteria
         );
       const separated = isMixedType(config);
-      const teamRanking = (isCupType(config) || config.type === "fixed12" || config.type === "fixed16")
+      const teamRanking = ((isCupType(config) && !isIndividualCupType(config)) || config.type === "fixed12" || config.type === "fixed16")
         && (!placementMode || rankingSettings.identity === "team");
 
       rows.forEach((row) => {
@@ -20962,6 +21341,17 @@ function getRegisteredAthletesForPublic(data, config) {
     ];
   }
 
+  if (isIndividualCupType(config)) {
+    return [
+      {
+        title: "Jogadores cadastrados",
+        names: (data.players.teams || [])
+          .map((player, index) => `${index + 1}. ${player.a || `Jogador ${index + 1}`}`)
+          .filter(Boolean),
+      },
+    ];
+  }
+
   if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
     return [
       {
@@ -21139,7 +21529,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             <h2>Participantes</h2>
             <span className="readOnlyBadge">Somente visualização</span>
           </div>
-          {config.type === "cearense" || config.type === "playranking" ? (
+          {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" ? (
             <div className="formatInfoPublicPlacement">
               <TournamentFormatInfoButton data={data} config={config} publicView />
             </div>

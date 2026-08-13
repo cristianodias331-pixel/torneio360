@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { orderFixedMixedPair } from "../src/fixedMixedTeamOrder.mjs";
 import { super12IndividualTemplate } from "../src/super12Schedule.mjs";
 import { super20MixedTemplate } from "../src/super20MixedSchedule.mjs";
+import { buildReizinhoGames, reizinhoPairRounds } from "../src/reizinhoSchedule.mjs";
 import {
   mergeConcurrentTournamentData,
   preservesTournamentCriticalData,
@@ -192,6 +193,7 @@ assert.ok(
 );
 
 const expectedModalityLabels = [
+  "Reizinho",
   "Super 6 (dupla fixa)",
   "Super 8",
   "Super 8 (dupla fixa)",
@@ -202,6 +204,7 @@ const expectedModalityLabels = [
   "Super 20 mista",
   "Simples (1 contra 1 por jogo)",
   "Torneio modelo Campeonato Cearense",
+  "Torneio modelo Campeonato Cearense — Individual",
   "Modelo Torneio 360",
 ];
 
@@ -243,7 +246,7 @@ assert.ok(mainSource.includes('type: "playranking"'), "A configuração do Model
 assert.ok(mainSource.includes("function getPlayRankingOpeningLosses"), "A transferência das derrotadas da primeira fase está ausente.");
 assert.ok(mainSource.includes("function buildPlayRankingParallelRounds"), "A chave paralela especial do Modelo Play Ranking está ausente.");
 assert.ok(mainSource.includes("function TournamentFormatInfoButton"), "A explicação dinâmica dos modelos está ausente.");
-assert.ok(mainSource.includes("getCearenseFormatSummary(teamCount, isPlayRanking)"), "A explicação não acompanha a quantidade escolhida.");
+assert.ok(mainSource.includes("getCearenseFormatSummary(teamCount, isPlayRanking, isIndividualCup)"), "A explicação não acompanha a quantidade ou o formato individual escolhido.");
 assert.ok(mainSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
 assert.ok(styleSource.includes(".formatInfoDialog"), "A explicação dinâmica está sem acabamento responsivo.");
 
@@ -314,6 +317,78 @@ for (let first = 1; first <= 12; first += 1) {
 
 assert.ok(mainSource.includes('type: "super12"'), "A modalidade Super 12 individual não está cadastrada.");
 assert.ok(mainSource.includes('config.type === "super12"'), "A geração da tabela fixa do Super 12 está ausente.");
+
+assert.deepEqual(
+  reizinhoPairRounds[4],
+  [
+    [[1, 2], [3, 4]],
+    [[1, 3], [2, 4]],
+    [[1, 4], [2, 3]],
+  ],
+  "O Reizinho tradicional deve ter as três parcerias possíveis para quatro atletas."
+);
+assert.equal(buildReizinhoGames(4).length, 3, "O Reizinho de 4 atletas deve ter 3 rodadas.");
+assert.equal(buildReizinhoGames(4).flat().length, 3, "O Reizinho de 4 atletas deve ter 3 partidas.");
+
+const reizinhoSixGames = buildReizinhoGames(6);
+assert.equal(reizinhoSixGames.length, 5, "O Reizinho de 6 atletas deve ter 5 rodadas.");
+assert.ok(reizinhoSixGames.every((round) => round.length === 3), "Cada rodada do Reizinho de 6 atletas deve ter 3 partidas.");
+assert.equal(reizinhoSixGames.flat().length, 15, "O Reizinho de 6 atletas deve ter 15 partidas.");
+
+const reizinhoPartners = new Map();
+const reizinhoOpponents = new Map();
+const reizinhoGamesPerAthlete = Array(7).fill(0);
+const reizinhoPairKey = (first, second) => [first, second].sort((a, b) => a - b).join("-");
+
+for (const pairs of reizinhoPairRounds[6]) {
+  assert.deepEqual(
+    pairs.flat().sort((a, b) => a - b),
+    [1, 2, 3, 4, 5, 6],
+    "Cada atleta deve integrar exatamente uma dupla por rodada no Reizinho de 6."
+  );
+  for (const pair of pairs) {
+    const key = reizinhoPairKey(...pair);
+    reizinhoPartners.set(key, (reizinhoPartners.get(key) || 0) + 1);
+  }
+}
+
+for (const round of reizinhoSixGames) {
+  for (const [firstPair, secondPair] of round) {
+    for (const athlete of [...firstPair, ...secondPair]) reizinhoGamesPerAthlete[athlete] += 1;
+    for (const first of firstPair) {
+      for (const second of secondPair) {
+        const key = reizinhoPairKey(first, second);
+        reizinhoOpponents.set(key, (reizinhoOpponents.get(key) || 0) + 1);
+      }
+    }
+  }
+}
+
+for (let first = 1; first <= 6; first += 1) {
+  assert.equal(reizinhoGamesPerAthlete[first], 10, `O atleta ${first} deve jogar 10 partidas no Reizinho de 6.`);
+  for (let second = first + 1; second <= 6; second += 1) {
+    const key = reizinhoPairKey(first, second);
+    assert.equal(reizinhoPartners.get(key), 1, `A parceria ${key} deve ocorrer exatamente uma vez no Reizinho de 6.`);
+    assert.equal(reizinhoOpponents.get(key), 4, `Os atletas ${key} devem se enfrentar exatamente quatro vezes no Reizinho de 6.`);
+  }
+}
+
+assert.ok(
+  mainSource.includes('type: "cearenseIndividual"')
+    && mainSource.includes('cupMode: "cearense-individual"')
+    && mainSource.includes('individualCup: true')
+    && mainSource.includes('isIndividualCupType(config)'),
+  "O Campeonato Cearense Individual perdeu a configuração de partidas um contra um."
+);
+assert.ok(
+  mainSource.includes("function ConfirmModalityChangeModal")
+    && mainSource.includes("function ConfirmEventGroupModalityChangeModal")
+    && mainSource.includes("const modalityChanged = editForm.type !== editTarget.type")
+    && mainSource.includes("createInitialData(editForm.type, nextModalityConfig)")
+    && mainSource.includes("confirmModalityChanges: true")
+    && mainSource.includes("Trocar modalidade"),
+  "A edição segura da modalidade de um torneio existente está ausente."
+);
 
 assert.deepEqual(
   orderFixedMixedPair("Ana Beatriz", "João Pedro"),
@@ -566,7 +641,7 @@ assert.ok(
 assert.ok(
   mainSource.includes('Editar evento completo')
     && mainSource.includes('function openEditEventGroup(group)')
-    && mainSource.includes('function saveEditedEventGroup()')
+    && mainSource.includes('function saveEditedEventGroup({ confirmModalityChanges = false } = {})')
     && mainSource.includes('Adicionar categoria'),
   "A edição conjunta de eventos com várias categorias está ausente."
 );
