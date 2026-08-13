@@ -2496,6 +2496,110 @@ function isGameFinished(game, winningScore = 4) {
   return getScoreWinnerSide(game, winningScore) !== null;
 }
 
+function hasPlayableGameSides(game) {
+  if (!game || game.isBye) return false;
+
+  const hasFirstSide = Array.isArray(game.ids1)
+    ? game.ids1.length > 0
+    : Array.isArray(game.team1)
+      ? game.team1.some((name) => name && name !== "Aguardando" && name !== "BYE")
+      : Boolean(game.team1);
+  const hasSecondSide = Array.isArray(game.ids2)
+    ? game.ids2.length > 0
+    : Array.isArray(game.team2)
+      ? game.team2.some((name) => name && name !== "Aguardando" && name !== "BYE")
+      : Boolean(game.team2);
+
+  return hasFirstSide && hasSecondSide;
+}
+
+function getTournamentOperationalGames(data = {}) {
+  let operationalData = data;
+  try {
+    if (isCampeonatoCearenseData(data) && data.cupConfig?.cearenseBracketVersion === 2) {
+      operationalData = syncCupBracketScores(data);
+    }
+  } catch {
+    // Mantém compatibilidade com chaves antigas enquanto elas são reparadas.
+  }
+  const games = [];
+
+  (Array.isArray(operationalData.schedule) ? operationalData.schedule : []).forEach((round, roundIndex) => {
+    (Array.isArray(round) ? round : []).forEach((game, gameIndex) => {
+      if (!hasPlayableGameSides(game)) return;
+      games.push({
+        game,
+        scope: "schedule",
+        key: `schedule:${roundIndex}:${gameIndex}`,
+        label: game.groupName
+          ? `${game.groupName} · Rodada ${roundIndex + 1}`
+          : `Rodada ${roundIndex + 1}`,
+      });
+    });
+  });
+
+  const storedBrackets = Array.isArray(operationalData.brackets) ? operationalData.brackets : [];
+  storedBrackets.forEach((storedGame) => {
+    let game = storedGame;
+    try {
+      game = resolveBracketGame(storedGame, storedBrackets, operationalData);
+    } catch {
+      // Se uma chave antiga estiver incompleta, preservamos os jogos válidos já salvos.
+    }
+    if (!hasPlayableGameSides(game)) return;
+    games.push({
+      game,
+      storedGame,
+      scope: "bracket",
+      key: `bracket:${storedGame.matchKey || games.length}`,
+      label: storedGame.roundName || storedGame.phase || "Chave eliminatória",
+    });
+  });
+
+  return games;
+}
+
+function getTournamentMatchStatusSummary(data = {}) {
+  const winningScore = getWinningScore(data);
+  return getTournamentOperationalGames(data).reduce((summary, item) => {
+    if (isGameFinished(item.game, winningScore)) summary.finished += 1;
+    else if (item.storedGame?.inProgress === true || item.game?.inProgress === true) summary.inProgress += 1;
+    else summary.waiting += 1;
+    summary.total += 1;
+    return summary;
+  }, { waiting: 0, inProgress: 0, finished: 0, total: 0 });
+}
+
+function getTournamentActiveCourtUsages(tournament, data = tournament?.data || {}) {
+  const courtNumbers = Array.isArray(data.courtNumbers) ? data.courtNumbers : [];
+  const winningScore = getWinningScore(data);
+
+  return getTournamentOperationalGames(data)
+    .filter((item) => (
+      !isGameFinished(item.game, winningScore)
+      && (item.storedGame?.inProgress === true || item.game?.inProgress === true)
+    ))
+    .map((item) => ({
+      tournamentId: tournament?.id,
+      tournamentName: tournament?.name || "Torneio",
+      gameKey: item.key,
+      gameLabel: item.label,
+      courtNumber: getGameCourtNumber(item.storedGame || item.game, courtNumbers),
+    }));
+}
+
+function TournamentMatchStatusSummary({ data, compact = false, vertical = false }) {
+  const summary = useMemo(() => getTournamentMatchStatusSummary(data), [data]);
+
+  return (
+    <div className={`tournamentMatchStatusSummary ${compact ? "is-compact" : ""} ${vertical ? "is-vertical" : ""}`} aria-label="Resumo dos jogos">
+      <span className="summaryStatus is-in-progress"><i aria-hidden="true" />Em andamento <strong>{summary.inProgress}</strong></span>
+      <span className="summaryStatus is-finished"><i aria-hidden="true" />Finalizados <strong>{summary.finished}</strong></span>
+      <span className="summaryStatus is-waiting"><i aria-hidden="true" />Aguardando chamada <strong>{summary.waiting}</strong></span>
+    </div>
+  );
+}
+
 function isCupType(config) {
   return config?.type === "cup" || config?.type === "cup18" || config?.type === "cup21" || config?.type === "copinha" || config?.type === "cearense" || config?.type === "playranking";
 }
@@ -7731,8 +7835,11 @@ function TournamentWorkspaceTabs({
                       title={tournament.name}
                       aria-current={isActive ? "page" : undefined}
                     >
-                      <span className="openTournamentTabDot" aria-hidden="true" />
-                      <span className="openTournamentTabName">{tournament.name}</span>
+                      <span className="openTournamentTabIdentity">
+                        <span className="openTournamentTabDot" aria-hidden="true" />
+                        <span className="openTournamentTabName">{tournament.name}</span>
+                      </span>
+                      <TournamentMatchStatusSummary data={tournament.data} compact vertical />
                     </button>
                     <button
                       type="button"
@@ -7781,6 +7888,7 @@ function TournamentWorkspaceTabs({
           <span className="mobileTournamentSwitcherCopy">
             <small>Torneio atual</small>
             <strong>{activeTournament?.name || "Escolher torneio"}</strong>
+            {activeTournament ? <TournamentMatchStatusSummary data={activeTournament.data} compact /> : null}
           </span>
           <span className="mobileTournamentSwitcherCount">{openTournaments.length}</span>
           <ChevronDown aria-hidden="true" />
@@ -11828,6 +11936,7 @@ setNewPublicInfo({
               <TournamentScreen
                 key={selected.id}
                 tournament={selected}
+                openTournaments={openTournamentIds.map((id) => tournaments.find((item) => item.id === id)).filter(Boolean)}
                 userId={user.id}
                 onBack={closeSelectedTournament}
                 onSave={saveTournament}
@@ -14618,6 +14727,7 @@ class TournamentErrorBoundary extends React.Component {
 
 function TournamentScreen({
   tournament,
+  openTournaments = [],
   userId,
   onBack,
   onSave,
@@ -14679,9 +14789,11 @@ function TournamentScreen({
   const [participantImportBackup, setParticipantImportBackup] = useState(null);
   const [courtEditor, setCourtEditor] = useState(null);
   const [courtDuplicateConfirm, setCourtDuplicateConfirm] = useState(null);
+  const [courtOccupancyConflict, setCourtOccupancyConflict] = useState(null);
   const [courtConfigRevision, setCourtConfigRevision] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
 
   const [shareInfo, setShareInfo] = useState({
     public_id: tournament.public_id || null,
@@ -14697,6 +14809,16 @@ function TournamentScreen({
     const params = new URLSearchParams(window.location.search);
     return params.get("partidas") || "grupos";
   });
+  const supportsTournamentFormatConfiguration = isCupType(config) || isFlexibleSimpleType(config);
+  const [activeOrganizationTab, setActiveOrganizationTab] = useState(() => (
+    supportsTournamentFormatConfiguration ? "formato" : "participantes"
+  ));
+
+  useEffect(() => {
+    if (!supportsTournamentFormatConfiguration && activeOrganizationTab === "formato") {
+      setActiveOrganizationTab("participantes");
+    }
+  }, [supportsTournamentFormatConfiguration, activeOrganizationTab]);
 
   async function updateTournamentUrl(next = {}) {
     const params = new URLSearchParams(window.location.search);
@@ -15726,6 +15848,7 @@ function TournamentScreen({
       `Confirme todos antes de criar os jogos. Pendentes: ${pendingNames}${remaining > 0 ? ` e mais ${remaining}` : ""}.`
     );
     setActiveTournamentTab("participantes");
+    setActiveOrganizationTab("participantes");
     return false;
   }
 
@@ -15744,6 +15867,7 @@ function TournamentScreen({
         `Defina Sim ou Não para ${missingChoices.join(" e ")} antes de continuar.`
       );
       setActiveTournamentTab("participantes");
+      setActiveOrganizationTab("formato");
       return false;
     }
 
@@ -15762,6 +15886,7 @@ function TournamentScreen({
         `Informe o nome da ${missingNames.join(" e da ")} antes de continuar.`
       );
       setActiveTournamentTab("participantes");
+      setActiveOrganizationTab("formato");
       return false;
     }
 
@@ -15835,6 +15960,107 @@ function TournamentScreen({
     return { game, peers };
   }
 
+  function getOpenCourtUsages(exclude = null) {
+    const tournamentSources = new Map(
+      (openTournaments || []).map((item) => [item.id, item])
+    );
+    tournamentSources.set(tournament.id, {
+      ...tournament,
+      data: latestDataRef.current,
+    });
+
+    return [...tournamentSources.values()].flatMap((item) => (
+      getTournamentActiveCourtUsages(item, item.id === tournament.id ? latestDataRef.current : item.data)
+    )).filter((usage) => !exclude || (
+      String(usage.tournamentId) !== String(exclude.tournamentId)
+      || usage.gameKey !== exclude.gameKey
+    ));
+  }
+
+  function getNextFreeCourtNumber(usages = getOpenCourtUsages()) {
+    const occupied = new Set(usages.map((usage) => normalizeCourtNumberValue(usage.courtNumber)).filter(Boolean));
+    const configuredCourt = normalizeCourtNumbers(
+      latestDataRef.current.courtNumbers,
+      getTournamentCourtCount(config, latestDataRef.current)
+    ).find((number) => !occupied.has(number));
+    if (configuredCourt) return configuredCourt;
+
+    let candidate = 1;
+    while (occupied.has(String(candidate)) && candidate < 9999) candidate += 1;
+    return String(candidate);
+  }
+
+  function setOperationalGameState(target, inProgress, courtNumber = null) {
+    setData((prev) => {
+      const copy = target.scope === "bracket" ? prepareEditableBracketData(prev) : structuredClone(prev);
+      const courtNumbers = normalizeCourtNumbers(copy.courtNumbers, getTournamentCourtCount(config, copy));
+
+      if (target.scope === "schedule") {
+        const game = copy.schedule?.[target.roundIndex]?.[target.gameIndex];
+        if (!game || isGameFinished(game, getWinningScore(copy))) return prev;
+        if (courtNumber) applyCourtNumberToGame(game, courtNumber, courtNumbers);
+        game.inProgress = inProgress;
+        return copy;
+      }
+
+      const resolvedGames = (copy.brackets || []).map((game) => resolveBracketGame(game, copy.brackets, copy));
+      const resolvedTarget = resolvedGames.find((game) => game.matchKey === target.matchKey);
+      if (!resolvedTarget || !hasPlayableGameSides(resolvedTarget) || isGameFinished(resolvedTarget, getWinningScore(copy))) return prev;
+
+      copy.brackets = copy.brackets.map((game) => {
+        if (game.matchKey !== target.matchKey) return game;
+        const nextGame = { ...game, inProgress };
+        if (courtNumber) applyCourtNumberToGame(nextGame, courtNumber, courtNumbers);
+        return nextGame;
+      });
+      return copy;
+    });
+  }
+
+  function requestOperationalGameStart(target, game) {
+    const courtNumbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
+    const courtNumber = getGameCourtNumber(game, courtNumbers);
+    const usage = getOpenCourtUsages({
+      tournamentId: tournament.id,
+      gameKey: target.scope === "schedule"
+        ? `schedule:${target.roundIndex}:${target.gameIndex}`
+        : `bracket:${target.matchKey}`,
+    }).find((item) => item.courtNumber === courtNumber);
+
+    if (!usage) {
+      setOperationalGameState(target, true);
+      return;
+    }
+
+    setCourtOccupancyConflict({
+      kind: "start",
+      number: courtNumber,
+      usage,
+      target,
+    });
+  }
+
+  function resolveCourtOccupancyConflict(choice) {
+    if (!courtOccupancyConflict) return;
+    const conflict = courtOccupancyConflict;
+    setCourtOccupancyConflict(null);
+    if (choice === "cancel") return;
+
+    const nextCourtNumber = choice === "next"
+      ? getNextFreeCourtNumber()
+      : conflict.number;
+
+    if (conflict.kind === "assign") {
+      commitGameCourtNumber(conflict.editor, nextCourtNumber);
+      return;
+    }
+
+    setOperationalGameState(conflict.target, true, nextCourtNumber);
+    if (choice === "next") {
+      showNotice("success", "Quadra livre selecionada", `O jogo foi iniciado na Quadra ${nextCourtNumber}.`);
+    }
+  }
+
   function commitGameCourtNumber(editor, value) {
     const nextNumber = normalizeCourtNumberValue(value);
     if (!editor || !nextNumber) return;
@@ -15867,12 +16093,20 @@ function TournamentScreen({
       return;
     }
 
-    const duplicateGame = context.peers.find((game) => (
-      game !== context.game && getGameCourtNumber(game, courtNumbers) === nextNumber
-    ));
+    const usage = getOpenCourtUsages({
+      tournamentId: tournament.id,
+      gameKey: courtEditor.scope === "schedule"
+        ? `schedule:${courtEditor.roundIndex}:${courtEditor.gameIndex}`
+        : `bracket:${courtEditor.matchKey}`,
+    }).find((item) => item.courtNumber === nextNumber);
 
-    if (duplicateGame) {
-      setCourtDuplicateConfirm({ kind: "game", editor: courtEditor, number: nextNumber });
+    if (usage) {
+      setCourtOccupancyConflict({
+        kind: "assign",
+        editor: courtEditor,
+        number: nextNumber,
+        usage,
+      });
       setCourtEditor(null);
       return;
     }
@@ -16258,10 +16492,11 @@ function updateScore(roundIndex, gameIndex, field, value) {
       ],
       confirmLabel: "Alterar e recriar as chaves",
     });
-    return;
+    return false;
   }
 
   applyScheduleScoreChange({ roundIndex, gameIndex, field, value });
+  return true;
 }
 
 function prepareEditableBracketData(currentData) {
@@ -16282,42 +16517,25 @@ function prepareEditableBracketData(currentData) {
 }
 
 function toggleScheduleGameStatus(roundIndex, gameIndex) {
-  setData((prev) => {
-    const copy = structuredClone(prev);
-    const game = copy.schedule?.[roundIndex]?.[gameIndex];
+  const game = data.schedule?.[roundIndex]?.[gameIndex];
+  if (!game || isGameFinished(game, getWinningScore(data))) return;
 
-    if (!game || getScoreWinnerSide(game, getWinningScore(copy)) !== null) return prev;
-
-    game.inProgress = game.inProgress !== true;
-    return copy;
-  });
+  const target = { scope: "schedule", roundIndex, gameIndex };
+  if (game.inProgress === true) setOperationalGameState(target, false);
+  else requestOperationalGameStart(target, game);
 }
 
 function toggleBracketGameStatus(matchKey) {
-  setData((prev) => {
-    const copy = prepareEditableBracketData(prev);
+  const preparedData = prepareEditableBracketData(data);
+  const storedGame = preparedData.brackets?.find((game) => game.matchKey === matchKey);
+  const targetGame = storedGame
+    ? resolveBracketGame(storedGame, preparedData.brackets, preparedData)
+    : null;
+  if (!targetGame || !hasPlayableGameSides(targetGame) || isGameFinished(targetGame, getWinningScore(preparedData))) return;
 
-    const resolvedGames = copy.brackets.map((game) => resolveBracketGame(game, copy.brackets, copy));
-    const targetGame = resolvedGames.find((game) => game.matchKey === matchKey);
-
-    if (
-      !targetGame
-      || targetGame.isBye
-      || !targetGame.ids1?.length
-      || !targetGame.ids2?.length
-      || getScoreWinnerSide(targetGame, getWinningScore(copy)) !== null
-    ) {
-      return prev;
-    }
-
-    copy.brackets = copy.brackets.map((game) =>
-      game.matchKey === matchKey
-        ? { ...game, inProgress: game.inProgress !== true }
-        : game
-    );
-
-    return copy;
-  });
+  const target = { scope: "bracket", matchKey };
+  if (storedGame.inProgress === true) setOperationalGameState(target, false);
+  else requestOperationalGameStart(target, storedGame);
 }
 
 function updateBracketScore(matchKey, field, value) {
@@ -16412,9 +16630,14 @@ const tournamentRankingShareContext = {
 };
 const courtEditorContext = getCourtAssignmentContext(data, courtEditor);
 const courtEditorGame = courtEditorContext.game;
-const courtEditorUsedNumbers = courtEditorContext.peers
-  .filter((game) => game !== courtEditorGame)
-  .map((game) => getGameCourtNumber(game, data.courtNumbers || []));
+const courtEditorUsedNumbers = courtEditor
+  ? getOpenCourtUsages({
+      tournamentId: tournament.id,
+      gameKey: courtEditor.scope === "schedule"
+        ? `schedule:${courtEditor.roundIndex}:${courtEditor.gameIndex}`
+        : `bracket:${courtEditor.matchKey}`,
+    }).map((usage) => usage.courtNumber)
+  : [];
 
   function SavingStatusBadge() {
     const normalizedStatus = savingStatus.toLowerCase();
@@ -16470,6 +16693,14 @@ return (
         number={courtDuplicateConfirm.number}
         onCancel={cancelDuplicateCourtNumber}
         onConfirm={confirmDuplicateCourtNumber}
+      />,
+      document.body
+    )}
+
+    {courtOccupancyConflict && createPortal(
+      <CourtOccupancyModal
+        conflict={courtOccupancyConflict}
+        onChoose={resolveCourtOccupancyConflict}
       />,
       document.body
     )}
@@ -16543,9 +16774,19 @@ return (
     )}
 
     <div className="appPage">
-      <header>
+      <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
         <div>
-          <h1>{tournament.name}</h1>
+          <div className="tournamentHeaderTitleRow">
+            <h1>{tournament.name}</h1>
+            <button
+              type="button"
+              className="tournamentHeaderDetailsToggle"
+              onClick={() => setHeaderDetailsOpen((open) => !open)}
+              aria-expanded={headerDetailsOpen}
+            >
+              Informações <ChevronDown aria-hidden="true" />
+            </button>
+          </div>
           <div className="tournamentHeaderMeta">
             <span><Trophy aria-hidden="true" /> {getModalityDisplayName(tournament.type)}</span>
             {data.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> Várias categorias</span> : null}
@@ -16563,27 +16804,19 @@ return (
         </div>
 
         <div className="actions tournamentHeaderActions">
+          <button
+            type="button"
+            className="tournamentHeaderShareButton"
+            onClick={() => setShareOpen((prev) => !prev)}
+            aria-expanded={shareOpen}
+          >
+            <Share2 aria-hidden="true" /> Compartilhar
+          </button>
           <button type="button" onClick={handleBack}>Voltar</button>
         </div>
       </header>
 
-        <section className="shareHighlightBox">
-          <div>
-            <strong><Share2 aria-hidden="true" /> Compartilhar perfil da arena</strong>
-            <p>Envie um único link para atletas e convidados encontrarem os torneios e circuitos da arena sem login.</p>
-          </div>
-
-          <button
-            type="button"
-            className="shareHighlightBtn"
-            onClick={() => setShareOpen((prev) => !prev)}
-          >
-            <Share2 aria-hidden="true" />
-            {shareOpen ? "Fechar" : "Compartilhar"}
-          </button>
-        </section>
-
-              {shareOpen && (
+        {shareOpen && (
           <section className="card shareCard">
             <h2>Link público da arena</h2>
             <p>Atletas e convidados poderão escolher um torneio no perfil e acompanhar participantes, jogos e resultados.</p>
@@ -16610,7 +16843,7 @@ return (
         )}
 
         <nav className="tournamentTopTabs" aria-label="Organização do torneio">
-          <button type="button" className={activeTournamentTab === "participantes" ? "active" : ""} onClick={() => setActiveTournamentTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
+          <button type="button" className={activeTournamentTab === "participantes" ? "active" : ""} onClick={() => setActiveTournamentTab("participantes")}><Users aria-hidden="true" /> Organização</button>
           {isCupType(config) && (
             <button type="button" className={activeTournamentTab === "grupos" ? "active" : ""} onClick={() => setActiveTournamentTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button>
           )}
@@ -16620,11 +16853,19 @@ return (
 
         <section className="card" style={{ display: activeTournamentTab === "participantes" ? undefined : "none" }}>
           <div className="cardTitleRow">
-            <h2>Participantes</h2>
+            <h2>Organização do torneio</h2>
             <SavingStatusBadge />
           </div>
 
+          <nav className="organizationSubTabs" aria-label="Configuração do torneio">
+            {supportsTournamentFormatConfiguration ? (
+              <button type="button" className={activeOrganizationTab === "formato" ? "active" : ""} onClick={() => setActiveOrganizationTab("formato")}>Formato do torneio</button>
+            ) : null}
+            <button type="button" className={activeOrganizationTab === "participantes" ? "active" : ""} onClick={() => setActiveOrganizationTab("participantes")}>Participantes</button>
+            <button type="button" className={activeOrganizationTab === "quadras" ? "active" : ""} onClick={() => setActiveOrganizationTab("quadras")}>Quadras</button>
+          </nav>
 
+          <div className="organizationPanel" style={{ display: activeOrganizationTab === "formato" ? undefined : "none" }}>
           {isCupType(config) && (
             <CupConfigPanel
               data={data}
@@ -16640,14 +16881,18 @@ return (
               onPlayerCountChange={requestSimplePlayerCount}
             />
           )}
+          </div>
 
+          <div className="organizationPanel" style={{ display: activeOrganizationTab === "quadras" ? undefined : "none" }}>
           <CourtConfigPanel
             key={`court-config-${courtConfigRevision}`}
             courtNumbers={data.courtNumbers || createDefaultCourtNumbers(currentCourtCount)}
             onCommit={requestDefaultCourtNumber}
             onReset={resetDefaultCourtNumbers}
           />
+          </div>
 
+          <div className="organizationPanel" style={{ display: activeOrganizationTab === "participantes" ? undefined : "none" }}>
           <div className="participantImportBar">
             <div>
               <strong><ClipboardPaste aria-hidden="true" /> Preencher vários participantes</strong>
@@ -16699,6 +16944,7 @@ return (
               ) : null}
             </div>
           )}
+          </div>
         </section>
 
         {isCupType(config) && (
@@ -16765,6 +17011,7 @@ return (
             <>
              <ScheduleView
   schedule={data.schedule}
+  statusData={data}
   updateScore={updateScore}
   onStatusToggle={toggleScheduleGameStatus}
   showGroupName={isCupType(config)}
@@ -18444,7 +18691,7 @@ function CourtAssignmentModal({ editor, courtNumbers, currentNumber, usedNumbers
           <div>
             <span>Alteração rápida</span>
             <h2 id="court-editor-title">Escolha o número da quadra</h2>
-            <p>Se o número já estiver em uso nesta rodada, você poderá confirmar a repetição antes de salvar.</p>
+            <p>Se o número estiver ocupado em um torneio aberto, você poderá escolher outra quadra ou confirmar a repetição.</p>
           </div>
           <button type="button" className="courtEditorClose" onClick={onClose} aria-label="Fechar">×</button>
         </div>
@@ -18530,6 +18777,32 @@ function ConfirmDuplicateCourtModal({ kind, number, onCancel, onConfirm }) {
   );
 }
 
+function CourtOccupancyModal({ conflict, onChoose }) {
+  if (!conflict) return null;
+
+  return (
+    <div className="courtDuplicateOverlay courtOccupancyOverlay" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onChoose("cancel");
+    }}>
+      <section className="courtDuplicateModal courtOccupancyModal" role="dialog" aria-modal="true" aria-labelledby="court-occupancy-title">
+        <div className="courtDuplicateIcon">!</div>
+        <span className="courtDuplicateEyebrow">Quadra em uso</span>
+        <h2 id="court-occupancy-title">A Quadra {conflict.number} já está ocupada</h2>
+        <p>
+          <strong>{conflict.usage.tournamentName}</strong> está usando essa quadra em
+          {" "}<strong>{conflict.usage.gameLabel}</strong>.
+        </p>
+        <p>Escolha a próxima quadra livre ou mantenha o número se a repetição for intencional.</p>
+        <div className="courtDuplicateActions courtOccupancyActions">
+          <button type="button" className="secondaryBtn" onClick={() => onChoose("cancel")}>Cancelar</button>
+          <button type="button" className="courtKeepNumberBtn" onClick={() => onChoose("same")}>Usar Quadra {conflict.number}</button>
+          <button type="button" className="courtNextFreeBtn" onClick={() => onChoose("next")}>Usar próxima livre</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function UniversalMatchCard({
   game,
   phaseLabel,
@@ -18543,6 +18816,8 @@ function UniversalMatchCard({
   onCallGame = null,
   onStatusToggle = null,
 }) {
+  const firstScoreInputRef = useRef(null);
+  const secondScoreInputRef = useRef(null);
   const winnerSide = isBye ? null : getScoreWinnerSide(game, winningScore);
   const isFinished = winnerSide !== null;
   const isInProgress = !isBye && !isFinished && !blocked && game?.inProgress === true;
@@ -18573,7 +18848,7 @@ function UniversalMatchCard({
         ? "Aguardando definição"
         : isInProgress
           ? "Jogo em andamento"
-          : "Aguardando placar";
+          : "Aguardando chamada";
   const statusClassName = `matchCardStatus ${
     isBye
       ? "is-bye"
@@ -18602,6 +18877,7 @@ function UniversalMatchCard({
 
     return (
       <input
+        ref={side === "team1" ? firstScoreInputRef : secondScoreInputRef}
         className="matchScoreInput"
         type="text"
         min="0"
@@ -18609,7 +18885,30 @@ function UniversalMatchCard({
         inputMode="numeric"
         pattern="[0-9]*"
         value={value ?? ""}
-        onChange={(event) => onScoreChange?.(field, event.target.value)}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          const accepted = onScoreChange?.(field, nextValue);
+          if (!nextValue || accepted === false) return;
+
+          window.requestAnimationFrame(() => {
+            if (side === "team1") {
+              secondScoreInputRef.current?.focus();
+              secondScoreInputRef.current?.select();
+            } else {
+              secondScoreInputRef.current?.blur();
+            }
+          });
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          if (side === "team1") {
+            secondScoreInputRef.current?.focus();
+            secondScoreInputRef.current?.select();
+          } else {
+            event.currentTarget.blur();
+          }
+        }}
         disabled={blocked}
         aria-label={`Placar de ${teamName(side === "team1" ? team1 : team2)}`}
       />
@@ -18629,9 +18928,11 @@ function UniversalMatchCard({
             className={statusClassName}
             onClick={onStatusToggle}
             aria-pressed={isInProgress}
-            title={isInProgress ? "Marcar como aguardando placar" : "Marcar como jogo em andamento"}
+            title={isInProgress ? "Clique para voltar a Aguardando chamada" : "Clique para informar que o jogo começou"}
           >
-            {statusLabel}
+            <span className="matchStatusIndicator" aria-hidden="true">{isInProgress ? "●" : "▷"}</span>
+            <span>{statusLabel}</span>
+            {!isInProgress ? <small>Clique para iniciar</small> : null}
           </button>
         ) : (
           <span className={statusClassName}>{statusLabel}</span>
@@ -18672,6 +18973,7 @@ function UniversalMatchCard({
 
 function ScheduleView({
   schedule,
+  statusData = null,
   updateScore = () => {},
   onStatusToggle = null,
   showGroupName = false,
@@ -18690,6 +18992,8 @@ function ScheduleView({
           setVoiceRepeat={setVoiceRepeat}
         />
       ) : null}
+
+      {!readOnly && statusData ? <TournamentMatchStatusSummary data={statusData} /> : null}
 
       {schedule.map((round, roundIndex) => (
         <div className={`roundCard ${readOnly ? "readOnlyRoundCard publicReadOnlyRound" : ""}`} key={roundIndex}>
@@ -19311,6 +19615,8 @@ function CupBracketView({
         voiceRepeat={voiceRepeat}
         setVoiceRepeat={setVoiceRepeat}
       />
+
+      <TournamentMatchStatusSummary data={data} />
 
       <div className="cupBrackets bracketTreeCollection">
         {groupedBrackets.main?.length > 0 && (
