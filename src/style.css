@@ -17465,6 +17465,64 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
   background: var(--surface, #fff);
 }
 
+/* Circuitos somados, rankings mistos e bônus: componentes usam tokens para
+   manter contraste equivalente nos modos claro e noturno. */
+.circuitManagerToolbarActions { display: grid; gap: 9px; min-width: 176px; }
+.circuitManagerToolbarActions > button { width: 100%; }
+.proDashboard.playAppShell .combineCircuitsButton,
+.combineCircuitsButton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 44px; border: 1px solid #8b5cf6 !important;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #fff !important; box-shadow: 0 10px 24px rgba(109,40,217,.22) !important;
+}
+.combineCircuitsButton svg { width: 17px; height: 17px; }
+.combinedCircuitSheet { display: grid; gap: 18px; }
+.combinedCircuitNotice { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #8b5cf6 45%, var(--ui-border, #d7e0ec)); border-radius: 14px; background: color-mix(in srgb, #8b5cf6 9%, var(--ui-surface-raised, #fff)); color: var(--ui-text, #334155); font-weight: 700; line-height: 1.45; }
+.combinedCircuitNotice svg { flex: 0 0 18px; width: 18px; }
+.combinedCircuitList button { font: inherit; }
+.circuitGenderDivision { display: grid; gap: 12px; margin-top: 14px; padding: 14px; border: 1px solid var(--ui-border, #d7e0ec); border-radius: 16px; background: var(--ui-surface-muted, #f5f8fc); }
+
+.circuitExtraPointsPanel { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-border, #d7e0ec); }
+.proDashboard.playAppShell .circuitExtraPointsButton,
+.circuitExtraPointsButton { justify-self: start; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #8b5cf6 !important; background: color-mix(in srgb, #8b5cf6 14%, var(--ui-surface-raised, #fff)) !important; color: color-mix(in srgb, #6d28d9 76%, var(--ui-text-strong, #0d1b36)) !important; box-shadow: none !important; }
+.circuitExtraPointsButton svg { width: 17px; }
+.circuitExtraPointsContent { display: grid; gap: 14px; padding: 16px; border: 1px solid color-mix(in srgb, #8b5cf6 42%, var(--ui-border, #d7e0ec)); border-radius: 17px; background: var(--ui-surface-muted, #f8fafc); }
+.circuitExtraPointsForm { display: grid; grid-template-columns: 1.2fr 1.2fr .55fr; gap: 10px; align-items: end; }
+.circuitExtraPointsForm label { display: grid; gap: 6px; min-width: 0; color: var(--ui-text-strong, #0d1b36); font-size: .78rem; font-weight: 850; }
+.circuitExtraPointsForm :is(input, select) { width: 100%; min-width: 0; border-color: var(--ui-border, #cfdaea); background: var(--ui-surface-raised, #fff); color: var(--ui-text-strong, #0d1b36); }
+.circuitExtraNote { grid-column: 1 / 3; }
+.proDashboard.playAppShell .circuitExtraSave,
+.circuitExtraSave { grid-column: 3; border: 1px solid #7c3aed !important; background: linear-gradient(135deg,#8b5cf6,#6d28d9) !important; color: #fff !important; }
+.circuitExtraHistory { display: grid; gap: 8px; }
+.circuitExtraHistory > article { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--ui-border, #d7e0ec); border-radius: 13px; background: var(--ui-surface-raised, #fff); }
+.circuitExtraHistory article div { display: grid; gap: 3px; min-width: 0; }
+.circuitExtraHistory article b { color: var(--ui-text-strong, #0d1b36); }
+.circuitExtraHistory article span, .circuitExtraEmpty { color: var(--ui-muted, #687992); font-size: .78rem; font-weight: 700; }
+.circuitExtraHistory article button { min-height: 36px; padding: 7px 10px; border: 1px solid #ef4444 !important; background: color-mix(in srgb,#ef4444 10%,var(--ui-surface-raised,#fff)) !important; color: #dc2626 !important; box-shadow: none !important; }
+
+html[data-theme="dark"] .combinedCircuitNotice,
+html[data-theme="dark"] .circuitGenderDivision,
+html[data-theme="dark"] .circuitExtraPointsContent,
+html[data-theme="dark"] .circuitExtraHistory > article { color: #dbe7f5; }
+
+@media (max-width: 760px) {
+  .circuitManagerToolbarActions { width: 100%; grid-template-columns: 1fr 1fr; }
+  .combinedCircuitSheet { padding: 15px !important; }
+  .combinedCircuitList { grid-template-columns: 1fr !important; }
+  .circuitExtraPointsForm { grid-template-columns: 1fr 1fr; }
+  .circuitExtraPointsForm label:first-child, .circuitExtraNote { grid-column: 1 / -1; }
+  .circuitExtraPointsForm label:nth-child(2), .circuitExtraPointsForm label:nth-child(3) { grid-column: auto; }
+  .proDashboard.playAppShell .circuitExtraSave, .circuitExtraSave { grid-column: 1 / -1; width: 100%; }
+  .circuitExtraHistory > article { align-items: stretch; flex-direction: column; }
+  .circuitExtraHistory article button { width: 100%; }
+}
+
+@media (max-width: 430px) {
+  .circuitManagerToolbarActions, .circuitExtraPointsForm { grid-template-columns: 1fr; }
+  .circuitExtraPointsForm label, .circuitExtraPointsForm label:first-child, .circuitExtraPointsForm label:nth-child(2), .circuitExtraPointsForm label:nth-child(3), .circuitExtraNote { grid-column: 1; }
+}
+
 .circuitTournamentFormatSelector {
   display: grid;
   gap: 14px;
