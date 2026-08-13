@@ -13121,7 +13121,7 @@ setNewPublicInfo({
       <p>Organize torneios relacionados e acompanhe o ranking geral acumulado.</p>
     </div>
     <div className="circuitManagerToolbarActions">
-      <button type="button" onClick={() => setCreateCircuitOpen(true)}>+ Criar circuito</button>
+      <button type="button" className="createCircuitButton" onClick={() => setCreateCircuitOpen(true)}>+ Criar circuito</button>
       <button type="button" className="combineCircuitsButton" onClick={() => setCombineCircuitsOpen(true)}><PlusCircle aria-hidden="true" /> Somar circuitos</button>
     </div>
   </section>
@@ -17718,6 +17718,7 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ targetId: "", label: "", points: "", note: "" });
   const [deleteId, setDeleteId] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   async function addExtraPoint() {
     const target = targets.find((item) => item.id === form.targetId);
@@ -17738,8 +17739,14 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
   }
 
   async function removeExtraPoint() {
-    const saved = await onSave({ ...settings, extraPoints: settings.extraPoints.filter((entry) => entry.id !== deleteId) });
-    if (saved) setDeleteId("");
+    if (!deleteId || deleting) return;
+    setDeleting(true);
+    try {
+      const saved = await onSave({ ...settings, extraPoints: settings.extraPoints.filter((entry) => entry.id !== deleteId) });
+      if (saved) setDeleteId("");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return <div className="circuitExtraPointsPanel">
@@ -17755,7 +17762,21 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
       </div>
       {settings.extraPoints.length ? <div className="circuitExtraHistory"><strong>Histórico</strong>{settings.extraPoints.map((entry) => <article key={entry.id}><div><b>+{entry.points} · {entry.targetName}</b><span>{entry.label}{entry.note ? ` — ${entry.note}` : ""}</span></div><button type="button" onClick={() => setDeleteId(entry.id)}>Excluir</button></article>)}</div> : <p className="circuitExtraEmpty">Nenhuma pontuação extra adicionada.</p>}
     </div> : null}
-    {deleteId ? createPortal(<div className="noticeOverlay" role="dialog" aria-modal="true"><div className="noticeModal"><div className="noticeIcon warning">⚠️</div><h2>Excluir pontuação extra?</h2><p>O valor será retirado do total e o ranking será recalculado.</p><div className="noticeActions"><button type="button" className="secondaryBtn" onClick={() => setDeleteId("")}>Cancelar</button><button type="button" className="deleteBtn" onClick={() => void removeExtraPoint()}>Sim, excluir</button></div></div></div>, document.body) : null}
+    {deleteId ? createPortal(
+      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="extra-point-delete-title">
+        <div className="confirmBox extraPointDeleteConfirmBox">
+          <div className="confirmIcon" aria-hidden="true"><Trash2 /></div>
+          <span className="confirmEyebrow">Pontuação extra</span>
+          <h2 id="extra-point-delete-title">Excluir esta pontuação extra?</h2>
+          <p>O valor será retirado do total do participante e o ranking será recalculado imediatamente.</p>
+          <div className="confirmActions">
+            <button type="button" className="secondaryBtn" disabled={deleting} onClick={() => setDeleteId("")}>Cancelar</button>
+            <button type="button" className="deleteBtn" disabled={deleting} onClick={() => void removeExtraPoint()}>{deleting ? "Excluindo..." : "Sim, excluir"}</button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    ) : null}
   </div>;
 }
 
