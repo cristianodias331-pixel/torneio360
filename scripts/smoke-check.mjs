@@ -79,6 +79,24 @@ for (const marker of requiredApplicationMarkers) {
 }
 
 assert.ok(
+  mainSource.includes('const advanceScoreFocus = (side, currentInput) =>')
+    && mainSource.includes('side === "team1" ? game?.s2 : game?.s1')
+    && mainSource.includes('advanceScoreFocus(side, currentInput)')
+    && mainSource.includes('advanceScoreFocus(side, event.currentTarget)'),
+  "O preenchimento do placar deve avançar para o adversário independentemente do lado iniciado."
+);
+
+const noticeModalSource = mainSource.slice(
+  mainSource.indexOf("function NoticeModal("),
+  mainSource.indexOf("function ConfirmRegenerationModal(")
+);
+assert.ok(
+  noticeModalSource.includes("return createPortal(")
+    && noticeModalSource.includes("document.body"),
+  "Os avisos devem ser renderizados acima das abas e dos cabeçalhos fixos."
+);
+
+assert.ok(
   mainSource.includes("function ModalityPicker(")
     && mainSource.includes('title: "Duplas fixas"')
     && mainSource.includes('title: "Ranking individual"')
