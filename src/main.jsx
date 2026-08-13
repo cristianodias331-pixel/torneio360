@@ -31,8 +31,6 @@ import {
   Menu,
   MessageCircle,
   Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
   PlusCircle,
   Printer,
   RefreshCw,
@@ -11709,15 +11707,6 @@ setNewPublicInfo({
           aria-label="Navegação principal"
         >
           <div className="sidebarHeader">
-            <button
-              type="button"
-              className="sidebarExpandToggle"
-              aria-label={sidebarExpanded ? "Recolher menu" : "Manter menu aberto"}
-              aria-expanded={sidebarExpanded}
-              onClick={() => setSidebarExpanded((expanded) => !expanded)}
-            >
-              {sidebarExpanded ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
-            </button>
             <span className="sidebarSectionLabel">Menu</span>
           </div>
           <nav className="sidebarNav">
