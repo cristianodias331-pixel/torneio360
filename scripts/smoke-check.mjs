@@ -657,6 +657,8 @@ assert.ok(
 );
 assert.ok(mainSource.includes("function applyCircuitExtraPoints"), "A pontuação extra do circuito não entra no cálculo do ranking.");
 assert.ok(mainSource.includes("target.circuitPoints = Number(target.circuitPoints || 0) + entry.points"), "A pontuação extra não é somada ao total principal.");
+assert.ok(mainSource.includes('className="confirmOverlay" role="dialog"') && mainSource.includes("Excluir esta pontuação extra?"), "A exclusão da pontuação extra não usa a confirmação segura da plataforma.");
+assert.ok(styleSource.includes("button.createCircuitButton") && styleSource.includes("button.combineCircuitsButton"), "As cores semânticas das ações dos circuitos não estão protegidas da regra neutra global.");
 assert.ok(mainSource.includes("Somar circuitos"), "A ação para somar circuitos está ausente.");
 assert.ok(mainSource.includes("Masculino e feminino"), "O ranking separado das duplas mistas está ausente.");
 assert.ok(

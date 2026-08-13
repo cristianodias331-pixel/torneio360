@@ -27353,3 +27353,91 @@ html[data-theme="dark"] .proDashboard.playAppShell .courtOccupancyActions button
     border-color: #26384d !important;
   }
 }
+
+/* Ações semânticas dos circuitos. Estas regras ficam no fim do arquivo para
+   não serem encobertas pela aparência neutra global dos botões. */
+html body .proDashboard.playAppShell button.createCircuitButton {
+  border-color: #f97316 !important;
+  background: linear-gradient(135deg, #fb923c, #ea580c) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(234, 88, 12, .26) !important;
+}
+
+html body .proDashboard.playAppShell button.combineCircuitsButton,
+html body .proDashboard.playAppShell .circuitFormActions button.combineCircuitsButton {
+  border-color: #8b5cf6 !important;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(109, 40, 217, .24) !important;
+}
+
+html body .proDashboard.playAppShell button.circuitTieDrawButton {
+  border-color: #8b5cf6 !important;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 9px 20px rgba(109, 40, 217, .22) !important;
+}
+
+html body .proDashboard.playAppShell button.circuitExtraPointsButton {
+  border-color: #8b5cf6 !important;
+  background: #f3e8ff !important;
+  color: #6d28d9 !important;
+  -webkit-text-fill-color: #6d28d9 !important;
+  box-shadow: 0 7px 16px rgba(109, 40, 217, .10) !important;
+}
+
+html body .proDashboard.playAppShell button.circuitExtraSave {
+  border-color: #16a34a !important;
+  background: linear-gradient(135deg, #22c55e, #15803d) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 9px 20px rgba(21, 128, 61, .20) !important;
+}
+
+html body .proDashboard.playAppShell .circuitExtraHistory article button {
+  border-color: #ef4444 !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+  -webkit-text-fill-color: #be123c !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell button.circuitExtraPointsButton,
+html body .proDashboard.theme-dark.playAppShell button.circuitExtraPointsButton {
+  border-color: #a78bfa !important;
+  background: #2b1e52 !important;
+  color: #e9d5ff !important;
+  -webkit-text-fill-color: #e9d5ff !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .circuitExtraHistory article button,
+html body .proDashboard.theme-dark.playAppShell .circuitExtraHistory article button {
+  border-color: #fb7185 !important;
+  background: #3a1821 !important;
+  color: #fecdd3 !important;
+  -webkit-text-fill-color: #fecdd3 !important;
+}
+
+.extraPointDeleteConfirmBox .confirmIcon {
+  display: grid;
+  place-items: center;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.extraPointDeleteConfirmBox .confirmIcon svg { width: 28px; height: 28px; }
+
+html[data-theme="dark"] .extraPointDeleteConfirmBox .confirmIcon {
+  border-color: #9f1239;
+  background: #3a1821;
+  color: #fecdd3;
+}
+
+@media (max-width: 430px) {
+  .circuitManagerToolbarActions { grid-template-columns: 1fr 1fr; }
+  .circuitManagerToolbarActions > button { min-width: 0; padding-inline: 9px !important; }
+}
