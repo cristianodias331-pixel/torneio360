@@ -26213,7 +26213,7 @@ html[data-theme="dark"] .proDashboard .circuitPickerTitle span {
 
 .proDashboard.playAppShell .modalityPickerPanel {
   position: fixed;
-  z-index: 15000;
+  z-index: 22010;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
@@ -26420,7 +26420,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   .modalityPickerTriggerText small { white-space: normal; }
   .proDashboard.playAppShell .modalityPickerBackdrop {
     position: fixed;
-    z-index: 14990;
+    z-index: 22000;
     display: block !important;
     inset: 0;
     width: 100%;
