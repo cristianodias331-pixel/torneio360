@@ -2857,33 +2857,26 @@ function getCearenseFormatSummary(teamCount, playRanking = false) {
   const finalParallelCount = initialParallelCount + transferredCount;
   const parallelBracketSize = finalParallelCount >= 2 ? getNextPowerOfTwo(finalParallelCount) : finalParallelCount;
   const parallelByes = Math.max(0, parallelBracketSize - finalParallelCount);
-  const thirdParallel = groups.length <= 1
-    ? {
-      eligibleCount: 0,
-      sourceRound: "",
-      openingRound: "Não formada",
-      matchCount: 0,
-    }
-    : groups.length === 2
-      ? {
-        eligibleCount: 2,
-        sourceRound: "semifinais da Eliminatória Principal",
-        openingRound: "Final direta",
-        matchCount: 1,
-      }
-      : groups.length === 3
-        ? {
-          eligibleCount: 2,
-          sourceRound: "quartas de final da Eliminatória Principal",
-          openingRound: "Final direta",
-          matchCount: 1,
-        }
-        : {
-          eligibleCount: 4,
-          sourceRound: "quartas de final da Eliminatória Principal",
-          openingRound: "Semifinais e final",
-          matchCount: 3,
-        };
+  const thirdParallelPlan = cearenseMainBracketPlans[groups.length];
+  const thirdParallelSources = thirdParallelPlan
+    ? getCearenseThirdParallelSources(expandBracketPlanWithVisualByes(thirdParallelPlan))
+    : { sections: [], games: [] };
+  const thirdParallelEligibleCount = thirdParallelSources.games.length;
+  const thirdParallelBracketSize = thirdParallelEligibleCount >= 2
+    ? getNextPowerOfTwo(thirdParallelEligibleCount)
+    : thirdParallelEligibleCount;
+  const thirdParallelSourceRounds = thirdParallelSources.sections.map((section) => section.round.title);
+  const thirdParallel = {
+    eligibleCount: thirdParallelEligibleCount,
+    sourceRound: thirdParallelSourceRounds.join(" e "),
+    sourceRounds: thirdParallelSourceRounds,
+    openingRound: thirdParallelEligibleCount >= 2
+      ? getEliminationRoundName(thirdParallelBracketSize)
+      : "Não formada",
+    bracketSize: thirdParallelBracketSize,
+    byeCount: Math.max(0, thirdParallelBracketSize - thirdParallelEligibleCount),
+    matchCount: Math.max(0, thirdParallelEligibleCount - 1),
+  };
 
   return {
     teamCount: safeTeamCount,
@@ -4885,24 +4878,54 @@ function generatePlayRankingBrackets(data) {
   };
 }
 
+function getCearenseThirdParallelSources(mainRounds) {
+  const rounds = Array.isArray(mainRounds) ? mainRounds : [];
+  const realGames = (round) => (round?.games || []).filter((game) => (
+    Array.isArray(game)
+      ? Boolean(game[1]) && Boolean(game[2])
+      : !game.isBye
+  ));
+  const normalizedTitle = (round) => String(round?.title || "").toLocaleLowerCase("pt-BR");
+  const quarterfinalIndex = rounds.findIndex((round) => normalizedTitle(round).includes("quartas"));
+
+  if (quarterfinalIndex >= 0) {
+    const quarterfinal = rounds[quarterfinalIndex];
+    const quarterfinalGames = realGames(quarterfinal);
+    const previousRound = rounds
+      .slice(0, quarterfinalIndex)
+      .reverse()
+      .find((round) => realGames(round).length > 0);
+    const previousRoundGames = realGames(previousRound);
+
+    return {
+      sections: [
+        ...(quarterfinalGames.length > 0 ? [{ round: quarterfinal, games: quarterfinalGames }] : []),
+        ...(previousRoundGames.length > 0 ? [{ round: previousRound, games: previousRoundGames }] : []),
+      ],
+      games: [...quarterfinalGames, ...previousRoundGames],
+    };
+  }
+
+  const semifinal = rounds.find((round) => normalizedTitle(round).includes("semifinal"));
+  const semifinalGames = realGames(semifinal);
+
+  return {
+    sections: semifinalGames.length > 0 ? [{ round: semifinal, games: semifinalGames }] : [],
+    games: semifinalGames,
+  };
+}
+
 function buildCearenseThirdParallelRounds(mainRounds, bracketTitle) {
-  const quarterfinal = mainRounds.find((round) => String(round.title).toLocaleLowerCase("pt-BR").includes("quartas"));
-  const semifinal = mainRounds.find((round) => String(round.title).toLocaleLowerCase("pt-BR").includes("semifinal"));
-  const realQuarterfinalGames = (quarterfinal?.games || []).filter((game) => !game.isBye);
-  const realSemifinalGames = (semifinal?.games || []).filter((game) => !game.isBye);
-  const sourceGames = realQuarterfinalGames.length === 4
-    ? realQuarterfinalGames
-    : realQuarterfinalGames.length === 2
-      ? realQuarterfinalGames
-      : !quarterfinal && realSemifinalGames.length === 2
-        ? realSemifinalGames
-        : [];
+  const { sections, games: sourceGames } = getCearenseThirdParallelSources(mainRounds);
 
   if (sourceGames.length < 2) return [];
 
-  const loserEntry = (game) => ({ sourceMatchKey: game.matchKey, sourceMode: "loser" });
+  const sourceEntries = sourceGames.map((game) => ({
+    sourceMatchKey: game.matchKey,
+    sourceMode: "loser",
+  }));
 
-  if (sourceGames.length === 2) {
+  if (sourceEntries.length === 2) {
     return [{
       title: "Final",
       bracketTitle,
@@ -4910,34 +4933,45 @@ function buildCearenseThirdParallelRounds(mainRounds, bracketTitle) {
         bracketType: "thirdParallel",
         roundName: "Final",
         matchKey: "thirdParallel_final_1",
-        entry1: loserEntry(sourceGames[0]),
-        entry2: loserEntry(sourceGames[1]),
+        entry1: sourceEntries[0],
+        entry2: sourceEntries[1],
         court: 1,
       })],
     }];
   }
 
-  const semifinals = [0, 2].map((start, index) => createCopinhaBracketGame({
-    bracketType: "thirdParallel",
-    roundName: "Semifinal",
-    matchKey: `thirdParallel_sf_${index + 1}`,
-    entry1: loserEntry(sourceGames[start]),
-    entry2: loserEntry(sourceGames[start + 1]),
-    court: index + 1,
-  }));
-  const final = createCopinhaBracketGame({
-    bracketType: "thirdParallel",
-    roundName: "Final",
-    matchKey: "thirdParallel_final_1",
-    entry1: { sourceMatchKey: semifinals[0].matchKey, sourceMode: "winner" },
-    entry2: { sourceMatchKey: semifinals[1].matchKey, sourceMode: "winner" },
-    court: 1,
-  });
+  if (sourceEntries.length === 4) {
+    const semifinalPairs = sections.length > 1
+      ? [[sourceEntries[0], sourceEntries[3]], [sourceEntries[1], sourceEntries[2]]]
+      : [[sourceEntries[0], sourceEntries[1]], [sourceEntries[2], sourceEntries[3]]];
+    const semifinals = semifinalPairs.map(([entry1, entry2], index) => createCopinhaBracketGame({
+      bracketType: "thirdParallel",
+      roundName: "Semifinal",
+      matchKey: `thirdParallel_sf_${index + 1}`,
+      entry1,
+      entry2,
+      court: index + 1,
+    }));
+    const final = createCopinhaBracketGame({
+      bracketType: "thirdParallel",
+      roundName: "Final",
+      matchKey: "thirdParallel_final_1",
+      entry1: { sourceMatchKey: semifinals[0].matchKey, sourceMode: "winner" },
+      entry2: { sourceMatchKey: semifinals[1].matchKey, sourceMode: "winner" },
+      court: 1,
+    });
 
-  return [
-    { title: "Semifinal", bracketTitle, games: semifinals },
-    { title: "Final", bracketTitle, games: [final] },
-  ];
+    return [
+      { title: "Semifinal", bracketTitle, games: semifinals },
+      { title: "Final", bracketTitle, games: [final] },
+    ];
+  }
+
+  return buildCearenseEliminationRounds(
+    sourceEntries,
+    "thirdParallel",
+    bracketTitle
+  );
 }
 
 function generateCearenseBrackets(data) {
@@ -17507,13 +17541,13 @@ function ParallelDisputeChoice({
     {
       title: `Origem das duplas com ${summary.teamCount} duplas`,
       content: thirdSummary.eligibleCount > 0
-        ? <><p>Esta disputa não recebe duplas eliminadas na fase de grupos. Ela recebe somente as <strong>{thirdSummary.eligibleCount} duplas derrotadas nas {thirdSummary.sourceRound}</strong>.</p><p>As duplas que vencerem essa fase continuam normalmente na Eliminatória Principal; somente as derrotadas são direcionadas para esta chave separada.</p></>
+        ? <><p>Esta disputa não recebe duplas eliminadas na fase de grupos. Ela recebe <strong>{thirdSummary.eligibleCount} duplas</strong>: as derrotadas nas quartas de final e, quando existir, também as derrotadas na fase imediatamente anterior.</p><p>Nesta quantidade, as fases de origem são: <strong>{thirdSummary.sourceRound}</strong>. Se não houver quartas, entram as duas derrotadas das semifinais.</p></>
         : <p>Com {summary.teamCount} duplas, a Eliminatória Principal possui apenas uma final. Por isso, <strong>não existem derrotadas suficientes para formar a 3ª disputa paralela</strong>.</p>,
     },
     {
       title: "Como a chave será montada",
       content: thirdSummary.eligibleCount > 0
-        ? <><p>Para esta quantidade, o formato será <strong>{thirdSummary.openingRound}</strong>, com {thirdSummary.matchCount} {thirdSummary.matchCount === 1 ? "partida" : "partidas"} no total.</p><p>{thirdSummary.eligibleCount === 2 ? "As duas derrotadas se enfrentam diretamente, e a vencedora será a campeã desta disputa." : "As quatro derrotadas disputam duas semifinais; as vencedoras avançam para a final."}</p></>
+        ? <><p>Para esta quantidade, o formato começa em <strong>{thirdSummary.openingRound}</strong>, com {thirdSummary.matchCount} {thirdSummary.matchCount === 1 ? "partida" : "partidas"} no total.</p><p>{thirdSummary.byeCount > 0 ? `A chave terá ${thirdSummary.byeCount} BYE${thirdSummary.byeCount === 1 ? "" : "s"}, entregues primeiro às duplas eliminadas nas quartas.` : "A chave começa sem BYEs."} Quando houver eliminadas da fase anterior, elas entram antes; as eliminadas nas quartas entram depois ou recebem a prioridade disponível.</p></>
         : <p>Nenhuma chave será exibida porque não há duplas elegíveis nesta configuração.</p>,
     },
     {
@@ -17744,8 +17778,8 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                     <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
                     {summary.thirdParallel.eligibleCount > 0 ? (
                       <>
-                        <p>Entram exclusivamente as <strong>{summary.thirdParallel.eligibleCount} duplas derrotadas nas {summary.thirdParallel.sourceRound}</strong>. Eliminadas nos grupos ou em outras fases não entram nesta disputa.</p>
-                        <p>Para esta quantidade, o formato será <strong>{summary.thirdParallel.openingRound}</strong>, com {summary.thirdParallel.matchCount} {summary.thirdParallel.matchCount === 1 ? "partida" : "partidas"}. Ela terá campeã e vice-campeã próprias.</p>
+                        <p>Entram <strong>{summary.thirdParallel.eligibleCount} duplas</strong> derrotadas em {summary.thirdParallel.sourceRound}: as eliminadas nas quartas e, quando existir, também as eliminadas na fase imediatamente anterior.</p>
+                        <p>A chave começa em <strong>{summary.thirdParallel.openingRound}</strong>, com {summary.thirdParallel.matchCount} {summary.thirdParallel.matchCount === 1 ? "partida" : "partidas"}. {summary.thirdParallel.byeCount > 0 ? `Os ${summary.thirdParallel.byeCount} BYE${summary.thirdParallel.byeCount === 1 ? "" : "s"} são destinados primeiro às eliminadas nas quartas.` : "Não haverá BYEs."} Ela terá campeã e vice-campeã próprias.</p>
                       </>
                     ) : (
                       <p>Com {summary.teamCount} duplas, a Principal possui apenas uma final e não gera participantes suficientes para formar esta disputa.</p>
