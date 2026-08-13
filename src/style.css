@@ -26791,3 +26791,399 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
     display: none !important;
   }
 }
+
+/* =========================================================
+   FLUXO OPERACIONAL DOS TORNEIOS
+   Status, resumos, organização e cabeçalho responsivo.
+   ========================================================= */
+.openTournamentTab {
+  width: clamp(190px, 18vw, 250px);
+  min-width: 190px;
+  min-height: 72px;
+}
+
+.openTournamentTabMain {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding-block: 7px 9px !important;
+}
+
+.openTournamentTabIdentity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tournamentMatchStatusSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 9px 12px;
+  border: 1px solid #d7e1ee;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #31435a;
+}
+
+.tournamentMatchStatusSummary.is-compact {
+  justify-content: flex-start;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.tournamentMatchStatusSummary.is-vertical {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.summaryStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #53657a;
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.summaryStatus i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.summaryStatus strong {
+  display: inline-grid;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0 4px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  font-size: 9px;
+}
+
+.summaryStatus.is-in-progress { color: #7c3aed; }
+.summaryStatus.is-finished { color: #16834a; }
+.summaryStatus.is-waiting { color: #607086; }
+
+html[data-theme="dark"] .tournamentMatchStatusSummary,
+.proDashboard.theme-dark .tournamentMatchStatusSummary {
+  border-color: #304259;
+  background: #142133;
+  color: #d4deea;
+}
+
+html[data-theme="dark"] .tournamentMatchStatusSummary.is-compact,
+.proDashboard.theme-dark .tournamentMatchStatusSummary.is-compact { background: transparent; }
+html[data-theme="dark"] .summaryStatus.is-in-progress,
+.proDashboard.theme-dark .summaryStatus.is-in-progress { color: #c4b5fd; }
+html[data-theme="dark"] .summaryStatus.is-finished,
+.proDashboard.theme-dark .summaryStatus.is-finished { color: #86efac; }
+html[data-theme="dark"] .summaryStatus.is-waiting,
+.proDashboard.theme-dark .summaryStatus.is-waiting { color: #b8c5d5; }
+
+.tournamentWorkspaceHeader {
+  align-items: flex-start !important;
+}
+
+.tournamentWorkspaceHeader > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tournamentHeaderTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tournamentHeaderTitleRow h1 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.proDashboard.playAppShell button.tournamentHeaderDetailsToggle {
+  display: inline-flex !important;
+  min-width: 0 !important;
+  min-height: 31px !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 6px 9px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 10px !important;
+  background: var(--ui-surface-muted) !important;
+  color: var(--ui-text) !important;
+  box-shadow: none !important;
+  font-size: 10px !important;
+}
+
+.tournamentHeaderDetailsToggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform .18s ease;
+}
+
+.tournamentWorkspaceHeader.detailsOpen .tournamentHeaderDetailsToggle svg { transform: rotate(180deg); }
+
+.tournamentWorkspaceHeader .tournamentHeaderMeta {
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: max-height .22s ease, margin .22s ease, opacity .18s ease, transform .22s ease;
+}
+
+.tournamentWorkspaceHeader.detailsOpen .tournamentHeaderMeta {
+  max-height: 220px;
+  margin-top: 10px;
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) and (min-width: 1025px) {
+  .tournamentWorkspaceHeader:hover .tournamentHeaderMeta {
+    max-height: 220px;
+    margin-top: 10px;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tournamentHeaderActions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.proDashboard.playAppShell button.tournamentHeaderShareButton {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  border-color: #1d4ed8 !important;
+  background: #1d4ed8 !important;
+  background-image: none !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.tournamentHeaderShareButton svg { width: 16px; height: 16px; }
+.shareHighlightBox[hidden] { display: none !important; }
+
+.organizationSubTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 16px;
+  padding: 6px;
+  border: 1px solid #d6e1ee;
+  border-radius: 15px;
+  background: #f4f7fb;
+}
+
+.proDashboard.playAppShell .organizationSubTabs button {
+  min-width: 0 !important;
+  min-height: 42px !important;
+  padding: 8px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: #4a5c72 !important;
+  -webkit-text-fill-color: #4a5c72 !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+.proDashboard.playAppShell .organizationSubTabs button.active {
+  border-color: #f97316 !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+  -webkit-text-fill-color: #c2410c !important;
+  box-shadow: 0 5px 13px rgba(194, 65, 12, .10) !important;
+}
+
+.organizationPanel { min-width: 0; }
+
+html[data-theme="dark"] .organizationSubTabs,
+.proDashboard.theme-dark .organizationSubTabs {
+  border-color: #304259;
+  background: #101c2b;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell .organizationSubTabs button,
+.proDashboard.theme-dark.playAppShell .organizationSubTabs button {
+  color: #b8c6d7 !important;
+  -webkit-text-fill-color: #b8c6d7 !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell .organizationSubTabs button.active,
+.proDashboard.theme-dark.playAppShell .organizationSubTabs button.active {
+  border-color: #fb923c !important;
+  background: #392114 !important;
+  color: #fdba74 !important;
+  -webkit-text-fill-color: #fdba74 !important;
+}
+
+.matchCardStatus,
+.proDashboard.playAppShell button.matchCardStatus {
+  min-height: 31px !important;
+  gap: 4px !important;
+  padding: 6px 10px !important;
+  font-size: 10px !important;
+  letter-spacing: .025em !important;
+}
+
+.matchCardStatus small {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: .82;
+}
+
+.matchStatusIndicator { font-size: 10px; line-height: 1; }
+
+button.matchCardStatus.is-waiting:hover,
+.proDashboard.playAppShell button.matchCardStatus.is-waiting:hover {
+  border-color: #8b5cf6 !important;
+  background: #f5f3ff !important;
+  color: #6d28d9 !important;
+  -webkit-text-fill-color: #6d28d9 !important;
+}
+
+html[data-theme="dark"] button.matchCardStatus.is-waiting:hover,
+.proDashboard.theme-dark.playAppShell button.matchCardStatus.is-waiting:hover {
+  border-color: #8b5cf6 !important;
+  background: #2b1e52 !important;
+  color: #e9d5ff !important;
+  -webkit-text-fill-color: #e9d5ff !important;
+}
+
+.courtOccupancyModal { width: min(560px, calc(100vw - 28px)); }
+.courtOccupancyModal > p strong { color: #17233a; }
+.courtOccupancyActions { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+.proDashboard.playAppShell .courtOccupancyActions button.courtKeepNumberBtn {
+  border: 1px solid #f59e0b !important;
+  background: #fff7ed !important;
+  color: #b45309 !important;
+  -webkit-text-fill-color: #b45309 !important;
+}
+
+.proDashboard.playAppShell .courtOccupancyActions button.courtNextFreeBtn {
+  border: 1px solid #16a34a !important;
+  background: #16a34a !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+html[data-theme="dark"] .courtOccupancyModal > p strong,
+.proDashboard.theme-dark .courtOccupancyModal > p strong { color: #f4f7fb; }
+html[data-theme="dark"] .proDashboard.playAppShell .courtOccupancyActions button.courtKeepNumberBtn,
+.proDashboard.theme-dark.playAppShell .courtOccupancyActions button.courtKeepNumberBtn {
+  border-color: #d97706 !important;
+  background: #3b260c !important;
+  color: #fde68a !important;
+  -webkit-text-fill-color: #fde68a !important;
+}
+
+@media (max-width: 900px) {
+  .tournamentWorkspaceHeader {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .tournamentHeaderActions {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  .tournamentHeaderActions button { flex: 1 1 0; }
+  .tournamentHeaderMeta span { font-size: 11px; }
+}
+
+@media (max-width: 700px) {
+  .mobileTournamentSwitcherButton { min-height: 62px !important; }
+  .mobileTournamentSwitcherCopy .tournamentMatchStatusSummary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 7px;
+    margin-top: 3px;
+  }
+  .mobileTournamentSwitcherCopy .summaryStatus { font-size: 7.5px; }
+  .mobileTournamentSwitcherCopy .summaryStatus strong {
+    min-width: 14px;
+    min-height: 14px;
+    font-size: 7px;
+  }
+
+  .organizationSubTabs {
+    grid-template-columns: repeat(3, minmax(92px, 1fr));
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    position: relative;
+    z-index: 1;
+  }
+
+  .proDashboard.playAppShell .organizationSubTabs button {
+    min-height: 46px !important;
+    padding-inline: 6px !important;
+    font-size: 9.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .tournamentHeaderTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .tournamentWorkspaceHeader .tournamentHeaderMeta {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .tournamentWorkspaceHeader.detailsOpen .tournamentHeaderMeta { max-height: 420px; }
+
+  .tournamentMatchStatusSummary:not(.is-compact) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .tournamentMatchStatusSummary:not(.is-compact) .summaryStatus {
+    display: grid;
+    grid-template-columns: 7px minmax(0, 1fr) auto;
+    gap: 4px;
+    white-space: normal;
+    font-size: 7.5px;
+  }
+
+  .matchCardStatus small { display: none; }
+  .courtOccupancyActions { grid-template-columns: 1fr !important; }
+}
