@@ -30,6 +30,8 @@ import {
   MapPin,
   MessageCircle,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   PlusCircle,
   Printer,
   RefreshCw,
@@ -7969,6 +7971,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   });
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [circuits, setCircuits] = useState([]);
   const tournamentsRef = useRef(tournaments);
   const trashTournamentsRef = useRef(trashTournaments);
@@ -8264,6 +8267,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [profileMenuOpen]);
+
+  useEffect(() => {
+    if (!sidebarExpanded) return undefined;
+
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setSidebarExpanded(false);
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [sidebarExpanded]);
 
   useEffect(() => {
     updateAppUrl({ activePanel });
@@ -11571,29 +11585,70 @@ setNewPublicInfo({
       { panel: "modalidades", label: "Modalidades", Icon: Shapes },
     ];
 
+    const closeSidebarAfterNavigation = () => {
+      if (window.matchMedia?.("(max-width: 900px)").matches) setSidebarExpanded(false);
+    };
+
     return (
-      <aside className="playSidebar proSidebar" aria-label="Navegação principal">
-        <span className="sidebarSectionLabel">Menu</span>
-        <nav className="sidebarNav">
-          {navItems.map(({ panel, label, Icon }) => (
+      <>
+        <button
+          type="button"
+          className="sidebarMobileToggle"
+          aria-label="Abrir menu principal"
+          aria-controls="torneio360-main-sidebar"
+          aria-expanded={sidebarExpanded}
+          onClick={() => setSidebarExpanded(true)}
+        >
+          <PanelLeftOpen aria-hidden="true" />
+          <span>Menu</span>
+        </button>
+        <button
+          type="button"
+          className={`sidebarBackdrop ${sidebarExpanded ? "visible" : ""}`}
+          aria-label="Fechar menu principal"
+          onClick={() => setSidebarExpanded(false)}
+        />
+        <aside
+          id="torneio360-main-sidebar"
+          className={`playSidebar proSidebar ${sidebarExpanded ? "isExpanded" : ""}`}
+          aria-label="Navegação principal"
+        >
+          <div className="sidebarHeader">
             <button
-              key={panel}
-              className={`playNavItem ${activePanel === panel ? "active" : ""}`}
               type="button"
-              onClick={() => goToPanel(panel)}
-              aria-current={activePanel === panel ? "page" : undefined}
-              title={label}
+              className="sidebarExpandToggle"
+              aria-label={sidebarExpanded ? "Recolher menu" : "Manter menu aberto"}
+              aria-expanded={sidebarExpanded}
+              onClick={() => setSidebarExpanded((expanded) => !expanded)}
             >
-              <span className="navIcon" aria-hidden="true"><Icon /></span>
-              <small>{label}</small>
+              {sidebarExpanded ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
             </button>
-          ))}
-        </nav>
-        <div className="sidebarBrandAccent" aria-hidden="true">
-          <span />
-          <small>Torneio 360</small>
-        </div>
-      </aside>
+            <span className="sidebarSectionLabel">Menu</span>
+          </div>
+          <nav className="sidebarNav">
+            {navItems.map(({ panel, label, Icon }) => (
+              <button
+                key={panel}
+                className={`playNavItem ${activePanel === panel ? "active" : ""}`}
+                type="button"
+                onClick={() => {
+                  goToPanel(panel);
+                  closeSidebarAfterNavigation();
+                }}
+                aria-current={activePanel === panel ? "page" : undefined}
+                title={label}
+              >
+                <span className="navIcon" aria-hidden="true"><Icon /></span>
+                <small>{label}</small>
+              </button>
+            ))}
+          </nav>
+          <div className="sidebarBrandAccent" aria-hidden="true">
+            <span />
+            <small>Torneio 360</small>
+          </div>
+        </aside>
+      </>
     );
   }
 

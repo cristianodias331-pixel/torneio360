@@ -97,6 +97,20 @@ assert.ok(
   "O seletor de modalidades perdeu a busca, os grupos, a seleção lilás ou a adaptação para celular."
 );
 
+assert.ok(
+  mainSource.includes('const [sidebarExpanded, setSidebarExpanded] = useState(false)')
+    && mainSource.includes('className="sidebarMobileToggle"')
+    && mainSource.includes('className={`sidebarBackdrop ${sidebarExpanded ? "visible" : ""}`}')
+    && mainSource.includes('playSidebar proSidebar ${sidebarExpanded ? "isExpanded" : ""}')
+    && mainSource.includes("<PanelLeftOpen")
+    && mainSource.includes("<PanelLeftClose")
+    && styleSource.includes(".playSidebar.proSidebar:hover")
+    && styleSource.includes("padding-left: 106px !important")
+    && styleSource.includes("translateX(calc(-100% - 18px))")
+    && styleSource.includes("button.sidebarBackdrop.visible"),
+  "O menu lateral perdeu o estado compacto, a expansão flutuante ou a adaptação por toque."
+);
+
 for (const actionClass of [
   "actionCreateBtn",
   "actionConfirmBtn",

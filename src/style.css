@@ -26420,3 +26420,274 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   .modalityPickerItems { grid-template-columns: 1fr; }
   .proDashboard.playAppShell .modalityPickerItems > button { min-height: 62px; }
 }
+
+/* Menu lateral compacto e flutuante */
+.proDashboard .sidebarMobileToggle,
+.proDashboard .sidebarBackdrop {
+  display: none !important;
+}
+
+.proDashboard .sidebarHeader {
+  display: flex !important;
+  align-items: center !important;
+  width: 184px !important;
+  min-height: 38px !important;
+  margin-bottom: 8px !important;
+}
+
+.proDashboard.playAppShell button.sidebarExpandToggle {
+  display: grid !important;
+  flex: 0 0 42px !important;
+  place-items: center !important;
+  width: 42px !important;
+  min-width: 42px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgba(226, 236, 248, .72) !important;
+}
+
+.proDashboard.playAppShell button.sidebarExpandToggle:hover,
+.proDashboard.playAppShell button.sidebarExpandToggle:focus-visible {
+  border-color: rgba(255, 255, 255, .12) !important;
+  background: rgba(255, 255, 255, .08) !important;
+  color: #ffffff !important;
+}
+
+.proDashboard .sidebarExpandToggle svg {
+  width: 19px !important;
+  height: 19px !important;
+}
+
+@media (min-width: 901px) {
+  .proDashboard .playMain {
+    padding-left: 106px !important;
+  }
+
+  .proDashboard .playSidebar.proSidebar {
+    width: 72px !important;
+    padding: 14px 8px 12px !important;
+    transition: width 190ms ease, box-shadow 190ms ease !important;
+  }
+
+  .proDashboard .playSidebar.proSidebar:hover,
+  .proDashboard .playSidebar.proSidebar.isExpanded {
+    width: 210px !important;
+    box-shadow: 16px 22px 54px rgba(8, 26, 73, .32) !important;
+  }
+
+  .proDashboard .sidebarSectionLabel {
+    width: 118px !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    white-space: nowrap !important;
+    transition: max-width 150ms ease, opacity 120ms ease !important;
+  }
+
+  .proDashboard .playSidebar.proSidebar:hover .sidebarSectionLabel,
+  .proDashboard .playSidebar.proSidebar.isExpanded .sidebarSectionLabel {
+    max-width: 118px !important;
+    padding-left: 8px !important;
+    opacity: 1 !important;
+  }
+
+  .proDashboard .sidebarNav {
+    width: 184px !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem {
+    width: 184px !important;
+    padding: 0 10px !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem small,
+  .proDashboard .sidebarBrandAccent small {
+    opacity: 0 !important;
+    transform: translateX(-5px) !important;
+    transition: opacity 120ms ease, transform 150ms ease !important;
+  }
+
+  .proDashboard .playSidebar.proSidebar:hover .playNavItem small,
+  .proDashboard .playSidebar.proSidebar.isExpanded .playNavItem small,
+  .proDashboard .playSidebar.proSidebar:hover .sidebarBrandAccent small,
+  .proDashboard .playSidebar.proSidebar.isExpanded .sidebarBrandAccent small {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+  }
+
+  .proDashboard .sidebarBrandAccent {
+    width: 184px !important;
+    padding-right: 10px !important;
+    padding-left: 10px !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem::after {
+    opacity: 0 !important;
+  }
+
+  .proDashboard .playSidebar.proSidebar:hover .playNavItem:is(.active, [aria-current="page"])::after,
+  .proDashboard .playSidebar.proSidebar.isExpanded .playNavItem:is(.active, [aria-current="page"])::after {
+    opacity: 1 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .proDashboard .playMain {
+    padding: 70px 12px calc(84px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .proDashboard.playAppShell button.sidebarMobileToggle {
+    position: fixed !important;
+    z-index: 10400 !important;
+    right: auto !important;
+    bottom: max(14px, env(safe-area-inset-bottom)) !important;
+    left: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    width: auto !important;
+    min-width: 92px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 14px !important;
+    border: 1px solid rgba(255, 126, 55, .88) !important;
+    border-radius: 14px !important;
+    background: linear-gradient(115deg, #0f5ec8, #08a9cc) !important;
+    box-shadow: 0 12px 30px rgba(3, 35, 82, .34) !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+
+  .proDashboard .sidebarMobileToggle svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .proDashboard.playAppShell button.sidebarBackdrop {
+    position: fixed !important;
+    z-index: 10200 !important;
+    inset: 70px 0 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgba(2, 8, 23, .58) !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    backdrop-filter: blur(2px) !important;
+    transition: opacity 170ms ease !important;
+    touch-action: none;
+  }
+
+  .proDashboard.playAppShell button.sidebarBackdrop.visible {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .proDashboard .playSidebar.proSidebar {
+    top: 78px !important;
+    right: auto !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    left: 8px !important;
+    z-index: 10500 !important;
+    display: flex !important;
+    width: min(224px, calc(100vw - 16px)) !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 14px 10px 12px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    border-radius: 20px !important;
+    background: linear-gradient(165deg, #0b1628 0%, #111c2b 100%) !important;
+    box-shadow: 18px 20px 50px rgba(2, 8, 23, .38) !important;
+    opacity: 0 !important;
+    transform: translateX(calc(-100% - 18px)) !important;
+    transition: transform 190ms ease, opacity 150ms ease !important;
+    overscroll-behavior: contain;
+  }
+
+  .proDashboard .playSidebar.proSidebar.isExpanded {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+  }
+
+  .proDashboard .sidebarHeader {
+    width: 100% !important;
+  }
+
+  .proDashboard .sidebarSectionLabel {
+    display: block !important;
+    padding: 0 8px !important;
+  }
+
+  .proDashboard .sidebarNav {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    height: auto !important;
+    gap: 6px !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+    width: 100% !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 12px !important;
+    border-radius: 13px !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem.active {
+    box-shadow: inset 4px 0 0 var(--brand-highlight) !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem .navIcon,
+  .proDashboard .playSidebar .playNavItem .navIcon svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem small {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .proDashboard .playSidebar .playNavItem::after {
+    top: 50% !important;
+    right: 11px !important;
+    bottom: auto !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .proDashboard .sidebarBrandAccent {
+    display: flex !important;
+    width: 100% !important;
+  }
+}
