@@ -8376,12 +8376,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   useEffect(() => {
     if (!sidebarExpanded) return undefined;
 
+    const closeOnOutsidePress = (event) => {
+      if (!(event.target instanceof Element)) return;
+      if (event.target.closest("#torneio360-main-sidebar, .sidebarMobileToggle")) return;
+      setSidebarExpanded(false);
+    };
     const closeOnEscape = (event) => {
       if (event.key === "Escape") setSidebarExpanded(false);
     };
 
+    document.addEventListener("pointerdown", closeOnOutsidePress);
     document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
   }, [sidebarExpanded]);
 
   useEffect(() => {
