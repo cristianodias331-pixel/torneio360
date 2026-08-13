@@ -26789,9 +26789,10 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin: 10px 0 14px;
-  padding: 9px 12px;
+  gap: 14px;
+  min-height: 42px;
+  margin: 8px 0 10px;
+  padding: 8px 14px;
   border: 1px solid #d7e1ee;
   border-radius: 14px;
   background: #f8fafc;
@@ -26801,6 +26802,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
 .tournamentMatchStatusSummary.is-compact {
   justify-content: flex-start;
   gap: 4px 8px;
+  min-height: 0;
   margin: 0;
   padding: 0;
   border: 0;
@@ -26814,10 +26816,22 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   gap: 2px;
 }
 
+.openTournamentTab .tournamentMatchStatusSummary.is-vertical .summaryStatus {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.openTournamentTab .tournamentMatchStatusSummary.is-vertical .summaryStatus strong {
+  min-width: 22px;
+  min-height: 22px;
+  padding-inline: 5px;
+  font-size: 12px;
+}
+
 .summaryStatus {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
   color: #53657a;
   font-size: 10.5px;
@@ -26827,9 +26841,9 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
 }
 
 .summaryStatus i {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -26844,6 +26858,25 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   background: color-mix(in srgb, currentColor 12%, transparent);
   color: inherit;
   font-size: 10px;
+}
+
+.tournamentMatchStatusSummary:not(.is-compact) .summaryStatus {
+  font-size: 13px;
+}
+
+.tournamentMatchStatusSummary:not(.is-compact) .summaryStatus strong {
+  min-width: 21px;
+  min-height: 21px;
+  padding-inline: 5px;
+  font-size: 11px;
+}
+
+.schedule {
+  gap: 12px !important;
+}
+
+.schedule > .tournamentMatchStatusSummary {
+  margin: 0;
 }
 
 .summaryStatus.is-in-progress { color: #7c3aed; }
@@ -27141,15 +27174,16 @@ html[data-theme="dark"] .proDashboard.playAppShell .courtOccupancyActions button
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
     gap: 6px;
-    padding: 7px;
+    min-height: 44px;
+    padding: 7px 8px;
   }
 
   .tournamentMatchStatusSummary:not(.is-compact) .summaryStatus {
     display: grid;
-    grid-template-columns: 7px minmax(0, 1fr) auto;
+    grid-template-columns: 8px minmax(0, 1fr) auto;
     gap: 4px;
     white-space: normal;
-    font-size: 7.5px;
+    font-size: 10px;
   }
 
   .matchCardStatus small { display: none; }
