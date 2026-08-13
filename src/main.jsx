@@ -28,6 +28,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  Menu,
   MessageCircle,
   Moon,
   PanelLeftClose,
@@ -11586,22 +11587,11 @@ setNewPublicInfo({
     ];
 
     const closeSidebarAfterNavigation = () => {
-      if (window.matchMedia?.("(max-width: 900px)").matches) setSidebarExpanded(false);
+      if (window.matchMedia?.("(max-width: 1024px)").matches) setSidebarExpanded(false);
     };
 
     return (
       <>
-        <button
-          type="button"
-          className="sidebarMobileToggle"
-          aria-label="Abrir menu principal"
-          aria-controls="torneio360-main-sidebar"
-          aria-expanded={sidebarExpanded}
-          onClick={() => setSidebarExpanded(true)}
-        >
-          <PanelLeftOpen aria-hidden="true" />
-          <span>Menu</span>
-        </button>
         <button
           type="button"
           className={`sidebarBackdrop ${sidebarExpanded ? "visible" : ""}`}
@@ -11694,6 +11684,17 @@ setNewPublicInfo({
     return (
       <header className="playTopbar proTopbar">
         <div className="playTopBrand">
+          <button
+            type="button"
+            className="sidebarMobileToggle"
+            aria-label={sidebarExpanded ? "Fechar menu principal" : "Abrir menu principal"}
+            aria-controls="torneio360-main-sidebar"
+            aria-expanded={sidebarExpanded}
+            onClick={() => setSidebarExpanded((expanded) => !expanded)}
+          >
+            <Menu aria-hidden="true" />
+            <span>Menu</span>
+          </button>
           <BeachLogo />
           <div className="brandTaglineOnly">
             <span>{TORNEIO360_TAGLINE}</span>

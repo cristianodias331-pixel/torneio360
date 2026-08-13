@@ -102,11 +102,13 @@ assert.ok(
     && mainSource.includes('className="sidebarMobileToggle"')
     && mainSource.includes('className={`sidebarBackdrop ${sidebarExpanded ? "visible" : ""}`}')
     && mainSource.includes('playSidebar proSidebar ${sidebarExpanded ? "isExpanded" : ""}')
+    && mainSource.includes("<Menu aria-hidden=\"true\"")
     && mainSource.includes("<PanelLeftOpen")
     && mainSource.includes("<PanelLeftClose")
     && styleSource.includes(".playSidebar.proSidebar:hover")
-    && styleSource.includes("padding-left: 106px !important")
-    && styleSource.includes("translateX(calc(-100% - 18px))")
+    && styleSource.includes("padding-left: 84px !important")
+    && styleSource.includes("translateX(-104%)")
+    && styleSource.includes("@media (max-width: 1024px)")
     && styleSource.includes("button.sidebarBackdrop.visible"),
   "O menu lateral perdeu o estado compacto, a expansão flutuante ou a adaptação por toque."
 );
