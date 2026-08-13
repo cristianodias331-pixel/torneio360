@@ -5634,7 +5634,7 @@ function NoticeModal({ notice, onClose }) {
     warning: "⚠️",
   }[notice.type || "info"];
 
-  return (
+  return createPortal(
     <div className="confirmOverlay">
       <div className={`confirmBox noticeBox ${notice.type || "info"}`}>
         <div className="confirmIcon">{icon}</div>
@@ -5645,7 +5645,8 @@ function NoticeModal({ notice, onClose }) {
           <button type="button" onClick={onClose}>Entendi</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -18810,6 +18811,21 @@ function UniversalMatchCard({
   }`;
   const canToggleStatus = !readOnly && !isBye && !isFinished && !blocked && Boolean(onStatusToggle);
 
+  const advanceScoreFocus = (side, currentInput) => {
+    const otherScore = side === "team1" ? game?.s2 : game?.s1;
+    const otherInput = side === "team1"
+      ? secondScoreInputRef.current
+      : firstScoreInputRef.current;
+
+    if (otherScore === "" || otherScore == null) {
+      otherInput?.focus();
+      otherInput?.select();
+      return;
+    }
+
+    currentInput?.blur();
+  };
+
   const renderScore = (field, value, side) => {
     if (isBye) {
       return side === "team2"
@@ -18835,27 +18851,18 @@ function UniversalMatchCard({
         value={value ?? ""}
         onChange={(event) => {
           const nextValue = event.target.value;
+          const currentInput = event.currentTarget;
           const accepted = onScoreChange?.(field, nextValue);
           if (!nextValue || accepted === false) return;
 
           window.requestAnimationFrame(() => {
-            if (side === "team1") {
-              secondScoreInputRef.current?.focus();
-              secondScoreInputRef.current?.select();
-            } else {
-              secondScoreInputRef.current?.blur();
-            }
+            advanceScoreFocus(side, currentInput);
           });
         }}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
           event.preventDefault();
-          if (side === "team1") {
-            secondScoreInputRef.current?.focus();
-            secondScoreInputRef.current?.select();
-          } else {
-            event.currentTarget.blur();
-          }
+          advanceScoreFocus(side, event.currentTarget);
         }}
         disabled={blocked}
         aria-label={`Placar de ${teamName(side === "team1" ? team1 : team2)}`}
