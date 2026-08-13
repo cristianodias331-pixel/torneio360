@@ -1176,6 +1176,18 @@ assert.ok(
   "O torneio pode ser fechado antes de concluir o último salvamento."
 );
 assert.ok(
+  mainSource.includes("manualParticipants: sourceManualParticipants.map")
+    && mainSource.includes("function applyCircuitManualParticipants")
+    && mainSource.includes("Adicionar atleta manualmente")
+    && mainSource.includes("Somar ao atleta existente?")
+    && mainSource.includes("Cadastros manuais")
+    && mainSource.includes("applyCircuitManualParticipants(groups, rankingSettings)")
+    && mainSource.includes("getCircuitPlacementColumns(rankingSettings, { includeManual: true })")
+    && styleSource.includes(".circuitManualParticipantContent")
+    && styleSource.includes("--bracket-node-height: 226px"),
+  "A inclusão manual no ranking ou o espaçamento seguro dos confrontos ficou incompleto."
+);
+assert.ok(
   publicArenaMigration.includes("jsonb_set(")
     && publicArenaMigration.includes("'{displayOrder}'"),
   "A reordenação pode substituir o objeto do torneio em vez de preservar placares e confrontos."

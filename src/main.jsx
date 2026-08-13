@@ -758,6 +758,7 @@ function normalizeCircuitRankingSettings(value) {
   const sourceCup = sourcePoints.cup && typeof sourcePoints.cup === "object" ? sourcePoints.cup : {};
   const sourcePositions = Array.isArray(sourcePoints.positions) ? sourcePoints.positions : [];
   const sourceExtraPoints = Array.isArray(source.extraPoints) ? source.extraPoints : [];
+  const sourceManualParticipants = Array.isArray(source.manualParticipants) ? source.manualParticipants : [];
   const sourceCircuitIds = Array.isArray(source.sourceCircuitIds) ? source.sourceCircuitIds : [];
 
   return {
@@ -778,6 +779,19 @@ function normalizeCircuitRankingSettings(value) {
       points: normalizeCircuitPointValue(entry?.points),
       createdAt: String(entry?.createdAt || ""),
     })).filter((entry) => entry.targetId && entry.targetName && entry.points > 0),
+    manualParticipants: sourceManualParticipants.map((entry, index) => ({
+      id: String(entry?.id || `manual-${index + 1}`),
+      name: formatParticipantName(entry?.name || ""),
+      groupKey: ["masculino", "feminino", "geral"].includes(entry?.groupKey) ? entry.groupKey : "geral",
+      points: normalizeCircuitPointValue(entry?.points),
+      wins: normalizeCircuitPointValue(entry?.wins),
+      totalGames: normalizeCircuitPointValue(entry?.totalGames),
+      balance: Number.isFinite(Number(entry?.balance)) ? Math.round(Number(entry.balance)) : 0,
+      played: normalizeCircuitPointValue(entry?.played),
+      note: String(entry?.note || "").trim(),
+      createdAt: String(entry?.createdAt || ""),
+      updatedAt: String(entry?.updatedAt || ""),
+    })).filter((entry) => entry.id && entry.name),
     tieBreakOrder: source.tieBreakMode === "cearense"
       ? ["wins", "bestStage"]
       : normalizeCircuitTieBreakOrder(source.tieBreakOrder),
@@ -888,18 +902,29 @@ function getUnresolvedCircuitTieGroups(groups, settings) {
   });
 }
 
-function getCircuitPlacementColumns(settings) {
+function getCircuitPlacementColumns(settings, { includeManual = false } = {}) {
   const keys = getCircuitTieBreakOrder(settings);
   const columns = [
     { key: "circuitPoints", label: "Total de pontos" },
     { key: "extraPoints", label: "Extras" },
   ];
+  if (includeManual) columns.push({ key: "manualPoints", label: "Manual" });
   keys.forEach((criterion) => {
     const option = circuitTieBreakOptions.find((item) => item.value === criterion);
     if (option && !columns.some((column) => column.key === option.key)) {
       columns.push({ key: option.key, label: option.label.replace(/^Maior (?:quantidade de )?/i, "") });
     }
   });
+  if (includeManual) {
+    [
+      { key: "w", label: "Vitórias" },
+      { key: "pts", label: "Total de Games" },
+      { key: "bal", label: "Saldo" },
+      { key: "played", label: "Jogos" },
+    ].forEach((column) => {
+      if (!columns.some((item) => item.key === column.key)) columns.push(column);
+    });
+  }
   columns.push({ key: "tournaments", label: "Etapas" });
   return columns;
 }
@@ -920,6 +945,56 @@ function applyCircuitExtraPoints(groups, settings) {
     if (!target) return;
     target.extraPoints = Number(target.extraPoints || 0) + entry.points;
     target.circuitPoints = Number(target.circuitPoints || 0) + entry.points;
+  });
+}
+
+function getCircuitManualParticipantKey(name, isTeam = false) {
+  const parts = String(name || "")
+    .split(isTeam ? /\s+\+\s+/ : /$^/)
+    .map((part) => part.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR"))
+    .filter(Boolean);
+  return isTeam && parts.length > 1
+    ? parts.sort((first, second) => first.localeCompare(second, "pt-BR")).join(" + ")
+    : (parts[0] || "sem nome");
+}
+
+function applyCircuitManualParticipants(groups, settings) {
+  const normalized = normalizeCircuitRankingSettings(settings);
+  const isTeam = normalized.identity === "team";
+  normalized.manualParticipants.forEach((entry) => {
+    const groupKey = groups[entry.groupKey] ? entry.groupKey : "geral";
+    const table = groups[groupKey]?.rows || groups.geral.rows;
+    const key = getCircuitManualParticipantKey(entry.name, isTeam);
+    const current = table.get(key) || Array.from(table.values()).find((row) => (
+      getCircuitManualParticipantKey(row.name, isTeam) === key
+    )) || {
+      id: `${groupKey}:${key}`,
+      name: entry.name,
+      pts: 0,
+      w: 0,
+      bal: 0,
+      played: 0,
+      tournaments: 0,
+      circuitPoints: 0,
+      extraPoints: 0,
+      manualPoints: 0,
+      titles: 0,
+      runnerUps: 0,
+      thirdPlaces: 0,
+      stageScores: [],
+    };
+    const next = {
+      ...current,
+      name: current.name || entry.name,
+      pts: Number(current.pts || 0) + entry.totalGames,
+      w: Number(current.w || 0) + entry.wins,
+      bal: Number(current.bal || 0) + entry.balance,
+      played: Number(current.played || 0) + entry.played,
+      circuitPoints: Number(current.circuitPoints || 0) + entry.points,
+      manualPoints: Number(current.manualPoints || 0) + entry.points,
+      isManualEntry: Number(current.tournaments || 0) === 0,
+    };
+    table.set(key, next);
   });
 }
 
@@ -9395,6 +9470,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         ...base,
         sourceCircuitIds: selectedSources.map((source) => source.id),
         extraPoints: [],
+        manualParticipants: [],
       }),
     });
     if (created) {
@@ -9689,6 +9765,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       Object.values(history).forEach(accumulateRecord);
     }
 
+    applyCircuitManualParticipants(groups, rankingSettings);
     applyCircuitExtraPoints(groups, rankingSettings);
 
     const criteria = getRankingCriteria(criteriaValue);
@@ -13314,7 +13391,8 @@ setNewPublicInfo({
               const circuitRankingGroups = getCircuitRanking(circuit, effectiveCircuitCriteria);
               const rankingSettings = normalizeCircuitRankingSettings(circuit.rankingSettings);
               const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
-              const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
+              const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings, { includeManual: true }) : null;
+              const sharedPlacementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
               const unresolvedTieGroups = placementMode
                 ? getUnresolvedCircuitTieGroups(circuitRankingGroups, rankingSettings)
@@ -13336,7 +13414,7 @@ setNewPublicInfo({
                         arenaName: organizerProfile.arenaName || organizerProfile.organizerName || "Arena Torneio360",
                         arenaPhotoUrl: organizerProfile.photoUrl || "",
                         rankingCriteria: effectiveCircuitCriteria,
-                        columns: placementColumns,
+                        columns: sharedPlacementColumns,
                         criteriaLabel: circuitCriteriaLabel,
                         groups: circuitRankingGroups,
                       }}
@@ -13414,7 +13492,10 @@ setNewPublicInfo({
                   {placementMode ? <CircuitExtraPointsPanel circuit={circuit} rankingGroups={circuitRankingGroups} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} /> : null}
                 </div>
               ) : selectedNames.length ? (
-                <div className="circuitRankingEmpty">Ranking aparece quando houver placares lançados nos torneios selecionados.</div>
+                <div className="circuitRankingEmptyState">
+                  <div className="circuitRankingEmpty">Ranking aparece quando houver placares lançados nos torneios selecionados.</div>
+                  {placementMode ? <CircuitExtraPointsPanel circuit={circuit} rankingGroups={[]} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} /> : null}
+                </div>
               ) : null;
             })() : null}
 
@@ -17716,9 +17797,15 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
     id: String(row.id || ""), name: row.name, groupKey: group.key || "geral", groupTitle: group.title,
   })));
   const [open, setOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [form, setForm] = useState({ targetId: "", label: "", points: "", note: "" });
+  const emptyManualForm = { id: "", name: "", groupKey: settings.rankingDivision === "gender" ? "masculino" : "geral", points: "", wins: "", totalGames: "", balance: "", played: "", note: "" };
+  const [manualForm, setManualForm] = useState(emptyManualForm);
   const [deleteId, setDeleteId] = useState("");
+  const [manualDeleteId, setManualDeleteId] = useState("");
+  const [manualConfirm, setManualConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
 
   async function addExtraPoint() {
     const target = targets.find((item) => item.id === form.targetId);
@@ -17749,8 +17836,114 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
     }
   }
 
+  function getManualPayload() {
+    const name = formatParticipantName(manualForm.name);
+    if (!name) return null;
+    return {
+      id: manualForm.id || (typeof globalThis.crypto?.randomUUID === "function" ? globalThis.crypto.randomUUID() : `manual-${Date.now()}`),
+      name,
+      groupKey: settings.rankingDivision === "gender" ? manualForm.groupKey : "geral",
+      points: normalizeCircuitPointValue(manualForm.points),
+      wins: normalizeCircuitPointValue(manualForm.wins),
+      totalGames: normalizeCircuitPointValue(manualForm.totalGames),
+      balance: Number.isFinite(Number(manualForm.balance)) ? Math.round(Number(manualForm.balance)) : 0,
+      played: normalizeCircuitPointValue(manualForm.played),
+      note: manualForm.note.trim(),
+      createdAt: settings.manualParticipants.find((entry) => entry.id === manualForm.id)?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function persistManualParticipant(payload) {
+    if (!payload || manualSaving) return;
+    setManualSaving(true);
+    try {
+      const nextManualParticipants = manualForm.id
+        ? settings.manualParticipants.map((entry) => entry.id === manualForm.id ? payload : entry)
+        : [...settings.manualParticipants, payload];
+      const saved = await onSave({ ...settings, manualParticipants: nextManualParticipants });
+      if (saved) {
+        setManualForm({ ...emptyManualForm, groupKey: settings.rankingDivision === "gender" ? "masculino" : "geral" });
+        setManualConfirm(null);
+      }
+    } finally {
+      setManualSaving(false);
+    }
+  }
+
+  function requestManualSave() {
+    const payload = getManualPayload();
+    if (!payload) return;
+    const normalizedName = getCircuitManualParticipantKey(payload.name, settings.identity === "team");
+    const duplicateManual = settings.manualParticipants.find((entry) => (
+      entry.id !== manualForm.id
+      && entry.groupKey === payload.groupKey
+      && getCircuitManualParticipantKey(entry.name, settings.identity === "team") === normalizedName
+    ));
+    if (duplicateManual) {
+      setManualConfirm({ kind: "duplicate", name: duplicateManual.name });
+      return;
+    }
+    const existingRankingTarget = targets.find((target) => (
+      target.groupKey === payload.groupKey
+      && getCircuitManualParticipantKey(target.name, settings.identity === "team") === normalizedName
+    ));
+    if (!manualForm.id && existingRankingTarget) {
+      setManualConfirm({ kind: "existing", payload, name: existingRankingTarget.name });
+      return;
+    }
+    void persistManualParticipant(payload);
+  }
+
+  function editManualParticipant(entry) {
+    setManualOpen(true);
+    setManualForm({
+      id: entry.id,
+      name: entry.name,
+      groupKey: entry.groupKey,
+      points: String(entry.points),
+      wins: String(entry.wins),
+      totalGames: String(entry.totalGames),
+      balance: String(entry.balance),
+      played: String(entry.played),
+      note: entry.note,
+    });
+  }
+
+  async function removeManualParticipant() {
+    if (!manualDeleteId || deleting) return;
+    setDeleting(true);
+    try {
+      const saved = await onSave({ ...settings, manualParticipants: settings.manualParticipants.filter((entry) => entry.id !== manualDeleteId) });
+      if (saved) {
+        setManualDeleteId("");
+        if (manualForm.id === manualDeleteId) setManualForm(emptyManualForm);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return <div className="circuitExtraPointsPanel">
-    <button type="button" className="circuitExtraPointsButton" onClick={() => setOpen((value) => !value)}><Gift aria-hidden="true" /> {open ? "Fechar pontos extras" : "Adicionar pontuação extra"}</button>
+    <div className="circuitRankingManualActions">
+      <button type="button" className="circuitManualParticipantButton" onClick={() => setManualOpen((value) => !value)}><UserRound aria-hidden="true" /> {manualOpen ? "Fechar inclusão manual" : "Adicionar atleta manualmente"}</button>
+      <button type="button" className="circuitExtraPointsButton" onClick={() => setOpen((value) => !value)}><Gift aria-hidden="true" /> {open ? "Fechar pontos extras" : "Adicionar pontuação extra"}</button>
+    </div>
+    {manualOpen ? <div className="circuitManualParticipantContent">
+      <div className="circuitSettingsTitleRow"><div><strong>Inclusão manual no ranking</strong><span>Cadastre um atleta ou dupla que ainda não participou das etapas.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a inclusão manual" eyebrow="Ranking manual" title="Como a inclusão manual funciona" intro="Os valores informados entram no ranking do circuito e permanecem editáveis pelo organizador." sections={[{ title: "Soma automática", content: <p>Se o mesmo nome participar de uma etapa posteriormente, os resultados do torneio serão somados aos valores cadastrados aqui.</p> }, { title: "Campos do ranking", content: <p>Informe pontos, vitórias, Total de Games, saldo e jogos. Use zero nos campos que não devem alterar a classificação.</p> }, { title: "Identificação", content: <p>Use sempre a mesma escrita do nome. A indicação de cadastro manual aparece somente para o organizador e não é exibida no ranking compartilhado.</p> }]} /></div>
+      <div className="circuitManualParticipantForm">
+        <label className="manualNameField"><span>{settings.identity === "team" ? "Nome da dupla" : "Nome do atleta"}</span><input value={manualForm.name} onChange={(event) => setManualForm((previous) => ({ ...previous, name: event.target.value }))} onBlur={() => setManualForm((previous) => ({ ...previous, name: formatParticipantName(previous.name) }))} placeholder={settings.identity === "team" ? "Ex: Ana + Beatriz" : "Ex: Ana Beatriz"} /></label>
+        {settings.rankingDivision === "gender" ? <label><span>Ranking</span><select value={manualForm.groupKey} onChange={(event) => setManualForm((previous) => ({ ...previous, groupKey: event.target.value }))}><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></label> : null}
+        <label><span>Pontos</span><input type="number" min="0" step="1" value={manualForm.points} onChange={(event) => setManualForm((previous) => ({ ...previous, points: event.target.value }))} /></label>
+        <label><span>Vitórias</span><input type="number" min="0" step="1" value={manualForm.wins} onChange={(event) => setManualForm((previous) => ({ ...previous, wins: event.target.value }))} /></label>
+        <label><span>Total de Games</span><input type="number" min="0" step="1" value={manualForm.totalGames} onChange={(event) => setManualForm((previous) => ({ ...previous, totalGames: event.target.value }))} /></label>
+        <label><span>Saldo</span><input type="number" step="1" value={manualForm.balance} onChange={(event) => setManualForm((previous) => ({ ...previous, balance: event.target.value }))} /></label>
+        <label><span>Jogos</span><input type="number" min="0" step="1" value={manualForm.played} onChange={(event) => setManualForm((previous) => ({ ...previous, played: event.target.value }))} /></label>
+        <label className="manualNoteField"><span>Observação opcional</span><input value={manualForm.note} onChange={(event) => setManualForm((previous) => ({ ...previous, note: event.target.value }))} placeholder="Ex: Pontuação transferida" /></label>
+        <div className="manualFormActions">{manualForm.id ? <button type="button" className="secondaryBtn" onClick={() => setManualForm(emptyManualForm)}>Cancelar edição</button> : null}<button type="button" className="circuitManualSave" disabled={!manualForm.name.trim() || manualSaving} onClick={requestManualSave}>{manualSaving ? "Salvando..." : manualForm.id ? "Salvar alterações" : "Adicionar ao ranking"}</button></div>
+      </div>
+      {settings.manualParticipants.length ? <div className="circuitManualHistory"><strong>Cadastros manuais</strong>{settings.manualParticipants.map((entry) => <article key={entry.id}><div><b>{entry.name}</b><span>{entry.points} pts · {entry.wins} vit. · {entry.totalGames} games · saldo {entry.balance} · {entry.played} jogo(s){entry.note ? ` — ${entry.note}` : ""}</span></div><div className="circuitManualHistoryActions"><button type="button" className="manualEditButton" onClick={() => editManualParticipant(entry)}>Editar</button><button type="button" className="manualDeleteButton" onClick={() => setManualDeleteId(entry.id)}>Excluir</button></div></article>)}</div> : <p className="circuitExtraEmpty">Nenhum atleta incluído manualmente.</p>}
+    </div> : null}
     {open ? <div className="circuitExtraPointsContent">
       <div className="circuitSettingsTitleRow"><div><strong>Pontuações extras</strong><span>O valor é somado ao total e participa do primeiro critério do ranking.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação extra" eyebrow="Bônus do organizador" title="Como os pontos extras funcionam" intro="Use somente para ajustes ou premiações definidos pelo regulamento do circuito." sections={[{ title: "Total do ranking", content: <p>O bônus é somado diretamente aos pontos conquistados nas etapas. Por isso, ele altera imediatamente a ordem principal do ranking.</p> }, { title: "Identificação", content: <p>Escolha o atleta ou a dupla, informe um motivo claro e registre uma observação se necessário.</p> }, { title: "Transparência", content: <p>O histórico permanece visível no circuito e pode ser removido pelo organizador mediante confirmação.</p> }]} /></div>
       <div className="circuitExtraPointsForm">
@@ -17776,6 +17969,12 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
         </div>
       </div>,
       document.body
+    ) : null}
+    {manualDeleteId ? createPortal(
+      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="manual-participant-delete-title"><div className="confirmBox extraPointDeleteConfirmBox"><div className="confirmIcon" aria-hidden="true"><Trash2 /></div><span className="confirmEyebrow">Cadastro manual</span><h2 id="manual-participant-delete-title">Excluir este atleta do ranking?</h2><p>Todos os valores inseridos manualmente serão retirados. Resultados conquistados em torneios continuarão preservados.</p><div className="confirmActions"><button type="button" className="secondaryBtn" disabled={deleting} onClick={() => setManualDeleteId("")}>Cancelar</button><button type="button" className="deleteBtn" disabled={deleting} onClick={() => void removeManualParticipant()}>{deleting ? "Excluindo..." : "Sim, excluir"}</button></div></div></div>, document.body
+    ) : null}
+    {manualConfirm ? createPortal(
+      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="manual-participant-confirm-title"><div className="confirmBox manualParticipantConfirmBox"><div className="confirmIcon" aria-hidden="true"><UserRound /></div><span className="confirmEyebrow">Inclusão manual</span><h2 id="manual-participant-confirm-title">{manualConfirm.kind === "duplicate" ? "Este cadastro manual já existe" : "Somar ao atleta existente?"}</h2><p>{manualConfirm.kind === "duplicate" ? `${manualConfirm.name} já possui um cadastro manual. Use o botão Editar no histórico para evitar valores duplicados.` : `${manualConfirm.name} já aparece no ranking. Os valores manuais serão somados aos resultados que ele já conquistou.`}</p><div className="confirmActions"><button type="button" className="secondaryBtn" disabled={manualSaving} onClick={() => setManualConfirm(null)}>{manualConfirm.kind === "duplicate" ? "Entendi" : "Cancelar"}</button>{manualConfirm.kind === "existing" ? <button type="button" className="confirmBtn" disabled={manualSaving} onClick={() => void persistManualParticipant(manualConfirm.payload)}>{manualSaving ? "Salvando..." : "Sim, somar valores"}</button> : null}</div></div></div>, document.body
     ) : null}
   </div>;
 }
@@ -19547,6 +19746,7 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
       });
     });
 
+    applyCircuitManualParticipants(groups, rankingSettings);
     applyCircuitExtraPoints(groups, rankingSettings);
 
     const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
@@ -19661,7 +19861,7 @@ function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareCo
                 <td className="rankingRankCell">{showPodium ? podium(i) : i + 1}</td>
                 <td className="rankingNameCell">{p.name}</td>
                 {visibleColumns.map(({ key }) => (
-                  <td className="rankingStatCell" key={key}>{p[key]}</td>
+                  <td className="rankingStatCell" key={key}>{p[key] ?? 0}</td>
                 ))}
                 {showGames ? <td className="rankingStatCell">{p.played}</td> : null}
               </tr>
