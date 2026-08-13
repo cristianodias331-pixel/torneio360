@@ -7865,12 +7865,9 @@ function TournamentWorkspaceTabs({
             <ChevronRight aria-hidden="true" />
           </button>
 
-          <button type="button" className="allOpenTournamentsButton" onClick={() => setManagerOpen(true)}>
-            Todos <span>{openTournaments.length}</span>
-          </button>
           <button type="button" className="addOpenTournamentButton" onClick={() => setManagerOpen(true)}>
             <PlusCircle aria-hidden="true" />
-            <span>Adicionar torneio</span>
+            <span>Adicionar</span>
           </button>
         </div>
 
@@ -14791,7 +14788,6 @@ function TournamentScreen({
   const [courtDuplicateConfirm, setCourtDuplicateConfirm] = useState(null);
   const [courtOccupancyConflict, setCourtOccupancyConflict] = useState(null);
   const [courtConfigRevision, setCourtConfigRevision] = useState(0);
-  const [shareOpen, setShareOpen] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
 
@@ -15491,16 +15487,6 @@ function TournamentScreen({
     }));
 
     showNotice("success", "Link desativado", "O link público foi desativado.");
-  }
-
-  async function copyPublicLink() {
-    const ok = await copyToClipboard(getArenaPublicUrl(userId));
-
-    showNotice(
-      ok ? "success" : "error",
-      ok ? "Link copiado" : "Erro ao copiar",
-      ok ? "O link real do perfil da arena foi copiado para a área de transferência." : "Não foi possível copiar o link."
-    );
   }
 
   async function sharePublicLink() {
@@ -16807,40 +16793,13 @@ return (
           <button
             type="button"
             className="tournamentHeaderShareButton"
-            onClick={() => setShareOpen((prev) => !prev)}
-            aria-expanded={shareOpen}
+            onClick={sharePublicLink}
           >
             <Share2 aria-hidden="true" /> Compartilhar
           </button>
           <button type="button" onClick={handleBack}>Voltar</button>
         </div>
       </header>
-
-        {shareOpen && (
-          <section className="card shareCard">
-            <h2>Link público da arena</h2>
-            <p>Atletas e convidados poderão escolher um torneio no perfil e acompanhar participantes, jogos e resultados.</p>
-
-            <label>Link permanente do perfil</label>
-
-            <div className="shareLinkBox">
-              <input
-                readOnly
-                value={getArenaPublicUrl(userId)}
-                onFocus={(event) => event.target.select()}
-              />
-            </div>
-
-            <div className="shareActionRow">
-              <button type="button" className="sharePrimaryAction" onClick={sharePublicLink}>
-                <Share2 aria-hidden="true" /> Compartilhar perfil
-              </button>
-              <button type="button" className="secondaryBtn" onClick={copyPublicLink}>
-                <Copy aria-hidden="true" /> Copiar link
-              </button>
-            </div>
-          </section>
-        )}
 
         <nav className="tournamentTopTabs" aria-label="Organização do torneio">
           <button type="button" className={activeTournamentTab === "participantes" ? "active" : ""} onClick={() => setActiveTournamentTab("participantes")}><Users aria-hidden="true" /> Organização</button>

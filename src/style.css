@@ -22658,7 +22658,6 @@ html[data-theme="dark"] .courtEditorNumberInput > strong {
 .openTournamentTabMain,
 .openTournamentTabClose,
 .tournamentTabsScrollButton,
-.allOpenTournamentsButton,
 .addOpenTournamentButton,
 .mobileTournamentSwitcherButton {
   border: 0 !important;
@@ -22691,7 +22690,7 @@ html[data-theme="dark"] .courtEditorNumberInput > strong {
 .openTournamentTabName {
   min-width: 0;
   overflow: hidden;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 850;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -22731,7 +22730,6 @@ html[data-theme="dark"] .courtEditorNumberInput > strong {
 .tournamentTabsScrollButton:hover { color: #1553d8 !important; border-color: #a9c2f4 !important; }
 .tournamentTabsScrollButton svg { width: 17px; height: 17px; }
 
-.allOpenTournamentsButton,
 .addOpenTournamentButton {
   display: inline-flex !important;
   min-height: 40px !important;
@@ -22743,23 +22741,6 @@ html[data-theme="dark"] .courtEditorNumberInput > strong {
   font-size: 11px !important;
   font-weight: 900 !important;
   white-space: nowrap !important;
-}
-
-.allOpenTournamentsButton {
-  color: #25364d !important;
-  border: 1px solid #d7e1ef !important;
-  background: #fff !important;
-}
-
-.allOpenTournamentsButton span {
-  display: inline-grid;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  place-items: center;
-  border-radius: 999px;
-  color: #1553d8;
-  background: #e7efff;
 }
 
 .addOpenTournamentButton {
@@ -23020,8 +23001,7 @@ html[data-theme="dark"] .tournamentWorkspaceTabsShell {
 }
 
 html[data-theme="dark"] .openTournamentTab,
-html[data-theme="dark"] .tournamentTabsScrollButton,
-html[data-theme="dark"] .allOpenTournamentsButton {
+html[data-theme="dark"] .tournamentTabsScrollButton {
   border-color: #30445b !important;
   background: #162334 !important;
 }
@@ -23034,9 +23014,7 @@ html[data-theme="dark"] .openTournamentTab.active {
 html[data-theme="dark"] .openTournamentTabMain { color: #c9d5e4 !important; }
 html[data-theme="dark"] .openTournamentTab.active .openTournamentTabMain { color: #fff !important; }
 html[data-theme="dark"] .openTournamentTabClose { color: #8ea0b6 !important; }
-html[data-theme="dark"] .tournamentTabsScrollButton,
-html[data-theme="dark"] .allOpenTournamentsButton { color: #c5d2e1 !important; }
-html[data-theme="dark"] .allOpenTournamentsButton span { background: #223b63; color: #9bc0ff; }
+html[data-theme="dark"] .tournamentTabsScrollButton { color: #c5d2e1 !important; }
 html[data-theme="dark"] .openTournamentTabsViewport { scrollbar-color: #4f657e transparent; }
 
 html[data-theme="dark"] .tournamentTabsModal,
@@ -23343,14 +23321,6 @@ html[data-theme="dark"] .tournamentTabCloseActions button {
   box-shadow: none !important;
 }
 
-.proDashboard.playAppShell button.allOpenTournamentsButton {
-  color: #25364d !important;
-  border: 1px solid #d7e1ef !important;
-  background: #fff !important;
-  background-image: none !important;
-  box-shadow: none !important;
-}
-
 .proDashboard.playAppShell button.addOpenTournamentButton {
   color: #fff !important;
   border: 0 !important;
@@ -23369,8 +23339,7 @@ html[data-theme="dark"] .tournamentTabCloseActions button {
 html[data-theme="dark"] .proDashboard.playAppShell button.openTournamentTabMain { color: #c9d5e4 !important; }
 html[data-theme="dark"] .proDashboard.playAppShell .openTournamentTab.active button.openTournamentTabMain { color: #fff !important; }
 html[data-theme="dark"] .proDashboard.playAppShell button.openTournamentTabClose { color: #8ea0b6 !important; }
-html[data-theme="dark"] .proDashboard.playAppShell button.tournamentTabsScrollButton,
-html[data-theme="dark"] .proDashboard.playAppShell button.allOpenTournamentsButton {
+html[data-theme="dark"] .proDashboard.playAppShell button.tournamentTabsScrollButton {
   color: #c5d2e1 !important;
   border-color: #30445b !important;
   background: #162334 !important;
@@ -23626,7 +23595,6 @@ html[data-theme="dark"] .proDashboard.playAppShell button.mobileTournamentSwitch
   }
 
   .proDashboard .tournamentTabsScrollButton,
-  .proDashboard .allOpenTournamentsButton,
   .proDashboard .addOpenTournamentButton {
     min-height: 36px !important;
     height: 36px !important;
@@ -26852,7 +26820,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   gap: 5px;
   min-width: 0;
   color: #53657a;
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 850;
   line-height: 1.15;
   white-space: nowrap;
@@ -26875,7 +26843,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerItems > button
   border-radius: 999px;
   background: color-mix(in srgb, currentColor 12%, transparent);
   color: inherit;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .summaryStatus.is-in-progress { color: #7c3aed; }
@@ -27012,7 +26980,7 @@ html[data-theme="dark"] .summaryStatus.is-waiting,
   color: #4a5c72 !important;
   -webkit-text-fill-color: #4a5c72 !important;
   box-shadow: none !important;
-  font-size: 11px !important;
+  font-size: 12.5px !important;
   font-weight: 900 !important;
 }
 
@@ -27133,11 +27101,11 @@ html[data-theme="dark"] .proDashboard.playAppShell .courtOccupancyActions button
     gap: 2px 7px;
     margin-top: 3px;
   }
-  .mobileTournamentSwitcherCopy .summaryStatus { font-size: 7.5px; }
+  .mobileTournamentSwitcherCopy .summaryStatus { font-size: 9px; }
   .mobileTournamentSwitcherCopy .summaryStatus strong {
     min-width: 14px;
     min-height: 14px;
-    font-size: 7px;
+    font-size: 8px;
   }
 
   .organizationSubTabs {
@@ -27151,7 +27119,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .courtOccupancyActions button
   .proDashboard.playAppShell .organizationSubTabs button {
     min-height: 46px !important;
     padding-inline: 6px !important;
-    font-size: 9.5px !important;
+    font-size: 11px !important;
     line-height: 1.15 !important;
   }
 
