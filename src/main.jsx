@@ -729,8 +729,6 @@ const defaultCircuitOtherPositionPoints = 120;
 const defaultCircuitCupPoints = {
   champion: 1000,
   runnerUp: 800,
-  third: 670,
-  fourth: 500,
   semifinal: 670,
   quarterfinal: 500,
   round16: 330,
@@ -759,6 +757,8 @@ function normalizeCircuitRankingSettings(value) {
   const sourcePoints = source.points && typeof source.points === "object" ? source.points : {};
   const sourceCup = sourcePoints.cup && typeof sourcePoints.cup === "object" ? sourcePoints.cup : {};
   const sourcePositions = Array.isArray(sourcePoints.positions) ? sourcePoints.positions : [];
+  const sourceExtraPoints = Array.isArray(source.extraPoints) ? source.extraPoints : [];
+  const sourceCircuitIds = Array.isArray(source.sourceCircuitIds) ? source.sourceCircuitIds : [];
 
   return {
     mode: source.mode === circuitRankingModes.placement ? circuitRankingModes.placement : circuitRankingModes.performance,
@@ -766,6 +766,18 @@ function normalizeCircuitRankingSettings(value) {
       ? circuitTournamentFormats.cup
       : (source.tournamentFormat === circuitTournamentFormats.placement ? circuitTournamentFormats.placement : ""),
     identity: source.identity === "team" ? "team" : "individual",
+    rankingDivision: source.identity !== "team" && source.rankingDivision === "gender" ? "gender" : "general",
+    sourceCircuitIds: [...new Set(sourceCircuitIds.map((id) => String(id)).filter(Boolean))],
+    extraPoints: sourceExtraPoints.map((entry, index) => ({
+      id: String(entry?.id || `extra-${index + 1}`),
+      targetId: String(entry?.targetId || ""),
+      targetName: String(entry?.targetName || "").trim(),
+      groupKey: ["masculino", "feminino", "geral"].includes(entry?.groupKey) ? entry.groupKey : "geral",
+      label: String(entry?.label || "Pontuação extra").trim() || "Pontuação extra",
+      note: String(entry?.note || "").trim(),
+      points: normalizeCircuitPointValue(entry?.points),
+      createdAt: String(entry?.createdAt || ""),
+    })).filter((entry) => entry.targetId && entry.targetName && entry.points > 0),
     tieBreakOrder: source.tieBreakMode === "cearense"
       ? ["wins", "bestStage"]
       : normalizeCircuitTieBreakOrder(source.tieBreakOrder),
@@ -878,7 +890,10 @@ function getUnresolvedCircuitTieGroups(groups, settings) {
 
 function getCircuitPlacementColumns(settings) {
   const keys = getCircuitTieBreakOrder(settings);
-  const columns = [{ key: "circuitPoints", label: "Pontos" }];
+  const columns = [
+    { key: "circuitPoints", label: "Total de pontos" },
+    { key: "extraPoints", label: "Extras" },
+  ];
   keys.forEach((criterion) => {
     const option = circuitTieBreakOptions.find((item) => item.value === criterion);
     if (option && !columns.some((column) => column.key === option.key)) {
@@ -887,6 +902,25 @@ function getCircuitPlacementColumns(settings) {
   });
   columns.push({ key: "tournaments", label: "Etapas" });
   return columns;
+}
+
+function applyCircuitExtraPoints(groups, settings) {
+  const normalized = normalizeCircuitRankingSettings(settings);
+  normalized.extraPoints.forEach((entry) => {
+    const preferredGroup = groups[entry.groupKey] || groups.geral;
+    const candidates = preferredGroup ? [preferredGroup] : Object.values(groups);
+    let target = null;
+    for (const group of candidates) {
+      target = Array.from(group?.rows?.values?.() || []).find((row) => (
+        String(row.id || "") === entry.targetId
+        || String(row.name || "").trim().toLocaleLowerCase("pt-BR") === entry.targetName.toLocaleLowerCase("pt-BR")
+      ));
+      if (target) break;
+    }
+    if (!target) return;
+    target.extraPoints = Number(target.extraPoints || 0) + entry.points;
+    target.circuitPoints = Number(target.circuitPoints || 0) + entry.points;
+  });
 }
 
 function generatePublicId() {
@@ -1062,16 +1096,6 @@ function calculateCupPlacementRows(tournament, settings) {
     }
   });
 
-  const thirdPlaceGame = mainGames.find((game) => String(game.roundName || "").includes("3º"));
-  if (thirdPlaceGame && isCompletedCircuitGame(thirdPlaceGame, data)) {
-    const resolved = resolveBracketGame(thirdPlaceGame, mainGames, data);
-    const winnerSide = getScoreWinnerSide(resolved, getWinningScore(data));
-    const thirdId = winnerSide === "team1" ? resolved.ids1?.[0] : resolved.ids2?.[0];
-    const fourthId = winnerSide === "team1" ? resolved.ids2?.[0] : resolved.ids1?.[0];
-    if (Number.isInteger(thirdId)) outcomes.set(thirdId, "third");
-    if (Number.isInteger(fourthId)) outcomes.set(fourthId, "fourth");
-  }
-
   const performanceById = new Map(
     calculateCircuitTournamentRanking(data, tournament.type, data.rankingCriteria || defaultRankingCriteria)
       .map((row) => [row.id, row])
@@ -1102,6 +1126,9 @@ function calculateCupPlacementRows(tournament, settings) {
       ...base,
       id: `${id}:${athleteIndex}`,
       name,
+      groupKey: normalizedSettings.rankingDivision === "gender"
+        ? (athleteIndex === 0 ? "masculino" : "feminino")
+        : "geral",
     }));
   });
 }
@@ -1143,6 +1170,9 @@ function calculateRankPlacementRows(tournament, settings) {
       ...base,
       id: `${row.id}:${athleteIndex}`,
       name,
+      groupKey: normalizedSettings.rankingDivision === "gender"
+        ? (athleteIndex === 0 ? "masculino" : "feminino")
+        : groupKey,
     }));
   }));
 }
@@ -1407,6 +1437,7 @@ function getPublicCircuitDirectoryItem(circuit, rankingGroups = [], rankingCrite
         titles: Number(row.titles || 0),
         runnerUps: Number(row.runnerUps || 0),
         thirdPlaces: Number(row.thirdPlaces || 0),
+        extraPoints: Number(row.extraPoints || 0),
         bestStagePoints: Number(row.stageScores?.[0] || row.bestStagePoints || 0),
         stageScores: Array.isArray(row.stageScores) ? row.stageScores.map((score) => Number(score || 0)) : [],
       })),
@@ -8088,6 +8119,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
   const [tournamentStatusFilter, setTournamentStatusFilter] = useState("active");
   const [createCircuitOpen, setCreateCircuitOpen] = useState(false);
+  const [combineCircuitsOpen, setCombineCircuitsOpen] = useState(false);
   const [circuitStatusFilter, setCircuitStatusFilter] = useState("active");
   const [notice, setNotice] = useState(null);
   const [profileSubtab, setProfileSubtab] = useState(() => {
@@ -8130,6 +8162,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     rankingSettings: normalizeCircuitRankingSettings(),
   });
   const [circuitEditForm, setCircuitEditForm] = useState(null);
+  const [combinedCircuitForm, setCombinedCircuitForm] = useState({ name: "", sourceCircuitIds: [] });
   const [circuitDeleteTarget, setCircuitDeleteTarget] = useState(null);
   const [expandedCircuitId, setExpandedCircuitId] = useState(null);
   const [restoredTournamentId, setRestoredTournamentId] = useState(null);
@@ -8749,7 +8782,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         w: Number(row.w || 0),
         bal: Number(row.bal || 0),
         played: Number(row.played || 0),
-        circuitPoints: Number(row.circuit_points || 0),
+      circuitPoints: Number(row.circuit_points || 0),
+      extraPoints: 0,
         placementKey: row.placement_key || "",
         placementLabel: row.placement_label || "",
         titles: Number(row.titles || 0),
@@ -8920,7 +8954,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function getCircuitSelectedTournaments(circuit, tournamentSource = tournaments) {
-    const selectedIds = (circuit.tournamentIds || []).map((id) => String(id));
+    const settings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
+    const sourceTournamentIds = settings.sourceCircuitIds.flatMap((sourceId) => {
+      const source = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
+      return source?.tournamentIds || [];
+    });
+    const selectedIds = [...new Set([...(circuit.tournamentIds || []), ...sourceTournamentIds].map((id) => String(id)))];
     return selectedIds
       .map((id) => tournamentSource.find((t) => String(t.id) === id))
       .filter(Boolean);
@@ -8933,8 +8972,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function getCircuitFormFormat(form, tournamentSource = tournaments) {
-    const explicitFormat = normalizeCircuitRankingSettings(form?.rankingSettings).tournamentFormat;
+    const normalizedSettings = normalizeCircuitRankingSettings(form?.rankingSettings);
+    const explicitFormat = normalizedSettings.tournamentFormat;
     if (explicitFormat) return explicitFormat;
+    if (normalizedSettings.sourceCircuitIds.length > 0) {
+      const source = circuitsRef.current.find((item) => String(item.id) === String(normalizedSettings.sourceCircuitIds[0]));
+      return normalizeCircuitRankingSettings(source?.rankingSettings).tournamentFormat;
+    }
     const selectedTournament = (form?.tournamentIds || [])
       .map((id) => tournamentSource.find((tournament) => String(tournament.id) === String(id)))
       .find(Boolean);
@@ -9201,9 +9245,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         "Circuito salvo; ranking pendente",
         "Os dados do circuito foram salvos, mas o histórico do ranking precisa de uma nova tentativa."
       );
-      return;
+      return false;
     }
     showNotice("success", isEditing ? "Circuito atualizado" : "Circuito criado", "As alterações foram salvas no Supabase.");
+    return true;
   }
 
   function editCircuit(circuit) {
@@ -9278,9 +9323,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .maybeSingle();
 
     if (error || !savedCircuit) {
-      console.error("Erro ao atualizar desempate do circuito:", error);
+      console.error("Erro ao atualizar configurações do ranking do circuito:", error);
       saveCircuits(previousCircuits);
-      showNotice("error", "Desempate não atualizado", "Não foi possível salvar o sorteio do circuito.");
+      showNotice("error", "Ranking não atualizado", "Não foi possível salvar as configurações do ranking do circuito.");
       return false;
     }
 
@@ -9292,6 +9337,70 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     saveCircuits(savedCircuits);
     await syncPublicArenaDirectory(tournamentsRef.current, savedCircuits);
     return true;
+  }
+
+  function toggleCombinedCircuitSource(circuitId) {
+    setCombinedCircuitForm((previous) => ({
+      ...previous,
+      sourceCircuitIds: previous.sourceCircuitIds.includes(circuitId)
+        ? previous.sourceCircuitIds.filter((id) => id !== circuitId)
+        : [...previous.sourceCircuitIds, circuitId],
+    }));
+  }
+
+  async function saveCombinedCircuit() {
+    const selectedSources = combinedCircuitForm.sourceCircuitIds
+      .map((id) => circuits.find((circuit) => String(circuit.id) === String(id)))
+      .filter(Boolean);
+    if (!combinedCircuitForm.name.trim()) {
+      showNotice("warning", "Nome obrigatório", "Digite um nome para o circuito somado.");
+      return;
+    }
+    if (selectedSources.length < 2) {
+      showNotice("warning", "Selecione dois circuitos", "Escolha pelo menos dois circuitos para somar.");
+      return;
+    }
+    const sourceSettings = selectedSources.map((source) => normalizeCircuitRankingSettings(source.rankingSettings));
+    if (sourceSettings.some((settings) => settings.mode !== circuitRankingModes.placement)) {
+      showNotice("warning", "Circuito sem pontuação", "Para somar circuitos, todos precisam usar o modelo Pontuação por colocação.");
+      return;
+    }
+    const identitySignatures = new Set(sourceSettings.map((settings) => `${settings.identity}:${settings.rankingDivision}`));
+    if (identitySignatures.size > 1) {
+      showNotice("warning", "Rankings incompatíveis", "Os circuitos precisam acumular pontos do mesmo modo: individual, dupla ou masculino/feminino.");
+      return;
+    }
+    const tournamentOwners = new Map();
+    for (const source of selectedSources) {
+      for (const tournamentId of source.tournamentIds || []) {
+        const key = String(tournamentId);
+        if (tournamentOwners.has(key)) {
+          showNotice("warning", "Etapa repetida", `O mesmo torneio aparece em ${tournamentOwners.get(key)} e ${source.name}. Retire a duplicidade antes de somar.`);
+          return;
+        }
+        tournamentOwners.set(key, source.name);
+      }
+    }
+    const dates = selectedSources.flatMap((source) => [source.startDate, source.endDate]).filter(Boolean).sort();
+    const base = sourceSettings[0];
+    const created = await saveCircuit({
+      id: null,
+      name: combinedCircuitForm.name.trim(),
+      startDate: dates[0] || getBrazilTodayISO(),
+      endDate: dates[dates.length - 1] || getBrazilTodayISO(),
+      tournamentIds: [...tournamentOwners.keys()],
+      rankingCriteria: getCircuitEffectiveCriteria(selectedSources[0]),
+      rankingCriteriaMode: "manual",
+      rankingSettings: normalizeCircuitRankingSettings({
+        ...base,
+        sourceCircuitIds: selectedSources.map((source) => source.id),
+        extraPoints: [],
+      }),
+    });
+    if (created) {
+      setCombinedCircuitForm({ name: "", sourceCircuitIds: [] });
+      setCombineCircuitsOpen(false);
+    }
   }
 
   async function drawCircuitRankingTies(circuit, rankingGroups) {
@@ -9410,7 +9519,40 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   function getCircuitTournamentRankingRecords(circuit, tournamentSource = tournaments) {
     const records = {};
     const rankingSettings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
-    const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+    const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
+
+    if (rankingSettings.sourceCircuitIds.length > 0) {
+      rankingSettings.sourceCircuitIds.forEach((sourceId) => {
+        const sourceCircuit = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
+        if (!sourceCircuit) return;
+        getCircuitRanking(sourceCircuit, getCircuitEffectiveCriteria(sourceCircuit), tournamentSource).forEach((group) => {
+          (group.rows || []).forEach((row, rowIndex) => {
+            const playerKey = normalizeCircuitPlayerKey(row.name, false);
+            const recordKey = `combined-${sourceCircuit.id}-${rowIndex}::${group.key || "geral"}::${playerKey}`;
+            records[recordKey] = {
+              tournamentId: (sourceCircuit.tournamentIds || [])[0] || (circuit.tournamentIds || [])[0],
+              groupKey: group.key || "geral",
+              playerKey,
+              name: row.name,
+              pts: Number(row.pts || 0),
+              w: Number(row.w || 0),
+              bal: Number(row.bal || 0),
+              played: Number(row.played || 0),
+              tournaments: Number(row.tournaments || 0),
+              circuitPoints: Number(row.circuitPoints || 0),
+              extraPoints: Number(row.extraPoints || 0),
+              titles: Number(row.titles || 0),
+              runnerUps: Number(row.runnerUps || 0),
+              thirdPlaces: Number(row.thirdPlaces || 0),
+              stageScores: Array.isArray(row.stageScores) ? row.stageScores : [],
+              placementKey: "combinedCircuit",
+              placementLabel: sourceCircuit.name,
+            };
+          });
+        });
+      });
+      return records;
+    }
 
     getCircuitSelectedTournaments(circuit, tournamentSource).forEach((tournament) => {
       let rows = [];
@@ -9478,16 +9620,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function getCircuitRanking(circuit, criteriaValue = getCircuitEffectiveCriteria(circuit), tournamentSource = tournaments) {
-    const history = buildCircuitRankingHistory(circuit, tournamentSource);
     const rankingSettings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
-    const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+    const history = rankingSettings.sourceCircuitIds.length > 0 ? {} : buildCircuitRankingHistory(circuit, tournamentSource);
+    const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
     const groups = {
       geral: { title: placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado", rows: new Map() },
       masculino: { title: "Ranking Masculino", rows: new Map() },
       feminino: { title: "Ranking Feminino", rows: new Map() },
     };
 
-    Object.values(history).forEach((record) => {
+    const accumulateRecord = (record) => {
       const groupKey = record.groupKey || "geral";
       const table = groups[groupKey]?.rows || groups.geral.rows;
       const name = String(record.name || "Sem nome").trim() || "Sem nome";
@@ -9501,13 +9643,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         played: 0,
         tournaments: 0,
         circuitPoints: 0,
+        extraPoints: 0,
         titles: 0,
         runnerUps: 0,
         thirdPlaces: 0,
         stageScores: [],
       };
 
-      const stageScores = [...current.stageScores, Number(record.circuitPoints || 0)].sort((a, b) => b - a);
+      const recordStageScores = Array.isArray(record.stageScores) && record.stageScores.length
+        ? record.stageScores.map((score) => Number(score || 0))
+        : [Number(record.circuitPoints || 0)];
+      const stageScores = [...current.stageScores, ...recordStageScores].sort((a, b) => b - a);
       table.set(key, {
         ...current,
         name: current.name || name,
@@ -9515,15 +9661,35 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         w: current.w + Number(record.w || 0),
         bal: current.bal + Number(record.bal || 0),
         played: current.played + Number(record.played || 0),
-        tournaments: current.tournaments + 1,
+        tournaments: current.tournaments + Math.max(1, Number(record.tournaments || 0)),
         circuitPoints: current.circuitPoints + Number(record.circuitPoints || 0),
+        extraPoints: current.extraPoints + Number(record.extraPoints || 0),
         titles: current.titles + Number(record.titles || 0),
         runnerUps: current.runnerUps + Number(record.runnerUps || 0),
         thirdPlaces: current.thirdPlaces + Number(record.thirdPlaces || 0),
         stageScores,
         bestStagePoints: Number(stageScores[0] || 0),
       });
-    });
+    };
+
+    if (rankingSettings.sourceCircuitIds.length > 0) {
+      rankingSettings.sourceCircuitIds.forEach((sourceId) => {
+        const sourceCircuit = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
+        if (!sourceCircuit) return;
+        getCircuitRanking(sourceCircuit, getCircuitEffectiveCriteria(sourceCircuit), tournamentSource).forEach((group) => {
+          (group.rows || []).forEach((row) => accumulateRecord({
+            ...row,
+            groupKey: group.key || "geral",
+            playerKey: normalizeCircuitPlayerKey(row.name),
+            tournaments: Number(row.tournaments || 0),
+          }));
+        });
+      });
+    } else {
+      Object.values(history).forEach(accumulateRecord);
+    }
+
+    applyCircuitExtraPoints(groups, rankingSettings);
 
     const criteria = getRankingCriteria(criteriaValue);
     const sortRows = (rows) => Array.from(rows.values()).sort((a, b) => {
@@ -12954,8 +13120,41 @@ setNewPublicInfo({
       <h2>Meus circuitos</h2>
       <p>Organize torneios relacionados e acompanhe o ranking geral acumulado.</p>
     </div>
-    <button type="button" onClick={() => setCreateCircuitOpen(true)}>+ Criar circuito</button>
+    <div className="circuitManagerToolbarActions">
+      <button type="button" onClick={() => setCreateCircuitOpen(true)}>+ Criar circuito</button>
+      <button type="button" className="combineCircuitsButton" onClick={() => setCombineCircuitsOpen(true)}><PlusCircle aria-hidden="true" /> Somar circuitos</button>
+    </div>
   </section>
+
+  {combineCircuitsOpen ? (
+    <div className="eventEditorOverlay" role="dialog" aria-modal="true" aria-label="Somar circuitos">
+      <section className="card circuitsCard eventEditorSheet combinedCircuitSheet">
+        <div className="circuitsHeader">
+          <div><span className="managerEyebrow">Ranking consolidado</span><h2>Somar circuitos</h2><p>Crie um ranking que acompanha automaticamente os totais dos circuitos escolhidos.</p></div>
+          <button type="button" className="secondaryBtn" onClick={() => setCombineCircuitsOpen(false)}>Fechar</button>
+        </div>
+        <label className="formField"><span>Nome do novo circuito</span><input value={combinedCircuitForm.name} onChange={(event) => setCombinedCircuitForm((previous) => ({ ...previous, name: event.target.value }))} placeholder="Ex: Ranking geral da temporada" /></label>
+        <div className="combinedCircuitNotice"><CircleHelp aria-hidden="true" /><span>Os circuitos originais permanecem independentes. Uma mesma etapa não pode ser contada duas vezes.</span></div>
+        <div className="circuitTournamentPicker">
+          <div className="circuitPickerTitle"><strong>Circuitos de origem</strong><span>{combinedCircuitForm.sourceCircuitIds.length} selecionado(s)</span></div>
+          <div className="circuitTournamentList combinedCircuitList">
+            {circuits.filter((circuit) => {
+              const settings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+              return settings.sourceCircuitIds.length === 0 && settings.mode === circuitRankingModes.placement;
+            }).map((circuit) => {
+              const checked = combinedCircuitForm.sourceCircuitIds.includes(circuit.id);
+              const settings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+              return <button type="button" className={`circuitTournamentOption ${checked ? "selected" : ""}`} key={circuit.id} onClick={() => toggleCombinedCircuitSource(circuit.id)}>
+                <span className="circuitCheckVisual">{checked ? "✓" : ""}</span>
+                <span className="circuitTournamentText"><strong>{circuit.name}</strong><small>{settings.identity === "team" ? "Por dupla" : settings.rankingDivision === "gender" ? "Masculino e feminino" : "Individual"} · {(circuit.tournamentIds || []).length} etapa(s)</small></span>
+              </button>;
+            })}
+          </div>
+        </div>
+        <div className="circuitFormActions"><button type="button" className="combineCircuitsButton" onClick={() => void saveCombinedCircuit()}>Criar circuito somado</button></div>
+      </section>
+    </div>
+  ) : null}
 
   {createCircuitOpen ? (
   <div className="eventEditorOverlay" role="dialog" aria-modal="true" aria-label="Criar circuito">
@@ -13114,7 +13313,7 @@ setNewPublicInfo({
               const effectiveCircuitCriteria = getCircuitEffectiveCriteria(circuit);
               const circuitRankingGroups = getCircuitRanking(circuit, effectiveCircuitCriteria);
               const rankingSettings = normalizeCircuitRankingSettings(circuit.rankingSettings);
-              const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+              const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
               const unresolvedTieGroups = placementMode
@@ -13212,6 +13411,7 @@ setNewPublicInfo({
                       ))}
                     </div>
                   )}
+                  {placementMode ? <CircuitExtraPointsPanel circuit={circuit} rankingGroups={circuitRankingGroups} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} /> : null}
                 </div>
               ) : selectedNames.length ? (
                 <div className="circuitRankingEmpty">Ranking aparece quando houver placares lançados nos torneios selecionados.</div>
@@ -17417,8 +17617,7 @@ function CircuitRankingSettingsEditor({
   }
 
   const cupPointFields = [
-    ["champion", "Campeão"], ["runnerUp", "Vice-campeão"], ["third", "3º lugar"],
-    ["fourth", "4º lugar"], ["semifinal", "Eliminado na semifinal"],
+    ["champion", "Campeão"], ["runnerUp", "Vice-campeão"], ["semifinal", "Eliminado na semifinal"],
     ["quarterfinal", "Eliminado nas quartas"], ["round16", "Eliminado nas oitavas"],
     ["round32", "Eliminado na fase de 32"], ["groupStage", "Eliminado na fase de grupos"],
   ];
@@ -17476,6 +17675,13 @@ function CircuitRankingSettingsEditor({
               <button type="button" role="radio" aria-checked={settings.identity === "individual"} className={settings.identity === "individual" ? "selected" : ""} onClick={() => updateSettings({ identity: "individual" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.identity === "individual" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Individual</strong></span></button>
               <button type="button" role="radio" aria-checked={settings.identity === "team"} className={settings.identity === "team" ? "selected" : ""} onClick={() => updateSettings({ identity: "team" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.identity === "team" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Por dupla</strong></span></button>
             </div>
+            {settings.identity === "individual" ? <div className="circuitGenderDivision">
+              <div className="circuitSettingsTitleRow"><div><strong>Como exibir campeonatos de duplas mistas?</strong><span>Na dupla, o 1º nome representa o masculino e o 2º, o feminino</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os rankings masculino e feminino" eyebrow="Duplas mistas" title="Rankings separados por gênero" intro="A separação é uma escolha do organizador e não tenta descobrir o gênero pelo nome." sections={[{ title: "Ranking geral", content: <p>Todos os atletas aparecem em uma única tabela.</p> }, { title: "Masculino e feminino", content: <p>Em cada dupla fixa mista, o primeiro atleta entra no Ranking Masculino e o segundo no Ranking Feminino. Ambos recebem integralmente os pontos conquistados pela dupla.</p> }, { title: "Padronização", content: <p>Cadastre sempre o homem no primeiro campo e a mulher no segundo. A plataforma usa somente essa posição, sem tentar interpretar nomes.</p> }]} /></div>
+              <div className="circuitCompactChoices" role="radiogroup" aria-label="Divisão do ranking individual">
+                <button type="button" role="radio" aria-checked={settings.rankingDivision === "general"} className={settings.rankingDivision === "general" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "general" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "general" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Ranking geral</strong></span></button>
+                <button type="button" role="radio" aria-checked={settings.rankingDivision === "gender"} className={settings.rankingDivision === "gender" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "gender" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "gender" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Masculino e feminino</strong></span></button>
+              </div>
+            </div> : null}
           </section>
 
           {tournamentFormat === circuitTournamentFormats.placement ? <section>
@@ -17487,7 +17693,7 @@ function CircuitRankingSettingsEditor({
           </section> : null}
 
           {tournamentFormat === circuitTournamentFormats.cup ? <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por fases alcançadas</strong><span>Copas com grupos e chave principal</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por fases alcançadas" eyebrow="Fases alcançadas" title="Pontuação conforme o avanço na copa" intro="A última fase atingida na chave principal determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Chave principal", content: <p>Campeão, vice e eliminados recebem o valor configurado para o resultado alcançado. Se houver disputa de 3º lugar, 3º e 4º usam os campos próprios.</p> }, { title: "Fase de grupos", content: <p>Quem não avançar recebe o valor definido pelo organizador para eliminação nos grupos, inclusive zero.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades de copa com fase de grupos e chave eliminatória principal.</p> }, { title: "Disputas paralelas", content: <p>Resultados e jogos das disputas paralelas são ignorados integralmente e nunca pontuam.</p> }]} /></div>
+            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por fases alcançadas</strong><span>Copas com grupos e chave principal</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por fases alcançadas" eyebrow="Fases alcançadas" title="Pontuação conforme o avanço na copa" intro="A última fase atingida na chave principal determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Chave principal", content: <p>Campeão e vice recebem seus valores. Todos os perdedores das semifinais recebem igualmente a pontuação de <strong>Eliminado na semifinal</strong>, mesmo quando houver jogo de 3º lugar.</p> }, { title: "Fase de grupos", content: <p>Quem não avançar recebe o valor definido pelo organizador para eliminação nos grupos, inclusive zero.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades de copa com fase de grupos e chave eliminatória principal.</p> }, { title: "Disputas paralelas", content: <p>Resultados e jogos das disputas paralelas são ignorados integralmente e nunca pontuam.</p> }]} /></div>
             <div className="circuitPointsGrid">{cupPointFields.map(([key, label]) => <label key={key}><span>{label}</span><input type="number" min="0" step="1" value={settings.points.cup[key]} onChange={(event) => updatePoint("cup", key, event.target.value)} /></label>)}</div>
           </section> : null}
 
@@ -17502,6 +17708,55 @@ function CircuitRankingSettingsEditor({
       <small className="circuitIdentityHint">O ranking identifica atletas e duplas pelo nome. Use a mesma escrita em todas as etapas e diferencie homônimos pelo sobrenome.</small>
     </div>
   );
+}
+
+function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
+  const settings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
+  const targets = (rankingGroups || []).flatMap((group) => (group.rows || []).map((row) => ({
+    id: String(row.id || ""), name: row.name, groupKey: group.key || "geral", groupTitle: group.title,
+  })));
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ targetId: "", label: "", points: "", note: "" });
+  const [deleteId, setDeleteId] = useState("");
+
+  async function addExtraPoint() {
+    const target = targets.find((item) => item.id === form.targetId);
+    const points = normalizeCircuitPointValue(form.points);
+    if (!target || !form.label.trim() || points <= 0) return;
+    const nextEntry = {
+      id: typeof globalThis.crypto?.randomUUID === "function" ? globalThis.crypto.randomUUID() : `extra-${Date.now()}`,
+      targetId: target.id,
+      targetName: target.name,
+      groupKey: target.groupKey,
+      label: form.label.trim(),
+      note: form.note.trim(),
+      points,
+      createdAt: new Date().toISOString(),
+    };
+    const saved = await onSave({ ...settings, extraPoints: [...settings.extraPoints, nextEntry] });
+    if (saved) setForm({ targetId: "", label: "", points: "", note: "" });
+  }
+
+  async function removeExtraPoint() {
+    const saved = await onSave({ ...settings, extraPoints: settings.extraPoints.filter((entry) => entry.id !== deleteId) });
+    if (saved) setDeleteId("");
+  }
+
+  return <div className="circuitExtraPointsPanel">
+    <button type="button" className="circuitExtraPointsButton" onClick={() => setOpen((value) => !value)}><Gift aria-hidden="true" /> {open ? "Fechar pontos extras" : "Adicionar pontuação extra"}</button>
+    {open ? <div className="circuitExtraPointsContent">
+      <div className="circuitSettingsTitleRow"><div><strong>Pontuações extras</strong><span>O valor é somado ao total e participa do primeiro critério do ranking.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação extra" eyebrow="Bônus do organizador" title="Como os pontos extras funcionam" intro="Use somente para ajustes ou premiações definidos pelo regulamento do circuito." sections={[{ title: "Total do ranking", content: <p>O bônus é somado diretamente aos pontos conquistados nas etapas. Por isso, ele altera imediatamente a ordem principal do ranking.</p> }, { title: "Identificação", content: <p>Escolha o atleta ou a dupla, informe um motivo claro e registre uma observação se necessário.</p> }, { title: "Transparência", content: <p>O histórico permanece visível no circuito e pode ser removido pelo organizador mediante confirmação.</p> }]} /></div>
+      <div className="circuitExtraPointsForm">
+        <label><span>Atleta ou dupla</span><select value={form.targetId} onChange={(event) => setForm((previous) => ({ ...previous, targetId: event.target.value }))}><option value="">Escolha no ranking</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.name}{rankingGroups.length > 1 ? ` — ${target.groupTitle}` : ""}</option>)}</select></label>
+        <label><span>Motivo</span><input value={form.label} onChange={(event) => setForm((previous) => ({ ...previous, label: event.target.value }))} placeholder="Ex: Bônus da etapa" /></label>
+        <label><span>Pontos</span><input type="number" min="1" step="1" value={form.points} onChange={(event) => setForm((previous) => ({ ...previous, points: event.target.value }))} /></label>
+        <label className="circuitExtraNote"><span>Observação opcional</span><input value={form.note} onChange={(event) => setForm((previous) => ({ ...previous, note: event.target.value }))} /></label>
+        <button type="button" className="circuitExtraSave" disabled={!form.targetId || !form.label.trim() || normalizeCircuitPointValue(form.points) <= 0} onClick={() => void addExtraPoint()}>Somar ao total</button>
+      </div>
+      {settings.extraPoints.length ? <div className="circuitExtraHistory"><strong>Histórico</strong>{settings.extraPoints.map((entry) => <article key={entry.id}><div><b>+{entry.points} · {entry.targetName}</b><span>{entry.label}{entry.note ? ` — ${entry.note}` : ""}</span></div><button type="button" onClick={() => setDeleteId(entry.id)}>Excluir</button></article>)}</div> : <p className="circuitExtraEmpty">Nenhuma pontuação extra adicionada.</p>}
+    </div> : null}
+    {deleteId ? createPortal(<div className="noticeOverlay" role="dialog" aria-modal="true"><div className="noticeModal"><div className="noticeIcon warning">⚠️</div><h2>Excluir pontuação extra?</h2><p>O valor será retirado do total e o ranking será recalculado.</p><div className="noticeActions"><button type="button" className="secondaryBtn" onClick={() => setDeleteId("")}>Cancelar</button><button type="button" className="deleteBtn" onClick={() => void removeExtraPoint()}>Sim, excluir</button></div></div></div>, document.body) : null}
+  </div>;
 }
 
 function ParallelDisputeChoice({
@@ -19189,8 +19444,20 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
     feminino: { key: "feminino", title: "Ranking Feminino", rows: new Map() },
   };
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
   if (placementMode) groups.geral.title = "Ranking geral por pontos";
+
+  const sourceCircuitIds = rankingSettings.sourceCircuitIds;
+  if (sourceCircuitIds.length > 0 && Array.isArray(circuit?.ranking_groups)) {
+    (circuit.ranking_groups || []).forEach((group) => {
+      const groupKey = group.key || "geral";
+      const table = groups[groupKey]?.rows || groups.geral.rows;
+      (group.rows || []).forEach((row) => {
+        const key = String(row.id || `${groupKey}:${row.name}`).split(":").slice(1).join(":") || String(row.name || "sem nome").toLocaleLowerCase("pt-BR");
+        table.set(key, { ...row, id: `${groupKey}:${key}`, extraPoints: Number(row.extraPoints || 0), stageScores: Array.isArray(row.stageScores) ? row.stageScores : [] });
+      });
+    });
+  }
 
   tournaments
     .filter((tournament) => (
@@ -19198,6 +19465,7 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
       && !tournament.data?.deletedAt
     ))
     .forEach((tournament) => {
+      if (sourceCircuitIds.length > 0 && Array.isArray(circuit?.ranking_groups) && circuit.ranking_groups.length > 0) return;
       const config = modalityConfig[tournament.type];
       if (!config) return;
 
@@ -19233,6 +19501,7 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
           played: 0,
           tournaments: 0,
           circuitPoints: 0,
+          extraPoints: 0,
           titles: 0,
           runnerUps: 0,
           thirdPlaces: 0,
@@ -19257,7 +19526,9 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
       });
     });
 
-  const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
+    applyCircuitExtraPoints(groups, rankingSettings);
+
+    const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
   const sortRows = (rows) => Array.from(rows.values()).sort((first, second) => {
     if (placementMode) {
       const pointDifference = Number(second.circuitPoints || 0) - Number(first.circuitPoints || 0);
@@ -19907,7 +20178,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
         const criteria = getRankingCriteria(circuit.ranking_criteria || defaultRankingCriteria);
         const rankingSettings = normalizeCircuitRankingSettings(circuit.ranking_settings);
-        const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+        const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
         const rankingGroups = (circuit.ranking_groups || []).map((group) => ({
           ...group,
           rows: [...(group.rows || [])].sort((first, second) => {
@@ -20113,7 +20384,7 @@ function PublicTournamentPage({ publicId }) {
           .order("created_at", { ascending: false }),
         supabase
           .from("circuits")
-          .select("id, user_id, name, start_date, end_date, status, tournament_ids, updated_at")
+          .select("id, user_id, name, start_date, end_date, status, tournament_ids, ranking_criteria, ranking_settings, updated_at")
           .eq("user_id", ownerId)
           .order("updated_at", { ascending: false }),
       ]);
@@ -20139,6 +20410,7 @@ function PublicTournamentPage({ publicId }) {
             ...snapshot,
             ...item,
             ranking_criteria: snapshot.ranking_criteria || item.ranking_criteria || defaultRankingCriteria,
+            ranking_settings: snapshot.ranking_settings || item.ranking_settings || normalizeCircuitRankingSettings(),
             ranking_groups: snapshot.ranking_groups || item.ranking_groups || [],
           };
         });
@@ -20330,7 +20602,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
     : [];
   const rankingGroups = liveRankingGroups.length > 0 ? liveRankingGroups : storedRankingGroups;
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
   const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
   const circuitCriteriaLabel = placementMode

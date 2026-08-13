@@ -651,9 +651,13 @@ assert.ok(
   "O placar pode ser marcado como salvo antes de atualizar o ranking dos circuitos."
 );
 assert.ok(
-  mainSource.includes("const rankingHistorySaved = await saveCircuitHistoryToSupabase("),
+  mainSource.includes("rankingHistorySaved = await saveCircuitHistoryToSupabase("),
   "O salvamento do circuito ainda ignora falhas no histórico do ranking."
 );
+assert.ok(mainSource.includes("function applyCircuitExtraPoints"), "A pontuação extra do circuito não entra no cálculo do ranking.");
+assert.ok(mainSource.includes("target.circuitPoints = Number(target.circuitPoints || 0) + entry.points"), "A pontuação extra não é somada ao total principal.");
+assert.ok(mainSource.includes("Somar circuitos"), "A ação para somar circuitos está ausente.");
+assert.ok(mainSource.includes("Masculino e feminino"), "O ranking separado das duplas mistas está ausente.");
 assert.ok(
   mainSource.includes("if (Number(row.played || 0) <= 0) return;"),
   "Participantes sem jogo válido ainda podem entrar no ranking do circuito."
