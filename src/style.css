@@ -27531,7 +27531,7 @@ html[data-theme="dark"] .manualParticipantConfirmBox .confirmIcon { border-color
   gap: 9px;
 }
 
-html body button.tournamentCircuitButton {
+html body .proDashboard.playAppShell button.tournamentCircuitButton {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -27547,9 +27547,36 @@ html body button.tournamentCircuitButton {
   box-shadow: 0 9px 20px rgba(234, 88, 12, .22) !important;
 }
 
-html body button.tournamentCircuitButton:hover {
+html body .proDashboard.playAppShell button.tournamentCircuitButton:hover {
   transform: translateY(-1px);
   filter: brightness(1.04);
+}
+
+html body .proDashboard.playAppShell button.tournamentCircuitButton .tournamentCircuitButtonLabel {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-size: .86rem !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell button.tournamentCircuitButton,
+html body .proDashboard.theme-dark.playAppShell button.tournamentCircuitButton {
+  border-color: #fb923c !important;
+  background: linear-gradient(135deg, #f97316, #c2410c) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 9px 22px rgba(249, 115, 22, .28) !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell button.tournamentCircuitButton .tournamentCircuitButtonLabel,
+html body .proDashboard.theme-dark.playAppShell button.tournamentCircuitButton .tournamentCircuitButtonLabel {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 .tournamentCircuitButton svg,
