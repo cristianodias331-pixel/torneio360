@@ -25526,6 +25526,39 @@ html[data-theme="dark"] .publicPage .cupBrackets .bracketColumn.bracketTree .bra
   color: var(--ui-text, #334155);
 }
 
+.sunsetGroupFormationChoice {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--ui-border, #d7e0ec);
+  border-radius: 16px;
+  background: var(--ui-surface-raised, #ffffff);
+  color: var(--ui-text, #334155);
+}
+
+html[data-theme="dark"] .sunsetGroupFormationChoice,
+.proDashboard.theme-dark .sunsetGroupFormationChoice {
+  border-color: #334155;
+  background: #121e2e;
+  color: #dbe7f5;
+}
+
+.sunsetGroupFormationChoice .parallelChoiceOptions button.selected,
+.proDashboard.playAppShell .sunsetGroupFormationChoice .parallelChoiceOptions button.selected {
+  border-color: #8b5cf6 !important;
+  background: #ede9fe !important;
+  color: #5b21b6 !important;
+}
+
+html[data-theme="dark"] .sunsetGroupFormationChoice .parallelChoiceOptions button.selected,
+.proDashboard.theme-dark .sunsetGroupFormationChoice .parallelChoiceOptions button.selected {
+  border-color: #a78bfa !important;
+  background: #302052 !important;
+  color: #ede9fe !important;
+}
+
 .parallelChoiceHeading {
   min-width: 0;
   display: flex;
