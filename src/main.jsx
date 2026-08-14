@@ -14775,6 +14775,13 @@ function formatParticipantName(value) {
   }).join(" ");
 }
 
+function formatParticipantNameWhileTyping(value) {
+  const rawValue = String(value || "").normalize("NFKC");
+  const hasTrailingSpace = /\s$/u.test(rawValue);
+  const formattedValue = formatParticipantName(rawValue);
+  return hasTrailingSpace && formattedValue ? `${formattedValue} ` : formattedValue;
+}
+
 function normalizeAttendanceList(values, count) {
   const source = Array.isArray(values) ? values : [];
   return Array.from({ length: count }, (_, index) => source[index] === true);
@@ -16892,7 +16899,7 @@ function TournamentScreen({
 
   function updatePlayer(path, value) {
     const copy = structuredClone(data);
-    const formattedValue = formatParticipantName(value);
+    const formattedValue = formatParticipantNameWhileTyping(value);
     copy.participantAttendance = normalizeParticipantAttendance(config, copy.players, copy.participantAttendance);
 
     if (path.kind === "normal") copy.players[path.index] = formattedValue;
