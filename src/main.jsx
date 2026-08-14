@@ -18354,9 +18354,11 @@ function TournamentCircuitButton({ onClick, managed = false }) {
   if (typeof onClick !== "function") return null;
 
   return (
-    <button type="button" className="tournamentCircuitButton" onClick={onClick}>
+    <button type="button" className="tournamentCircuitButton" onClick={onClick} aria-label={managed ? "Gerenciar circuitos" : "Adicionar ao circuito"}>
       <GitBranch aria-hidden="true" />
-      {managed ? "Gerenciar circuitos" : "+ Adicionar ao circuito"}
+      <span className="tournamentCircuitButtonLabel">
+        {managed ? "Gerenciar circuitos" : "+ Adicionar ao circuito"}
+      </span>
     </button>
   );
 }
