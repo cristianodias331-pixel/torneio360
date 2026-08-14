@@ -4,6 +4,10 @@ import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import { buildReizinhoGames } from "./reizinhoSchedule.mjs";
 import {
+  chooseCircuitParticipantDisplayName,
+  normalizeCircuitParticipantKey,
+} from "./circuitNameIdentity.mjs";
+import {
   AlertTriangle,
   AtSign,
   Camera,
@@ -932,6 +936,7 @@ function getCircuitPlacementColumns(settings, { includeManual = false } = {}) {
 
 function applyCircuitExtraPoints(groups, settings) {
   const normalized = normalizeCircuitRankingSettings(settings);
+  const isTeam = normalized.identity === "team";
   normalized.extraPoints.forEach((entry) => {
     const preferredGroup = groups[entry.groupKey] || groups.geral;
     const candidates = preferredGroup ? [preferredGroup] : Object.values(groups);
@@ -939,7 +944,7 @@ function applyCircuitExtraPoints(groups, settings) {
     for (const group of candidates) {
       target = Array.from(group?.rows?.values?.() || []).find((row) => (
         String(row.id || "") === entry.targetId
-        || String(row.name || "").trim().toLocaleLowerCase("pt-BR") === entry.targetName.toLocaleLowerCase("pt-BR")
+        || normalizeCircuitParticipantKey(row.name, isTeam) === normalizeCircuitParticipantKey(entry.targetName, isTeam)
       ));
       if (target) break;
     }
@@ -950,13 +955,7 @@ function applyCircuitExtraPoints(groups, settings) {
 }
 
 function getCircuitManualParticipantKey(name, isTeam = false) {
-  const parts = String(name || "")
-    .split(isTeam ? /\s+\+\s+/ : /$^/)
-    .map((part) => part.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR"))
-    .filter(Boolean);
-  return isTeam && parts.length > 1
-    ? parts.sort((first, second) => first.localeCompare(second, "pt-BR")).join(" + ")
-    : (parts[0] || "sem nome");
+  return normalizeCircuitParticipantKey(name, isTeam);
 }
 
 function applyCircuitManualParticipants(groups, settings) {
@@ -986,7 +985,7 @@ function applyCircuitManualParticipants(groups, settings) {
     };
     const next = {
       ...current,
-      name: current.name || entry.name,
+      name: formatParticipantName(chooseCircuitParticipantDisplayName(current.name, entry.name, isTeam)),
       pts: Number(current.pts || 0) + entry.totalGames,
       w: Number(current.w || 0) + entry.wins,
       bal: Number(current.bal || 0) + entry.balance,
@@ -9723,16 +9722,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function normalizeCircuitPlayerKey(value, isTeam = false) {
-    const normalizedParts = String(value || "Sem nome")
-      .split(isTeam ? /\s+\+\s+/ : /$^/)
-      .map((part) => part.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR"))
-      .filter(Boolean);
-
-    if (isTeam && normalizedParts.length > 1) {
-      return normalizedParts.sort((first, second) => first.localeCompare(second, "pt-BR")).join(" + ");
-    }
-
-    return normalizedParts[0] || "sem nome";
+    return normalizeCircuitParticipantKey(value, isTeam);
   }
 
   function getCircuitTournamentRankingRecords(circuit, tournamentSource = tournaments) {
@@ -9744,9 +9734,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       rankingSettings.sourceCircuitIds.forEach((sourceId) => {
         const sourceCircuit = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
         if (!sourceCircuit) return;
+        const sourceIsTeam = normalizeCircuitRankingSettings(sourceCircuit.rankingSettings).identity === "team";
         getCircuitRanking(sourceCircuit, getCircuitEffectiveCriteria(sourceCircuit), tournamentSource).forEach((group) => {
           (group.rows || []).forEach((row, rowIndex) => {
-            const playerKey = normalizeCircuitPlayerKey(row.name, false);
+            const playerKey = normalizeCircuitPlayerKey(row.name, sourceIsTeam);
             const recordKey = `combined-${sourceCircuit.id}-${rowIndex}::${group.key || "geral"}::${playerKey}`;
             records[recordKey] = {
               tournamentId: (sourceCircuit.tournamentIds || [])[0] || (circuit.tournamentIds || [])[0],
@@ -9766,6 +9757,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
               stageScores: Array.isArray(row.stageScores) ? row.stageScores : [],
               placementKey: "combinedCircuit",
               placementLabel: sourceCircuit.name,
+              isTeam: sourceIsTeam,
             };
           });
         });
@@ -9825,6 +9817,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           titles: Number(row.titles || 0),
           runnerUps: Number(row.runnerUps || 0),
           thirdPlaces: Number(row.thirdPlaces || 0),
+          isTeam: teamRanking,
         };
 
         records[recordKey] = record;
@@ -9852,10 +9845,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       const groupKey = record.groupKey || "geral";
       const table = groups[groupKey]?.rows || groups.geral.rows;
       const name = String(record.name || "Sem nome").trim() || "Sem nome";
-      const key = normalizeCircuitPlayerKey(record.playerKey || name);
+      const key = normalizeCircuitPlayerKey(record.playerKey || name, Boolean(record.isTeam));
       const current = table.get(key) || {
         id: `${groupKey}:${key}`,
-        name,
+        name: formatParticipantName(name),
         pts: 0,
         w: 0,
         bal: 0,
@@ -9875,7 +9868,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       const stageScores = [...current.stageScores, ...recordStageScores].sort((a, b) => b - a);
       table.set(key, {
         ...current,
-        name: current.name || name,
+        name: formatParticipantName(chooseCircuitParticipantDisplayName(current.name, name, Boolean(record.isTeam))),
         pts: current.pts + Number(record.pts || 0),
         w: current.w + Number(record.w || 0),
         bal: current.bal + Number(record.bal || 0),
@@ -9895,12 +9888,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       rankingSettings.sourceCircuitIds.forEach((sourceId) => {
         const sourceCircuit = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
         if (!sourceCircuit) return;
+        const sourceIsTeam = normalizeCircuitRankingSettings(sourceCircuit.rankingSettings).identity === "team";
         getCircuitRanking(sourceCircuit, getCircuitEffectiveCriteria(sourceCircuit), tournamentSource).forEach((group) => {
           (group.rows || []).forEach((row) => accumulateRecord({
             ...row,
             groupKey: group.key || "geral",
-            playerKey: normalizeCircuitPlayerKey(row.name),
+            playerKey: normalizeCircuitPlayerKey(row.name, sourceIsTeam),
             tournaments: Number(row.tournaments || 0),
+            isTeam: sourceIsTeam,
           }));
         });
       });
@@ -18119,7 +18114,7 @@ function CircuitRankingSettingsEditor({
         </div>
       )}
 
-      <small className="circuitIdentityHint">O ranking identifica atletas e duplas pelo nome. Use a mesma escrita em todas as etapas e diferencie homônimos pelo sobrenome.</small>
+      <small className="circuitIdentityHint">O ranking unifica automaticamente nomes que diferem somente pela acentuação. Use nome e sobrenome para diferenciar homônimos.</small>
     </div>
   );
 }
@@ -20328,12 +20323,42 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
 
   const sourceCircuitIds = rankingSettings.sourceCircuitIds;
   if (sourceCircuitIds.length > 0 && Array.isArray(circuit?.ranking_groups)) {
+    const sourceIsTeam = rankingSettings.identity === "team";
     (circuit.ranking_groups || []).forEach((group) => {
       const groupKey = group.key || "geral";
       const table = groups[groupKey]?.rows || groups.geral.rows;
       (group.rows || []).forEach((row) => {
-        const key = String(row.id || `${groupKey}:${row.name}`).split(":").slice(1).join(":") || String(row.name || "sem nome").toLocaleLowerCase("pt-BR");
-        table.set(key, { ...row, id: `${groupKey}:${key}`, extraPoints: Number(row.extraPoints || 0), stageScores: Array.isArray(row.stageScores) ? row.stageScores : [] });
+        const name = String(row.name || "Sem nome").trim() || "Sem nome";
+        const key = normalizeCircuitParticipantKey(name, sourceIsTeam);
+        const current = table.get(key);
+        const rowStageScores = Array.isArray(row.stageScores) ? row.stageScores.map((score) => Number(score || 0)) : [];
+        if (!current) {
+          table.set(key, {
+            ...row,
+            id: `${groupKey}:${key}`,
+            name: formatParticipantName(name),
+            extraPoints: Number(row.extraPoints || 0),
+            stageScores: rowStageScores,
+          });
+          return;
+        }
+        const stageScores = [...(current.stageScores || []), ...rowStageScores].sort((first, second) => second - first);
+        table.set(key, {
+          ...current,
+          name: formatParticipantName(chooseCircuitParticipantDisplayName(current.name, name, sourceIsTeam)),
+          pts: Number(current.pts || 0) + Number(row.pts || 0),
+          w: Number(current.w || 0) + Number(row.w || 0),
+          bal: Number(current.bal || 0) + Number(row.bal || 0),
+          played: Number(current.played || 0) + Number(row.played || 0),
+          tournaments: Number(current.tournaments || 0) + Number(row.tournaments || 0),
+          circuitPoints: Number(current.circuitPoints || 0) + Number(row.circuitPoints || 0),
+          extraPoints: Number(current.extraPoints || 0) + Number(row.extraPoints || 0),
+          titles: Number(current.titles || 0) + Number(row.titles || 0),
+          runnerUps: Number(current.runnerUps || 0) + Number(row.runnerUps || 0),
+          thirdPlaces: Number(current.thirdPlaces || 0) + Number(row.thirdPlaces || 0),
+          stageScores,
+          bestStagePoints: Number(stageScores[0] || 0),
+        });
       });
     });
   }
@@ -20364,16 +20389,10 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
 
         const groupKey = row.groupKey || (separated ? (row.id < config.men ? "masculino" : "feminino") : "geral");
         const name = String(row.name || "Sem nome").trim() || "Sem nome";
-        const normalizedParts = name
-          .split(teamRanking ? /\s+\+\s+/ : /$^/)
-          .map((part) => part.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR"))
-          .filter(Boolean);
-        const playerKey = teamRanking && normalizedParts.length > 1
-          ? normalizedParts.sort((first, second) => first.localeCompare(second, "pt-BR")).join(" + ")
-          : normalizedParts[0] || "sem nome";
+        const playerKey = normalizeCircuitParticipantKey(name, teamRanking);
         const current = groups[groupKey].rows.get(playerKey) || {
           id: `${groupKey}:${playerKey}`,
-          name,
+          name: formatParticipantName(name),
           pts: 0,
           w: 0,
           bal: 0,
@@ -20390,6 +20409,7 @@ function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
         const stageScores = [...current.stageScores, Number(row.circuitPoints || 0)].sort((a, b) => b - a);
         groups[groupKey].rows.set(playerKey, {
           ...current,
+          name: formatParticipantName(chooseCircuitParticipantDisplayName(current.name, name, teamRanking)),
           pts: current.pts + Number(row.pts || 0),
           w: current.w + Number(row.w || 0),
           bal: current.bal + Number(row.bal || 0),
