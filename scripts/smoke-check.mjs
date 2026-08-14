@@ -1256,6 +1256,17 @@ assert.ok(
   "O torneio pode ser fechado antes de concluir o último salvamento."
 );
 assert.ok(
+  mainSource.includes("function TournamentCircuitManagerModal")
+    && mainSource.includes("+ Adicionar ao circuito")
+    && mainSource.includes("Gerenciar circuitos")
+    && mainSource.includes("saveTournamentCircuitMembership")
+    && mainSource.includes("Criar novo circuito com este torneio")
+    && styleSource.includes(".tournamentCircuitOverlay")
+    && styleSource.includes("max-height: calc(100dvh - 20px)")
+    && styleSource.includes('html[data-theme="dark"] .tournamentCircuitDialog'),
+  "O atalho do ranking para circuitos perdeu o gerenciamento, a criação guiada ou a adaptação aos temas e ao celular."
+);
+assert.ok(
   mainSource.includes("manualParticipants: sourceManualParticipants.map")
     && mainSource.includes("function applyCircuitManualParticipants")
     && mainSource.includes("Adicionar atleta manualmente")

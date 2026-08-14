@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import { buildReizinhoGames } from "./reizinhoSchedule.mjs";
 import {
+  AlertTriangle,
   AtSign,
   Camera,
   CalendarDays,
@@ -6174,7 +6175,7 @@ function getPodiumInitials(name) {
     .toUpperCase();
 }
 
-function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null }) {
+function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null }) {
   if (!podium || podium.length === 0) return null;
 
   const podiumPlaces = podium.slice(0, 3).map((item, index) => ({ ...item, place: index + 1 }));
@@ -6195,7 +6196,10 @@ function CupPodiumView({ podium, title = "Principal", variant = "main", shareCon
           <span>Pódio oficial</span>
           <h3>{title}</h3>
         </div>
-        <RankingShareButton config={shareConfig} compact />
+        <div className="rankingHeadingActions">
+          <RankingShareButton config={shareConfig} compact />
+          {circuitAction ? <TournamentCircuitButton {...circuitAction} /> : null}
+        </div>
       </div>
 
       <div className="cupPodiumGrid">
@@ -8244,6 +8248,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
   const [tournamentStatusFilter, setTournamentStatusFilter] = useState("active");
   const [createCircuitOpen, setCreateCircuitOpen] = useState(false);
+  const [circuitTournamentTarget, setCircuitTournamentTarget] = useState(null);
   const [combineCircuitsOpen, setCombineCircuitsOpen] = useState(false);
   const [circuitStatusFilter, setCircuitStatusFilter] = useState("active");
   const [notice, setNotice] = useState(null);
@@ -8489,10 +8494,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function goToPanel(panel) {
-    if (!await guardSelectedTournamentBeforeLeaving()) return;
+    if (!await guardSelectedTournamentBeforeLeaving()) return false;
     setSelected(null);
     setActivePanel(panel);
     updateAppUrl({ activePanel: panel, selectedTournamentId: null });
+    return true;
   }
 
   async function openProfileSection(nextSubtab = "editar") {
@@ -9199,7 +9205,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     });
   }
 
-  async function saveCircuit(form = circuitForm) {
+  async function saveCircuit(form = circuitForm, { silentSuccess = false, closeEditor = true } = {}) {
     if (!ensureCloudConnection("salvar o circuito")) return;
     if (!form?.name.trim()) {
       showNotice("warning", "Nome obrigatório", "Digite um nome para o circuito.");
@@ -9343,14 +9349,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     const payload = normalizeCircuitRow(data);
-    const previousHistory = circuits.find((item) => item.id === payload.id)?.rankingHistory || {};
+    const previousHistory = circuitsRef.current.find((item) => item.id === payload.id)?.rankingHistory || {};
     const payloadWithHistory = { ...payload, rankingHistory: previousHistory };
     const updatedHistory = buildCircuitRankingHistory(payloadWithHistory);
     const finalPayload = { ...payloadWithHistory, rankingHistory: updatedHistory };
 
+    const currentCircuits = circuitsRef.current;
     const nextCircuits = isEditing
-      ? circuits.map((item) => item.id === form.id ? finalPayload : item)
-      : [finalPayload, ...circuits];
+      ? currentCircuits.map((item) => item.id === form.id ? finalPayload : item)
+      : [finalPayload, ...currentCircuits];
 
     saveCircuits(nextCircuits);
     const rankingHistorySaved = await saveCircuitHistoryToSupabase(
@@ -9359,8 +9366,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       getCircuitSelectedTournaments(finalPayload, tournamentsRef.current)
     );
     await syncPublicArenaDirectory(tournaments, nextCircuits);
-    if (isEditing) setCircuitEditForm(null);
-    else {
+    if (isEditing) {
+      if (closeEditor) setCircuitEditForm(null);
+    } else {
       resetCircuitForm();
       setCreateCircuitOpen(false);
     }
@@ -9372,7 +9380,92 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       );
       return false;
     }
-    showNotice("success", isEditing ? "Circuito atualizado" : "Circuito criado", "As alterações foram salvas no Supabase.");
+    if (!silentSuccess) {
+      showNotice("success", isEditing ? "Circuito atualizado" : "Circuito criado", "As alterações foram salvas no Supabase.");
+    }
+    return true;
+  }
+
+  function getTournamentCircuitMembership(tournament) {
+    if (!tournament) return [];
+    const tournamentId = String(tournament.id);
+    return circuitsRef.current.filter((circuit) => (
+      normalizeCircuitRankingSettings(circuit.rankingSettings).sourceCircuitIds.length === 0
+      && (circuit.tournamentIds || []).some((id) => String(id) === tournamentId)
+    ));
+  }
+
+  function getCompatibleCircuitsForTournament(tournament) {
+    if (!tournament) return [];
+    const tournamentId = String(tournament.id);
+    const format = getTournamentCircuitFormat(tournament);
+    return circuitsRef.current.filter((circuit) => {
+      const settings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+      if (settings.sourceCircuitIds.length > 0) return false;
+      const alreadySelected = (circuit.tournamentIds || []).some((id) => String(id) === tournamentId);
+      return alreadySelected || getCircuitFormFormat(circuit) === format;
+    });
+  }
+
+  async function saveTournamentCircuitMembership(tournament, selectedCircuitIds) {
+    if (!tournament || !ensureCloudConnection("atualizar os circuitos deste torneio")) return false;
+    const tournamentId = String(tournament.id);
+    const selectedSet = new Set((selectedCircuitIds || []).map((id) => String(id)));
+    const eligibleCircuits = getCompatibleCircuitsForTournament(tournament);
+    const changedCircuitIds = eligibleCircuits
+      .filter((circuit) => {
+        const currentlySelected = (circuit.tournamentIds || []).some((id) => String(id) === tournamentId);
+        return currentlySelected !== selectedSet.has(String(circuit.id));
+      })
+      .map((circuit) => String(circuit.id));
+
+    if (changedCircuitIds.length === 0) return true;
+
+    for (const circuitId of changedCircuitIds) {
+      const currentCircuit = circuitsRef.current.find((item) => String(item.id) === circuitId);
+      if (!currentCircuit) continue;
+      const shouldInclude = selectedSet.has(circuitId);
+      const withoutTournament = (currentCircuit.tournamentIds || []).filter((id) => String(id) !== tournamentId);
+      const tournamentIds = shouldInclude ? [...withoutTournament, tournament.id] : withoutTournament;
+      const saved = await saveCircuit({
+        ...currentCircuit,
+        tournamentIds,
+        _baseCircuit: currentCircuit,
+      }, { silentSuccess: true, closeEditor: false });
+      if (!saved) return false;
+    }
+
+    showNotice(
+      "success",
+      "Circuitos atualizados",
+      "A participação deste torneio nos circuitos foi salva. Jogos, placares e regras do torneio não foram alterados."
+    );
+    return true;
+  }
+
+  async function createCircuitFromTournament(tournament) {
+    if (!tournament) return false;
+    const moved = await goToPanel("circuitos");
+    if (!moved) return false;
+    const details = tournament.data || {};
+    const startDate = details.eventDate || getBrazilTodayISO();
+    const endDate = details.eventEndDate && details.eventEndDate >= startDate
+      ? details.eventEndDate
+      : startDate;
+    const tournamentFormat = getTournamentCircuitFormat(tournament);
+
+    setCircuitForm({
+      id: null,
+      name: "",
+      startDate,
+      endDate,
+      tournamentIds: [tournament.id],
+      rankingCriteria: details.rankingCriteria || defaultRankingCriteria,
+      rankingCriteriaMode: "automatic",
+      rankingSettings: normalizeCircuitRankingSettings({ tournamentFormat }),
+    });
+    setCircuitStatusFilter("active");
+    setCreateCircuitOpen(true);
     return true;
   }
 
@@ -12274,6 +12367,17 @@ setNewPublicInfo({
     return (
       <div className={`playAppShell proDashboard theme-${colorMode}`}>
         <NoticeModal notice={notice} onClose={() => setNotice(null)} />
+        {circuitTournamentTarget ? (
+          <TournamentCircuitManagerModal
+            key={circuitTournamentTarget.id}
+            tournament={circuitTournamentTarget}
+            compatibleCircuits={getCompatibleCircuitsForTournament(circuitTournamentTarget)}
+            currentCircuitIds={getTournamentCircuitMembership(circuitTournamentTarget).map((circuit) => circuit.id)}
+            onClose={() => setCircuitTournamentTarget(null)}
+            onSave={(selectedCircuitIds) => saveTournamentCircuitMembership(circuitTournamentTarget, selectedCircuitIds)}
+            onCreate={() => createCircuitFromTournament(circuitTournamentTarget)}
+          />
+        ) : null}
         {renderAppSidebar()}
         <div className="playMain">
           {renderAppTopbar()}
@@ -12296,6 +12400,8 @@ setNewPublicInfo({
                 onSave={saveTournament}
                 onNavigationStateChange={rememberTournamentNavigation}
                 onRegisterNavigationGuard={registerTournamentNavigationGuard}
+                onManageCircuits={() => setCircuitTournamentTarget(selected)}
+                circuitMembershipCount={getTournamentCircuitMembership(selected).length}
               />
             </TournamentErrorBoundary>
           </main>
@@ -15198,6 +15304,8 @@ function TournamentScreen({
   onSave,
   onNavigationStateChange,
   onRegisterNavigationGuard,
+  onManageCircuits,
+  circuitMembershipCount = 0,
 }) {
   const config = modalityConfig[tournament.type];
 
@@ -17138,6 +17246,9 @@ const tournamentRankingShareContext = {
   arenaPhotoUrl: rankingOrganizer.photoUrl || "",
   rankingCriteria: data.rankingCriteria || defaultRankingCriteria,
 };
+const tournamentCircuitAction = typeof onManageCircuits === "function"
+  ? { onClick: onManageCircuits, managed: circuitMembershipCount > 0 }
+  : null;
 const courtEditorContext = getCourtAssignmentContext(data, courtEditor);
 const courtEditorGame = courtEditorContext.game;
 const courtEditorUsedNumbers = courtEditor
@@ -17598,14 +17709,17 @@ return (
             <section className="card" style={{ display: activeTournamentTab === "ranking" ? undefined : "none" }}>
               <div className="cardTitleRow">
                 <h2>Ranking</h2>
-                <SavingStatusBadge />
+                <div className="cardTitleControls">
+                  {mainCupPodium.length === 0 ? <TournamentCircuitButton {...tournamentCircuitAction} /> : null}
+                  <SavingStatusBadge />
+                </div>
               </div>
 
               <div className="cupRankingSplit">
                 <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
                   {mainCupPodium.length > 0 ? (
-                    <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={tournamentRankingShareContext} />
+                    <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={tournamentRankingShareContext} circuitAction={tournamentCircuitAction} />
                   ) : (
                     <p>Finalize a chave principal para ver o ranking da chave principal.</p>
                   )}
@@ -17717,6 +17831,7 @@ return (
               type={tournament.type}
               rankingCriteria={data.rankingCriteria || defaultRankingCriteria}
               shareContext={tournamentRankingShareContext}
+              circuitAction={tournamentCircuitAction}
             />
           </section>
         )}
@@ -18230,6 +18345,170 @@ function ConfirmModalityChangeModal({ confirmation, onCancel, onConfirm }) {
           <button type="button" className="regenerationConfirmBtn" onClick={onConfirm}>Trocar modalidade</button>
         </div>
       </div>
+    </div>,
+    document.body
+  );
+}
+
+function TournamentCircuitButton({ onClick, managed = false }) {
+  if (typeof onClick !== "function") return null;
+
+  return (
+    <button type="button" className="tournamentCircuitButton" onClick={onClick}>
+      <GitBranch aria-hidden="true" />
+      {managed ? "Gerenciar circuitos" : "+ Adicionar ao circuito"}
+    </button>
+  );
+}
+
+function TournamentCircuitManagerModal({
+  tournament,
+  compatibleCircuits = [],
+  currentCircuitIds = [],
+  onClose,
+  onSave,
+  onCreate,
+}) {
+  const initialIds = useMemo(
+    () => currentCircuitIds.map((id) => String(id)),
+    [currentCircuitIds]
+  );
+  const [selectedIds, setSelectedIds] = useState(initialIds);
+  const [saving, setSaving] = useState(false);
+  const [confirmRemoval, setConfirmRemoval] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(initialIds);
+    setConfirmRemoval(false);
+  }, [tournament?.id, initialIds]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape" && !saving) onClose?.();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, saving]);
+
+  const selectedSet = new Set(selectedIds);
+  const initialSet = new Set(initialIds);
+  const removedCount = initialIds.filter((id) => !selectedSet.has(id)).length;
+  const changed = selectedIds.length !== initialIds.length
+    || selectedIds.some((id) => !initialSet.has(id));
+
+  function toggleCircuit(circuitId) {
+    const normalizedId = String(circuitId);
+    setSelectedIds((current) => current.includes(normalizedId)
+      ? current.filter((id) => id !== normalizedId)
+      : [...current, normalizedId]);
+    setConfirmRemoval(false);
+  }
+
+  async function submitChanges() {
+    if (!changed || saving) return;
+    if (removedCount > 0 && !confirmRemoval) {
+      setConfirmRemoval(true);
+      return;
+    }
+
+    setSaving(true);
+    const saved = await onSave?.(selectedIds);
+    setSaving(false);
+    if (saved) onClose?.();
+  }
+
+  async function startNewCircuit() {
+    if (saving) return;
+    setSaving(true);
+    const started = await onCreate?.();
+    setSaving(false);
+    if (started) onClose?.();
+  }
+
+  return createPortal(
+    <div className="tournamentCircuitOverlay" role="presentation" onMouseDown={() => !saving && onClose?.()}>
+      <section
+        className="tournamentCircuitDialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tournament-circuit-dialog-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="tournamentCircuitDialogHeader">
+          <div>
+            <span className="tournamentCircuitEyebrow">Circuitos e temporadas</span>
+            <h2 id="tournament-circuit-dialog-title">
+              {initialIds.length > 0 ? "Gerenciar circuitos" : "Adicionar ao circuito"}
+            </h2>
+            <p><strong>{tournament?.name}</strong> pode participar dos circuitos compatíveis abaixo.</p>
+          </div>
+          <button type="button" className="tournamentCircuitClose" onClick={onClose} disabled={saving} aria-label="Fechar">
+            <X aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="tournamentCircuitDialogBody">
+          {compatibleCircuits.length > 0 ? (
+            <div className="tournamentCircuitChoiceList" aria-label="Circuitos compatíveis">
+              {compatibleCircuits.map((circuit) => {
+                const circuitId = String(circuit.id);
+                const selected = selectedSet.has(circuitId);
+                const tournamentCount = (circuit.tournamentIds || []).length;
+                return (
+                  <button
+                    type="button"
+                    className={`tournamentCircuitChoice ${selected ? "selected" : ""}`}
+                    aria-pressed={selected}
+                    key={circuitId}
+                    onClick={() => toggleCircuit(circuitId)}
+                  >
+                    <span className="tournamentCircuitCheck" aria-hidden="true">{selected ? "✓" : ""}</span>
+                    <span>
+                      <strong>{circuit.name}</strong>
+                      <small>{tournamentCount} {tournamentCount === 1 ? "torneio cadastrado" : "torneios cadastrados"}</small>
+                    </span>
+                    {selected ? <em>Selecionado</em> : <em>Adicionar</em>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="tournamentCircuitEmpty">
+              <GitBranch aria-hidden="true" />
+              <strong>Nenhum circuito compatível criado ainda</strong>
+              <p>Crie um circuito novo e este torneio já ficará selecionado como a primeira etapa.</p>
+            </div>
+          )}
+
+          {confirmRemoval ? (
+            <div className="tournamentCircuitRemovalWarning" role="alert">
+              <AlertTriangle aria-hidden="true" />
+              <div>
+                <strong>Confirmar retirada?</strong>
+                <p>{removedCount} circuito(s) deixarão de usar este torneio no ranking. O torneio, seus jogos e placares serão preservados.</p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="tournamentCircuitCreateDivider"><span>ou</span></div>
+          <button type="button" className="tournamentCircuitCreateNew" onClick={startNewCircuit} disabled={saving}>
+            <PlusCircle aria-hidden="true" /> Criar novo circuito com este torneio
+          </button>
+        </div>
+
+        <footer className="tournamentCircuitDialogActions">
+          <button type="button" className="secondaryBtn" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button type="button" className="tournamentCircuitSave" onClick={submitChanges} disabled={!changed || saving}>
+            {saving ? "Salvando..." : confirmRemoval ? "Sim, salvar alterações" : "Salvar nos circuitos"}
+          </button>
+        </footer>
+      </section>
     </div>,
     document.body
   );
@@ -20165,7 +20444,7 @@ function podium(i) {
   return i + 1;
 }
 
-function RankingView({ ranking, type, rankingCriteria, shareContext = null }) {
+function RankingView({ ranking, type, rankingCriteria, shareContext = null, circuitAction = null }) {
   const config = modalityConfig[type];
 
   if (isMixedType(config)) {
@@ -20180,6 +20459,7 @@ function RankingView({ ranking, type, rankingCriteria, shareContext = null }) {
           rows={men}
           rankingCriteria={rankingCriteria}
           shareConfig={shareContext ? { ...shareContext, groups: [{ title: "Ranking Masculino", rows: men }] } : null}
+          circuitAction={circuitAction}
         />
         <RankingTable
           title="Ranking Feminino"
@@ -20197,11 +20477,12 @@ function RankingView({ ranking, type, rankingCriteria, shareContext = null }) {
       rows={ranking}
       rankingCriteria={rankingCriteria}
       shareConfig={shareContext ? { ...shareContext, groups: [{ title: "Ranking do dia", rows: ranking }] } : null}
+      circuitAction={circuitAction}
     />
   );
 }
 
-function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareConfig = null, columns = null, showGames = true }) {
+function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareConfig = null, columns = null, showGames = true, circuitAction = null }) {
   const criteria = getRankingCriteria(rankingCriteria);
   const visibleColumns = Array.isArray(columns) && columns.length
     ? columns
@@ -20212,7 +20493,10 @@ function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareCo
     <div className="rankingTablePanel">
       <div className="rankingTableHeading">
         <h3>{title}</h3>
-        <RankingShareButton config={effectiveShareConfig} compact />
+        <div className="rankingHeadingActions">
+          <RankingShareButton config={effectiveShareConfig} compact />
+          {circuitAction ? <TournamentCircuitButton {...circuitAction} /> : null}
+        </div>
       </div>
 
       <p className="rankingScrollHint" aria-hidden="true">Deslize a tabela para ver todos os dados →</p>
