@@ -6,6 +6,10 @@ import { super12IndividualTemplate } from "../src/super12Schedule.mjs";
 import { super20MixedTemplate } from "../src/super20MixedSchedule.mjs";
 import { buildReizinhoGames, reizinhoPairRounds } from "../src/reizinhoSchedule.mjs";
 import {
+  chooseCircuitParticipantDisplayName,
+  normalizeCircuitParticipantKey,
+} from "../src/circuitNameIdentity.mjs";
+import {
   mergeConcurrentTournamentData,
   preservesTournamentCriticalData,
 } from "../src/offlineDataStore.mjs";
@@ -42,6 +46,23 @@ const prepareParticipantLineSource = mainSource.slice(
 const prepareParticipantLineForTest = Function(
   `"use strict"; ${prepareParticipantLineSource}; return prepareParticipantLine;`
 )();
+
+assert.equal(normalizeCircuitParticipantKey("B\u00e1rbara"), normalizeCircuitParticipantKey("barbara"));
+assert.equal(normalizeCircuitParticipantKey("Jo\u00e3o da Silva"), normalizeCircuitParticipantKey("joao da silva"));
+assert.equal(chooseCircuitParticipantDisplayName("Barbara", "B\u00e1rbara"), "B\u00e1rbara");
+assert.equal(chooseCircuitParticipantDisplayName("B\u00e1rbara", "barbara"), "B\u00e1rbara");
+assert.equal(
+  chooseCircuitParticipantDisplayName("Jo\u00e3o Barbara", "Joao B\u00e1rbara"),
+  "Jo\u00e3o B\u00e1rbara"
+);
+assert.equal(
+  normalizeCircuitParticipantKey("B\u00e1rbara + Jo\u00e3o", true),
+  normalizeCircuitParticipantKey("joao + barbara", true)
+);
+assert.equal(
+  chooseCircuitParticipantDisplayName("Jo\u00e3o + Barbara", "B\u00e1rbara + Joao", true),
+  "Jo\u00e3o + B\u00e1rbara"
+);
 
 assert.equal(prepareParticipantLineForTest("🏆 1. João da Silva"), "João da Silva");
 assert.equal(prepareParticipantLineForTest("✅✅ 2️⃣ - Maria"), "Maria");
