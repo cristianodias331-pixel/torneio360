@@ -267,7 +267,11 @@ assert.ok(mainSource.includes('type: "playranking"'), "A configuração do Model
 assert.ok(mainSource.includes("function getPlayRankingOpeningLosses"), "A transferência das derrotadas da primeira fase está ausente.");
 assert.ok(mainSource.includes("function buildPlayRankingParallelRounds"), "A chave paralela especial do Modelo Play Ranking está ausente.");
 assert.ok(mainSource.includes("function TournamentFormatInfoButton"), "A explicação dinâmica dos modelos está ausente.");
-assert.ok(mainSource.includes("getCearenseFormatSummary(teamCount, isPlayRanking, isIndividualCup)"), "A explicação não acompanha a quantidade ou o formato individual escolhido.");
+assert.ok(
+  mainSource.includes("getCearenseFormatSummary(")
+    && mainSource.includes('isSunset ? data.cupConfig?.groupFormation : "automatic"'),
+  "A explicação não acompanha a quantidade, o formato individual ou a formação dos grupos escolhida."
+);
 assert.ok(mainSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
 assert.ok(styleSource.includes(".formatInfoDialog"), "A explicação dinâmica está sem acabamento responsivo.");
 
@@ -672,7 +676,18 @@ assert.ok(
   "A edição conjunta de eventos com várias categorias está ausente."
 );
 assert.ok(mainSource.includes('allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4)'), "O Campeonato Cearense não aceita todas as quantidades de 4 a 32 duplas.");
-assert.ok(mainSource.includes('function createCearenseGroups(teamCount)'), "A distribuição própria de grupos do Campeonato Cearense está ausente.");
+assert.ok(mainSource.includes('function createCearenseGroups(teamCount, groupFormation = "automatic")'), "A distribuição própria de grupos do Campeonato Cearense está ausente.");
+assert.ok(
+  mainSource.includes('"Copa Sunset": {')
+    && mainSource.includes('type: "sunset"')
+    && mainSource.includes('function generateSunsetBrackets(data)')
+    && mainSource.includes('function buildSunsetChampionsRounds(brackets, bracketTitle)')
+    && mainSource.includes('groupFormation === "all-four"')
+    && mainSource.includes('phase === "secondParallel"')
+    && mainSource.includes('phase === "sunsetFinal"')
+    && styleSource.includes('.sunsetGroupFormationChoice'),
+  "A Copa Sunset perdeu a formação opcional de grupos de quatro ou suas chaves independentes."
+);
 assert.ok(mainSource.includes('function compareCearenseCampaignMetrics(first, second)'), "A comparação normalizada entre grupos está ausente.");
 assert.ok(mainSource.includes('function generateCearenseBrackets(data)'), "As chaves Principal e Paralela do Campeonato Cearense estão ausentes.");
 assert.ok(mainSource.includes('campaignTieBreakOverrides'), "O sorteio de empate absoluto entre grupos não é persistido.");

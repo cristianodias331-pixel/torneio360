@@ -2197,6 +2197,7 @@ const modalityDisplayNames = {
   "Campeonato Cearense": "Torneio modelo Campeonato Cearense",
   "Campeonato Cearense Individual": "Torneio modelo Campeonato Cearense — Individual",
   "Modelo Play Ranking": "Modelo Torneio 360",
+  "Copa Sunset": "Copa Sunset",
 };
 
 function getModalityDisplayName(type) {
@@ -2231,7 +2232,7 @@ const modalityPickerGroups = [
     id: "cups",
     title: "Copas e modelos",
     subtitle: "Formatos com grupos, eliminatórias ou regras especiais.",
-    types: ["Copa - 18 duplas", "Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking"],
+    types: ["Copa - 18 duplas", "Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking", "Copa Sunset"],
   },
 ];
 
@@ -2250,6 +2251,7 @@ const modalityPickerDescriptions = {
   "Campeonato Cearense": "Grupos, chave principal e disputas paralelas configuráveis.",
   "Campeonato Cearense Individual": "O modelo cearense completo em partidas individuais, um contra um.",
   "Modelo Play Ranking": "Modelo Torneio 360 com chave principal e disputa paralela.",
+  "Copa Sunset": "Grupos, quatro chaves independentes e encontro final entre as campeãs.",
 };
 
 function normalizeModalitySearch(value) {
@@ -2446,6 +2448,7 @@ const allowedByPlan = {
     "Campeonato Cearense",
     "Campeonato Cearense Individual",
     "Modelo Play Ranking",
+    "Copa Sunset",
   ],
 };
 
@@ -2598,6 +2601,19 @@ const modalityConfig = {
     defaultRepechageName: "Disputa Paralela",
     courts: 6,
   },
+
+  "Copa Sunset": {
+    type: "sunset",
+    cupMode: "sunset",
+    allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
+    defaultTeams: 4,
+    defaultMainBracketName: "Eliminatória Principal",
+    defaultRepechageName: "1ª Disputa Paralela",
+    defaultSecondParallelName: "2ª Disputa Paralela",
+    defaultThirdRepechageName: "3ª Disputa Paralela",
+    defaultSunsetBracketName: "Etapa Sunset",
+    courts: 6,
+  },
 };
 
 function getWinningScore(data) {
@@ -2734,7 +2750,7 @@ function TournamentMatchStatusSummary({ data, compact = false, vertical = false 
 }
 
 function isCupType(config) {
-  return config?.type === "cup" || config?.type === "cup18" || config?.type === "cup21" || config?.type === "copinha" || config?.type === "cearense" || config?.type === "cearenseIndividual" || config?.type === "playranking";
+  return config?.type === "cup" || config?.type === "cup18" || config?.type === "cup21" || config?.type === "copinha" || config?.type === "cearense" || config?.type === "cearenseIndividual" || config?.type === "playranking" || config?.type === "sunset";
 }
 
 function isMixedType(config) {
@@ -2955,11 +2971,13 @@ function getGroupLetter(index) {
   return String.fromCharCode(65 + index);
 }
 
-function createCearenseGroups(teamCount) {
+function createCearenseGroups(teamCount, groupFormation = "automatic") {
   const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
   const groupSizes = [];
 
-  if (safeTeamCount <= 5) {
+  if (groupFormation === "all-four" && safeTeamCount % 4 === 0) {
+    groupSizes.push(...Array.from({ length: safeTeamCount / 4 }, () => 4));
+  } else if (safeTeamCount <= 5) {
     groupSizes.push(safeTeamCount);
   } else {
     const groupCount = Math.floor(safeTeamCount / 3);
@@ -2996,9 +3014,9 @@ function describeCearenseGroupSizes(groups, participantPlural = "duplas") {
     .join(" e ");
 }
 
-function getCearenseFormatSummary(teamCount, playRanking = false, individual = false) {
+function getCearenseFormatSummary(teamCount, playRanking = false, individual = false, groupFormation = "automatic") {
   const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
-  const groups = createCearenseGroups(safeTeamCount);
+  const groups = createCearenseGroups(safeTeamCount, groupFormation);
   const groupSizes = groups.map((group) => group.teamIds.length);
   const gamesPerTeam = [...new Set(groupSizes.map((size) => size - 1))].sort((a, b) => a - b);
   const groupMatches = groupSizes.reduce((total, size) => total + (size * (size - 1)) / 2, 0);
@@ -3053,9 +3071,9 @@ function getCearenseFormatSummary(teamCount, playRanking = false, individual = f
   };
 }
 
-function createCupGroups(teamCount, format = "") {
-  if (format === "cearense" || format === "cearense-individual" || format === "playranking") {
-    return createCearenseGroups(teamCount);
+function createCupGroups(teamCount, format = "", cupConfig = {}) {
+  if (format === "cearense" || format === "cearense-individual" || format === "playranking" || format === "sunset") {
+    return createCearenseGroups(teamCount, format === "sunset" ? cupConfig.groupFormation : "automatic");
   }
 
   const groups = [];
@@ -3097,7 +3115,7 @@ function createRoundRobinPairings(teamIds) {
 
 function generateCearenseGroupSchedule(players, cupConfig) {
   const teamCount = cupConfig.teamCount || 4;
-  const groups = createCearenseGroups(teamCount);
+  const groups = createCearenseGroups(teamCount, cupConfig.format === "sunset" ? cupConfig.groupFormation : "automatic");
   const teamNames = players.teams.map((team) => getTeamName(team));
   const groupRounds = groups.map((group) => createRoundRobinPairings(group.teamIds));
   const roundCount = Math.max(...groupRounds.map((rounds) => rounds.length));
@@ -3131,11 +3149,11 @@ function generateCupGroupSchedule(players, cupConfig) {
   const teamCount = cupConfig.teamCount || 12;
   const format = cupConfig.format || cupConfig.cupMode || "";
 
-  if (format === "cearense" || format === "cearense-individual" || format === "playranking") {
+  if (format === "cearense" || format === "cearense-individual" || format === "playranking" || format === "sunset") {
     return generateCearenseGroupSchedule(players, cupConfig);
   }
 
-  const groups = createCupGroups(teamCount, format);
+  const groups = createCupGroups(teamCount, format, cupConfig);
   const teamNames = players.teams.map((t) => getTeamName(t));
 
   const roundTemplates = [
@@ -3183,11 +3201,19 @@ function isCopinhaData(data) {
 }
 
 function isCearenseData(data) {
-  return getCupFormat(data) === "cearense" || getCupFormat(data) === "cearense-individual" || getCupFormat(data) === "playranking";
+  return getCupFormat(data) === "cearense" || getCupFormat(data) === "cearense-individual" || getCupFormat(data) === "playranking" || getCupFormat(data) === "sunset";
 }
 
 function isCampeonatoCearenseData(data) {
   return getCupFormat(data) === "cearense" || getCupFormat(data) === "cearense-individual";
+}
+
+function isSunsetData(data) {
+  return getCupFormat(data) === "sunset";
+}
+
+function isOfficialCearenseData(data) {
+  return isCampeonatoCearenseData(data) || isSunsetData(data);
 }
 
 function isCearenseSecondParallelEnabled(data) {
@@ -3196,8 +3222,8 @@ function isCearenseSecondParallelEnabled(data) {
 }
 
 function isCearenseThirdParallelEnabled(data) {
-  return isCampeonatoCearenseData(data)
-    && data?.cupConfig?.thirdRepechageEnabled === true;
+  return isSunsetData(data) || (isCampeonatoCearenseData(data)
+    && data?.cupConfig?.thirdRepechageEnabled === true);
 }
 
 function isPlayRankingData(data) {
@@ -3423,13 +3449,13 @@ function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRankingCr
   const cupConfig = data.cupConfig || {};
   const teamCount = cupConfig.teamCount || 12;
   const format = getCupFormat(data);
-  const groups = createCupGroups(teamCount, format);
+  const groups = createCupGroups(teamCount, format, cupConfig);
   const teamNames = data.players.teams.map((t) => getTeamName(t));
   const criteria = getRankingCriteria(rankingCriteriaValue);
   const winningScore = getWinningScore(data);
   const isCopinha = isCopinhaData(data);
   const isCearense = isCearenseData(data);
-  const isOfficialCearense = isCampeonatoCearenseData(data);
+  const isOfficialCearense = isOfficialCearenseData(data);
   const tieBreakOverrides = cupConfig.tieBreakOverrides || {};
 
   const groupRankings = groups.map((group) => {
@@ -3741,7 +3767,7 @@ function getOfficialCearenseQualified(data) {
 }
 
 function getCearenseQualified(data) {
-  if (isCampeonatoCearenseData(data)) return getOfficialCearenseQualified(data);
+  if (isOfficialCearenseData(data)) return getOfficialCearenseQualified(data);
 
   const groupRankings = calculateCupGroupRankings(data, data.rankingCriteria);
   const storedOverrides = data.cupConfig?.campaignTieBreakOverrides || {};
@@ -3957,7 +3983,7 @@ function getCupQualified(data) {
   const format = getCupFormat(data);
   const teamCount = data.cupConfig?.teamCount || 12;
 
-  if (format === "cearense" || format === "cearense-individual" || format === "playranking") {
+  if (format === "cearense" || format === "cearense-individual" || format === "playranking" || format === "sunset") {
     return getCearenseQualified(data);
   }
 
@@ -5159,6 +5185,186 @@ function generateCearenseBrackets(data) {
   };
 }
 
+function getSunsetMainSourceGames(mainRounds, openingGameCount) {
+  const sourceRound = (mainRounds || []).find((round) => {
+    const normalizedTitle = String(round?.title || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR");
+    const isPlacement = normalizedTitle.includes("3º")
+      || normalizedTitle.includes("3°")
+      || normalizedTitle.includes("terceiro");
+    return !isPlacement && (round.games || []).length === openingGameCount;
+  });
+
+  return (sourceRound?.games || []).filter((game) => !game.isBye);
+}
+
+function buildSunsetParallelFromMainRound(mainRounds, openingGameCount, phase, bracketTitle) {
+  const sourceGames = getSunsetMainSourceGames(mainRounds, openingGameCount);
+  if (sourceGames.length < 2) return [];
+
+  return buildCearenseEliminationRounds(
+    sourceGames.map((game) => ({
+      sourceMatchKey: game.matchKey,
+      sourceMode: "loser",
+    })),
+    phase,
+    bracketTitle
+  );
+}
+
+function getBracketChampionSource(rounds) {
+  const finalRound = (rounds || []).find((round) => (
+    String(round?.title || "").trim().toLocaleLowerCase("pt-BR") === "final"
+  ));
+  const finalGame = finalRound?.games?.[0];
+  return finalGame
+    ? { sourceMatchKey: finalGame.matchKey, sourceMode: "winner" }
+    : null;
+}
+
+function buildSunsetChampionsRounds(brackets, bracketTitle) {
+  const principal = getBracketChampionSource(brackets.main);
+  const firstParallel = getBracketChampionSource(brackets.repechage);
+  const secondParallel = getBracketChampionSource(brackets.secondParallel);
+  const thirdParallel = getBracketChampionSource(brackets.thirdParallel);
+  const champions = [principal, firstParallel, secondParallel, thirdParallel].filter(Boolean);
+
+  if (!principal || champions.length < 2) return [];
+
+  if (champions.length === 2) {
+    return [{
+      title: "Final",
+      bracketTitle,
+      games: [createCopinhaBracketGame({
+        bracketType: "sunsetFinal",
+        roundName: "Final",
+        matchKey: "sunsetFinal_final_1",
+        entry1: champions[0],
+        entry2: champions[1],
+        court: 1,
+      })],
+    }];
+  }
+
+  if (champions.length === 3) {
+    const semifinal = createCopinhaBracketGame({
+      bracketType: "sunsetFinal",
+      roundName: "Semifinal",
+      matchKey: "sunsetFinal_sf_1",
+      entry1: champions[1],
+      entry2: champions[2],
+      court: 1,
+    });
+    const final = createCopinhaBracketGame({
+      bracketType: "sunsetFinal",
+      roundName: "Final",
+      matchKey: "sunsetFinal_final_1",
+      entry1: principal,
+      entry2: { sourceMatchKey: semifinal.matchKey, sourceMode: "winner" },
+      court: 1,
+    });
+
+    return [
+      { title: "Semifinal", bracketTitle, games: [semifinal] },
+      { title: "Final", bracketTitle, games: [final] },
+    ];
+  }
+
+  const semifinals = [
+    createCopinhaBracketGame({
+      bracketType: "sunsetFinal",
+      roundName: "Semifinal",
+      matchKey: "sunsetFinal_sf_1",
+      entry1: principal,
+      entry2: firstParallel,
+      court: 1,
+    }),
+    createCopinhaBracketGame({
+      bracketType: "sunsetFinal",
+      roundName: "Semifinal",
+      matchKey: "sunsetFinal_sf_2",
+      entry1: secondParallel,
+      entry2: thirdParallel,
+      court: 2,
+    }),
+  ];
+  const final = createCopinhaBracketGame({
+    bracketType: "sunsetFinal",
+    roundName: "Final",
+    matchKey: "sunsetFinal_final_1",
+    entry1: { sourceMatchKey: semifinals[0].matchKey, sourceMode: "winner" },
+    entry2: { sourceMatchKey: semifinals[1].matchKey, sourceMode: "winner" },
+    court: 1,
+  });
+
+  return [
+    { title: "Semifinal", bracketTitle, games: semifinals },
+    { title: "Final", bracketTitle, games: [final] },
+  ];
+}
+
+function generateSunsetBrackets(data) {
+  const qualified = getCearenseQualified(data);
+  const cupConfig = data.cupConfig || {};
+  const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
+  const firstParallelName = cupConfig.repechageName || "1ª Disputa Paralela";
+  const secondParallelName = cupConfig.secondParallelName || "2ª Disputa Paralela";
+  const thirdParallelName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
+  const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
+  const groupCount = createCearenseGroups(
+    cupConfig.teamCount || 4,
+    cupConfig.groupFormation
+  ).length;
+  const mainPlan = cearenseMainBracketPlans[groupCount];
+  const mainRounds = mainPlan
+    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
+    : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
+  const repechageRounds = buildCearenseEliminationRounds(
+    qualified.repechage,
+    "repechage",
+    firstParallelName
+  );
+  const secondParallelRounds = buildSunsetParallelFromMainRound(
+    mainRounds,
+    8,
+    "secondParallel",
+    secondParallelName
+  );
+  const thirdParallelRounds = buildSunsetParallelFromMainRound(
+    mainRounds,
+    4,
+    "thirdParallel",
+    thirdParallelName
+  );
+  const sunsetFinalRounds = buildSunsetChampionsRounds({
+    main: mainRounds,
+    repechage: repechageRounds,
+    secondParallel: secondParallelRounds,
+    thirdParallel: thirdParallelRounds,
+  }, sunsetBracketName);
+  const allGames = [
+    ...mainRounds,
+    ...repechageRounds,
+    ...secondParallelRounds,
+    ...thirdParallelRounds,
+    ...sunsetFinalRounds,
+  ].flatMap((round) => round.games);
+  const resolveRounds = (rounds) => rounds.map((round) => ({
+    ...round,
+    games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
+  }));
+
+  return {
+    main: resolveRounds(mainRounds),
+    repechage: resolveRounds(repechageRounds),
+    secondParallel: resolveRounds(secondParallelRounds),
+    thirdParallel: resolveRounds(thirdParallelRounds),
+    sunsetFinal: resolveRounds(sunsetFinalRounds),
+  };
+}
+
 function generateCopinhaBrackets(data) {
   const qualified = getCopinhaQualified(data);
   const cupConfig = data.cupConfig || {};
@@ -5187,6 +5393,10 @@ function generateCopinhaBrackets(data) {
 }
 
 function generateCupBrackets(data) {
+  if (isSunsetData(data)) {
+    return generateSunsetBrackets(data);
+  }
+
   if (isPlayRankingData(data)) {
     return generatePlayRankingBrackets(data);
   }
@@ -5462,7 +5672,13 @@ function generateCupBrackets(data) {
 
 function getCupAllBracketGames(data) {
   const brackets = generateCupBrackets(data);
-  return [...brackets.main, ...brackets.repechage, ...(brackets.thirdParallel || [])].flatMap((round) => round.games);
+  return [
+    ...brackets.main,
+    ...brackets.repechage,
+    ...(brackets.secondParallel || []),
+    ...(brackets.thirdParallel || []),
+    ...(brackets.sunsetFinal || []),
+  ].flatMap((round) => round.games);
 }
 
 function rebuildCupBracketGames(currentData, existingScores = {}) {
@@ -14162,8 +14378,17 @@ function createInitialData(type, config) {
         teamCount: config.defaultTeams,
         mainBracketName: config.defaultMainBracketName,
         repechageName: config.defaultRepechageName,
+        ...(config.defaultSecondParallelName
+          ? { secondParallelName: config.defaultSecondParallelName }
+          : {}),
         ...(config.defaultThirdRepechageName
           ? { thirdRepechageName: config.defaultThirdRepechageName }
+          : {}),
+        ...(config.defaultSunsetBracketName
+          ? { sunsetBracketName: config.defaultSunsetBracketName }
+          : {}),
+        ...(config.type === "sunset"
+          ? { groupFormation: "automatic" }
           : {}),
         ...(config.type === "cearense" || config.type === "cearenseIndividual"
           ? {
@@ -14487,9 +14712,23 @@ function normalizeTournamentData(type, rawData) {
         repechageName: typeof sourceCupConfig.repechageName === "string"
           ? sourceCupConfig.repechageName
           : defaults.cupConfig.repechageName,
+        secondParallelName: typeof sourceCupConfig.secondParallelName === "string"
+          ? sourceCupConfig.secondParallelName
+          : defaults.cupConfig.secondParallelName,
         thirdRepechageName: typeof sourceCupConfig.thirdRepechageName === "string"
           ? sourceCupConfig.thirdRepechageName
           : defaults.cupConfig.thirdRepechageName,
+        sunsetBracketName: typeof sourceCupConfig.sunsetBracketName === "string"
+          ? sourceCupConfig.sunsetBracketName
+          : defaults.cupConfig.sunsetBracketName,
+        ...(config.type === "sunset"
+          ? {
+            groupFormation: sourceCupConfig.groupFormation === "all-four"
+              && teamCount % 4 === 0
+              ? "all-four"
+              : "automatic",
+          }
+          : {}),
         ...(config.type === "cearense" || config.type === "cearenseIndividual"
           ? {
             secondRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")
@@ -14707,7 +14946,7 @@ function createShuffleVideoSnapshot(data, config, tournament) {
     kind = "groups";
     const teamCount = Number(data?.cupConfig?.teamCount || data?.players?.teams?.length || 0);
     const format = data?.cupConfig?.format || data?.cupConfig?.cupMode || "";
-    const groups = createCupGroups(teamCount, format);
+    const groups = createCupGroups(teamCount, format, data?.cupConfig || {});
     sections = groups.map((group) => ({
       title: group.name,
       entries: group.teamIds.map((teamId) => getTeamName(data.players.teams[teamId])).filter(Boolean),
@@ -16110,6 +16349,9 @@ function TournamentScreen({
       if (field === "teamCount") {
         const teamCount = Number(value);
         copy.cupConfig.teamCount = teamCount;
+        if (isSunsetData(copy) && teamCount % 4 !== 0) {
+          copy.cupConfig.groupFormation = "automatic";
+        }
         const previousPlayers = structuredClone(copy.players);
         const nextTeams = Array.from({ length: teamCount }, (_, i) => {
           return copy.players.teams[i] || {
@@ -16125,6 +16367,14 @@ function TournamentScreen({
           copy.participantAttendance
         );
 
+        copy.schedule = [];
+        copy.brackets = [];
+        copy.groupsShuffled = false;
+        delete copy.lastShuffleVideo;
+        resetCopinhaTieBreaks(copy);
+      }
+
+      if (field === "groupFormation") {
         copy.schedule = [];
         copy.brackets = [];
         copy.groupsShuffled = false;
@@ -16874,7 +17124,9 @@ function generate() {
       "success",
       "Rodadas e jogos criados",
       isCearenseData(data)
-        ? isPlayRankingData(data)
+        ? isSunsetData(data)
+          ? "A fase de grupos da Copa Sunset foi montada com sucesso."
+          : isPlayRankingData(data)
           ? "A fase de grupos do Modelo Torneio 360 foi montada com sucesso."
           : "A fase de grupos do Campeonato Cearense foi montada com sucesso."
         : "A fase de grupos da Copa foi montada com sucesso."
@@ -17230,9 +17482,11 @@ function clearTable() {
   showNotice("success", "Jogos e placares apagados", "Todos os jogos e placares foram removidos. Os participantes foram mantidos.");
 }
 
-const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, thirdParallelPodium } = getSafeCupPresentation(data, config);
+const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
 const secondParallelVisible = isCearenseSecondParallelEnabled(data);
+const sunsetSecondParallelVisible = isSunsetData(data);
 const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
+const sunsetFinalVisible = isSunsetData(data);
 const rankingOrganizer = data.publicInfo?.organizer || {};
 const tournamentRankingShareContext = {
   title: tournament.name,
@@ -17595,9 +17849,11 @@ return (
               <button type="button" className={activeMatchesTab === "grupos" ? "active" : ""} onClick={() => setActiveMatchesTab("grupos")}>Fase de grupos</button>
               <button type="button" className={activeMatchesTab === "chaves" ? "active" : ""} onClick={() => setActiveMatchesTab("chaves")}>Chaves finais</button>
               {secondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button> : null}
+              {sunsetSecondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela2" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela2")}>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</button> : null}
               {thirdParallelVisible ? (
                 <button type="button" className={activeMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela3")}>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</button>
               ) : null}
+              {sunsetFinalVisible ? <button type="button" className={activeMatchesTab === "sunset" ? "active" : ""} onClick={() => setActiveMatchesTab("sunset")}>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</button> : null}
             </div>
           )}
           <div style={{ display: !isCupType(config) || activeMatchesTab === "grupos" ? undefined : "none" }}>
@@ -17749,6 +18005,16 @@ return (
                     <p>Gere ou finalize a disputa paralela para ver o ranking separado.</p>
                   )}
                 </div> : null}
+                {sunsetSecondParallelVisible ? (
+                  <div className="cupRankingPanel">
+                    <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
+                    {secondParallelPodium.length > 0 ? (
+                      <CupPodiumView podium={secondParallelPodium} title={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"} variant="parallel" shareContext={tournamentRankingShareContext} />
+                    ) : (
+                      <p>Finalize a 2ª disputa paralela para ver o pódio.</p>
+                    )}
+                  </div>
+                ) : null}
                 {thirdParallelVisible ? (
                   <div className="cupRankingPanel">
                     <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
@@ -17761,6 +18027,16 @@ return (
                       />
                     ) : (
                       <p>Finalize a 3ª disputa paralela para ver o pódio.</p>
+                    )}
+                  </div>
+                ) : null}
+                {sunsetFinalVisible ? (
+                  <div className="cupRankingPanel">
+                    <h3>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h3>
+                    {sunsetPodium.length > 0 ? (
+                      <CupPodiumView podium={sunsetPodium} title={data.cupConfig?.sunsetBracketName || "Etapa Sunset"} shareContext={tournamentRankingShareContext} />
+                    ) : (
+                      <p>Finalize o encontro entre as campeãs para ver o pódio Sunset.</p>
                     )}
                   </div>
                 ) : null}
@@ -17798,6 +18074,22 @@ return (
               )}
             </section> : null}
 
+            {sunsetSecondParallelVisible ? (
+              <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela2" ? undefined : "none" }}>
+                <div className="cardTitleRow">
+                  <h2>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h2>
+                  <SavingStatusBadge />
+                </div>
+                {!currentBrackets ? (
+                  <p>Gere as chaves finais para visualizar a 2ª disputa paralela.</p>
+                ) : currentBrackets.secondParallel?.length > 0 ? (
+                  <CupBracketView groupedBrackets={{ main: [], repechage: [], secondParallel: currentBrackets.secondParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
+                ) : (
+                  <p>Esta configuração não possui ao menos duas derrotadas na fase de oitavas para formar a 2ª disputa paralela.</p>
+                )}
+              </section>
+            ) : null}
+
             {thirdParallelVisible ? (
               <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela3" ? undefined : "none" }}>
                 <div className="cardTitleRow">
@@ -17810,6 +18102,22 @@ return (
                   <CupBracketView groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
                 ) : (
                   <p>Nesta quantidade de grupos não há duplas elegíveis para a 3ª disputa paralela.</p>
+                )}
+              </section>
+            ) : null}
+
+            {sunsetFinalVisible ? (
+              <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "sunset" ? undefined : "none" }}>
+                <div className="cardTitleRow">
+                  <h2>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h2>
+                  <SavingStatusBadge />
+                </div>
+                {!currentBrackets ? (
+                  <p>Gere as chaves finais para visualizar o encontro entre as campeãs.</p>
+                ) : currentBrackets.sunsetFinal?.length > 0 ? (
+                  <CupBracketView groupedBrackets={{ main: [], repechage: [], sunsetFinal: currentBrackets.sunsetFinal }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} onEditCourt={setCourtEditor} />
+                ) : (
+                  <p>A etapa Sunset aparecerá quando houver ao menos duas chaves capazes de produzir campeãs.</p>
                 )}
               </section>
             ) : null}
@@ -18656,22 +18964,36 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
   const triggerRef = useRef(null);
   const closeRef = useRef(null);
   const isPlayRanking = config.type === "playranking";
+  const isSunset = config.type === "sunset";
   const isIndividualCup = isIndividualCupType(config);
-  const isSupported = config.type === "cearense" || isIndividualCup || isPlayRanking;
+  const isSupported = config.type === "cearense" || isIndividualCup || isPlayRanking || isSunset;
   const participantPlural = isIndividualCup ? "jogadores" : "duplas";
   const teamCount = data.cupConfig?.teamCount || config.defaultTeams;
   const summary = useMemo(
-    () => getCearenseFormatSummary(teamCount, isPlayRanking, isIndividualCup),
-    [teamCount, isPlayRanking, isIndividualCup]
+    () => getCearenseFormatSummary(
+      teamCount,
+      isPlayRanking,
+      isIndividualCup,
+      isSunset ? data.cupConfig?.groupFormation : "automatic"
+    ),
+    [teamCount, isPlayRanking, isIndividualCup, isSunset, data.cupConfig?.groupFormation]
   );
   const secondParallelEnabled = isPlayRanking || isCearenseSecondParallelEnabled(data);
   const thirdParallelEnabled = !isPlayRanking && isCearenseThirdParallelEnabled(data);
-  const visibleBracketNames = [
+  const visibleBracketNames = isSunset ? [
+    "a Eliminatória Principal",
+    `a ${data.cupConfig?.repechageName || "1ª Disputa Paralela"}`,
+    `a ${data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}`,
+    `a ${data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}`,
+    `a ${data.cupConfig?.sunsetBracketName || "Etapa Sunset"}`,
+  ] : [
     "a Eliminatória Principal",
     ...(secondParallelEnabled ? [isPlayRanking ? "a Disputa Paralela" : `a ${data.cupConfig?.repechageName || "2ª Disputa Paralela"}`] : []),
     ...(thirdParallelEnabled ? [`a ${data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}`] : []),
   ];
-  const criteriaStepNumber = isPlayRanking
+  const criteriaStepNumber = isSunset
+    ? 8
+    : isPlayRanking
     ? 6
     : 4 + Number(secondParallelEnabled) + Number(thirdParallelEnabled);
 
@@ -18721,12 +19043,12 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
             className="formatInfoDialog"
             role="dialog"
             aria-modal="true"
-            aria-label={`Explicação do formato ${getModalityDisplayName(config.type === "playranking" ? "Modelo Play Ranking" : "Campeonato Cearense")}`}
+            aria-label={`Explicação do formato ${isSunset ? "Copa Sunset" : getModalityDisplayName(config.type === "playranking" ? "Modelo Play Ranking" : "Campeonato Cearense")}`}
           >
             <header className="formatInfoHeader">
               <div>
                 <span>Formato calculado para {summary.teamCount} {participantPlural}</span>
-                <h2>{isPlayRanking ? "Modelo Torneio 360" : isIndividualCup ? "Torneio modelo Campeonato Cearense — Individual" : "Torneio modelo Campeonato Cearense"}</h2>
+                <h2>{isSunset ? "Copa Sunset" : isPlayRanking ? "Modelo Torneio 360" : isIndividualCup ? "Torneio modelo Campeonato Cearense — Individual" : "Torneio modelo Campeonato Cearense"}</h2>
                 <p>Veja o caminho dos participantes desde os grupos até {visibleBracketNames.join(", ").replace(/, ([^,]*)$/, " e $1")}.</p>
               </div>
               <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar explicação">×</button>
@@ -18737,7 +19059,8 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
               <div><strong>{summary.mainCount}</strong><span>na principal</span></div>
               {secondParallelEnabled ? <div><strong>{summary.initialParallelCount}</strong><span>na paralela após os grupos</span></div> : null}
               {isPlayRanking ? <div><strong>+{summary.transferredCount}</strong><span>vindas da primeira fase</span></div> : null}
-              {thirdParallelEnabled ? <div><strong>{summary.thirdParallel.eligibleCount}</strong><span>na 3ª paralela</span></div> : null}
+              {thirdParallelEnabled && !isSunset ? <div><strong>{summary.thirdParallel.eligibleCount}</strong><span>na 3ª paralela</span></div> : null}
+              {isSunset ? <div><strong>Até 4</strong><span>campeãs na etapa Sunset</span></div> : null}
             </div>
 
             <div className="formatInfoSections">
@@ -18807,7 +19130,7 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                 </article>
               ) : null}
 
-              {thirdParallelEnabled ? (
+              {thirdParallelEnabled && !isSunset ? (
                 <article>
                   <span className="formatInfoStep">{secondParallelEnabled ? 5 : 4}</span>
                   <div>
@@ -18822,6 +19145,35 @@ function TournamentFormatInfoButton({ data, config, publicView = false }) {
                     )}
                   </div>
                 </article>
+              ) : null}
+
+              {isSunset ? (
+                <>
+                  <article>
+                    <span className="formatInfoStep">5</span>
+                    <div>
+                      <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
+                      <p>Recebe exclusivamente as duplas derrotadas na fase de oitavas da Eliminatória Principal. Quando a abertura da chave de 16 tiver BYEs, entram apenas as derrotadas nos confrontos realmente disputados.</p>
+                      <p>Se houver menos de duas eliminadas elegíveis, esta chave não será formada.</p>
+                    </div>
+                  </article>
+                  <article>
+                    <span className="formatInfoStep">6</span>
+                    <div>
+                      <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
+                      <p>Recebe exclusivamente as quatro — ou menos, quando houver BYEs — duplas derrotadas nas quartas de final da Eliminatória Principal.</p>
+                      <p>Com duas participantes, haverá final direta; com quatro, semifinais e final.</p>
+                    </div>
+                  </article>
+                  <article>
+                    <span className="formatInfoStep">7</span>
+                    <div>
+                      <h3>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h3>
+                      <p>As campeãs da Principal e das disputas paralelas que realmente forem formadas se encontram nesta etapa final.</p>
+                      <p>Com quatro campeãs, haverá semifinais e final. Com três, a campeã da Principal recebe BYE para a final. Com duas, a decisão é direta.</p>
+                    </div>
+                  </article>
+                </>
               ) : null}
 
               <article>
@@ -18917,7 +19269,10 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
   const isCearense = config.type === "cearense" || config.type === "cearenseIndividual";
   const isIndividualCup = isIndividualCupType(config);
   const isPlayRanking = config.type === "playranking";
-  const isCearenseFamily = isCearense || isPlayRanking;
+  const isSunset = config.type === "sunset";
+  const isCearenseFamily = isCearense || isPlayRanking || isSunset;
+  const canChooseAllFourGroups = isSunset
+    && Number(cupConfig.teamCount || config.defaultTeams) % 4 === 0;
 
   return (
     <div className="cupConfigBox">
@@ -18947,6 +19302,37 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
           />
         </div>
 
+        {canChooseAllFourGroups ? (
+          <div className="sunsetGroupFormationChoice">
+            <div className="parallelChoiceHeading">
+              <div>
+                <strong>Como os grupos serão formados?</strong>
+                <span>Escolha entre a distribuição automática e grupos completos de quatro duplas.</span>
+              </div>
+            </div>
+            <div className="parallelChoiceOptions" role="radiogroup" aria-label="Formação dos grupos da Copa Sunset">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={(cupConfig.groupFormation || "automatic") === "automatic"}
+                className={(cupConfig.groupFormation || "automatic") === "automatic" ? "selected yes" : ""}
+                onClick={() => updateCupConfig("groupFormation", "automatic")}
+              >
+                Automática
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={cupConfig.groupFormation === "all-four"}
+                className={cupConfig.groupFormation === "all-four" ? "selected yes" : ""}
+                onClick={() => updateCupConfig("groupFormation", "all-four")}
+              >
+                Todos os grupos com 4 duplas
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {isCearense ? (
           <ParallelDisputeChoice
             kind="second"
@@ -18959,7 +19345,7 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
           />
         ) : (
           <div>
-            <label>{isCopinha ? "Nome da consolação" : isCearenseFamily || isCup18 || isCup21 ? "Nome da disputa paralela" : "Nome da repescagem"}</label>
+            <label>{isCopinha ? "Nome da consolação" : isSunset ? "Nome da 1ª disputa paralela" : isCearenseFamily || isCup18 || isCup21 ? "Nome da disputa paralela" : "Nome da repescagem"}</label>
             <input
               value={cupConfig.repechageName || config.defaultRepechageName}
               onChange={(e) => updateCupConfig("repechageName", e.target.value)}
@@ -18978,6 +19364,35 @@ function CupConfigPanel({ data, config, updateCupConfig, showInfo = true }) {
             teamCount={cupConfig.teamCount || config.defaultTeams}
             individual={isIndividualCup}
           />
+        ) : null}
+
+        {isSunset ? (
+          <>
+            <div>
+              <label>Nome da 2ª disputa paralela</label>
+              <input
+                value={cupConfig.secondParallelName || config.defaultSecondParallelName}
+                onChange={(event) => updateCupConfig("secondParallelName", event.target.value)}
+                placeholder="2ª Disputa Paralela"
+              />
+            </div>
+            <div>
+              <label>Nome da 3ª disputa paralela</label>
+              <input
+                value={cupConfig.thirdRepechageName || config.defaultThirdRepechageName}
+                onChange={(event) => updateCupConfig("thirdRepechageName", event.target.value)}
+                placeholder="3ª Disputa Paralela"
+              />
+            </div>
+            <div>
+              <label>Nome da etapa entre campeãs</label>
+              <input
+                value={cupConfig.sunsetBracketName || config.defaultSunsetBracketName}
+                onChange={(event) => updateCupConfig("sunsetBracketName", event.target.value)}
+                placeholder="Etapa Sunset"
+              />
+            </div>
+          </>
         ) : null}
       </div>
 
@@ -20720,11 +21135,15 @@ function groupStoredBracketGames(data) {
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Principal";
   const repechageName = cupConfig.repechageName || "Repescagem";
+  const secondParallelName = cupConfig.secondParallelName || "2ª Disputa Paralela";
   const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
+  const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
 
   const mainGames = (data.brackets || []).filter((game) => game.phase === "main");
   const repechageGames = (data.brackets || []).filter((game) => game.phase === "repechage");
+  const secondParallelGames = (data.brackets || []).filter((game) => game.phase === "secondParallel");
   const thirdParallelGames = (data.brackets || []).filter((game) => game.phase === "thirdParallel");
+  const sunsetFinalGames = (data.brackets || []).filter((game) => game.phase === "sunsetFinal");
 
   function groupByRound(games, bracketTitle) {
     const map = {};
@@ -20747,13 +21166,15 @@ function groupStoredBracketGames(data) {
   return {
     main: groupByRound(mainGames, mainName),
     repechage: groupByRound(repechageGames, repechageName),
+    secondParallel: groupByRound(secondParallelGames, secondParallelName),
     thirdParallel: groupByRound(thirdParallelGames, thirdRepechageName),
+    sunsetFinal: groupByRound(sunsetFinalGames, sunsetBracketName),
   };
 }
 
 function getSafeCupPresentation(data, config) {
   if (!isCupType(config) || !data?.brackets?.length) {
-    return { currentBrackets: null, parallelRanking: [], mainCupPodium: [], consolationCupPodium: [], thirdParallelPodium: [] };
+    return { currentBrackets: null, parallelRanking: [], mainCupPodium: [], consolationCupPodium: [], secondParallelPodium: [], thirdParallelPodium: [], sunsetPodium: [] };
   }
 
   try {
@@ -20765,11 +21186,13 @@ function getSafeCupPresentation(data, config) {
       parallelRanking: calculateParallelRanking(presentationData, data.rankingCriteria || defaultRankingCriteria),
       mainCupPodium: calculateMainCupPodium(presentationData),
       consolationCupPodium: isCopinhaData(data) ? calculateCopinhaConsolationPodium(presentationData) : [],
-      thirdParallelPodium: isCampeonatoCearenseData(data) ? calculateCupBracketPodium(presentationData, "thirdParallel") : [],
+      secondParallelPodium: isSunsetData(data) ? calculateCupBracketPodium(presentationData, "secondParallel") : [],
+      thirdParallelPodium: isOfficialCearenseData(data) ? calculateCupBracketPodium(presentationData, "thirdParallel") : [],
+      sunsetPodium: isSunsetData(data) ? calculateCupBracketPodium(presentationData, "sunsetFinal") : [],
     };
   } catch (error) {
     console.error("Chaves salvas inválidas; exibindo a Copa sem as chaves", error);
-    return { currentBrackets: null, parallelRanking: [], mainCupPodium: [], consolationCupPodium: [], thirdParallelPodium: [] };
+    return { currentBrackets: null, parallelRanking: [], mainCupPodium: [], consolationCupPodium: [], secondParallelPodium: [], thirdParallelPodium: [], sunsetPodium: [] };
   }
 }
 
@@ -20819,10 +21242,36 @@ function CupBracketView({
           />
         )}
 
+        {groupedBrackets.secondParallel?.length > 0 && (
+          <BracketColumn
+            title={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}
+            rounds={groupedBrackets.secondParallel}
+            updateBracketScore={updateBracketScore}
+            toggleBracketGameStatus={toggleBracketGameStatus}
+            voiceRepeat={voiceRepeat}
+            winningScore={winningScore}
+            courtNumbers={data.courtNumbers || []}
+            onEditCourt={onEditCourt}
+          />
+        )}
+
         {groupedBrackets.thirdParallel?.length > 0 && (
           <BracketColumn
             title={data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}
             rounds={groupedBrackets.thirdParallel}
+            updateBracketScore={updateBracketScore}
+            toggleBracketGameStatus={toggleBracketGameStatus}
+            voiceRepeat={voiceRepeat}
+            winningScore={winningScore}
+            courtNumbers={data.courtNumbers || []}
+            onEditCourt={onEditCourt}
+          />
+        )}
+
+        {groupedBrackets.sunsetFinal?.length > 0 && (
+          <BracketColumn
+            title={data.cupConfig?.sunsetBracketName || "Etapa Sunset"}
+            rounds={groupedBrackets.sunsetFinal}
             updateBracketScore={updateBracketScore}
             toggleBracketGameStatus={toggleBracketGameStatus}
             voiceRepeat={voiceRepeat}
@@ -21695,7 +22144,9 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
   const config = modalityConfig[tournament.type];
   const data = normalizeTournamentData(tournament.type, tournament.data);
   const secondParallelVisible = isCearenseSecondParallelEnabled(data);
+  const sunsetSecondParallelVisible = isSunsetData(data);
   const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
+  const sunsetFinalVisible = isSunsetData(data);
 
   useEffect(() => {
     if (activePublicMatchesTab === "paralela" && !secondParallelVisible) {
@@ -21735,7 +22186,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
     ? calculateCupGroupRankings(data, data.rankingCriteria)
     : [];
 
-  const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, thirdParallelPodium } = getSafeCupPresentation(data, config);
+  const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
   const publicRankingShareContext = {
     title: tournament.name,
     subtitle: getModalityDisplayName(tournament.type),
@@ -21835,7 +22286,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             <h2>Participantes</h2>
             <span className="readOnlyBadge">Somente visualização</span>
           </div>
-          {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" ? (
+          {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" || config.type === "sunset" ? (
             <div className="formatInfoPublicPlacement">
               <TournamentFormatInfoButton data={data} config={config} publicView />
             </div>
@@ -21901,9 +22352,11 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
               <button type="button" className={activePublicMatchesTab === "grupos" ? "active" : ""} onClick={() => setActivePublicMatchesTab("grupos")}>Fase de grupos</button>
               <button type="button" className={activePublicMatchesTab === "chaves" ? "active" : ""} onClick={() => setActivePublicMatchesTab("chaves")}>Chaves finais</button>
               {secondParallelVisible ? <button type="button" className={activePublicMatchesTab === "paralela" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button> : null}
+              {sunsetSecondParallelVisible ? <button type="button" className={activePublicMatchesTab === "paralela2" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela2")}>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</button> : null}
               {thirdParallelVisible ? (
                 <button type="button" className={activePublicMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela3")}>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</button>
               ) : null}
+              {sunsetFinalVisible ? <button type="button" className={activePublicMatchesTab === "sunset" ? "active" : ""} onClick={() => setActivePublicMatchesTab("sunset")}>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</button> : null}
             </div>
           ) : null}
 
@@ -21945,6 +22398,22 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             </div>
           ) : null}
 
+          {isCup && sunsetSecondParallelVisible ? (
+            <div style={{ display: activePublicMatchesTab === "paralela2" ? undefined : "none" }}>
+              {!currentBrackets
+                ? <p>A 2ª disputa paralela ainda não foi gerada pelo organizador.</p>
+                : currentBrackets.secondParallel?.length > 0
+                  ? (
+                    <PublicCupBracketView
+                      groupedBrackets={{ main: [], repechage: [], secondParallel: currentBrackets.secondParallel }}
+                      secondParallelTitle={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}
+                      courtNumbers={data.courtNumbers || []}
+                    />
+                  )
+                  : <p>Esta configuração não possui ao menos duas derrotadas na fase de oitavas para formar a 2ª disputa paralela.</p>}
+            </div>
+          ) : null}
+
           {isCup && thirdParallelVisible ? (
             <div style={{ display: activePublicMatchesTab === "paralela3" ? undefined : "none" }}>
               {!currentBrackets
@@ -21958,6 +22427,22 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
                     />
                   )
                   : <p>Nesta quantidade de grupos não há duplas elegíveis para a 3ª disputa paralela.</p>}
+            </div>
+          ) : null}
+
+          {isCup && sunsetFinalVisible ? (
+            <div style={{ display: activePublicMatchesTab === "sunset" ? undefined : "none" }}>
+              {!currentBrackets
+                ? <p>A etapa Sunset ainda não foi gerada pelo organizador.</p>
+                : currentBrackets.sunsetFinal?.length > 0
+                  ? (
+                    <PublicCupBracketView
+                      groupedBrackets={{ main: [], repechage: [], sunsetFinal: currentBrackets.sunsetFinal }}
+                      sunsetFinalTitle={data.cupConfig?.sunsetBracketName || "Etapa Sunset"}
+                      courtNumbers={data.courtNumbers || []}
+                    />
+                  )
+                  : <p>A etapa Sunset aparecerá quando houver ao menos duas chaves capazes de produzir campeãs.</p>}
             </div>
           ) : null}
         </section>
@@ -22006,12 +22491,28 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
                       />
                     : <p>A disputa paralela ainda não tem ranking.</p>)}
               </div> : null}
+              {sunsetSecondParallelVisible ? (
+                <div className="cupRankingPanel">
+                  <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
+                  {secondParallelPodium.length > 0
+                    ? <CupPodiumView podium={secondParallelPodium} title={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"} variant="parallel" shareContext={publicRankingShareContext} />
+                    : <p>A 2ª disputa paralela ainda não foi finalizada.</p>}
+                </div>
+              ) : null}
               {thirdParallelVisible ? (
                 <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
                   {thirdParallelPodium.length > 0
                     ? <CupPodiumView podium={thirdParallelPodium} title={data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"} variant="parallel" shareContext={publicRankingShareContext} />
                     : <p>A 3ª disputa paralela ainda não foi finalizada.</p>}
+                </div>
+              ) : null}
+              {sunsetFinalVisible ? (
+                <div className="cupRankingPanel">
+                  <h3>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h3>
+                  {sunsetPodium.length > 0
+                    ? <CupPodiumView podium={sunsetPodium} title={data.cupConfig?.sunsetBracketName || "Etapa Sunset"} shareContext={publicRankingShareContext} />
+                    : <p>A etapa Sunset ainda não foi finalizada.</p>}
                 </div>
               ) : null}
             </div>
@@ -22051,14 +22552,18 @@ function PublicCupBracketView({
   groupedBrackets,
   mainTitle = "Chave principal",
   repechageTitle = "Disputa paralela",
+  secondParallelTitle = "2ª Disputa Paralela",
   thirdRepechageTitle = "3ª Disputa Paralela",
+  sunsetFinalTitle = "Etapa Sunset",
   courtNumbers = [],
 }) {
   const mainRounds = Array.isArray(groupedBrackets?.main) ? groupedBrackets.main : [];
   const repechageRounds = Array.isArray(groupedBrackets?.repechage) ? groupedBrackets.repechage : [];
+  const secondParallelRounds = Array.isArray(groupedBrackets?.secondParallel) ? groupedBrackets.secondParallel : [];
   const thirdParallelRounds = Array.isArray(groupedBrackets?.thirdParallel) ? groupedBrackets.thirdParallel : [];
+  const sunsetFinalRounds = Array.isArray(groupedBrackets?.sunsetFinal) ? groupedBrackets.sunsetFinal : [];
 
-  if (mainRounds.length === 0 && repechageRounds.length === 0 && thirdParallelRounds.length === 0) return null;
+  if (mainRounds.length === 0 && repechageRounds.length === 0 && secondParallelRounds.length === 0 && thirdParallelRounds.length === 0 && sunsetFinalRounds.length === 0) return null;
 
   return (
     <div className="cupBrackets publicCupBrackets bracketTreeCollection">
@@ -22078,11 +22583,27 @@ function PublicCupBracketView({
           courtNumbers={courtNumbers}
         />
       ) : null}
+      {secondParallelRounds.length > 0 ? (
+        <PublicBracketColumn
+          rounds={secondParallelRounds}
+          title={secondParallelRounds[0]?.bracketTitle || secondParallelTitle}
+          variant="repechage"
+          courtNumbers={courtNumbers}
+        />
+      ) : null}
       {thirdParallelRounds.length > 0 ? (
         <PublicBracketColumn
           rounds={thirdParallelRounds}
           title={thirdParallelRounds[0]?.bracketTitle || thirdRepechageTitle}
           variant="repechage"
+          courtNumbers={courtNumbers}
+        />
+      ) : null}
+      {sunsetFinalRounds.length > 0 ? (
+        <PublicBracketColumn
+          rounds={sunsetFinalRounds}
+          title={sunsetFinalRounds[0]?.bracketTitle || sunsetFinalTitle}
+          variant="main"
           courtNumbers={courtNumbers}
         />
       ) : null}
