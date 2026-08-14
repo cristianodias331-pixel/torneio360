@@ -619,6 +619,18 @@ assert.ok(
     && styleSource.includes('.rankingExportOverlay'),
   "O ranking não apresenta exportação paginada para imagem, impressão e download."
 );
+assert.ok(
+  mainSource.includes('async function createCupPodiumShareFile({')
+    && mainSource.includes('config?.presentation === "podium"')
+    && mainSource.includes('presentation: "podium"')
+    && mainSource.includes('const podiumLimit = variant === "parallel" ? 1 : 3;'),
+  "O compartilhamento das copas não preserva o pódio visual ou ainda mostra vice e terceiro nas disputas paralelas."
+);
+assert.ok(
+  mainSource.includes('function wrapCanvasItems(context, items, maxWidth')
+    && mainSource.includes('wrapCanvasItems(context, stats, 430).forEach'),
+  "O compartilhamento do ranking ainda pode ocultar critérios com reticências."
+);
 assert.ok(mainSource.includes(': "Compartilhar ranking";'), "O botão compacto não identifica que compartilha o ranking.");
 assert.ok(
   mainSource.includes('const [newRankingCriteria, setNewRankingCriteria] = useState("");')

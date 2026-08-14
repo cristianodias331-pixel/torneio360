@@ -4555,6 +4555,23 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
   margin-top: 14px;
 }
 
+.cupPodiumGrid.singleChampion {
+  grid-template-columns: minmax(220px, 430px) !important;
+  justify-content: center;
+}
+
+.cupPodiumGrid.singleChampion .cupPodiumName {
+  min-height: 58px;
+  font-size: clamp(17px, 2.2vw, 23px);
+  line-height: 1.2;
+}
+
+.cupPodiumGrid.singleChampion .cupPodiumAvatar {
+  width: 104px;
+  height: 104px;
+  font-size: 27px;
+}
+
 
 /* Controles de mover torneio à esquerda */
 .moveControls {
