@@ -197,9 +197,57 @@ function truncateCanvasText(context, value, maxWidth) {
   return `${shortened}…`;
 }
 
+function wrapCanvasItems(context, items, maxWidth, separator = "  •  ") {
+  const lines = [];
+  let currentLine = "";
+
+  items.filter(Boolean).forEach((item) => {
+    const candidate = currentLine ? `${currentLine}${separator}${item}` : String(item);
+    if (currentLine && context.measureText(candidate).width > maxWidth) {
+      lines.push(currentLine);
+      currentLine = String(item);
+      return;
+    }
+    currentLine = candidate;
+  });
+
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function drawCenteredCanvasLines(context, value, centerX, startY, maxWidth, {
+  font = "900 34px Arial",
+  color = "#ffffff",
+  lineHeight = 40,
+  maxLines = 2,
+} = {}) {
+  const words = String(value || "Sem nome").split(/\s+/).filter(Boolean);
+  const lines = [];
+  let currentLine = "";
+  context.font = font;
+
+  words.forEach((word) => {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (currentLine && context.measureText(candidate).width > maxWidth && lines.length < maxLines - 1) {
+      lines.push(currentLine);
+      currentLine = word;
+      return;
+    }
+    currentLine = candidate;
+  });
+  if (currentLine) lines.push(currentLine);
+
+  context.fillStyle = color;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  lines.slice(0, maxLines).forEach((line, index) => {
+    context.fillText(line, centerX, startY + (index * lineHeight));
+  });
+}
+
 const RANKING_SHARE_CANVAS_HEIGHT = 1350;
 const RANKING_SHARE_CONTENT_HEIGHT = 810;
-const RANKING_SHARE_ROW_HEIGHT = 60;
+const RANKING_SHARE_ROW_HEIGHT = 98;
 const RANKING_SHARE_GROUP_OVERHEAD = 86;
 
 function normalizeRankingExportGroups(groups = []) {
@@ -254,6 +302,188 @@ function paginateRankingGroups(groups, {
 
   finishPage();
   return pages;
+}
+
+async function createCupPodiumShareFile({
+  title,
+  subtitle,
+  arenaName,
+  arenaPhotoUrl,
+  podium = [],
+  podiumVariant = "main",
+}) {
+  const visiblePodium = podium.slice(0, podiumVariant === "parallel" ? 1 : 3);
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = RANKING_SHARE_CANVAS_HEIGHT;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Não foi possível preparar a imagem do pódio.");
+
+  const background = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  background.addColorStop(0, "#07163e");
+  background.addColorStop(0.52, "#202779");
+  background.addColorStop(1, "#5b21b6");
+  context.fillStyle = background;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.globalAlpha = 0.14;
+  context.strokeStyle = "#67e8f9";
+  context.lineWidth = 3;
+  [170, 910].forEach((x, index) => {
+    context.beginPath();
+    context.arc(x, index === 0 ? 455 : 570, 190, 0, Math.PI * 2);
+    context.stroke();
+  });
+  context.globalAlpha = 1;
+
+  const [logo, arenaPhoto] = await Promise.all([
+    loadShareImage(TORNEIO360_LOGO),
+    loadShareImage(arenaPhotoUrl),
+  ]);
+
+  if (logo) {
+    const logoWidth = 315;
+    const logoHeight = logoWidth * (logo.height / logo.width);
+    context.drawImage(logo, 54, 28, logoWidth, logoHeight);
+  }
+
+  const photoX = 920;
+  const photoY = 106;
+  const photoRadius = 66;
+  context.save();
+  context.beginPath();
+  context.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
+  context.clip();
+  if (arenaPhoto) {
+    const scale = Math.max((photoRadius * 2) / arenaPhoto.width, (photoRadius * 2) / arenaPhoto.height);
+    const width = arenaPhoto.width * scale;
+    const height = arenaPhoto.height * scale;
+    context.drawImage(arenaPhoto, photoX - width / 2, photoY - height / 2, width, height);
+  } else {
+    const avatarGradient = context.createLinearGradient(photoX - photoRadius, photoY - photoRadius, photoX + photoRadius, photoY + photoRadius);
+    avatarGradient.addColorStop(0, "#2563eb");
+    avatarGradient.addColorStop(1, "#06b6d4");
+    context.fillStyle = avatarGradient;
+    context.fillRect(photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
+    context.fillStyle = "#ffffff";
+    context.font = "900 38px Arial";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(String(arenaName || "A").slice(0, 2).toUpperCase(), photoX, photoY + 2);
+  }
+  context.restore();
+  context.strokeStyle = "#fbbf24";
+  context.lineWidth = 7;
+  context.beginPath();
+  context.arc(photoX, photoY, photoRadius + 3, 0, Math.PI * 2);
+  context.stroke();
+
+  context.fillStyle = "#ffffff";
+  context.font = "900 23px Arial";
+  context.textAlign = "right";
+  context.fillText(truncateCanvasText(context, arenaName || "Arena Torneio360", 400), 820, 96);
+  context.fillStyle = "#bae6fd";
+  context.font = "700 16px Arial";
+  context.fillText("ORGANIZAÇÃO", 820, 124);
+
+  drawRoundedRect(context, 52, 210, 976, 168, 32, "rgba(7, 18, 57, 0.78)", "rgba(255, 255, 255, 0.18)");
+  context.textAlign = "left";
+  context.fillStyle = "#fbbf24";
+  context.font = "900 18px Arial";
+  context.fillText(podiumVariant === "parallel" ? "CAMPEÃ DA DISPUTA PARALELA" : "PÓDIO OFICIAL", 88, 257);
+  context.fillStyle = "#ffffff";
+  context.font = "900 40px Arial";
+  context.fillText(truncateCanvasText(context, title || "Pódio", 850), 88, 315);
+  context.fillStyle = "#cbd5e1";
+  context.font = "700 21px Arial";
+  context.fillText(truncateCanvasText(context, subtitle || "Torneio360", 850), 88, 352);
+
+  const singleChampion = visiblePodium.length === 1;
+  const podiumLayout = singleChampion
+    ? [{ place: 1, x: 540, y: 610, radius: 142, colorStart: "#fde047", colorEnd: "#f59e0b", nameWidth: 720 }]
+    : [
+        { place: 1, x: 540, y: 565, radius: 112, colorStart: "#fde047", colorEnd: "#f59e0b", nameWidth: 340 },
+        { place: 2, x: 235, y: 690, radius: 88, colorStart: "#f8fafc", colorEnd: "#94a3b8", nameWidth: 290 },
+        { place: 3, x: 845, y: 690, radius: 88, colorStart: "#fdba74", colorEnd: "#ea580c", nameWidth: 290 },
+      ];
+
+  visiblePodium.forEach((item, index) => {
+    const layout = podiumLayout.find((entry) => entry.place === index + 1);
+    if (!layout) return;
+    if (layout.place === 1) {
+      context.fillStyle = "#fbbf24";
+      context.font = singleChampion ? "900 76px Arial" : "900 58px Arial";
+      context.textAlign = "center";
+      context.fillText("♛", layout.x, layout.y - layout.radius - 24);
+    }
+
+    const avatarGradient = context.createLinearGradient(
+      layout.x - layout.radius,
+      layout.y - layout.radius,
+      layout.x + layout.radius,
+      layout.y + layout.radius
+    );
+    avatarGradient.addColorStop(0, layout.colorStart);
+    avatarGradient.addColorStop(1, layout.colorEnd);
+    context.fillStyle = avatarGradient;
+    context.beginPath();
+    context.arc(layout.x, layout.y, layout.radius, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = "rgba(255,255,255,.92)";
+    context.lineWidth = 8;
+    context.stroke();
+
+    context.fillStyle = layout.place === 1 ? "#5b21b6" : "#172554";
+    context.font = `900 ${singleChampion ? 62 : layout.place === 1 ? 52 : 42}px Arial`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(getPodiumInitials(item.name), layout.x, layout.y + 4);
+
+    const labelY = layout.y + layout.radius + 42;
+    context.fillStyle = layout.place === 1 ? "#fde68a" : "#ffffff";
+    context.font = `900 ${singleChampion ? 30 : 24}px Arial`;
+    context.fillText(layout.place === 1 ? "🏆 Campeão" : layout.place === 2 ? "🥈 Vice-campeão" : "🥉 3º lugar", layout.x, labelY);
+    drawCenteredCanvasLines(context, item.name, layout.x, labelY + (singleChampion ? 58 : 48), layout.nameWidth, {
+      font: `900 ${singleChampion ? 43 : layout.place === 1 ? 36 : 31}px Arial`,
+      color: "#ffffff",
+      lineHeight: singleChampion ? 49 : 38,
+      maxLines: 2,
+    });
+  });
+
+  if (singleChampion) {
+    const stepGradient = context.createLinearGradient(230, 0, 850, 0);
+    stepGradient.addColorStop(0, "#f59e0b");
+    stepGradient.addColorStop(1, "#facc15");
+    drawRoundedRect(context, 230, 1010, 620, 245, 30, stepGradient);
+    context.fillStyle = "#ffffff";
+    context.font = "900 92px Arial";
+    context.textAlign = "center";
+    context.fillText("1", 540, 1155);
+  } else {
+    drawRoundedRect(context, 65, 1055, 310, 200, 28, "#cbd5e1");
+    drawRoundedRect(context, 365, 940, 350, 315, 28, "#fbbf24");
+    if (visiblePodium.length >= 3) {
+      drawRoundedRect(context, 705, 1085, 310, 170, 28, "#f97316");
+    }
+    [[220, 1150, "2"], [540, 1110, "1"], ...(visiblePodium.length >= 3 ? [[860, 1180, "3"]] : [])].forEach(([x, y, place]) => {
+      context.fillStyle = "#ffffff";
+      context.font = "900 82px Arial";
+      context.textAlign = "center";
+      context.fillText(place, x, y);
+    });
+  }
+
+  context.fillStyle = "rgba(255, 255, 255, 0.78)";
+  context.font = "700 17px Arial";
+  context.textAlign = "center";
+  context.fillText("Gerado pelo Torneio360 • torneio360.com", canvas.width / 2, canvas.height - 38);
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Não foi possível gerar a imagem.")), "image/png", 0.96);
+  });
+  const safeName = String(title || "podio").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+  return new File([blob], `${safeName || "podio"}-torneio360.png`, { type: "image/png" });
 }
 
 async function createRankingShareFile({
@@ -390,24 +620,26 @@ async function createRankingShareFile({
           : absoluteIndex === 2
             ? "#ffeadb"
             : absoluteIndex % 2 === 0 ? "#f6f8fc" : "#ffffff";
-      drawRoundedRect(context, 72, y, 936, 50, 15, rowFill);
+      drawRoundedRect(context, 72, y, 936, 88, 15, rowFill);
       const medalColor = absoluteIndex === 0 ? "#d97706" : absoluteIndex === 1 ? "#64748b" : absoluteIndex === 2 ? "#c2410c" : "#334155";
       context.fillStyle = medalColor;
       context.font = `900 ${absoluteIndex < 3 ? 23 : 20}px Arial`;
       context.textAlign = "center";
-      context.fillText(`${absoluteIndex + 1}º`, 112, y + 33);
+      context.fillText(`${absoluteIndex + 1}º`, 112, y + 53);
       context.fillStyle = "#111827";
-      context.font = "800 20px Arial";
+      context.font = "800 21px Arial";
       context.textAlign = "left";
-      context.fillText(truncateCanvasText(context, row.name, 510), 154, y + 33);
+      context.fillText(truncateCanvasText(context, row.name, 365), 154, y + 53);
 
       const stats = exportColumns
         .filter(({ key }) => row[key] !== undefined)
         .map(({ key, label }) => `${label || getRankingColumnLabel(key)}: ${Number(row[key] || 0)}`);
       context.fillStyle = "#475569";
-      context.font = "700 16px Arial";
+      context.font = "700 15px Arial";
       context.textAlign = "right";
-      context.fillText(truncateCanvasText(context, stats.join("  •  "), 300), 982, y + 32);
+      wrapCanvasItems(context, stats, 430).forEach((line, lineIndex) => {
+        context.fillText(line, 982, y + 27 + (lineIndex * 21));
+      });
       y += RANKING_SHARE_ROW_HEIGHT;
     });
     y += 22;
@@ -427,6 +659,10 @@ async function createRankingShareFile({
 }
 
 async function createRankingShareFiles(config) {
+  if (config?.presentation === "podium" && Array.isArray(config?.podium) && config.podium.length > 0) {
+    return [await createCupPodiumShareFile(config)];
+  }
+
   const normalizedGroups = normalizeRankingExportGroups(config?.groups);
   const pages = paginateRankingGroups(normalizedGroups, {
     maxHeight: RANKING_SHARE_CONTENT_HEIGHT,
@@ -6393,11 +6629,17 @@ function getPodiumInitials(name) {
 function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null }) {
   if (!podium || podium.length === 0) return null;
 
-  const podiumPlaces = podium.slice(0, 3).map((item, index) => ({ ...item, place: index + 1 }));
-  const displayOrder = [podiumPlaces[1], podiumPlaces[0], podiumPlaces[2]].filter(Boolean);
+  const podiumLimit = variant === "parallel" ? 1 : 3;
+  const podiumPlaces = podium.slice(0, podiumLimit).map((item, index) => ({ ...item, place: index + 1 }));
+  const displayOrder = podiumPlaces.length === 1
+    ? podiumPlaces
+    : [podiumPlaces[1], podiumPlaces[0], podiumPlaces[2]].filter(Boolean);
   const shareConfig = shareContext ? {
     ...shareContext,
     title: `${shareContext.title || title} — ${title}`,
+    presentation: "podium",
+    podium: podiumPlaces,
+    podiumVariant: variant,
     groups: [{
       title: `Pódio da ${title}`,
       rows: podiumPlaces.map((item) => ({ name: item.name })),
@@ -6417,7 +6659,7 @@ function CupPodiumView({ podium, title = "Principal", variant = "main", shareCon
         </div>
       </div>
 
-      <div className="cupPodiumGrid">
+      <div className={`cupPodiumGrid ${podiumPlaces.length === 1 ? "singleChampion" : ""}`}>
         {displayOrder.map((item) => (
           <div className={`cupPodiumItem cupPodiumPlace${item.place}`} key={`${item.position}-${item.name}`}>
             <span className="cupPodiumCrown" aria-hidden="true">{item.place === 1 ? "♛" : ""}</span>
