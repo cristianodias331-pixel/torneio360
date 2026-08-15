@@ -1317,7 +1317,8 @@ assert.ok(
 assert.ok(
   mainSource.includes("manualParticipants: sourceManualParticipants.map")
     && mainSource.includes("function applyCircuitManualParticipants")
-    && mainSource.includes("Adicionar atleta manualmente")
+    && mainSource.includes('Adicionar ${participantLabel} manualmente')
+    && mainSource.includes("Participantes e resultados complementares")
     && mainSource.includes("Somar ao atleta existente?")
     && mainSource.includes("Cadastros manuais")
     && mainSource.includes("applyCircuitManualParticipants(groups, rankingSettings)")

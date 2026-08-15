@@ -14141,12 +14141,12 @@ setNewPublicInfo({
                       ))}
                     </div>
                   )}
-                  {placementMode ? <CircuitExtraPointsPanel circuit={circuit} rankingGroups={circuitRankingGroups} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} /> : null}
+                  <CircuitExtraPointsPanel circuit={circuit} rankingGroups={circuitRankingGroups} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} />
                 </div>
               ) : selectedNames.length ? (
                 <div className="circuitRankingEmptyState">
                   <div className="circuitRankingEmpty">Ranking aparece quando houver placares lançados nos torneios selecionados.</div>
-                  {placementMode ? <CircuitExtraPointsPanel circuit={circuit} rankingGroups={[]} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} /> : null}
+                  <CircuitExtraPointsPanel circuit={circuit} rankingGroups={[]} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} />
                 </div>
               ) : null;
             })() : null}
@@ -18678,6 +18678,8 @@ function CircuitRankingSettingsEditor({
 
 function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
   const settings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
+  const usesCircuitPoints = settings.mode === circuitRankingModes.placement || settings.sourceCircuitIds.length > 0;
+  const participantLabel = settings.identity === "team" ? "dupla" : "atleta";
   const targets = (rankingGroups || []).flatMap((group) => (group.rows || []).map((row) => ({
     id: String(row.id || ""), name: row.name, groupKey: group.key || "geral", groupTitle: group.title,
   })));
@@ -18809,17 +18811,38 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
     }
   }
 
-  return <div className="circuitExtraPointsPanel">
+  return <div className={`circuitExtraPointsPanel ${usesCircuitPoints ? "usesPoints" : "usesPerformance"}`}>
+    <div className="circuitManualAdjustmentsHeader">
+      <div>
+        <span>Ajustes manuais</span>
+        <strong>Participantes e resultados complementares</strong>
+        <small>{usesCircuitPoints
+          ? "Inclua participantes que ainda não aparecem nas etapas ou conceda uma pontuação extra."
+          : "Inclua participantes e informe manualmente vitórias, Total de Games, saldo e jogos."}</small>
+      </div>
+      <FormatExplanationButton
+        iconOnly
+        ariaLabel="Entenda os ajustes manuais do ranking"
+        eyebrow="Ajustes manuais"
+        title="Como complementar o ranking do circuito"
+        intro="O formato das etapas define o cálculo automático. Esta área serve apenas para incluir ou complementar informações sob responsabilidade do organizador."
+        sections={[
+          { title: "Participante ausente", content: <p>Adicione um {participantLabel} que ainda não apareceu nos torneios e informe os valores que devem entrar no ranking.</p> },
+          { title: "Soma automática", content: <p>Se o mesmo nome aparecer posteriormente em uma etapa, os resultados conquistados serão somados aos valores manuais, sem criar outro participante.</p> },
+          ...(usesCircuitPoints ? [{ title: "Pontuação extra", content: <p>O bônus é somado diretamente ao total de pontos. Vitórias, games, saldo e jogos só mudam quando forem informados no cadastro manual.</p> }] : []),
+        ]}
+      />
+    </div>
     <div className="circuitRankingManualActions">
-      <button type="button" className="circuitManualParticipantButton" onClick={() => setManualOpen((value) => !value)}><UserRound aria-hidden="true" /> {manualOpen ? "Fechar inclusão manual" : "Adicionar atleta manualmente"}</button>
-      <button type="button" className="circuitExtraPointsButton" onClick={() => setOpen((value) => !value)}><Gift aria-hidden="true" /> {open ? "Fechar pontos extras" : "Adicionar pontuação extra"}</button>
+      <button type="button" className="circuitManualParticipantButton" onClick={() => setManualOpen((value) => !value)}><UserRound aria-hidden="true" /> {manualOpen ? "Fechar inclusão manual" : `Adicionar ${participantLabel} manualmente`}</button>
+      {usesCircuitPoints ? <button type="button" className="circuitExtraPointsButton" onClick={() => setOpen((value) => !value)}><Gift aria-hidden="true" /> {open ? "Fechar pontos extras" : "Adicionar pontuação extra"}</button> : null}
     </div>
     {manualOpen ? <div className="circuitManualParticipantContent">
-      <div className="circuitSettingsTitleRow"><div><strong>Inclusão manual no ranking</strong><span>Cadastre um atleta ou dupla que ainda não participou das etapas.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a inclusão manual" eyebrow="Ranking manual" title="Como a inclusão manual funciona" intro="Os valores informados entram no ranking do circuito e permanecem editáveis pelo organizador." sections={[{ title: "Soma automática", content: <p>Se o mesmo nome participar de uma etapa posteriormente, os resultados do torneio serão somados aos valores cadastrados aqui.</p> }, { title: "Campos do ranking", content: <p>Informe pontos, vitórias, Total de Games, saldo e jogos. Use zero nos campos que não devem alterar a classificação.</p> }, { title: "Identificação", content: <p>Use sempre a mesma escrita do nome. A indicação de cadastro manual aparece somente para o organizador e não é exibida no ranking compartilhado.</p> }]} /></div>
+      <div className="circuitSettingsTitleRow"><div><strong>Inclusão manual no ranking</strong><span>Cadastre um {participantLabel} que ainda não participou das etapas.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a inclusão manual" eyebrow="Ranking manual" title="Como a inclusão manual funciona" intro="Os valores informados entram no ranking do circuito e permanecem editáveis pelo organizador." sections={[{ title: "Soma automática", content: <p>Se o mesmo nome participar de uma etapa posteriormente, os resultados do torneio serão somados aos valores cadastrados aqui.</p> }, { title: "Campos do ranking", content: <p>Informe {usesCircuitPoints ? "pontos, " : ""}vitórias, Total de Games, saldo e jogos. Use zero nos campos que não devem alterar a classificação.</p> }, { title: "Identificação", content: <p>O sistema unifica automaticamente nomes que diferem somente pela acentuação. Use nome e sobrenome para diferenciar homônimos.</p> }]} /></div>
       <div className="circuitManualParticipantForm">
         <label className="manualNameField"><span>{settings.identity === "team" ? "Nome da dupla" : "Nome do atleta"}</span><input value={manualForm.name} onChange={(event) => setManualForm((previous) => ({ ...previous, name: event.target.value }))} onBlur={() => setManualForm((previous) => ({ ...previous, name: formatParticipantName(previous.name) }))} placeholder={settings.identity === "team" ? "Ex: Ana + Beatriz" : "Ex: Ana Beatriz"} /></label>
         {settings.rankingDivision === "gender" ? <label><span>Ranking</span><select value={manualForm.groupKey} onChange={(event) => setManualForm((previous) => ({ ...previous, groupKey: event.target.value }))}><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></label> : null}
-        <label><span>Pontos</span><input type="number" min="0" step="1" value={manualForm.points} onChange={(event) => setManualForm((previous) => ({ ...previous, points: event.target.value }))} /></label>
+        {usesCircuitPoints ? <label><span>Pontos</span><input type="number" min="0" step="1" value={manualForm.points} onChange={(event) => setManualForm((previous) => ({ ...previous, points: event.target.value }))} /></label> : null}
         <label><span>Vitórias</span><input type="number" min="0" step="1" value={manualForm.wins} onChange={(event) => setManualForm((previous) => ({ ...previous, wins: event.target.value }))} /></label>
         <label><span>Total de Games</span><input type="number" min="0" step="1" value={manualForm.totalGames} onChange={(event) => setManualForm((previous) => ({ ...previous, totalGames: event.target.value }))} /></label>
         <label><span>Saldo</span><input type="number" step="1" value={manualForm.balance} onChange={(event) => setManualForm((previous) => ({ ...previous, balance: event.target.value }))} /></label>
@@ -18827,9 +18850,9 @@ function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave }) {
         <label className="manualNoteField"><span>Observação opcional</span><input value={manualForm.note} onChange={(event) => setManualForm((previous) => ({ ...previous, note: event.target.value }))} placeholder="Ex: Pontuação transferida" /></label>
         <div className="manualFormActions">{manualForm.id ? <button type="button" className="secondaryBtn" onClick={() => setManualForm(emptyManualForm)}>Cancelar edição</button> : null}<button type="button" className="circuitManualSave" disabled={!manualForm.name.trim() || manualSaving} onClick={requestManualSave}>{manualSaving ? "Salvando..." : manualForm.id ? "Salvar alterações" : "Adicionar ao ranking"}</button></div>
       </div>
-      {settings.manualParticipants.length ? <div className="circuitManualHistory"><strong>Cadastros manuais</strong>{settings.manualParticipants.map((entry) => <article key={entry.id}><div><b>{entry.name}</b><span>{entry.points} pts · {entry.wins} vit. · {entry.totalGames} games · saldo {entry.balance} · {entry.played} jogo(s){entry.note ? ` — ${entry.note}` : ""}</span></div><div className="circuitManualHistoryActions"><button type="button" className="manualEditButton" onClick={() => editManualParticipant(entry)}>Editar</button><button type="button" className="manualDeleteButton" onClick={() => setManualDeleteId(entry.id)}>Excluir</button></div></article>)}</div> : <p className="circuitExtraEmpty">Nenhum atleta incluído manualmente.</p>}
+      {settings.manualParticipants.length ? <div className="circuitManualHistory"><strong>Cadastros manuais</strong>{settings.manualParticipants.map((entry) => <article key={entry.id}><div><b>{entry.name}</b><span>{usesCircuitPoints ? `${entry.points} pts · ` : ""}{entry.wins} vit. · {entry.totalGames} games · saldo {entry.balance} · {entry.played} jogo(s){entry.note ? ` — ${entry.note}` : ""}</span></div><div className="circuitManualHistoryActions"><button type="button" className="manualEditButton" onClick={() => editManualParticipant(entry)}>Editar</button><button type="button" className="manualDeleteButton" onClick={() => setManualDeleteId(entry.id)}>Excluir</button></div></article>)}</div> : <p className="circuitExtraEmpty">Nenhum {participantLabel} incluído manualmente.</p>}
     </div> : null}
-    {open ? <div className="circuitExtraPointsContent">
+    {usesCircuitPoints && open ? <div className="circuitExtraPointsContent">
       <div className="circuitSettingsTitleRow"><div><strong>Pontuações extras</strong><span>O valor é somado ao total e participa do primeiro critério do ranking.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação extra" eyebrow="Bônus do organizador" title="Como os pontos extras funcionam" intro="Use somente para ajustes ou premiações definidos pelo regulamento do circuito." sections={[{ title: "Total do ranking", content: <p>O bônus é somado diretamente aos pontos conquistados nas etapas. Por isso, ele altera imediatamente a ordem principal do ranking.</p> }, { title: "Identificação", content: <p>Escolha o atleta ou a dupla, informe um motivo claro e registre uma observação se necessário.</p> }, { title: "Transparência", content: <p>O histórico permanece visível no circuito e pode ser removido pelo organizador mediante confirmação.</p> }]} /></div>
       <div className="circuitExtraPointsForm">
         <label><span>Atleta ou dupla</span><select value={form.targetId} onChange={(event) => setForm((previous) => ({ ...previous, targetId: event.target.value }))}><option value="">Escolha no ranking</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.name}{rankingGroups.length > 1 ? ` — ${target.groupTitle}` : ""}</option>)}</select></label>
