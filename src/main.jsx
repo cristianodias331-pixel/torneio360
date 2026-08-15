@@ -13121,7 +13121,7 @@ setNewPublicInfo({
         onConfirm={() => void saveEditedEventGroup({ confirmModalityChanges: true })}
       />
 
-      {editTarget && editForm ? (
+      {editTarget && editForm && !modalityChangeConfirmation ? (
         <div className="editTournamentOverlay" role="dialog" aria-modal="true">
           <div className="editTournamentModal">
             <div className="editTournamentHeader">
@@ -13217,7 +13217,7 @@ setNewPublicInfo({
         </div>
       ) : null}
 
-      {editEventGroup ? (
+      {editEventGroup && !eventGroupModalityConfirmation ? (
         <div className="editTournamentOverlay" role="dialog" aria-modal="true" aria-labelledby="edit-event-group-title">
           <div className="editTournamentModal editEventGroupModal">
             <div className="editTournamentHeader">
@@ -19208,7 +19208,7 @@ function ConfirmModalityChangeModal({ confirmation, onCancel, onConfirm }) {
   if (!confirmation) return null;
 
   return createPortal(
-    <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="modality-change-title">
+    <div className="confirmOverlay modalityChangeConfirmOverlay" role="dialog" aria-modal="true" aria-labelledby="modality-change-title">
       <div className="confirmBox regenerationConfirmBox">
         <div className="confirmIcon" aria-hidden="true">⚠️</div>
         <span className="confirmEyebrow">Alteração estrutural</span>
@@ -19401,7 +19401,7 @@ function ConfirmEventGroupModalityChangeModal({ confirmation, onCancel, onConfir
   if (!confirmation) return null;
 
   return createPortal(
-    <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="event-group-modality-change-title">
+    <div className="confirmOverlay modalityChangeConfirmOverlay" role="dialog" aria-modal="true" aria-labelledby="event-group-modality-change-title">
       <div className="confirmBox regenerationConfirmBox">
         <div className="confirmIcon" aria-hidden="true">⚠️</div>
         <span className="confirmEyebrow">Alteração estrutural</span>

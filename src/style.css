@@ -7685,14 +7685,14 @@ body {
 .trashHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .trashHeader h2 { margin: 2px 0 4px; color: var(--ui-text-strong, #0f172a); }
 .trashHeader p { margin: 0; color: var(--ui-muted, #64748b); }
-.trashHeader > span { background: var(--ui-surface-soft, #f1f5f9); color: var(--ui-text, #334155); border: 1px solid var(--ui-border, #dbe4ef); border-radius: 999px; padding: 8px 12px; font-weight: 800; font-size: .85rem; white-space: nowrap; }
+.trashHeader > span { background: var(--ui-surface-muted, #f1f5f9); color: var(--ui-text, #334155); border: 1px solid var(--ui-border, #dbe4ef); border-radius: 999px; padding: 8px 12px; font-weight: 800; font-size: .85rem; white-space: nowrap; }
 .trashEyebrow { display: block; color: #ea580c; font-size: .72rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
 
-.trashToolbar { display: grid; grid-template-columns: auto minmax(220px, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--ui-border, #dbe4ef); border-radius: 18px; background: var(--ui-surface-soft, #f8fafc); }
+.trashToolbar { display: grid; grid-template-columns: auto minmax(220px, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--ui-border, #dbe4ef); border-radius: 18px; background: var(--ui-surface-muted, #f8fafc); }
 .trashCategoryTabs { display: flex; gap: 8px; }
 .trashCategoryTabs button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 14px; border: 1px solid var(--ui-border, #cbd5e1); border-radius: 13px; background: var(--ui-surface-raised, #fff); color: var(--ui-text, #334155); font-weight: 900; cursor: pointer; }
 .trashCategoryTabs button svg { width: 17px; height: 17px; }
-.trashCategoryTabs button span { min-width: 25px; padding: 3px 7px; border-radius: 999px; background: var(--ui-surface-soft, #eef2f7); font-size: .74rem; }
+.trashCategoryTabs button span { min-width: 25px; padding: 3px 7px; border-radius: 999px; background: var(--ui-surface-muted, #eef2f7); font-size: .74rem; }
 .trashCategoryTabs button:first-child.active { border-color: #8b5cf6; background: #7c3aed; color: #fff; box-shadow: 0 8px 20px rgba(124, 58, 237, .22); }
 .trashCategoryTabs button:last-child.active { border-color: #0284c7; background: #0369a1; color: #fff; box-shadow: 0 8px 20px rgba(3, 105, 161, .22); }
 .trashCategoryTabs button.active span { background: rgba(255,255,255,.2); color: #fff; }
@@ -7731,7 +7731,7 @@ body {
 .trashItemActions .actionRestoreBtn { border: 1px solid #16a34a !important; background: #16a34a !important; color: #fff !important; }
 .trashPermanentBtn { border: 1px solid #dc2626; background: #dc2626; color: #fff; }
 
-.trashEmptyState { display: grid; justify-items: center; gap: 8px; padding: 42px 20px; border: 1px dashed var(--ui-border, #cbd5e1); border-radius: 18px; background: var(--ui-surface-soft, #f8fafc); color: var(--ui-muted, #64748b); text-align: center; }
+.trashEmptyState { display: grid; justify-items: center; gap: 8px; padding: 42px 20px; border: 1px dashed var(--ui-border, #cbd5e1); border-radius: 18px; background: var(--ui-surface-muted, #f8fafc); color: var(--ui-muted, #64748b); text-align: center; }
 .trashEmptyState svg { width: 28px; height: 28px; color: #94a3b8; }
 .trashEmptyState strong { color: var(--ui-text-strong, #0f172a); }
 .trashEmptyState.compact { padding: 28px 20px; }
@@ -28005,4 +28005,144 @@ html[data-theme="dark"] .tournamentCircuitDialogActions { border-color: #30435a;
 @media (max-width: 390px) {
   .tournamentCircuitDialogActions { display: grid; grid-template-columns: 1fr; }
   .tournamentCircuitDialogActions .tournamentCircuitSave { grid-row: 1; }
+}
+
+/* Lixeira: cores semanticas consistentes nos temas claro e escuro. */
+.proDashboard .trashHeader > span {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface-muted) !important;
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard .trashToolbar {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface-muted) !important;
+}
+
+.proDashboard .trashCategoryTabs button {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard .trashCategoryTabs button span {
+  background: var(--ui-surface-muted) !important;
+  color: var(--ui-text) !important;
+}
+
+.proDashboard .trashCategoryTabs button:first-child.active {
+  border-color: #8b5cf6 !important;
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, .22) !important;
+}
+
+.proDashboard .trashCategoryTabs button:last-child.active {
+  border-color: #0284c7 !important;
+  background: #0369a1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(3, 105, 161, .22) !important;
+}
+
+.proDashboard .trashCategoryTabs button.active span {
+  background: rgba(255, 255, 255, .2) !important;
+  color: #ffffff !important;
+}
+
+.proDashboard .trashSearchField {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-input) !important;
+  color: var(--ui-muted) !important;
+}
+
+.proDashboard .trashSearchField input {
+  color: var(--ui-text-strong) !important;
+  -webkit-text-fill-color: var(--ui-text-strong) !important;
+}
+
+.proDashboard.playAppShell button.trashDeleteSelectedBtn {
+  border-color: #f97316 !important;
+  background: #ffedd5 !important;
+  color: #c2410c !important;
+}
+
+.proDashboard.playAppShell button.trashEmptyBtn,
+.proDashboard.playAppShell button.trashPermanentBtn {
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, .16) !important;
+}
+
+.proDashboard.theme-dark button.trashDeleteSelectedBtn {
+  border-color: #fb923c !important;
+  background: #431407 !important;
+  color: #fed7aa !important;
+}
+
+.proDashboard.theme-dark button.trashEmptyBtn,
+.proDashboard.theme-dark button.trashPermanentBtn {
+  border-color: #f87171 !important;
+  background: #991b1b !important;
+  color: #fff7f7 !important;
+}
+
+html[data-theme="dark"] .trashHeader > span {
+  border-color: #354456 !important;
+  background: #1b2838 !important;
+  color: #f5f8fc !important;
+}
+
+html[data-theme="dark"] .trashToolbar {
+  border-color: #354456 !important;
+  background: #111b27 !important;
+}
+
+html[data-theme="dark"] .trashCategoryTabs button {
+  border-color: #354456 !important;
+  background: #182638 !important;
+  color: #edf3fa !important;
+}
+
+html[data-theme="dark"] .trashCategoryTabs button span {
+  background: #263548 !important;
+  color: #dbe6f3 !important;
+}
+
+html[data-theme="dark"] .trashSearchField {
+  border-color: #354456 !important;
+  background: #0d1723 !important;
+  color: #aab6c5 !important;
+}
+
+html[data-theme="dark"] .trashSearchField input {
+  color: #f5f8fc !important;
+  -webkit-text-fill-color: #f5f8fc !important;
+}
+
+/* O tema do painel tambem fica na propria raiz do dashboard. Estes seletores
+   mais especificos impedem que a regra global de botoes recoloque o fundo claro. */
+.proDashboard.theme-light.playAppShell .trashCategoryTabs button:not(.active) {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #132033 !important;
+  -webkit-text-fill-color: #132033 !important;
+}
+
+.proDashboard.theme-dark.playAppShell .trashCategoryTabs button:not(.active) {
+  border-color: #354456 !important;
+  background: #182638 !important;
+  color: #edf3fa !important;
+  -webkit-text-fill-color: #edf3fa !important;
+}
+
+.proDashboard.theme-dark.playAppShell .trashCategoryTabs button:not(.active) span {
+  background: #263548 !important;
+  color: #dbe6f3 !important;
+  -webkit-text-fill-color: #dbe6f3 !important;
+}
+
+/* A confirmacao estrutural usa portal no body e precisa superar o modal de edicao. */
+.modalityChangeConfirmOverlay {
+  z-index: 40000 !important;
 }
