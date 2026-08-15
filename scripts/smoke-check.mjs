@@ -627,6 +627,12 @@ assert.ok(
   "O compartilhamento das copas não preserva o pódio visual ou ainda mostra vice e terceiro nas disputas paralelas."
 );
 assert.ok(
+  mainSource.includes("const RANKING_SHARE_ROW_HEIGHT = 64;")
+    && mainSource.includes("const RANKING_SHARE_GROUP_OVERHEAD = 64;")
+    && mainSource.includes('context.font = "800 18px Arial";'),
+  "O ranking completo voltou a usar linhas grandes e pode mostrar menos de dez participantes por imagem."
+);
+assert.ok(
   mainSource.includes('function wrapCanvasItems(context, items, maxWidth')
     && mainSource.includes('wrapCanvasItems(context, stats, 430).forEach'),
   "O compartilhamento do ranking ainda pode ocultar critérios com reticências."
