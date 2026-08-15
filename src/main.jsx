@@ -1004,6 +1004,7 @@ function normalizeCircuitRankingSettings(value) {
   const sourceCircuitIds = Array.isArray(source.sourceCircuitIds) ? source.sourceCircuitIds : [];
 
   return {
+    deletedAt: String(source.deletedAt || ""),
     mode: source.mode === circuitRankingModes.placement ? circuitRankingModes.placement : circuitRankingModes.performance,
     tournamentFormat: source.tournamentFormat === circuitTournamentFormats.cup
       ? circuitTournamentFormats.cup
@@ -6320,18 +6321,47 @@ function ConfirmCircuitDeleteModal({ target, onCancel, onConfirm }) {
     <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="delete-circuit-title">
       <div className="confirmBox circuitDeleteConfirmBox">
         <div className="confirmIcon"><Trash2 aria-hidden="true" /></div>
-        <span className="confirmEyebrow">Excluir circuito</span>
-        <h2 id="delete-circuit-title">Deseja excluir “{target.name}”?</h2>
+        <span className="confirmEyebrow">Mover para a lixeira</span>
+        <h2 id="delete-circuit-title">Mover “{target.name}” para a lixeira?</h2>
         <p>
-          O circuito será removido, mas todos os torneios vinculados continuarão salvos normalmente.
+          O circuito ficará disponível para recuperação por 30 dias. Todos os torneios vinculados continuarão salvos normalmente.
         </p>
 
         <div className="confirmActions">
           <button type="button" className="secondaryBtn" onClick={onCancel}>Manter circuito</button>
-          <button type="button" className="deleteBtn" onClick={onConfirm}>Excluir circuito</button>
+          <button type="button" className="deleteBtn" onClick={onConfirm}>Mover para lixeira</button>
         </div>
       </div>
     </div>
+  );
+}
+
+function ConfirmTrashPermanentDeleteModal({ action, busy, onCancel, onConfirm }) {
+  if (!action) return null;
+  const isCircuit = action.kind === "circuits";
+  const itemLabel = action.ids.length === 1
+    ? (isCircuit ? "circuito" : "torneio")
+    : (isCircuit ? "circuitos" : "torneios");
+
+  return createPortal(
+    <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="trash-permanent-delete-title">
+      <div className="confirmBox trashPermanentDeleteConfirmBox">
+        <div className="confirmIcon"><Trash2 aria-hidden="true" /></div>
+        <span className="confirmEyebrow">Ação permanente</span>
+        <h2 id="trash-permanent-delete-title">
+          {action.all ? `Excluir todos os ${itemLabel}?` : `Excluir ${action.ids.length} ${itemLabel}?`}
+        </h2>
+        <p>Esta ação não pode ser desfeita. Os itens selecionados serão apagados definitivamente da plataforma.</p>
+        {isCircuit ? <p>Os torneios vinculados continuarão salvos.</p> : null}
+        <div className="confirmActions">
+          <button type="button" className="secondaryBtn" disabled={busy} onClick={onCancel}>Cancelar</button>
+          <button type="button" className="deleteBtn" disabled={busy} onClick={onConfirm}>
+            {busy ? "Excluindo..." : "Excluir definitivamente"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -8636,6 +8666,7 @@ function TournamentWorkspaceTabs({
 function Dashboard({ profile, user, onProfileChange }) {
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
+  const [trashCircuits, setTrashCircuits] = useState([]);
   const [publicArenaProfiles, setPublicArenaProfiles] = useState([]);
   const [arenaProfileSearch, setArenaProfileSearch] = useState("");
   const [selectedArenaProfile, setSelectedArenaProfile] = useState(null);
@@ -8733,6 +8764,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [circuits, setCircuits] = useState([]);
   const tournamentsRef = useRef(tournaments);
   const trashTournamentsRef = useRef(trashTournaments);
+  const trashCircuitsRef = useRef(trashCircuits);
   const circuitsRef = useRef(circuits);
   const selectedRef = useRef(selected);
   const dashboardLoadInFlightRef = useRef(false);
@@ -8751,6 +8783,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [circuitEditForm, setCircuitEditForm] = useState(null);
   const [combinedCircuitForm, setCombinedCircuitForm] = useState({ name: "", sourceCircuitIds: [] });
   const [circuitDeleteTarget, setCircuitDeleteTarget] = useState(null);
+  const [trashCategory, setTrashCategory] = useState("tournaments");
+  const [trashSearch, setTrashSearch] = useState("");
+  const [selectedTrashTournamentIds, setSelectedTrashTournamentIds] = useState([]);
+  const [selectedTrashCircuitIds, setSelectedTrashCircuitIds] = useState([]);
+  const [trashPermanentAction, setTrashPermanentAction] = useState(null);
+  const [trashActionBusy, setTrashActionBusy] = useState(false);
   const [expandedCircuitId, setExpandedCircuitId] = useState(null);
   const [restoredTournamentId, setRestoredTournamentId] = useState(null);
   const circuitPersistenceQueueRef = useRef(Promise.resolve());
@@ -8764,7 +8802,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   useEffect(() => { tournamentsRef.current = tournaments; }, [tournaments]);
   useEffect(() => { trashTournamentsRef.current = trashTournaments; }, [trashTournaments]);
+  useEffect(() => { trashCircuitsRef.current = trashCircuits; }, [trashCircuits]);
   useEffect(() => { circuitsRef.current = circuits; }, [circuits]);
+  useEffect(() => {
+    const availableIds = new Set(trashTournaments.map((item) => String(item.id)));
+    setSelectedTrashTournamentIds((current) => current.filter((id) => availableIds.has(id)));
+  }, [trashTournaments]);
+  useEffect(() => {
+    const availableIds = new Set(trashCircuits.map((item) => String(item.id)));
+    setSelectedTrashCircuitIds((current) => current.filter((id) => availableIds.has(id)));
+  }, [trashCircuits]);
   selectedRef.current = selected;
 
   function getRelativeAppRoute() {
@@ -9313,6 +9360,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   });
 
   function normalizeCircuitRow(row) {
+    const rankingSettings = normalizeCircuitRankingSettings(row.ranking_settings || row.rankingSettings);
     return {
       id: row.id,
       name: row.name || "",
@@ -9322,7 +9370,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       tournamentIds: Array.isArray(row.tournament_ids) ? row.tournament_ids : [],
       rankingCriteria: row.ranking_criteria || defaultRankingCriteria,
       rankingCriteriaMode: row.ranking_criteria_mode === "manual" ? "manual" : "automatic",
-      rankingSettings: normalizeCircuitRankingSettings(row.ranking_settings || row.rankingSettings),
+      rankingSettings,
+      deletedAt: rankingSettings.deletedAt,
       rankingHistory: row.rankingHistory || {},
       updatedAt: row.updated_at,
       revision: getCollaborationRevision(row),
@@ -9331,6 +9380,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function loadCircuits({ silentError = false, retryAfterRealtime = true } = {}) {
     const realtimeEpoch = circuitRealtimeEpochRef.current;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const deleteLimit = thirtyDaysAgo.toISOString();
     const { data, error } = await supabase
       .from("circuits")
       .select("*")
@@ -9385,8 +9437,26 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       rankingHistory: historyByCircuit[circuit.id] || {},
     }));
 
-    const currentCircuitsById = new Map(circuitsRef.current.map((item) => [String(item.id), item]));
-    const reconciledCircuits = loadedCircuits.map((loadedCircuit) => {
+    const expiredTrashCircuits = loadedCircuits.filter((circuit) => (
+      circuit.deletedAt && circuit.deletedAt < deleteLimit
+    ));
+    if (expiredTrashCircuits.length) {
+      const { error: purgeError } = await supabase
+        .from("circuits")
+        .delete()
+        .eq("user_id", user.id)
+        .in("id", expiredTrashCircuits.map((circuit) => circuit.id));
+      if (purgeError) console.error("Erro ao excluir circuitos expirados da lixeira:", purgeError);
+    }
+
+    const validCircuits = loadedCircuits.filter((circuit) => (
+      !circuit.deletedAt || circuit.deletedAt >= deleteLimit
+    ));
+
+    const currentCircuitsById = new Map(
+      [...circuitsRef.current, ...trashCircuitsRef.current].map((item) => [String(item.id), item])
+    );
+    const reconciledCircuits = validCircuits.map((loadedCircuit) => {
       const currentCircuit = currentCircuitsById.get(String(loadedCircuit.id));
       if (!currentCircuit || compareCollaborationVersions(loadedCircuit, currentCircuit) >= 0) {
         return loadedCircuit;
@@ -9398,9 +9468,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           : loadedCircuit.rankingHistory,
       };
     });
-    const sortedCircuits = sortCircuitsForDisplay(reconciledCircuits);
+    const sortedCircuits = sortCircuitsForDisplay(reconciledCircuits.filter((circuit) => !circuit.deletedAt));
+    const nextTrashCircuits = reconciledCircuits.filter((circuit) => circuit.deletedAt);
     circuitsRef.current = sortedCircuits;
+    trashCircuitsRef.current = nextTrashCircuits;
     setCircuits(sortedCircuits);
+    setTrashCircuits(nextTrashCircuits);
     return sortedCircuits;
   }
 
@@ -10151,32 +10224,66 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function deleteCircuit() {
     if (!circuitDeleteTarget) return;
-    if (!ensureCloudConnection("excluir o circuito")) return;
-    const circuitId = circuitDeleteTarget.id;
-    let circuitDelete = supabase
+    if (!ensureCloudConnection("mover o circuito para a lixeira")) return;
+
+    const target = circuitDeleteTarget;
+    const circuitId = target.id;
+    const deletedAt = new Date().toISOString();
+    const previousCircuits = circuits;
+    const previousTrashCircuits = trashCircuits;
+    const deletedRankingSettings = {
+      ...normalizeCircuitRankingSettings(target.rankingSettings),
+      deletedAt,
+    };
+    const deletedCircuit = {
+      ...target,
+      deletedAt,
+      rankingSettings: deletedRankingSettings,
+      updatedAt: deletedAt,
+    };
+
+    setCircuitDeleteTarget(null);
+    saveCircuits(circuits.filter((item) => item.id !== circuitId));
+    trashCircuitsRef.current = [
+      deletedCircuit,
+      ...trashCircuitsRef.current.filter((item) => item.id !== circuitId),
+    ];
+    setTrashCircuits(trashCircuitsRef.current);
+
+    let circuitUpdate = supabase
       .from("circuits")
-      .delete()
+      .update({ ranking_settings: deletedRankingSettings, updated_at: deletedAt })
       .eq("id", circuitId)
       .eq("user_id", user.id);
-    if (circuitDeleteTarget.updatedAt) circuitDelete = circuitDelete.eq("updated_at", circuitDeleteTarget.updatedAt);
-    const { data: deletedCircuit, error } = await circuitDelete.select("id").maybeSingle();
+    if (target.updatedAt) circuitUpdate = circuitUpdate.eq("updated_at", target.updatedAt);
+    const { data: movedRow, error } = await circuitUpdate.select("*").maybeSingle();
 
-    if (error || !deletedCircuit) {
+    if (error || !movedRow) {
+      saveCircuits(previousCircuits);
+      trashCircuitsRef.current = previousTrashCircuits;
+      setTrashCircuits(previousTrashCircuits);
       console.error("Erro ao excluir circuito:", error);
       showNotice(
         error ? "error" : "warning",
-        error ? "Erro ao excluir" : "Circuito atualizado em outro dispositivo",
-        error ? "Não foi possível excluir o circuito no Supabase." : "Confira a versão mais recente antes de excluir."
+        error ? "Erro ao mover" : "Circuito atualizado em outro dispositivo",
+        error ? "Não foi possível mover o circuito para a lixeira." : "Confira a versão mais recente antes de movê-lo."
       );
       return;
     }
 
-    const nextCircuits = circuits.filter((item) => item.id !== circuitId);
-    saveCircuits(nextCircuits);
-    await syncPublicArenaDirectory(tournaments, nextCircuits);
+    const confirmedCircuit = {
+      ...normalizeCircuitRow(movedRow),
+      rankingHistory: target.rankingHistory || {},
+    };
+    trashCircuitsRef.current = [
+      confirmedCircuit,
+      ...trashCircuitsRef.current.filter((item) => item.id !== circuitId),
+    ];
+    setTrashCircuits(trashCircuitsRef.current);
+    await syncPublicArenaDirectory(tournaments, circuitsRef.current);
     if (circuitEditForm?.id === circuitId) setCircuitEditForm(null);
-    setCircuitDeleteTarget(null);
-    showNotice("success", "Circuito excluído", "O circuito foi removido do Supabase. Os torneios continuam salvos.");
+    cacheCurrentDashboard();
+    showNotice("success", "Circuito movido para a lixeira", "Você pode recuperá-lo em até 30 dias.");
   }
 
   function normalizeCircuitPlayerKey(value, isTeam = false) {
@@ -11227,12 +11334,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         const cachedTournaments = Array.isArray(cached.tournaments) ? cached.tournaments : [];
         const cachedTrash = Array.isArray(cached.trashTournaments) ? cached.trashTournaments : [];
         const cachedCircuits = Array.isArray(cached.circuits) ? cached.circuits : [];
+        const cachedTrashCircuits = Array.isArray(cached.trashCircuits) ? cached.trashCircuits : [];
         tournamentsRef.current = cachedTournaments;
         trashTournamentsRef.current = cachedTrash;
         circuitsRef.current = cachedCircuits;
+        trashCircuitsRef.current = cachedTrashCircuits;
         setTournaments(cachedTournaments);
         setTrashTournaments(cachedTrash);
         setCircuits(cachedCircuits);
+        setTrashCircuits(cachedTrashCircuits);
         setDashboardUsingOfflineCache(true);
       }
 
@@ -11283,6 +11393,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           tournaments: synchronizedTournaments,
           trashTournaments: trashTournamentsRef.current,
           circuits: rankedCircuits,
+          trashCircuits: trashCircuitsRef.current,
         });
         setDashboardUsingOfflineCache(false);
         setNetworkOnline(true);
@@ -11315,6 +11426,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       tournaments: tournamentsRef.current,
       trashTournaments: trashTournamentsRef.current,
       circuits: circuitsRef.current,
+      trashCircuits: trashCircuitsRef.current,
     });
   }
 
@@ -11366,17 +11478,30 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (eventType === "DELETE") {
       saveCircuits(circuitsRef.current.filter((item) => item.id !== row.id));
+      trashCircuitsRef.current = trashCircuitsRef.current.filter((item) => item.id !== row.id);
+      setTrashCircuits(trashCircuitsRef.current);
       cacheCurrentDashboard();
       return;
     }
 
-    const previous = circuitsRef.current.find((item) => item.id === row.id);
+    const previous = circuitsRef.current.find((item) => item.id === row.id)
+      || trashCircuitsRef.current.find((item) => item.id === row.id);
     if (previous && compareCollaborationVersions(row, previous) < 0) return;
     const normalized = {
       ...normalizeCircuitRow(row),
       rankingHistory: previous?.rankingHistory || {},
     };
-    saveCircuits([normalized, ...circuitsRef.current.filter((item) => item.id !== row.id)]);
+    if (normalized.deletedAt) {
+      saveCircuits(circuitsRef.current.filter((item) => item.id !== row.id));
+      trashCircuitsRef.current = [
+        normalized,
+        ...trashCircuitsRef.current.filter((item) => item.id !== row.id),
+      ];
+    } else {
+      saveCircuits([normalized, ...circuitsRef.current.filter((item) => item.id !== row.id)]);
+      trashCircuitsRef.current = trashCircuitsRef.current.filter((item) => item.id !== row.id);
+    }
+    setTrashCircuits(trashCircuitsRef.current);
     cacheCurrentDashboard();
   }
 
@@ -11878,8 +12003,104 @@ setNewPublicInfo({
     showNotice("success", "Torneio recuperado", "O torneio voltou para o histórico.");
   }
 
-  function getTrashDaysLeft(tournament) {
-    const baseDate = tournament.data?.deletedAt || tournament.updated_at || tournament.created_at;
+  async function restoreCircuit(circuit) {
+    if (!ensureCloudConnection("recuperar o circuito")) return;
+    const restoredSettings = {
+      ...normalizeCircuitRankingSettings(circuit.rankingSettings),
+      deletedAt: "",
+    };
+    let restoreUpdate = supabase
+      .from("circuits")
+      .update({ ranking_settings: restoredSettings, updated_at: new Date().toISOString() })
+      .eq("id", circuit.id)
+      .eq("user_id", user.id);
+    if (circuit.updatedAt) restoreUpdate = restoreUpdate.eq("updated_at", circuit.updatedAt);
+    const { data: restoredRow, error } = await restoreUpdate.select("*").maybeSingle();
+
+    if (error || !restoredRow) {
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Erro ao recuperar" : "Circuito atualizado em outro dispositivo",
+        error ? "Não foi possível recuperar este circuito." : "Atualize a lixeira e tente novamente."
+      );
+      console.error(error);
+      return;
+    }
+
+    const restoredCircuit = {
+      ...normalizeCircuitRow(restoredRow),
+      rankingHistory: circuit.rankingHistory || {},
+    };
+    trashCircuitsRef.current = trashCircuitsRef.current.filter((item) => item.id !== circuit.id);
+    setTrashCircuits(trashCircuitsRef.current);
+    saveCircuits([restoredCircuit, ...circuitsRef.current.filter((item) => item.id !== circuit.id)]);
+    setSelectedTrashCircuitIds((current) => current.filter((id) => id !== String(circuit.id)));
+    await syncPublicArenaDirectory(tournamentsRef.current, circuitsRef.current);
+    cacheCurrentDashboard();
+    showNotice("success", "Circuito recuperado", "O circuito voltou para a área de circuitos.");
+  }
+
+  function toggleTrashSelection(kind, itemId) {
+    const normalizedId = String(itemId);
+    const setter = kind === "circuits" ? setSelectedTrashCircuitIds : setSelectedTrashTournamentIds;
+    setter((current) => current.includes(normalizedId)
+      ? current.filter((id) => id !== normalizedId)
+      : [...current, normalizedId]);
+  }
+
+  function requestPermanentTrashDeletion(kind, ids, all = false) {
+    const normalizedIds = [...new Set((ids || []).map((id) => String(id)).filter(Boolean))];
+    if (!normalizedIds.length) return;
+    setTrashPermanentAction({ kind, ids: normalizedIds, all });
+  }
+
+  async function confirmPermanentTrashDeletion() {
+    if (!trashPermanentAction || trashActionBusy) return;
+    if (!ensureCloudConnection("excluir definitivamente os itens da lixeira")) return;
+    const { kind, ids, all } = trashPermanentAction;
+    setTrashActionBusy(true);
+
+    const table = kind === "circuits" ? "circuits" : "tournaments";
+    const { data: deletedRows, error } = await supabase
+      .from(table)
+      .delete()
+      .eq("user_id", user.id)
+      .in("id", ids)
+      .select("id");
+
+    if (error || (deletedRows || []).length !== ids.length) {
+      console.error(`Erro ao excluir definitivamente ${kind}:`, error);
+      setTrashActionBusy(false);
+      showNotice(
+        error ? "error" : "warning",
+        error ? "Erro ao excluir definitivamente" : "Alguns itens foram atualizados em outro dispositivo",
+        "Atualize a lixeira e tente novamente. Nenhum item que não tenha sido confirmado pelo servidor será removido da tela."
+      );
+      return;
+    }
+
+    if (kind === "circuits") {
+      trashCircuitsRef.current = trashCircuitsRef.current.filter((item) => !ids.includes(String(item.id)));
+      setTrashCircuits(trashCircuitsRef.current);
+      setSelectedTrashCircuitIds((current) => current.filter((id) => !ids.includes(id)));
+    } else {
+      trashTournamentsRef.current = trashTournamentsRef.current.filter((item) => !ids.includes(String(item.id)));
+      setTrashTournaments(trashTournamentsRef.current);
+      setSelectedTrashTournamentIds((current) => current.filter((id) => !ids.includes(id)));
+    }
+
+    setTrashActionBusy(false);
+    setTrashPermanentAction(null);
+    cacheCurrentDashboard();
+    showNotice(
+      "success",
+      all ? "Lixeira limpa" : "Exclusão definitiva concluída",
+      `${ids.length} ${ids.length === 1 ? "item foi excluído" : "itens foram excluídos"} definitivamente.`
+    );
+  }
+
+  function getTrashDaysLeft(item) {
+    const baseDate = item.data?.deletedAt || item.deletedAt || item.updated_at || item.updatedAt || item.created_at;
     if (!baseDate) return 30;
     const deletedAt = new Date(baseDate).getTime();
     const expiresAt = deletedAt + 30 * 24 * 60 * 60 * 1000;
@@ -12013,6 +12234,7 @@ setNewPublicInfo({
       tournaments: nextTournaments,
       trashTournaments: trashTournamentsRef.current,
       circuits: circuitsRef.current,
+      trashCircuits: trashCircuitsRef.current,
     });
     void (async () => {
       const criteriaCircuits = await syncAutomaticCircuitCriteria(nextTournaments, circuitsRef.current);
@@ -12032,6 +12254,7 @@ setNewPublicInfo({
         tournaments: tournamentsRef.current,
         trashTournaments: trashTournamentsRef.current,
         circuits: circuitsRef.current,
+        trashCircuits: trashCircuitsRef.current,
       });
     })().catch((error) => {
       console.error("Erro ao atualizar o ranking derivado do circuito:", error);
@@ -12877,6 +13100,13 @@ setNewPublicInfo({
         target={circuitDeleteTarget}
         onCancel={() => setCircuitDeleteTarget(null)}
         onConfirm={deleteCircuit}
+      />
+
+      <ConfirmTrashPermanentDeleteModal
+        action={trashPermanentAction}
+        busy={trashActionBusy}
+        onCancel={() => { if (!trashActionBusy) setTrashPermanentAction(null); }}
+        onConfirm={() => void confirmPermanentTrashDeletion()}
       />
 
       <ConfirmModalityChangeModal
@@ -14250,51 +14480,127 @@ setNewPublicInfo({
 </section>
 )}
 
-{activePanel === "lixeira" && (
-<section className="card trashCard">
-  <div className="trashHeader">
-    <div>
-      <h2>Lixeira</h2>
-      <p>Torneios apagados ficam aqui por 30 dias antes da exclusão definitiva.</p>
-    </div>
-    <span>{trashTournaments.length} item(ns)</span>
-  </div>
+{activePanel === "lixeira" && (() => {
+  const showingCircuits = trashCategory === "circuits";
+  const sourceItems = showingCircuits ? trashCircuits : trashTournaments;
+  const selectedIds = showingCircuits ? selectedTrashCircuitIds : selectedTrashTournamentIds;
+  const normalizedTerm = normalizeModalitySearch(trashSearch);
+  const visibleItems = sourceItems.filter((item) => {
+    if (!normalizedTerm) return true;
+    const details = item.data || {};
+    const haystack = showingCircuits
+      ? `${item.name} ${item.startDate} ${item.endDate}`
+      : `${item.name} ${getModalityDisplayName(item.type)} ${details.gender || ""} ${details.location || ""}`;
+    return normalizeModalitySearch(haystack).includes(normalizedTerm);
+  });
 
-  {trashTournaments.length === 0 ? (
-    <p>Nenhum torneio na lixeira.</p>
-  ) : (
-    <div className="tournamentList trashList">
-      {trashTournaments.map((t) => {
-        const details = t.data || {};
-        const daysLeft = getTrashDaysLeft(t);
+  return (
+    <section className="card trashCard">
+      <div className="trashHeader">
+        <div>
+          <span className="trashEyebrow">Itens excluídos</span>
+          <h2>Lixeira</h2>
+          <p>Torneios e circuitos ficam aqui por 30 dias antes da exclusão definitiva.</p>
+        </div>
+        <span>{trashTournaments.length + trashCircuits.length} item(ns)</span>
+      </div>
 
-        return (
-          <div className="tournamentItem trashTournamentItem" key={t.id}>
-            <div className="tournamentInfo">
-              <div className="tournamentTitleRow">
-                <strong>{t.name}</strong>
-                <span className="tournamentTypeBadge">{getModalityDisplayName(t.type)}</span>
-              </div>
+      <div className="trashToolbar">
+        <div className="trashCategoryTabs" role="tablist" aria-label="Tipos de itens na lixeira">
+          <button type="button" role="tab" aria-selected={!showingCircuits} className={!showingCircuits ? "active" : ""} onClick={() => setTrashCategory("tournaments")}>
+            <Trophy aria-hidden="true" /> Torneios <span>{trashTournaments.length}</span>
+          </button>
+          <button type="button" role="tab" aria-selected={showingCircuits} className={showingCircuits ? "active" : ""} onClick={() => setTrashCategory("circuits")}>
+            <GitBranch aria-hidden="true" /> Circuitos <span>{trashCircuits.length}</span>
+          </button>
+        </div>
 
-              <div className="tournamentMeta">
-                {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> Várias categorias</span> : null}
-                {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
-                {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
-                {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
-                <span><Trash2 aria-hidden="true" /> Exclui definitivamente em {daysLeft} dia(s)</span>
-              </div>
-            </div>
+        <label className="trashSearchField">
+          <Search aria-hidden="true" />
+          <input value={trashSearch} onChange={(event) => setTrashSearch(event.target.value)} placeholder={showingCircuits ? "Pesquisar circuito..." : "Pesquisar torneio..."} />
+          {trashSearch ? <button type="button" aria-label="Limpar pesquisa" onClick={() => setTrashSearch("")}><X aria-hidden="true" /></button> : null}
+        </label>
 
-            <div className="tournamentActions">
-              <button type="button" className="actionRestoreBtn" onClick={() => restoreTournament(t)}>Recuperar</button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  )}
-</section>
-)}
+        <div className="trashBulkActions">
+          {selectedIds.length ? (
+            <button type="button" className="trashDeleteSelectedBtn" onClick={() => requestPermanentTrashDeletion(trashCategory, selectedIds)}>
+              <Trash2 aria-hidden="true" /> Excluir selecionados ({selectedIds.length})
+            </button>
+          ) : null}
+          <button type="button" className="trashEmptyBtn" disabled={!sourceItems.length} onClick={() => requestPermanentTrashDeletion(trashCategory, sourceItems.map((item) => item.id), true)}>
+            <Trash2 aria-hidden="true" /> Excluir todos definitivamente
+          </button>
+        </div>
+      </div>
+
+      {!sourceItems.length ? (
+        <div className="trashEmptyState">
+          <Trash2 aria-hidden="true" />
+          <strong>Nenhum {showingCircuits ? "circuito" : "torneio"} na lixeira</strong>
+          <span>Os itens movidos para cá poderão ser recuperados durante 30 dias.</span>
+        </div>
+      ) : !visibleItems.length ? (
+        <div className="trashEmptyState compact">
+          <Search aria-hidden="true" />
+          <strong>Nenhum resultado encontrado</strong>
+          <span>Tente pesquisar com outro nome.</span>
+        </div>
+      ) : (
+        <div className="trashList">
+          {visibleItems.map((item) => {
+            const details = item.data || {};
+            const daysLeft = getTrashDaysLeft(item);
+            const selectedItem = selectedIds.includes(String(item.id));
+            return (
+              <article
+                className={`trashItem ${selectedItem ? "selected" : ""}`}
+                key={`${trashCategory}-${item.id}`}
+                role="checkbox"
+                aria-checked={selectedItem}
+                tabIndex={0}
+                onClick={() => toggleTrashSelection(trashCategory, item.id)}
+                onKeyDown={(event) => {
+                  if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    toggleTrashSelection(trashCategory, item.id);
+                  }
+                }}
+              >
+                <span className="trashItemCheck" aria-hidden="true">{selectedItem ? "✓" : ""}</span>
+                <div className="trashItemInfo">
+                  <div className="trashItemTitleRow">
+                    <strong>{item.name}</strong>
+                    <span className="trashItemType">{showingCircuits ? "Circuito" : getModalityDisplayName(item.type)}</span>
+                  </div>
+                  <div className="trashItemMeta">
+                    {showingCircuits ? (
+                      <>
+                        {(item.startDate || item.endDate) ? <span><CalendarDays aria-hidden="true" /> {[item.startDate && formatDateBR(item.startDate), item.endDate && formatDateBR(item.endDate)].filter(Boolean).join(" até ")}</span> : null}
+                        <span><Trophy aria-hidden="true" /> {(item.tournamentIds || []).length} torneio(s) vinculado(s)</span>
+                      </>
+                    ) : (
+                      <>
+                        {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> Várias categorias</span> : null}
+                        {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
+                        {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
+                        {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
+                      </>
+                    )}
+                    <span className="trashExpiry"><Trash2 aria-hidden="true" /> Exclusão automática em {daysLeft} dia(s)</span>
+                  </div>
+                </div>
+                <div className="trashItemActions">
+                  <button type="button" className="actionRestoreBtn" onClick={(event) => { event.stopPropagation(); if (showingCircuits) void restoreCircuit(item); else void restoreTournament(item); }}>Recuperar</button>
+                  <button type="button" className="trashPermanentBtn" onClick={(event) => { event.stopPropagation(); requestPermanentTrashDeletion(trashCategory, [item.id]); }}>Excluir definitivamente</button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+})()}
 
 {activePanel === "ajustes" && (
 <>

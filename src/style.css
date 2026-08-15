@@ -7680,15 +7680,85 @@ body {
     display: none;
   }
 }
-/* Lixeira de torneios */
-.trashCard { display: flex; flex-direction: column; gap: 16px; }
+/* Lixeira de torneios e circuitos */
+.trashCard { display: flex; flex-direction: column; gap: 18px; }
 .trashHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.trashHeader h2 { margin-bottom: 4px; }
-.trashHeader p { margin: 0; color: #64748b; }
-.trashHeader span { background: #f1f5f9; color: #334155; border-radius: 999px; padding: 8px 12px; font-weight: 800; font-size: 0.85rem; white-space: nowrap; }
-.trashTournamentItem { border-color: #e2e8f0; background: #fbfdff; }
-.trashTournamentItem .tournamentActions button { background: linear-gradient(135deg, #16a34a, #22c55e); }
-@media (max-width: 720px) { .trashHeader { flex-direction: column; } }
+.trashHeader h2 { margin: 2px 0 4px; color: var(--ui-text-strong, #0f172a); }
+.trashHeader p { margin: 0; color: var(--ui-muted, #64748b); }
+.trashHeader > span { background: var(--ui-surface-soft, #f1f5f9); color: var(--ui-text, #334155); border: 1px solid var(--ui-border, #dbe4ef); border-radius: 999px; padding: 8px 12px; font-weight: 800; font-size: .85rem; white-space: nowrap; }
+.trashEyebrow { display: block; color: #ea580c; font-size: .72rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+
+.trashToolbar { display: grid; grid-template-columns: auto minmax(220px, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--ui-border, #dbe4ef); border-radius: 18px; background: var(--ui-surface-soft, #f8fafc); }
+.trashCategoryTabs { display: flex; gap: 8px; }
+.trashCategoryTabs button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 14px; border: 1px solid var(--ui-border, #cbd5e1); border-radius: 13px; background: var(--ui-surface-raised, #fff); color: var(--ui-text, #334155); font-weight: 900; cursor: pointer; }
+.trashCategoryTabs button svg { width: 17px; height: 17px; }
+.trashCategoryTabs button span { min-width: 25px; padding: 3px 7px; border-radius: 999px; background: var(--ui-surface-soft, #eef2f7); font-size: .74rem; }
+.trashCategoryTabs button:first-child.active { border-color: #8b5cf6; background: #7c3aed; color: #fff; box-shadow: 0 8px 20px rgba(124, 58, 237, .22); }
+.trashCategoryTabs button:last-child.active { border-color: #0284c7; background: #0369a1; color: #fff; box-shadow: 0 8px 20px rgba(3, 105, 161, .22); }
+.trashCategoryTabs button.active span { background: rgba(255,255,255,.2); color: #fff; }
+
+.trashSearchField { display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--ui-border, #cbd5e1); border-radius: 13px; background: var(--ui-surface-raised, #fff); color: var(--ui-muted, #64748b); }
+.trashSearchField:focus-within { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139, 92, 246, .14); }
+.trashSearchField > svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.trashSearchField input { width: 100%; min-width: 0; border: 0 !important; outline: 0 !important; padding: 0 !important; background: transparent !important; color: var(--ui-text-strong, #0f172a) !important; box-shadow: none !important; }
+.trashSearchField button { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border: 0; border-radius: 9px; background: transparent; color: var(--ui-muted, #64748b); cursor: pointer; }
+.trashSearchField button svg { width: 16px; height: 16px; }
+
+.trashBulkActions { display: flex; justify-content: flex-end; gap: 8px; }
+.trashBulkActions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 13px; border-radius: 13px; font-weight: 900; cursor: pointer; }
+.trashBulkActions button svg { width: 17px; height: 17px; }
+.trashDeleteSelectedBtn { border: 1px solid #fb923c; background: #ffedd5; color: #c2410c; }
+.trashEmptyBtn { border: 1px solid #ef4444; background: #dc2626; color: #fff; }
+.trashEmptyBtn:disabled { opacity: .45; cursor: not-allowed; }
+
+.trashList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.trashItem { position: relative; display: grid; grid-template-rows: 1fr auto; gap: 16px; min-width: 0; min-height: 245px; padding: 20px 18px 16px; border: 1px solid var(--ui-border, #dbe4ef); border-radius: 18px; background: var(--ui-surface-raised, #fff); color: var(--ui-text, #334155); box-shadow: 0 12px 28px rgba(15, 23, 42, .05); cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.trashItem:hover { border-color: #a78bfa; transform: translateY(-1px); box-shadow: 0 14px 32px rgba(15, 23, 42, .09); }
+.trashItem.selected { border-color: #8b5cf6; background: color-mix(in srgb, #8b5cf6 8%, var(--ui-surface-raised, #fff)); box-shadow: 0 0 0 3px rgba(139, 92, 246, .14), 0 14px 32px rgba(76, 29, 149, .12); }
+.trashItem:focus-visible { outline: 3px solid rgba(139, 92, 246, .25); outline-offset: 2px; }
+.trashItemCheck { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 27px; height: 27px; border: 2px solid var(--ui-border, #cbd5e1); border-radius: 9px; background: var(--ui-surface-raised, #fff); color: transparent; font-size: .8rem; font-weight: 950; }
+.trashItem.selected .trashItemCheck { border-color: #7c3aed; background: #7c3aed; color: #fff; }
+.trashItemInfo { display: grid; align-content: start; gap: 14px; min-width: 0; padding-right: 32px; }
+.trashItemTitleRow { display: grid; gap: 8px; justify-items: start; }
+.trashItemTitleRow > strong { max-width: 100%; overflow-wrap: anywhere; color: var(--ui-text-strong, #0f172a); font-size: 1rem; }
+.trashItemType { display: inline-flex; max-width: 100%; padding: 5px 9px; border: 1px solid #fdba74; border-radius: 999px; background: color-mix(in srgb, #f97316 8%, var(--ui-surface-raised, #fff)); color: #c2410c; font-size: .7rem; font-weight: 900; }
+.trashItemMeta { display: grid; gap: 8px; min-width: 0; }
+.trashItemMeta span { display: flex; align-items: flex-start; gap: 7px; min-width: 0; color: var(--ui-muted, #64748b); font-size: .78rem; font-weight: 750; line-height: 1.35; overflow-wrap: anywhere; }
+.trashItemMeta svg { width: 15px; height: 15px; flex: 0 0 15px; margin-top: 1px; }
+.trashItemMeta .trashExpiry { color: #c2410c; }
+.trashItemActions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.trashItemActions button { min-height: 42px; padding: 8px 10px; border-radius: 12px; font-size: .76rem; font-weight: 900; cursor: pointer; }
+.trashItemActions .actionRestoreBtn { border: 1px solid #16a34a !important; background: #16a34a !important; color: #fff !important; }
+.trashPermanentBtn { border: 1px solid #dc2626; background: #dc2626; color: #fff; }
+
+.trashEmptyState { display: grid; justify-items: center; gap: 8px; padding: 42px 20px; border: 1px dashed var(--ui-border, #cbd5e1); border-radius: 18px; background: var(--ui-surface-soft, #f8fafc); color: var(--ui-muted, #64748b); text-align: center; }
+.trashEmptyState svg { width: 28px; height: 28px; color: #94a3b8; }
+.trashEmptyState strong { color: var(--ui-text-strong, #0f172a); }
+.trashEmptyState.compact { padding: 28px 20px; }
+
+.theme-dark .trashDeleteSelectedBtn,
+html[data-theme="dark"] .trashDeleteSelectedBtn { border-color: #f97316; background: #431407; color: #fdba74; }
+.theme-dark .trashItemType,
+html[data-theme="dark"] .trashItemType { border-color: #9a3412; color: #fdba74; }
+.theme-dark .trashItemMeta .trashExpiry,
+html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
+
+@media (max-width: 1080px) {
+  .trashToolbar { grid-template-columns: 1fr 1fr; }
+  .trashBulkActions { grid-column: 1 / -1; }
+  .trashList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .trashHeader { flex-direction: column; }
+  .trashToolbar { grid-template-columns: 1fr; padding: 10px; }
+  .trashCategoryTabs { display: grid; grid-template-columns: 1fr 1fr; }
+  .trashCategoryTabs button { min-width: 0; padding-inline: 8px; }
+  .trashBulkActions { grid-column: auto; display: grid; grid-template-columns: 1fr; }
+  .trashList { grid-template-columns: 1fr; }
+  .trashItem { min-height: 0; padding: 18px 15px 14px; }
+  .trashItemActions { grid-template-columns: 1fr; }
+}
 
 /* Mobile: mostrar todas as abas, incluindo Lixeira */
 @media (max-width: 900px) {
@@ -19163,9 +19233,12 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 }
 
 /* Modais de circuito */
-.proDashboard .editTournamentOverlay,
-.proDashboard .confirmOverlay {
+.proDashboard .editTournamentOverlay {
   z-index: 20000 !important;
+}
+
+.proDashboard .confirmOverlay {
+  z-index: 23000 !important;
 }
 
 .proDashboard .editTournamentHeader h2 {
