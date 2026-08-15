@@ -246,9 +246,9 @@ function drawCenteredCanvasLines(context, value, centerX, startY, maxWidth, {
 }
 
 const RANKING_SHARE_CANVAS_HEIGHT = 1350;
-const RANKING_SHARE_CONTENT_HEIGHT = 810;
-const RANKING_SHARE_ROW_HEIGHT = 98;
-const RANKING_SHARE_GROUP_OVERHEAD = 86;
+const RANKING_SHARE_CONTENT_HEIGHT = 850;
+const RANKING_SHARE_ROW_HEIGHT = 64;
+const RANKING_SHARE_GROUP_OVERHEAD = 64;
 
 function normalizeRankingExportGroups(groups = []) {
   return groups
@@ -603,13 +603,13 @@ async function createRankingShareFile({
 
   let y = 432;
   normalizedGroups.forEach((group) => {
-    const panelHeight = 74 + (group.rows.length * RANKING_SHARE_ROW_HEIGHT);
+    const panelHeight = 64 + (group.rows.length * RANKING_SHARE_ROW_HEIGHT);
     drawRoundedRect(context, 52, y, 976, panelHeight, 28, "rgba(255, 255, 255, 0.96)", "rgba(255, 255, 255, 0.35)");
     context.fillStyle = "#111b3f";
-    context.font = "900 25px Arial";
+    context.font = "900 23px Arial";
     context.textAlign = "left";
-    context.fillText(group.title, 84, y + 45);
-    y += 64;
+    context.fillText(group.title, 84, y + 38);
+    y += 50;
 
     group.rows.forEach((row, index) => {
       const absoluteIndex = Number(group.startIndex || 0) + index;
@@ -620,29 +620,29 @@ async function createRankingShareFile({
           : absoluteIndex === 2
             ? "#ffeadb"
             : absoluteIndex % 2 === 0 ? "#f6f8fc" : "#ffffff";
-      drawRoundedRect(context, 72, y, 936, 88, 15, rowFill);
+      drawRoundedRect(context, 72, y, 936, 56, 14, rowFill);
       const medalColor = absoluteIndex === 0 ? "#d97706" : absoluteIndex === 1 ? "#64748b" : absoluteIndex === 2 ? "#c2410c" : "#334155";
       context.fillStyle = medalColor;
-      context.font = `900 ${absoluteIndex < 3 ? 23 : 20}px Arial`;
+      context.font = `900 ${absoluteIndex < 3 ? 20 : 18}px Arial`;
       context.textAlign = "center";
-      context.fillText(`${absoluteIndex + 1}º`, 112, y + 53);
+      context.fillText(`${absoluteIndex + 1}º`, 112, y + 35);
       context.fillStyle = "#111827";
-      context.font = "800 21px Arial";
+      context.font = "800 18px Arial";
       context.textAlign = "left";
-      context.fillText(truncateCanvasText(context, row.name, 365), 154, y + 53);
+      context.fillText(truncateCanvasText(context, row.name, 365), 154, y + 35);
 
       const stats = exportColumns
         .filter(({ key }) => row[key] !== undefined)
         .map(({ key, label }) => `${label || getRankingColumnLabel(key)}: ${Number(row[key] || 0)}`);
       context.fillStyle = "#475569";
-      context.font = "700 15px Arial";
+      context.font = "700 13px Arial";
       context.textAlign = "right";
       wrapCanvasItems(context, stats, 430).forEach((line, lineIndex) => {
-        context.fillText(line, 982, y + 27 + (lineIndex * 21));
+        context.fillText(line, 982, y + 18 + (lineIndex * 16));
       });
       y += RANKING_SHARE_ROW_HEIGHT;
     });
-    y += 22;
+    y += 14;
   });
 
   context.fillStyle = "rgba(255, 255, 255, 0.76)";
