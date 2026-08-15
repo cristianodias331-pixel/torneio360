@@ -17501,6 +17501,27 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .circuitGenderDivision { display: grid; gap: 12px; margin-top: 14px; padding: 14px; border: 1px solid var(--ui-border, #d7e0ec); border-radius: 16px; background: var(--ui-surface-muted, #f5f8fc); }
 
 .circuitExtraPointsPanel { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-border, #d7e0ec); }
+.circuitManualAdjustmentsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, #8b5cf6 30%, var(--ui-border, #d7e0ec));
+  border-radius: 16px;
+  background: color-mix(in srgb, #8b5cf6 6%, var(--ui-surface-muted, #f8fafc));
+  color: var(--ui-text, #334155);
+}
+.circuitManualAdjustmentsHeader > div { display: grid; gap: 3px; min-width: 0; }
+.circuitManualAdjustmentsHeader > div > span {
+  color: #7c3aed;
+  font-size: .7rem;
+  font-weight: 950;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.circuitManualAdjustmentsHeader strong { color: var(--ui-text-strong, #0d1b36); font-size: 1rem; }
+.circuitManualAdjustmentsHeader small { color: var(--ui-muted, #687992); font-size: .8rem; font-weight: 700; line-height: 1.4; }
 .proDashboard.playAppShell .circuitExtraPointsButton,
 .circuitExtraPointsButton { justify-self: start; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #8b5cf6 !important; background: color-mix(in srgb, #8b5cf6 14%, var(--ui-surface-raised, #fff)) !important; color: color-mix(in srgb, #6d28d9 76%, var(--ui-text-strong, #0d1b36)) !important; box-shadow: none !important; }
 .circuitExtraPointsButton svg { width: 17px; }
@@ -17520,6 +17541,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 
 html[data-theme="dark"] .combinedCircuitNotice,
 html[data-theme="dark"] .circuitGenderDivision,
+html[data-theme="dark"] .circuitManualAdjustmentsHeader,
 html[data-theme="dark"] .circuitExtraPointsContent,
 html[data-theme="dark"] .circuitExtraHistory > article { color: #dbe7f5; }
 
@@ -27563,6 +27585,7 @@ html[data-theme="dark"] .manualParticipantConfirmBox .confirmIcon { border-color
   .manualFormActions { grid-column: 1 / -1; }
 }
 @media (max-width: 620px) {
+  .circuitManualAdjustmentsHeader { padding: 13px; }
   .circuitRankingManualActions { display: grid; grid-template-columns: minmax(0, 1fr); }
   .circuitRankingManualActions > button { width: 100%; }
   .circuitManualParticipantContent { padding: 13px; }
