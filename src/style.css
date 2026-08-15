@@ -28146,3 +28146,147 @@ html[data-theme="dark"] .trashSearchField input {
 .modalityChangeConfirmOverlay {
   z-index: 40000 !important;
 }
+
+/* Pesquisa unificada: mesma leitura visual em todo o produto. */
+.platformUnifiedSearch {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  width: min(100%, 420px) !important;
+  max-width: 420px !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  box-sizing: border-box !important;
+  padding: 0 12px !important;
+  border: 1px solid #cbd8e8 !important;
+  border-radius: 14px !important;
+  background: #f8fbff !important;
+  color: #64748b !important;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .045) !important;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
+}
+
+.platformUnifiedSearch:focus-within {
+  border-color: #3b82f6 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .14), 0 7px 18px rgba(15, 23, 42, .07) !important;
+}
+
+.platformUnifiedSearch > svg {
+  width: 17px !important;
+  height: 17px !important;
+  flex: 0 0 17px !important;
+  color: #5e718a !important;
+}
+
+.platformUnifiedSearch input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: #17263a !important;
+  -webkit-text-fill-color: #17263a !important;
+  box-shadow: none !important;
+  font-size: .84rem !important;
+  font-weight: 700 !important;
+}
+
+.platformUnifiedSearch input::placeholder {
+  color: #8796aa !important;
+  -webkit-text-fill-color: #8796aa !important;
+  opacity: 1 !important;
+  font-size: .77rem !important;
+  font-weight: 650 !important;
+}
+
+html body .platformUnifiedSearch > button {
+  display: grid !important;
+  place-items: center !important;
+  width: 29px !important;
+  min-width: 29px !important;
+  height: 29px !important;
+  min-height: 29px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  box-shadow: none !important;
+}
+
+.platformUnifiedSearch > button:hover { background: #e8f0fa !important; }
+.platformUnifiedSearch > button svg { width: 15px !important; height: 15px !important; }
+
+.tournamentStatusSummary.eventListToolbar {
+  width: 100%;
+  align-items: center;
+}
+
+.eventListToolbar .eventListSearch {
+  flex: 0 1 360px;
+  width: min(100%, 360px) !important;
+  max-width: 360px !important;
+  margin-left: auto;
+}
+
+html[data-theme="dark"] .platformUnifiedSearch,
+.proDashboard.theme-dark .platformUnifiedSearch {
+  border-color: #34485f !important;
+  background: #0f1a28 !important;
+  color: #9dafc4 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .16) !important;
+}
+
+html[data-theme="dark"] .platformUnifiedSearch:focus-within,
+.proDashboard.theme-dark .platformUnifiedSearch:focus-within {
+  border-color: #60a5fa !important;
+  background: #121f2f !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, .16), 0 7px 20px rgba(0, 0, 0, .18) !important;
+}
+
+html[data-theme="dark"] .platformUnifiedSearch > svg,
+.proDashboard.theme-dark .platformUnifiedSearch > svg { color: #9dafc4 !important; }
+
+html[data-theme="dark"] .platformUnifiedSearch input,
+.proDashboard.theme-dark .platformUnifiedSearch input {
+  color: #eef4fb !important;
+  -webkit-text-fill-color: #eef4fb !important;
+}
+
+html[data-theme="dark"] .platformUnifiedSearch input::placeholder,
+.proDashboard.theme-dark .platformUnifiedSearch input::placeholder {
+  color: #8798ad !important;
+  -webkit-text-fill-color: #8798ad !important;
+}
+
+html[data-theme="dark"] body .platformUnifiedSearch > button,
+html body .proDashboard.theme-dark .platformUnifiedSearch > button {
+  color: #b8c6d8 !important;
+  -webkit-text-fill-color: #b8c6d8 !important;
+}
+
+html[data-theme="dark"] body .platformUnifiedSearch > button:hover,
+html body .proDashboard.theme-dark .platformUnifiedSearch > button:hover { background: #223248 !important; }
+
+@media (max-width: 720px) {
+  .platformUnifiedSearch,
+  .eventListToolbar .eventListSearch {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .eventListToolbar .eventListSearch {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .tournamentStatusSummary.eventListToolbar .eventListSearch {
+    grid-column: 1 / -1;
+  }
+}

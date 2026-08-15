@@ -131,7 +131,7 @@ assert.ok(
     && mainSource.includes('title: "Ranking individual"')
     && mainSource.includes('title: "Mistas"')
     && mainSource.includes('title: "Copas e modelos"')
-    && mainSource.includes('placeholder="Buscar modalidade..."')
+    && mainSource.includes('placeholder="Ex.: Super 8, Copa ou Simples"')
     && mainSource.includes("<ModalityPicker value={newType}")
     && mainSource.includes("<ModalityPicker value={item.type}")
     && styleSource.includes(".modalityPickerPanel")
@@ -142,6 +142,17 @@ assert.ok(
     && styleSource.includes("max-height: none !important")
     && mainSource.includes('querySelector(".playTopbar")'),
   "O seletor de modalidades perdeu a busca, os grupos, a seleção lilás ou a adaptação para celular."
+);
+
+assert.ok(
+  mainSource.includes('aria-label="Pesquisar torneios cadastrados"')
+    && mainSource.includes('aria-label="Pesquisar circuitos cadastrados"')
+    && mainSource.includes('placeholder="Ex.: nome, modalidade, categoria ou local"')
+    && mainSource.includes('placeholder="Ex.: nome do circuito, torneio ou modalidade"')
+    && styleSource.includes(".platformUnifiedSearch")
+    && styleSource.includes(".eventListToolbar .eventListSearch")
+    && styleSource.includes('.proDashboard.theme-dark .platformUnifiedSearch'),
+  "As pesquisas unificadas de torneios e circuitos perderam o filtro, o padrao visual ou o tema noturno."
 );
 
 assert.ok(

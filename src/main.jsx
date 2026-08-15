@@ -2602,9 +2602,9 @@ function ModalityPicker({ value, onChange, options = [], disabled = false, legac
               <div><strong>Escolha a modalidade</strong><span>Encontre pelo nome ou navegue pelas categorias.</span></div>
               <button type="button" className="modalityPickerClose" aria-label="Fechar" onClick={() => setOpen(false)}><X aria-hidden="true" /></button>
             </div>
-            <label className="modalityPickerSearch">
+            <label className="modalityPickerSearch platformUnifiedSearch">
               <Search aria-hidden="true" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar modalidade..." />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Ex.: Super 8, Copa ou Simples" />
               {search ? <button type="button" aria-label="Limpar busca" onClick={() => setSearch("")}><X aria-hidden="true" /></button> : null}
             </label>
             <div className="modalityPickerGroups">
@@ -7279,14 +7279,14 @@ function PublicArenaDirectorySection({ title = "Encontre uma arena", description
         <p>{description}</p>
       </div>
 
-      <label className="publicArenaSearch">
+      <label className="publicArenaSearch platformUnifiedSearch">
         <span className="srOnly">Pesquisar arenas</span>
+        <Search aria-hidden="true" />
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Busque por arena, organizador, cidade ou estado"
+          placeholder="Ex.: nome da arena, organizador ou cidade"
         />
-        <span aria-hidden="true">🔎</span>
       </label>
 
       {loading ? (
@@ -8586,13 +8586,13 @@ function TournamentWorkspaceTabs({
               </button>
             </header>
 
-            <label className="tournamentTabsSearch">
+            <label className="tournamentTabsSearch platformUnifiedSearch">
               <Search aria-hidden="true" />
               <input
                 type="search"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Buscar por nome, modalidade ou categoria"
+                placeholder="Ex.: nome, modalidade ou categoria"
                 autoFocus
               />
             </label>
@@ -8735,10 +8735,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [dragOverTournamentId, setDragOverTournamentId] = useState(null);
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
   const [tournamentStatusFilter, setTournamentStatusFilter] = useState("active");
+  const [tournamentSearch, setTournamentSearch] = useState("");
   const [createCircuitOpen, setCreateCircuitOpen] = useState(false);
   const [circuitTournamentTarget, setCircuitTournamentTarget] = useState(null);
   const [combineCircuitsOpen, setCombineCircuitsOpen] = useState(false);
   const [circuitStatusFilter, setCircuitStatusFilter] = useState("active");
+  const [circuitSearch, setCircuitSearch] = useState("");
   const [notice, setNotice] = useState(null);
   const [profileSubtab, setProfileSubtab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -9320,9 +9322,25 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     counts[status] = (counts[status] || 0) + 1;
     return counts;
   }, { active: 0, upcoming: 0, finished: 0 });
-  const organizerVisibleTournaments = tournaments.filter((item) => (
-    getTournamentLifecycleStatus(item) === tournamentStatusFilter
-  ));
+  const normalizedTournamentSearch = normalizeModalitySearch(tournamentSearch);
+  const organizerVisibleTournaments = tournaments.filter((item) => {
+    if (getTournamentLifecycleStatus(item) !== tournamentStatusFilter) return false;
+    if (!normalizedTournamentSearch) return true;
+
+    const details = item.data || {};
+    const searchable = [
+      item.name,
+      getModalityDisplayName(item.type),
+      details.eventName,
+      details.gender,
+      details.category,
+      details.location,
+      details.eventDate,
+      details.eventStartTime,
+    ].filter(Boolean).join(" ");
+
+    return normalizeModalitySearch(searchable).includes(normalizedTournamentSearch);
+  });
   const groupedTournaments = organizerVisibleTournaments.reduce((groups, item) => {
     const groupKey = item.data?.multiCategoryEvent === true && item.data?.eventGroupKey
       ? item.data.eventGroupKey
@@ -9347,9 +9365,27 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     counts[status] += 1;
     return counts;
   }, { active: 0, upcoming: 0, finished: 0 });
-  const visibleOrganizerCircuits = circuits.filter((circuit) => (
-    getCircuitLifecycleStatus(circuit) === circuitStatusFilter
-  ));
+  const normalizedCircuitSearch = normalizeModalitySearch(circuitSearch);
+  const visibleOrganizerCircuits = circuits.filter((circuit) => {
+    if (getCircuitLifecycleStatus(circuit) !== circuitStatusFilter) return false;
+    if (!normalizedCircuitSearch) return true;
+
+    const selectedTournaments = getCircuitSelectedTournaments(circuit);
+    const searchable = [
+      circuit.name,
+      circuit.startDate,
+      circuit.endDate,
+      ...selectedTournaments.flatMap((item) => [
+        item.name,
+        item.data?.eventName,
+        getModalityDisplayName(item.type),
+        item.data?.gender,
+        item.data?.location,
+      ]),
+    ].filter(Boolean).join(" ");
+
+    return normalizeModalitySearch(searchable).includes(normalizedCircuitSearch);
+  });
 
   const filteredArenaProfiles = publicArenaProfiles.filter((arena) => {
     const term = arenaProfileSearch.trim().toLowerCase();
@@ -13580,13 +13616,13 @@ setNewPublicInfo({
 ) : activePanel === "inicio" && (
 <section className="arenaFeedSection">
   <div className="arenaSearchRow">
-    <div className="arenaSearchBox platformSearchBox">
+    <div className="arenaSearchBox platformSearchBox platformUnifiedSearch">
+      <Search aria-hidden="true" />
       <input
         value={arenaProfileSearch}
         onChange={(e) => setArenaProfileSearch(e.target.value)}
-        placeholder="Busque perfis públicos da plataforma..."
+        placeholder="Ex.: arena, organizador, cidade ou estado"
       />
-      <span>🔍</span>
     </div>
 
     <button
@@ -13893,7 +13929,7 @@ setNewPublicInfo({
 
 <section id="historico-torneios" className="card">
   <h2>Torneios cadastrados</h2>
-  <div className="tournamentStatusSummary" aria-label="Filtrar torneios por situação">
+  <div className="tournamentStatusSummary eventListToolbar" aria-label="Filtrar torneios por situação">
     <button type="button" className={`active ${tournamentStatusFilter === "active" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "active"} onClick={() => setTournamentStatusFilter("active")}>
       <strong>{tournamentLifecycleCounts.active}</strong> Em andamento
     </button>
@@ -13903,12 +13939,23 @@ setNewPublicInfo({
     <button type="button" className={`finished ${tournamentStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "finished"} onClick={() => setTournamentStatusFilter("finished")}>
       <strong>{tournamentLifecycleCounts.finished}</strong> Encerrados
     </button>
+    <label className="eventListSearch platformUnifiedSearch">
+      <Search aria-hidden="true" />
+      <input
+        type="search"
+        value={tournamentSearch}
+        onChange={(event) => setTournamentSearch(event.target.value)}
+        aria-label="Pesquisar torneios cadastrados"
+        placeholder="Ex.: nome, modalidade, categoria ou local"
+      />
+      {tournamentSearch ? <button type="button" aria-label="Limpar pesquisa de torneios" onClick={() => setTournamentSearch("")}><X aria-hidden="true" /></button> : null}
+    </label>
   </div>
 
   {tournaments.length === 0 ? (
     <p>Nenhum torneio criado ainda.</p>
   ) : organizerVisibleTournaments.length === 0 ? (
-    <p className="eventStatusEmpty">Nenhum torneio {tournamentStatusFilter === "active" ? "em andamento" : tournamentStatusFilter === "upcoming" ? "próximo" : "encerrado"}.</p>
+    <p className="eventStatusEmpty">{tournamentSearch.trim() ? `Nenhum torneio encontrado para “${tournamentSearch.trim()}”.` : `Nenhum torneio ${tournamentStatusFilter === "active" ? "em andamento" : tournamentStatusFilter === "upcoming" ? "próximo" : "encerrado"}.`}</p>
   ) : (
     <div className="eventGroupList">
       {isolatedTournaments.length > 0 && (
@@ -14202,7 +14249,7 @@ setNewPublicInfo({
   <section className="card circuitsOverviewCard">
     <div className="circuitsList">
       <h2>Circuitos cadastrados</h2>
-      <div className="tournamentStatusSummary circuitStatusSummary" aria-label="Filtrar circuitos por situação">
+      <div className="tournamentStatusSummary circuitStatusSummary eventListToolbar" aria-label="Filtrar circuitos por situação">
         <button type="button" className={`active ${circuitStatusFilter === "active" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "active"} onClick={() => setCircuitStatusFilter("active")}>
           <strong>{circuitLifecycleCounts.active}</strong> Em andamento
         </button>
@@ -14212,11 +14259,22 @@ setNewPublicInfo({
         <button type="button" className={`finished ${circuitStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "finished"} onClick={() => setCircuitStatusFilter("finished")}>
           <strong>{circuitLifecycleCounts.finished}</strong> Encerrados
         </button>
+        <label className="eventListSearch platformUnifiedSearch">
+          <Search aria-hidden="true" />
+          <input
+            type="search"
+            value={circuitSearch}
+            onChange={(event) => setCircuitSearch(event.target.value)}
+            aria-label="Pesquisar circuitos cadastrados"
+            placeholder="Ex.: nome do circuito, torneio ou modalidade"
+          />
+          {circuitSearch ? <button type="button" aria-label="Limpar pesquisa de circuitos" onClick={() => setCircuitSearch("")}><X aria-hidden="true" /></button> : null}
+        </label>
       </div>
       {circuits.length === 0 ? (
         <p>Nenhum circuito criado ainda.</p>
       ) : visibleOrganizerCircuits.length === 0 ? (
-        <p className="eventStatusEmpty">Nenhum circuito {circuitStatusFilter === "active" ? "em andamento" : circuitStatusFilter === "upcoming" ? "próximo" : "encerrado"}.</p>
+        <p className="eventStatusEmpty">{circuitSearch.trim() ? `Nenhum circuito encontrado para “${circuitSearch.trim()}”.` : `Nenhum circuito ${circuitStatusFilter === "active" ? "em andamento" : circuitStatusFilter === "upcoming" ? "próximo" : "encerrado"}.`}</p>
       ) : visibleOrganizerCircuits.map((circuit) => {
         const selectedNames = getCircuitSelectedTournaments(circuit);
         const circuitStatus = getCircuitLifecycleStatus(circuit);
@@ -14515,9 +14573,9 @@ setNewPublicInfo({
           </button>
         </div>
 
-        <label className="trashSearchField">
+        <label className="trashSearchField platformUnifiedSearch">
           <Search aria-hidden="true" />
-          <input value={trashSearch} onChange={(event) => setTrashSearch(event.target.value)} placeholder={showingCircuits ? "Pesquisar circuito..." : "Pesquisar torneio..."} />
+          <input value={trashSearch} onChange={(event) => setTrashSearch(event.target.value)} placeholder={showingCircuits ? "Ex.: nome do circuito" : "Ex.: nome, modalidade ou categoria"} />
           {trashSearch ? <button type="button" aria-label="Limpar pesquisa" onClick={() => setTrashSearch("")}><X aria-hidden="true" /></button> : null}
         </label>
 
