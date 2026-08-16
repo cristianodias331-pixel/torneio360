@@ -28147,6 +28147,874 @@ html[data-theme="dark"] .trashSearchField input {
   z-index: 40000 !important;
 }
 
+/* =========================================================
+   CENTRAL DE QUADRAS COMPARTILHADA
+   Inventário físico por local, sem alterar rodadas ou jogos.
+   ========================================================= */
+.mobileTournamentWorkspaceActions { display: none; }
+
+.openCourtCenterButton,
+.mobileCourtCenterButton {
+  border: 1px solid #f59e0b !important;
+  color: #7c2d12 !important;
+  background: #fff7ed !important;
+  box-shadow: none !important;
+}
+
+.openCourtCenterButton {
+  display: grid !important;
+  min-width: 118px !important;
+  min-height: 40px !important;
+  grid-template-columns: auto 1fr !important;
+  align-items: center !important;
+  gap: 0 7px !important;
+  padding: 6px 10px !important;
+  border-radius: 12px !important;
+  text-align: left !important;
+}
+
+.openCourtCenterButton svg {
+  width: 17px;
+  height: 17px;
+  grid-row: 1 / span 2;
+  color: #ea580c;
+}
+
+.openCourtCenterButton span {
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.openCourtCenterButton small {
+  color: #9a5b32;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.openCourtCenterButton:hover {
+  border-color: #ea580c !important;
+  background: #ffedd5 !important;
+}
+
+.courtCenterOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 52000;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgba(3, 10, 23, .7);
+  backdrop-filter: blur(8px);
+}
+
+.courtCenterModal {
+  display: flex;
+  width: min(980px, 100%);
+  max-height: min(860px, calc(100dvh - 48px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #cbd9ea;
+  border-radius: 24px;
+  color: #14233a;
+  background: #f7faff;
+  box-shadow: 0 34px 90px rgba(2, 8, 23, .36);
+}
+
+.courtCenterHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #dbe5f1;
+  background: linear-gradient(135deg, #fff7ed 0%, #f7faff 58%, #eef9ff 100%);
+}
+
+.courtCenterScrollable {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #a8b9cd transparent;
+}
+
+.courtCenterHeader > div > span {
+  display: block;
+  margin-bottom: 4px;
+  color: #ea580c;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.courtCenterHeader h2 {
+  margin: 0;
+  color: #0d1b2f;
+  font-size: clamp(23px, 3vw, 32px);
+  line-height: 1.05;
+}
+
+.courtCenterHeader p {
+  max-width: 650px;
+  margin: 7px 0 0;
+  color: #53667f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.courtCenterClose {
+  display: grid !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  place-items: center !important;
+  border: 1px solid #cfdae8 !important;
+  border-radius: 12px !important;
+  color: #5a6c83 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.courtCenterClose svg { width: 18px; height: 18px; }
+
+.courtCenterVenueTabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 24px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.courtCenterVenueTabs button {
+  display: inline-flex !important;
+  min-height: 36px !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 12px !important;
+  border: 1px solid #d2deec !important;
+  border-radius: 11px !important;
+  color: #435770 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+.courtCenterVenueTabs button.active {
+  border-color: #8b5cf6 !important;
+  color: #5b21b6 !important;
+  background: #f1eaff !important;
+}
+
+.courtCenterVenueTabs svg { width: 14px; height: 14px; }
+
+.courtCenterLocationSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 14px 24px 0;
+  padding: 14px 16px;
+  border: 1px solid #d8e3f0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.courtCenterLocationSummary > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.courtCenterLocationSummary small,
+.courtCenterLocationSummary span {
+  color: #687b92;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.courtCenterLocationSummary strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #14233a;
+  font-size: 14px;
+}
+
+.courtCenterLocationSummary strong svg { width: 14px; height: 14px; color: #2563eb; }
+
+.courtCenterCounters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.courtCenterCounters span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border-radius: 999px;
+}
+
+.courtCenterCounters .free { color: #08733e; background: #dcfce7; }
+.courtCenterCounters .occupied { color: #6d28d9; background: #ede9fe; }
+.courtCenterCounters .paused { color: #a2470b; background: #ffedd5; }
+.courtCenterCounters strong { font-size: 11px; }
+
+.courtCenterAddRow {
+  display: grid;
+  gap: 7px;
+  margin: 14px 24px 0;
+}
+
+.courtCenterAddRow > small {
+  color: #6a7c92;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.courtCenterAddRow > label {
+  color: #283a52;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.courtCenterAddRow > div {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid #cbd9e9;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.courtCenterAddRow > div > span {
+  display: grid;
+  padding: 0 13px;
+  place-items: center;
+  color: #1d4ed8;
+  background: #eaf1ff;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.courtCenterAddRow input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0 !important;
+  outline: 0;
+  color: #122037;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-weight: 850;
+}
+
+.courtCenterAddRow button {
+  display: inline-flex !important;
+  min-height: 44px !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 15px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #2563eb, #06a8cc) !important;
+  box-shadow: none !important;
+}
+
+.courtCenterAddRow button svg { width: 16px; height: 16px; }
+
+.courtCenterGrid {
+  display: grid;
+  min-height: 130px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  padding: 16px 24px 22px;
+  overflow: visible;
+}
+
+.courtCenterCard {
+  display: flex;
+  min-width: 0;
+  min-height: 150px;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid #d4dfec;
+  border-left: 4px solid #94a3b8;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.courtCenterCard.free { border-left-color: #16a34a; }
+.courtCenterCard.occupied { border-left-color: #8b5cf6; background: #fbf9ff; }
+.courtCenterCard.paused { border-left-color: #f97316; background: #fffaf5; }
+
+.courtCenterCardTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.courtCenterCardTopline > strong { color: #0f1d31; font-size: 15px; }
+.courtCenterNumberEditor {
+  display: inline-grid;
+  grid-template-columns: auto 54px;
+  align-items: center;
+  gap: 6px;
+  color: #0f1d31;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.courtCenterNumberEditor input {
+  width: 54px;
+  min-height: 32px;
+  padding: 5px 7px;
+  border: 1px solid #c9d7e7 !important;
+  border-radius: 9px !important;
+  color: #102039 !important;
+  background: #f7faff !important;
+  box-shadow: none !important;
+  font-size: 13px;
+  font-weight: 950;
+  text-align: center;
+}
+
+.courtCenterNumberEditor input:disabled { opacity: .72; }
+.courtCenterCardTopline > span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.courtCenterCard.free .courtCenterCardTopline > span { color: #08733e; background: #dcfce7; }
+.courtCenterCard.occupied .courtCenterCardTopline > span { color: #6d28d9; background: #ede9fe; }
+.courtCenterCard.paused .courtCenterCardTopline > span { color: #a2470b; background: #ffedd5; }
+
+.courtCenterCard p,
+.courtCenterUsage {
+  flex: 1 1 auto;
+  margin: 12px 0;
+  color: #64768d;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.courtCenterUsage { display: grid; gap: 3px; }
+.courtCenterUsage small { color: #7c3aed; font-size: 9px; font-weight: 950; text-transform: uppercase; }
+.courtCenterUsage strong { color: #24364d; font-size: 12px; }
+.courtCenterUsage span { color: #64768d; font-size: 10px; }
+
+.courtCenterCardActions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px;
+}
+
+.courtCenterCardActions button {
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border: 1px solid #cfdbea !important;
+  border-radius: 10px !important;
+  color: #3f526a !important;
+  background: #f6f9fd !important;
+  box-shadow: none !important;
+  font-size: 9px !important;
+}
+
+.courtCenterCardActions button.remove {
+  display: grid !important;
+  width: 36px !important;
+  padding: 0 !important;
+  place-items: center !important;
+  color: #b42318 !important;
+  background: #fff5f4 !important;
+}
+
+.courtCenterCardActions button.remove svg { width: 14px; height: 14px; }
+.courtCenterCardActions button:disabled { opacity: .42 !important; cursor: not-allowed !important; }
+
+.courtCenterEmpty {
+  display: grid;
+  min-height: 150px;
+  grid-column: 1 / -1;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  border: 1px dashed #c7d5e5;
+  border-radius: 16px;
+  color: #708198;
+  text-align: center;
+}
+
+.courtCenterEmpty svg { width: 25px; height: 25px; color: #8b5cf6; }
+.courtCenterEmpty strong { color: #2d4058; }
+.courtCenterEmpty span { max-width: 390px; font-size: 11px; }
+
+.courtCenterSuggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 11px 24px 0;
+  padding: 10px 12px;
+  border: 1px dashed #b8a2f3;
+  border-radius: 13px;
+  color: #5b477e;
+  background: #faf8ff;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.courtCenterSuggestion button {
+  min-height: 32px !important;
+  padding: 6px 10px !important;
+  border: 1px solid #8b5cf6 !important;
+  border-radius: 9px !important;
+  color: #fff !important;
+  background: #7c3aed !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+.courtCenterPreferences {
+  margin: 0 24px 22px;
+  padding: 16px;
+  border: 1px solid #d8e2ef;
+  border-radius: 17px;
+  background: #fff;
+}
+
+.courtCenterPreferencesHeader span {
+  color: #7c3aed;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.courtCenterPreferencesHeader h3 {
+  margin: 3px 0 4px;
+  color: #14233a;
+  font-size: 16px;
+}
+
+.courtCenterPreferencesHeader p {
+  margin: 0;
+  color: #65778e;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.courtCenterPreferenceList {
+  display: grid;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.courtCenterPreferenceItem {
+  display: grid;
+  grid-template-columns: minmax(160px, .7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 13px;
+  padding: 11px;
+  border: 1px solid #dce5f0;
+  border-radius: 13px;
+  background: #f8faff;
+}
+
+.courtCenterPreferenceName { display: grid; gap: 2px; min-width: 0; }
+.courtCenterPreferenceName strong {
+  overflow: hidden;
+  color: #1b2b42;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.courtCenterPreferenceName small { color: #72839a; font-size: 9px; font-weight: 750; }
+
+.courtCenterPreferenceOptions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.courtCenterPreferenceOptions button {
+  min-height: 31px !important;
+  padding: 6px 9px !important;
+  border: 1px solid #cdd9e8 !important;
+  border-radius: 9px !important;
+  color: #40546d !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  font-size: 9px !important;
+}
+
+.courtCenterPreferenceOptions button.selected {
+  border-color: #8b5cf6 !important;
+  color: #5b21b6 !important;
+  background: #ede9fe !important;
+}
+
+.courtCenterPreferenceOptions button.clear {
+  border-color: #e5b27d !important;
+  color: #9a430d !important;
+  background: #fff7ed !important;
+}
+
+.courtCenterFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 1px solid #dbe5f1;
+  background: #fff;
+}
+
+.courtCenterFooter p { margin: 0; color: #5f7289; font-size: 11px; }
+.courtCenterFooter button {
+  min-width: 120px !important;
+  min-height: 39px !important;
+  border: 1px solid #2563eb !important;
+  color: #fff !important;
+  background: #2563eb !important;
+}
+
+.courtConfigCentralLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid #d7c9ff;
+  border-radius: 14px;
+  background: #f8f5ff;
+}
+
+.courtConfigCentralLink > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.courtConfigCentralLink > div > svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: #7c3aed;
+}
+
+.courtConfigCentralLink span { display: grid; gap: 2px; }
+.courtConfigCentralLink strong { color: #39236e; font-size: 12px; }
+.courtConfigCentralLink small { color: #6f638d; font-size: 10px; }
+.courtConfigCentralLink > button {
+  min-height: 36px !important;
+  padding: 7px 11px !important;
+  border: 1px solid #8b5cf6 !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  background: #7c3aed !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+html[data-theme="dark"] .openCourtCenterButton,
+.theme-dark .openCourtCenterButton {
+  border-color: #9a4d13 !important;
+  color: #fed7aa !important;
+  background: #342113 !important;
+}
+
+html[data-theme="dark"] .openCourtCenterButton small,
+.theme-dark .openCourtCenterButton small { color: #e9ad79; }
+
+html[data-theme="dark"] .courtCenterModal,
+.theme-dark .courtCenterModal {
+  border-color: #30445b;
+  color: #e8eef6;
+  background: #101b29;
+}
+
+html[data-theme="dark"] .courtCenterHeader,
+.theme-dark .courtCenterHeader {
+  border-color: #2b3e54;
+  background: linear-gradient(135deg, #2d1d13 0%, #101b29 60%, #102538 100%);
+}
+
+html[data-theme="dark"] .courtCenterHeader h2,
+.theme-dark .courtCenterHeader h2,
+html[data-theme="dark"] .courtCenterLocationSummary strong,
+.theme-dark .courtCenterLocationSummary strong,
+html[data-theme="dark"] .courtCenterCardTopline > strong,
+.theme-dark .courtCenterCardTopline > strong,
+html[data-theme="dark"] .courtCenterUsage strong,
+.theme-dark .courtCenterUsage strong { color: #f5f8fc; }
+
+html[data-theme="dark"] .courtCenterHeader p,
+.theme-dark .courtCenterHeader p { color: #a5b5c8; }
+
+html[data-theme="dark"] .courtCenterClose,
+.theme-dark .courtCenterClose,
+html[data-theme="dark"] .courtCenterVenueTabs button,
+.theme-dark .courtCenterVenueTabs button,
+html[data-theme="dark"] .courtCenterLocationSummary,
+.theme-dark .courtCenterLocationSummary,
+html[data-theme="dark"] .courtCenterAddRow > div,
+.theme-dark .courtCenterAddRow > div,
+html[data-theme="dark"] .courtCenterCard,
+.theme-dark .courtCenterCard,
+html[data-theme="dark"] .courtCenterFooter,
+.theme-dark .courtCenterFooter {
+  border-color: #30445b !important;
+  background: #172536 !important;
+}
+
+html[data-theme="dark"] .courtCenterVenueTabs button,
+.theme-dark .courtCenterVenueTabs button { color: #c6d3e1 !important; }
+
+html[data-theme="dark"] .courtCenterVenueTabs button.active,
+.theme-dark .courtCenterVenueTabs button.active {
+  border-color: #8b5cf6 !important;
+  color: #ddd0ff !important;
+  background: #30224f !important;
+}
+
+html[data-theme="dark"] .courtCenterAddRow input,
+.theme-dark .courtCenterAddRow input { color: #f2f6fb !important; }
+
+html[data-theme="dark"] .courtCenterCard.occupied,
+.theme-dark .courtCenterCard.occupied { background: #201a35 !important; }
+html[data-theme="dark"] .courtCenterCard.paused,
+.theme-dark .courtCenterCard.paused { background: #2b2018 !important; }
+
+html[data-theme="dark"] .courtCenterCard p,
+.theme-dark .courtCenterCard p,
+html[data-theme="dark"] .courtCenterUsage span,
+.theme-dark .courtCenterUsage span,
+html[data-theme="dark"] .courtCenterFooter p,
+.theme-dark .courtCenterFooter p,
+html[data-theme="dark"] .courtCenterLocationSummary small,
+.theme-dark .courtCenterLocationSummary small,
+html[data-theme="dark"] .courtCenterLocationSummary > div:first-child > span,
+.theme-dark .courtCenterLocationSummary > div:first-child > span { color: #9fb0c4; }
+
+html[data-theme="dark"] .courtCenterCardActions button,
+.theme-dark .courtCenterCardActions button {
+  border-color: #3b5068 !important;
+  color: #cbd7e4 !important;
+  background: #1d2d40 !important;
+}
+
+html[data-theme="dark"] .courtCenterCardActions button.remove,
+.theme-dark .courtCenterCardActions button.remove {
+  color: #fca5a5 !important;
+  background: #3a2024 !important;
+}
+
+html[data-theme="dark"] .courtCenterNumberEditor,
+.theme-dark .courtCenterNumberEditor,
+html[data-theme="dark"] .courtCenterPreferencesHeader h3,
+.theme-dark .courtCenterPreferencesHeader h3,
+html[data-theme="dark"] .courtCenterPreferenceName strong,
+.theme-dark .courtCenterPreferenceName strong { color: #f0f5fb; }
+
+html[data-theme="dark"] .courtCenterNumberEditor input,
+.theme-dark .courtCenterNumberEditor input {
+  border-color: #40556e !important;
+  color: #f4f7fb !important;
+  background: #101b29 !important;
+}
+
+html[data-theme="dark"] .courtCenterSuggestion,
+.theme-dark .courtCenterSuggestion {
+  border-color: #684fa2;
+  color: #c9bce9;
+  background: #211b31;
+}
+
+html[data-theme="dark"] .courtCenterPreferences,
+.theme-dark .courtCenterPreferences,
+html[data-theme="dark"] .courtCenterPreferenceItem,
+.theme-dark .courtCenterPreferenceItem {
+  border-color: #30445b;
+  background: #172536;
+}
+
+html[data-theme="dark"] .courtCenterPreferenceItem,
+.theme-dark .courtCenterPreferenceItem { background: #132131; }
+html[data-theme="dark"] .courtCenterPreferencesHeader p,
+.theme-dark .courtCenterPreferencesHeader p,
+html[data-theme="dark"] .courtCenterPreferenceName small,
+.theme-dark .courtCenterPreferenceName small { color: #9cafc3; }
+
+html[data-theme="dark"] .courtCenterPreferenceOptions button,
+.theme-dark .courtCenterPreferenceOptions button {
+  border-color: #3a5068 !important;
+  color: #cbd7e5 !important;
+  background: #1b2c3e !important;
+}
+html[data-theme="dark"] .courtCenterPreferenceOptions button.selected,
+.theme-dark .courtCenterPreferenceOptions button.selected {
+  border-color: #8b5cf6 !important;
+  color: #e2d8ff !important;
+  background: #332557 !important;
+}
+html[data-theme="dark"] .courtCenterPreferenceOptions button.clear,
+.theme-dark .courtCenterPreferenceOptions button.clear {
+  border-color: #9a4d13 !important;
+  color: #fed7aa !important;
+  background: #342113 !important;
+}
+
+html[data-theme="dark"] .courtCenterEmpty,
+.theme-dark .courtCenterEmpty { border-color: #3a4e65; color: #9fb0c4; }
+html[data-theme="dark"] .courtCenterEmpty strong,
+.theme-dark .courtCenterEmpty strong { color: #e7eef7; }
+
+html[data-theme="dark"] .courtConfigCentralLink,
+.theme-dark .courtConfigCentralLink {
+  border-color: #5b3f91;
+  background: #241d36;
+}
+html[data-theme="dark"] .courtConfigCentralLink strong,
+.theme-dark .courtConfigCentralLink strong { color: #e5dcff; }
+html[data-theme="dark"] .courtConfigCentralLink small,
+.theme-dark .courtConfigCentralLink small { color: #b4a8d2; }
+
+@media (min-width: 701px) {
+  .proDashboard.playAppShell button.openCourtCenterButton {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 4px 8px !important;
+    border-radius: 10px !important;
+  }
+}
+
+@media (max-width: 1100px) and (min-width: 701px) {
+  .openCourtCenterButton {
+    min-width: 38px !important;
+    width: 38px !important;
+    grid-template-columns: 1fr !important;
+    place-items: center !important;
+  }
+  .openCourtCenterButton svg { grid-row: auto; }
+  .openCourtCenterButton span,
+  .openCourtCenterButton small { display: none; }
+}
+
+@media (max-width: 700px) {
+  .mobileTournamentWorkspaceActions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 7px;
+  }
+
+  .proDashboard button.mobileTournamentSwitcherButton {
+    display: grid !important;
+  }
+
+  .mobileCourtCenterButton {
+    display: grid !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    padding: 4px !important;
+    place-items: center !important;
+    align-content: center !important;
+    gap: 1px !important;
+    border-radius: 13px !important;
+  }
+
+  .mobileCourtCenterButton svg { width: 18px; height: 18px; color: #ea580c; }
+  .mobileCourtCenterButton span { font-size: 9px; font-weight: 950; }
+
+  html[data-theme="dark"] .mobileCourtCenterButton,
+  .theme-dark .mobileCourtCenterButton {
+    border-color: #9a4d13 !important;
+    color: #fed7aa !important;
+    background: #342113 !important;
+  }
+
+  .courtCenterOverlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .courtCenterModal {
+    width: 100%;
+    max-height: calc(100dvh - 54px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .courtCenterHeader { padding: 17px 16px 14px; }
+  .courtCenterHeader h2 { font-size: 23px; }
+  .courtCenterHeader p { font-size: 11px; }
+  .courtCenterClose { width: 36px !important; min-width: 36px !important; height: 36px !important; }
+
+  .courtCenterVenueTabs { padding: 11px 14px 0; }
+  .courtCenterLocationSummary {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 11px 14px 0;
+    padding: 11px 12px;
+  }
+  .courtCenterCounters { justify-content: flex-start; }
+
+  .courtCenterAddRow { margin: 12px 14px 0; }
+  .courtCenterAddRow > div { grid-template-columns: auto minmax(74px, 1fr) auto; }
+  .courtCenterAddRow > div > span { padding: 0 9px; font-size: 9px; }
+  .courtCenterAddRow button { padding: 7px 10px !important; font-size: 10px !important; }
+
+  .courtCenterGrid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 13px 14px 18px;
+  }
+
+  .courtCenterSuggestion {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 10px 14px 0;
+  }
+  .courtCenterSuggestion button { width: 100% !important; }
+
+  .courtCenterPreferences { margin: 0 14px 18px; padding: 13px; }
+  .courtCenterPreferenceItem { grid-template-columns: 1fr; gap: 9px; }
+  .courtCenterPreferenceOptions { justify-content: flex-start; }
+
+  .courtCenterCard { min-height: 132px; padding: 12px; }
+  .courtCenterFooter {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+    padding: 11px 14px calc(11px + env(safe-area-inset-bottom));
+  }
+  .courtCenterFooter button { width: 100% !important; }
+
+  .courtConfigCentralLink {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .courtConfigCentralLink > button { width: 100% !important; }
+}
+
 /* Pesquisa unificada: mesma leitura visual em todo o produto. */
 .platformUnifiedSearch {
   display: flex !important;
