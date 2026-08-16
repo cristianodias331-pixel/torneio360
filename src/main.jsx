@@ -51,7 +51,6 @@ import {
   Trophy,
   Undo2,
   UserRound,
-  UserRoundX,
   Users,
   X,
 } from "lucide-react";
@@ -8624,7 +8623,11 @@ function TournamentWorkspaceTabs({
               <Grid3X3 aria-hidden="true" />
               <span>Quadras</span>
               {courtCenterSummary ? (
-                <small>{courtCenterSummary.free} livres · {courtCenterSummary.occupied} em uso</small>
+                <small>
+                  <strong className="courtSummaryFree">{courtCenterSummary.free}</strong> livres
+                  <i aria-hidden="true">·</i>
+                  <strong className="courtSummaryOccupied">{courtCenterSummary.occupied}</strong> em uso
+                </small>
               ) : null}
             </button>
           </div>
@@ -21821,7 +21824,7 @@ function UniversalMatchCard({
               title="Ausente — presença pendente"
               aria-label="Ausente: presença pendente"
             >
-              <UserRoundX aria-hidden="true" />
+              <span aria-hidden="true">×</span>
             </span>
           ) : null}
         </span>

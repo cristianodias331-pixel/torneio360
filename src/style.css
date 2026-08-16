@@ -24537,10 +24537,11 @@ html[data-theme="dark"] .proDashboard.playAppShell button.participantAttendanceS
   vertical-align: -3px;
 }
 
-.matchAttendancePending svg {
-  width: 11px;
-  height: 11px;
-  stroke-width: 2.4;
+.matchAttendancePending > span {
+  font-size: 15px;
+  font-weight: 950;
+  line-height: 1;
+  transform: translateY(-.5px);
 }
 
 .matchScoreCell {
@@ -29356,27 +29357,27 @@ html body .proDashboard.theme-dark .platformUnifiedSearch > button:hover { backg
    leitura equivalente aos botões Compartilhar/Voltar. */
 .tournamentWorkspaceActionStack {
   display: grid;
-  min-width: 132px;
-  flex: 0 0 132px;
+  min-width: 150px;
+  flex: 0 0 150px;
   align-self: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 @media (min-width: 701px) {
   .proDashboard.playAppShell .tournamentWorkspaceActionStack button.addOpenTournamentButton,
   .proDashboard.playAppShell .tournamentWorkspaceActionStack button.openCourtCenterButton {
     width: 100% !important;
-    min-width: 132px !important;
-    height: 40px !important;
-    min-height: 40px !important;
-    padding: 7px 11px !important;
+    min-width: 150px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
     border-radius: 12px !important;
   }
 
   .proDashboard.playAppShell .tournamentWorkspaceActionStack button.addOpenTournamentButton {
     display: inline-flex !important;
     gap: 7px !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   .proDashboard.playAppShell .tournamentWorkspaceActionStack .addOpenTournamentButton span {
@@ -29398,16 +29399,73 @@ html body .proDashboard.theme-dark .platformUnifiedSearch > button:hover { backg
 
   .proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton span {
     display: block !important;
-    font-size: 11.5px !important;
+    font-size: 12.5px !important;
     line-height: 1.05 !important;
   }
 
   .proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton small {
-    display: block !important;
-    font-size: 10.5px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    font-size: 11px !important;
     line-height: 1.15 !important;
     letter-spacing: -0.02em !important;
   }
+}
+
+.proDashboard.playAppShell .tournamentWorkspaceActionStack button.openCourtCenterButton {
+  border-color: #f97316 !important;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5) !important;
+  color: #9a3412 !important;
+}
+
+.proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton svg {
+  color: #ea580c !important;
+}
+
+.proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton small {
+  color: #7c4a2b !important;
+}
+
+.openCourtCenterButton small strong,
+.openCourtCenterButton small i {
+  font: inherit;
+  font-weight: 950;
+  font-style: normal;
+}
+
+.openCourtCenterButton .courtSummaryFree {
+  color: #15803d !important;
+}
+
+.openCourtCenterButton .courtSummaryOccupied {
+  color: #6d28d9 !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell .tournamentWorkspaceActionStack button.openCourtCenterButton,
+.proDashboard.theme-dark.playAppShell .tournamentWorkspaceActionStack button.openCourtCenterButton {
+  border-color: #f97316 !important;
+  background: linear-gradient(135deg, #351c0f, #422512) !important;
+  color: #fed7aa !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton small,
+.proDashboard.theme-dark.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton small {
+  color: #fdba74 !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="dark"] .openCourtCenterButton .courtSummaryFree,
+.proDashboard.theme-dark .openCourtCenterButton .courtSummaryFree {
+  color: #86efac !important;
+  -webkit-text-fill-color: #86efac !important;
+}
+
+html[data-theme="dark"] .openCourtCenterButton .courtSummaryOccupied,
+.proDashboard.theme-dark .openCourtCenterButton .courtSummaryOccupied {
+  color: #c4b5fd !important;
+  -webkit-text-fill-color: #c4b5fd !important;
 }
 
 /* Os números herdam a cor semântica do respectivo status. A especificidade
@@ -29505,16 +29563,16 @@ html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader
 }
 
 .schedule > .scheduleGroupSection .matchCardPhase {
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 .schedule > .scheduleGroupSection .universalMatchCard .courtNameBadge,
 .schedule > .scheduleGroupSection .universalMatchCard button.courtNameBadge {
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .schedule > .scheduleGroupSection .matchTeamName {
-  font-size: 14px !important;
+  font-size: 15px !important;
   line-height: 1.15 !important;
 }
 
@@ -29525,16 +29583,16 @@ html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader
   }
 
   .schedule > .scheduleGroupSection .matchCardPhase {
-    font-size: 9.5px !important;
+    font-size: 10.5px !important;
   }
 
   .schedule > .scheduleGroupSection .universalMatchCard .courtNameBadge,
   .schedule > .scheduleGroupSection .universalMatchCard button.courtNameBadge {
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   .schedule > .scheduleGroupSection .matchTeamName {
-    font-size: 13px !important;
+    font-size: 14px !important;
     line-height: 1.15 !important;
   }
 }
