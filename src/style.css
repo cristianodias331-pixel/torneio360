@@ -29158,3 +29158,87 @@ html body .proDashboard.theme-dark .platformUnifiedSearch > button:hover { backg
     grid-column: 1 / -1;
   }
 }
+
+/* Ações da central de abas: mais espaço horizontal para os torneios e
+   leitura equivalente aos botões Compartilhar/Voltar. */
+.tournamentWorkspaceActionStack {
+  display: grid;
+  min-width: 132px;
+  flex: 0 0 132px;
+  align-self: center;
+  gap: 7px;
+}
+
+@media (min-width: 701px) {
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack button.addOpenTournamentButton,
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack button.openCourtCenterButton {
+    width: 100% !important;
+    min-width: 132px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 7px 11px !important;
+    border-radius: 12px !important;
+  }
+
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack button.addOpenTournamentButton {
+    display: inline-flex !important;
+    gap: 7px !important;
+    font-size: 11px !important;
+  }
+
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack .addOpenTournamentButton span {
+    display: inline !important;
+  }
+
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack button.openCourtCenterButton {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 1px 7px !important;
+    text-align: left !important;
+  }
+
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton svg {
+    width: 17px !important;
+    height: 17px !important;
+    grid-row: 1 / span 2 !important;
+  }
+
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton span {
+    display: block !important;
+    font-size: 11.5px !important;
+    line-height: 1.05 !important;
+  }
+
+  .proDashboard.playAppShell .tournamentWorkspaceActionStack .openCourtCenterButton small {
+    display: block !important;
+    font-size: 10.5px !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.02em !important;
+  }
+}
+
+/* Os números herdam a cor semântica do respectivo status. A especificidade
+   impede o título branco do modo escuro de sobrescrever os contadores. */
+html[data-theme="dark"] .courtCenterLocationSummary .courtCenterCounters span strong,
+.proDashboard.theme-dark .courtCenterLocationSummary .courtCenterCounters span strong {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="dark"] .courtCenterLocationSummary .courtCenterCounters .free,
+.proDashboard.theme-dark .courtCenterLocationSummary .courtCenterCounters .free {
+  color: #08733e !important;
+  -webkit-text-fill-color: #08733e !important;
+}
+
+html[data-theme="dark"] .courtCenterLocationSummary .courtCenterCounters .occupied,
+.proDashboard.theme-dark .courtCenterLocationSummary .courtCenterCounters .occupied {
+  color: #6d28d9 !important;
+  -webkit-text-fill-color: #6d28d9 !important;
+}
+
+html[data-theme="dark"] .courtCenterLocationSummary .courtCenterCounters .paused,
+.proDashboard.theme-dark .courtCenterLocationSummary .courtCenterCounters .paused {
+  color: #a2470b !important;
+  -webkit-text-fill-color: #a2470b !important;
+}
