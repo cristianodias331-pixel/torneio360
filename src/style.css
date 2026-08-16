@@ -24515,6 +24515,34 @@ html[data-theme="dark"] .proDashboard.playAppShell button.participantAttendanceS
   -webkit-line-clamp: 2;
 }
 
+.matchTeamParticipant {
+  display: inline;
+}
+
+.matchTeamSeparator {
+  color: var(--match-card-muted);
+}
+
+.matchAttendancePending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: 4px;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  vertical-align: -3px;
+}
+
+.matchAttendancePending svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.4;
+}
+
 .matchScoreCell {
   display: grid;
   place-items: center;
@@ -25031,6 +25059,12 @@ html[data-theme="dark"] .matchTeamRow.is-bye,
   border-color: #9b6b1d;
   background: #35270e;
   color: #fde68a;
+}
+html[data-theme="dark"] .matchAttendancePending,
+.proDashboard.theme-dark .matchAttendancePending {
+  border-color: #c26722;
+  background: #3d2513;
+  color: #fdba74;
 }
 html[data-theme="dark"] .matchScoreInput,
 html[data-theme="dark"] .matchScoreOutput,

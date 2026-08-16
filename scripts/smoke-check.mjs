@@ -661,10 +661,14 @@ assert.ok(
 assert.ok(
   mainSource.includes('function formatParticipantName(value)')
     && mainSource.includes('function normalizeParticipantAttendance(config, players, attendance)')
-    && mainSource.includes('function ensureParticipantsConfirmed()')
+    && mainSource.includes('function getGameSideAttendanceParticipants(data, game, side)')
+    && mainSource.includes('className="matchAttendancePending"')
+    && !mainSource.includes('if (!ensureParticipantsConfirmed()) return;')
+    && mainSource.includes('function showGeneratedGamesNotice(message)')
+    && mainSource.includes('A geração foi concluída normalmente e os placares continuam liberados.')
     && mainSource.includes('Confirmar todos')
     && mainSource.includes('Marcar todos como pendentes'),
-  "A padronização dos nomes ou o controle de presença dos participantes está ausente."
+  "A presença deve continuar visível nos jogos sem impedir a geração das rodadas."
 );
 assert.ok(
   mainSource.indexOf('function formatParticipantName(value)') < mainSource.indexOf('function normalizeTournamentData(type, rawData)')

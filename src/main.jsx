@@ -51,6 +51,7 @@ import {
   Trophy,
   Undo2,
   UserRound,
+  UserRoundX,
   Users,
   X,
 } from "lucide-react";
@@ -15842,6 +15843,49 @@ function getParticipantAttendanceEntries(config, data) {
   }));
 }
 
+function getGameSideAttendanceParticipants(data, game, side) {
+  if (!data || !game) return [];
+
+  const ids = side === "team1" ? game.ids1 : game.ids2;
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+
+  const players = data.players;
+  const attendance = data.participantAttendance;
+
+  if (players?.men || players?.women) {
+    const names = [...(players?.men || []), ...(players?.women || [])];
+    const confirmations = [
+      ...(Array.isArray(attendance?.men) ? attendance.men : []),
+      ...(Array.isArray(attendance?.women) ? attendance.women : []),
+    ];
+
+    return ids
+      .map((id) => ({ name: names[id], pending: confirmations[id] !== true }))
+      .filter((participant) => String(participant.name || "").trim());
+  }
+
+  if (Array.isArray(players?.teams)) {
+    return ids.flatMap((id) => {
+      const team = players.teams[id];
+      if (!team) return [];
+
+      const confirmation = attendance?.teams?.[id] || {};
+      return [
+        { name: team.a, pending: confirmation.a !== true },
+        { name: team.b, pending: confirmation.b !== true },
+      ].filter((participant) => String(participant.name || "").trim());
+    });
+  }
+
+  if (Array.isArray(players)) {
+    return ids
+      .map((id) => ({ name: players[id], pending: attendance?.[id] !== true }))
+      .filter((participant) => String(participant.name || "").trim());
+  }
+
+  return [];
+}
+
 function setParticipantAttendanceValue(attendance, path, confirmed) {
   if (path.kind === "normal") attendance[path.index] = confirmed;
   if (path.kind === "men") attendance.men[path.index] = confirmed;
@@ -17957,24 +18001,6 @@ function TournamentScreen({
     );
   }
 
-  function ensureParticipantsConfirmed() {
-    if (pendingParticipantEntries.length === 0) return true;
-
-    const pendingNames = pendingParticipantEntries
-      .slice(0, 5)
-      .map((entry) => entry.name || "Participante sem nome")
-      .join(", ");
-    const remaining = pendingParticipantEntries.length - Math.min(5, pendingParticipantEntries.length);
-    showNotice(
-      "warning",
-      `${pendingParticipantEntries.length} presença${pendingParticipantEntries.length === 1 ? " pendente" : "s pendentes"}`,
-      `Confirme todos antes de criar os jogos. Pendentes: ${pendingNames}${remaining > 0 ? ` e mais ${remaining}` : ""}.`
-    );
-    setActiveTournamentTab("participantes");
-    setActiveOrganizationTab("participantes");
-    return false;
-  }
-
   function ensureCearenseParallelChoices() {
     if (!isCampeonatoCearenseData(data)) return true;
 
@@ -18436,6 +18462,21 @@ function shuffleNames() {
   shuffleCountdownTimerRef.current = countdown;
 }
 
+function showGeneratedGamesNotice(message) {
+  const pendingCount = pendingParticipantEntries.length;
+
+  if (pendingCount === 0) {
+    showNotice("success", "Rodadas e jogos criados", message);
+    return;
+  }
+
+  showNotice(
+    "warning",
+    "Jogos criados com participantes ausentes",
+    `${message} ${pendingCount} participante${pendingCount === 1 ? " está marcado" : "s estão marcados"} como ausente${pendingCount === 1 ? "" : "s"}. A geração foi concluída normalmente e os placares continuam liberados.`
+  );
+}
+
 function generate() {
   if (isCupType(config)) {
     const schedule = generateCupGroupSchedule(data.players, data.cupConfig || {});
@@ -18449,9 +18490,7 @@ function generate() {
 
     setActiveTournamentTab("partidas");
     setActiveMatchesTab("grupos");
-    showNotice(
-      "success",
-      "Rodadas e jogos criados",
+    showGeneratedGamesNotice(
       isCearenseData(data)
         ? isSunsetData(data)
           ? "A fase de grupos da Copa Sunset foi montada com sucesso."
@@ -18471,7 +18510,7 @@ function generate() {
   });
 
   setActiveTournamentTab("partidas");
-  showNotice("success", "Rodadas e jogos criados", "As rodadas e os jogos foram criados com sucesso.");
+  showGeneratedGamesNotice("As rodadas e os jogos foram criados com sucesso.");
 }
 
 function generateBrackets() {
@@ -18585,7 +18624,6 @@ function requestShuffleNames() {
 
 function requestGenerate() {
   if (!ensureCearenseParallelChoices()) return;
-  if (!ensureParticipantsConfirmed()) return;
 
   if (!data.schedule?.length) {
     generate();
@@ -21719,6 +21757,7 @@ function UniversalMatchCard({
   onScoreChange = null,
   onCallGame = null,
   onStatusToggle = null,
+  attendanceData = null,
 }) {
   const firstScoreInputRef = useRef(null);
   const secondScoreInputRef = useRef(null);
@@ -21765,6 +21804,30 @@ function UniversalMatchCard({
             : "is-waiting"
   }`;
   const canToggleStatus = !readOnly && !isBye && !isFinished && !blocked && Boolean(onStatusToggle);
+  const team1AttendanceParticipants = getGameSideAttendanceParticipants(attendanceData, game, "team1");
+  const team2AttendanceParticipants = getGameSideAttendanceParticipants(attendanceData, game, "team2");
+
+  const renderTeamName = (team, participants) => {
+    if (!participants.length) return teamName(team);
+
+    return participants.map((participant, index) => (
+      <React.Fragment key={`${participant.name}-${index}`}>
+        {index > 0 ? <span className="matchTeamSeparator" aria-hidden="true"> + </span> : null}
+        <span className="matchTeamParticipant">
+          {participant.name}
+          {participant.pending ? (
+            <span
+              className="matchAttendancePending"
+              title="Ausente — presença pendente"
+              aria-label="Ausente: presença pendente"
+            >
+              <UserRoundX aria-hidden="true" />
+            </span>
+          ) : null}
+        </span>
+      </React.Fragment>
+    ));
+  };
 
   const advanceScoreFocus = (side, currentInput) => {
     const otherScore = side === "team1" ? game?.s2 : game?.s1;
@@ -21866,14 +21929,14 @@ function UniversalMatchCard({
 
       <div className="matchTeamStack">
         <div className={`matchTeamRow ${winnerSide === "team1" ? "is-winner" : winnerSide === "team2" ? "is-loser" : ""}`}>
-          <span className="matchTeamName">{teamName(team1)}</span>
+          <span className="matchTeamName">{renderTeamName(team1, team1AttendanceParticipants)}</span>
           <span className="matchScoreCell">{renderScore("s1", game?.s1, "team1")}</span>
         </div>
 
         <div className="matchVsDivider" aria-hidden="true"><span>VS</span></div>
 
         <div className={`matchTeamRow ${isBye ? "is-bye" : winnerSide === "team2" ? "is-winner" : winnerSide === "team1" ? "is-loser" : ""}`}>
-          <span className="matchTeamName">{teamName(team2)}</span>
+          <span className="matchTeamName">{renderTeamName(team2, team2AttendanceParticipants)}</span>
           <span className="matchScoreCell">{renderScore("s2", game?.s2, "team2")}</span>
         </div>
       </div>
@@ -21932,6 +21995,7 @@ function ScheduleView({
         repeat: voiceRepeat,
         courtNumbers,
       }) : null}
+      attendanceData={!readOnly ? statusData : null}
     />
   );
 
@@ -22675,6 +22739,7 @@ function CupBracketView({
             winningScore={winningScore}
             courtNumbers={courtNumbers}
             onEditCourt={onEditCourt}
+            attendanceData={data}
           />
         )}
 
@@ -22688,6 +22753,7 @@ function CupBracketView({
             winningScore={winningScore}
             courtNumbers={courtNumbers}
             onEditCourt={onEditCourt}
+            attendanceData={data}
           />
         )}
 
@@ -22701,6 +22767,7 @@ function CupBracketView({
             winningScore={winningScore}
             courtNumbers={courtNumbers}
             onEditCourt={onEditCourt}
+            attendanceData={data}
           />
         )}
 
@@ -22714,6 +22781,7 @@ function CupBracketView({
             winningScore={winningScore}
             courtNumbers={courtNumbers}
             onEditCourt={onEditCourt}
+            attendanceData={data}
           />
         )}
 
@@ -22727,6 +22795,7 @@ function CupBracketView({
             winningScore={winningScore}
             courtNumbers={courtNumbers}
             onEditCourt={onEditCourt}
+            attendanceData={data}
           />
         )}
       </div>
@@ -22743,6 +22812,7 @@ function BracketColumn({
   winningScore = 4,
   courtNumbers = [],
   onEditCourt = null,
+  attendanceData = null,
 }) {
   const isPlacementRound = (round) => {
     const normalizedTitle = String(round?.title || "").toLocaleLowerCase("pt-BR");
@@ -22778,6 +22848,7 @@ function BracketColumn({
           includeGroup: false,
           repeat: voiceRepeat,
         }) : null}
+        attendanceData={attendanceData}
       />
     );
   };
