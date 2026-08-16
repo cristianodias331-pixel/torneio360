@@ -8613,18 +8613,20 @@ function TournamentWorkspaceTabs({
             <ChevronRight aria-hidden="true" />
           </button>
 
-          <button type="button" className="openCourtCenterButton" onClick={onOpenCourtCenter}>
-            <Grid3X3 aria-hidden="true" />
-            <span>Quadras</span>
-            {courtCenterSummary ? (
-              <small>{courtCenterSummary.free} livres · {courtCenterSummary.occupied} em uso</small>
-            ) : null}
-          </button>
+          <div className="tournamentWorkspaceActionStack">
+            <button type="button" className="addOpenTournamentButton" onClick={() => setManagerOpen(true)}>
+              <PlusCircle aria-hidden="true" />
+              <span>Adicionar</span>
+            </button>
 
-          <button type="button" className="addOpenTournamentButton" onClick={() => setManagerOpen(true)}>
-            <PlusCircle aria-hidden="true" />
-            <span>Adicionar</span>
-          </button>
+            <button type="button" className="openCourtCenterButton" onClick={onOpenCourtCenter}>
+              <Grid3X3 aria-hidden="true" />
+              <span>Quadras</span>
+              {courtCenterSummary ? (
+                <small>{courtCenterSummary.free} livres · {courtCenterSummary.occupied} em uso</small>
+              ) : null}
+            </button>
+          </div>
         </div>
 
         <div className="mobileTournamentWorkspaceActions">
@@ -13627,6 +13629,29 @@ setNewPublicInfo({
     }));
   }
 
+  function registerActiveCourtNumber(number) {
+    const nextNumber = normalizeCourtNumberValue(number);
+    if (!activeVenueKey || !nextNumber) return false;
+
+    setCourtCenters((currentCenters) => {
+      const currentCenter = normalizeCourtCenterEntry(
+        currentCenters[activeVenueKey],
+        selected ? getTournamentVenueLabel(selected) : "Local não informado"
+      );
+      if (currentCenter.numbers.includes(nextNumber)) return currentCenters;
+
+      return {
+        ...currentCenters,
+        [activeVenueKey]: normalizeCourtCenterEntry({
+          ...currentCenter,
+          numbers: [...currentCenter.numbers, nextNumber],
+          configured: true,
+        }),
+      };
+    });
+    return true;
+  }
+
   function updateLiveCourtUsages(tournamentId, nextUsages) {
     setLiveCourtUsagesByTournament((current) => {
       if (!Array.isArray(nextUsages)) {
@@ -13696,8 +13721,8 @@ setNewPublicInfo({
                 centralCourtNumbers={activeCourtCenter.numbers}
                 centralUnavailableCourtNumbers={activeCourtCenter.unavailableNumbers}
                 preferredCourtNumbers={activeTournamentPreferredCourtNumbers}
-                courtCenterConfigured={activeCourtCenter.configured}
                 onOpenCourtCenter={() => setCourtCenterOpen(true)}
+                onRegisterCentralCourtNumber={registerActiveCourtNumber}
                 onCourtUsagesChange={updateLiveCourtUsages}
               />
             </TournamentErrorBoundary>
@@ -16734,7 +16759,6 @@ function TournamentScreen({
   centralCourtNumbers = [],
   centralUnavailableCourtNumbers = [],
   preferredCourtNumbers = [],
-  courtCenterConfigured = false,
   userId,
   onBack,
   onSave,
@@ -16743,6 +16767,7 @@ function TournamentScreen({
   onManageCircuits,
   circuitMembershipCount = 0,
   onOpenCourtCenter,
+  onRegisterCentralCourtNumber,
   onCourtUsagesChange,
 }) {
   const config = modalityConfig[tournament.type];
@@ -18120,38 +18145,33 @@ function TournamentScreen({
   }
 
   function requestOperationalGameStart(target, game) {
-    if (!courtCenterConfigured || normalizedCentralCourtNumbers.length === 0) {
-      showNotice(
-        "warning",
-        "Configure as quadras disponíveis",
-        "Informe na Central de Quadras quantas quadras existem neste local antes de iniciar os jogos."
-      );
-      if (typeof onOpenCourtCenter === "function") onOpenCourtCenter();
-      return;
-    }
     const courtNumbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
     const preferredCourtNumber = normalizedPreferredCourtNumbers[Math.max(0, Number(game?.court || 1) - 1)] || null;
     const courtNumber = game?.courtNumberOverride
       ? getGameCourtNumber(game, courtNumbers)
       : preferredCourtNumber || getGameCourtNumber(game, courtNumbers);
-    const centralIsConfigured = normalizedCentralCourtNumbers.length > 0;
-    const courtIsAvailableInCenter = !centralIsConfigured || (
-      normalizedCentralCourtNumbers.includes(courtNumber)
-      && !unavailableCentralCourtNumbers.has(courtNumber)
-    );
 
-    if (!courtIsAvailableInCenter) {
-      const nextCourtNumber = getNextFreeCourtNumber();
-      if (!nextCourtNumber) {
-        showNotice(
-          "warning",
-          "Nenhuma quadra livre",
-          "Abra a Central de Quadras e informe ou libere uma quadra antes de iniciar este jogo."
-        );
-        return;
+    if (!normalizedCentralCourtNumbers.includes(courtNumber)) {
+      if (typeof onRegisterCentralCourtNumber === "function") {
+        onRegisterCentralCourtNumber(courtNumber);
       }
-      setOperationalGameState(target, true, nextCourtNumber);
-      showNotice("success", "Quadra livre selecionada", `O jogo foi iniciado na Quadra ${nextCourtNumber}.`);
+      setOperationalGameState(target, true, courtNumber);
+      showNotice(
+        "success",
+        "Quadra adicionada à Central",
+        `A Quadra ${courtNumber} ainda não estava prevista. Ela foi adicionada à Central e o jogo foi iniciado normalmente.`
+      );
+      return;
+    }
+
+    if (unavailableCentralCourtNumbers.has(courtNumber)) {
+      setCourtOccupancyConflict({
+        kind: "start",
+        number: courtNumber,
+        usage: null,
+        markedUnavailable: true,
+        target,
+      });
       return;
     }
     const usage = getOpenCourtUsages({
@@ -18204,7 +18224,7 @@ function TournamentScreen({
     }
   }
 
-  function commitGameCourtNumber(editor, value) {
+  function commitGameCourtNumber(editor, value, noticeOverride = null) {
     const nextNumber = normalizeCourtNumberValue(value);
     if (!editor || !nextNumber) return;
     setData((prev) => {
@@ -18219,9 +18239,9 @@ function TournamentScreen({
     setCourtEditor(null);
     setCourtDuplicateConfirm(null);
     showNotice(
-      "success",
-      "Quadra alterada",
-      `O jogo agora aparece como Quadra ${nextNumber}.`
+      noticeOverride?.type || "success",
+      noticeOverride?.title || "Quadra alterada",
+      noticeOverride?.message || `O jogo agora aparece como Quadra ${nextNumber}.`
     );
   }
 
@@ -18229,15 +18249,14 @@ function TournamentScreen({
     const nextNumber = normalizeCourtNumberValue(value);
     if (!courtEditor || !nextNumber) return;
 
-    if (normalizedCentralCourtNumbers.length && (
-      !normalizedCentralCourtNumbers.includes(nextNumber)
-      || unavailableCentralCourtNumbers.has(nextNumber)
-    )) {
-      showNotice(
-        "warning",
-        "Quadra fora da Central",
-        `A Quadra ${nextNumber} não está disponível. Atualize a Central de Quadras antes de usá-la.`
-      );
+    if (unavailableCentralCourtNumbers.has(nextNumber)) {
+      setCourtOccupancyConflict({
+        kind: "assign",
+        editor: courtEditor,
+        number: nextNumber,
+        usage: null,
+        markedUnavailable: true,
+      });
       setCourtEditor(null);
       return;
     }
@@ -18267,19 +18286,22 @@ function TournamentScreen({
       return;
     }
 
+    if (!normalizedCentralCourtNumbers.includes(nextNumber)) {
+      if (typeof onRegisterCentralCourtNumber === "function") {
+        onRegisterCentralCourtNumber(nextNumber);
+      }
+      commitGameCourtNumber(courtEditor, nextNumber, {
+        type: "success",
+        title: "Quadra adicionada à Central",
+        message: `A Quadra ${nextNumber} ainda não estava prevista e foi adicionada automaticamente à Central.`,
+      });
+      return;
+    }
+
     commitGameCourtNumber(courtEditor, nextNumber);
   }
 
   function requestCourtAssignment(editor) {
-    if (!courtCenterConfigured || normalizedCentralCourtNumbers.length === 0) {
-      showNotice(
-        "warning",
-        "Configure as quadras disponíveis",
-        "Informe primeiro a quantidade e a numeração das quadras na Central de Quadras."
-      );
-      if (typeof onOpenCourtCenter === "function") onOpenCourtCenter();
-      return;
-    }
     setCourtEditor(editor);
   }
 
@@ -21586,7 +21608,7 @@ function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers = [], c
                 type="button"
                 className={`courtEditorOption ${isCurrent ? "current" : ""}`}
                 key={normalized}
-                disabled={isCurrent || isUnavailable}
+                disabled={isCurrent}
                 onClick={() => onSelect(normalized)}
               >
                 <span>Quadra {normalized}</span>
@@ -21654,6 +21676,7 @@ function ConfirmDuplicateCourtModal({ kind, number, onCancel, onConfirm }) {
 
 function CourtOccupancyModal({ conflict, onChoose }) {
   if (!conflict) return null;
+  const wasMarkedUnavailable = conflict.markedUnavailable === true;
 
   return (
     <div className="courtDuplicateOverlay courtOccupancyOverlay" role="presentation" onMouseDown={(event) => {
@@ -21661,13 +21684,19 @@ function CourtOccupancyModal({ conflict, onChoose }) {
     }}>
       <section className="courtDuplicateModal courtOccupancyModal" role="dialog" aria-modal="true" aria-labelledby="court-occupancy-title">
         <div className="courtDuplicateIcon">!</div>
-        <span className="courtDuplicateEyebrow">Quadra em uso</span>
-        <h2 id="court-occupancy-title">A Quadra {conflict.number} já está ocupada</h2>
-        <p>
-          <strong>{conflict.usage.tournamentName}</strong> está usando essa quadra em
-          {" "}<strong>{conflict.usage.gameLabel}</strong>.
-        </p>
-        <p>Escolha a próxima quadra livre ou mantenha o número se a repetição for intencional.</p>
+        <span className="courtDuplicateEyebrow">{wasMarkedUnavailable ? "Quadra indisponível" : "Quadra em uso"}</span>
+        <h2 id="court-occupancy-title">
+          A Quadra {conflict.number} {wasMarkedUnavailable ? "está marcada como indisponível" : "já está ocupada"}
+        </h2>
+        {wasMarkedUnavailable ? (
+          <p>Essa numeração foi marcada como indisponível na Central de Quadras.</p>
+        ) : (
+          <p>
+            <strong>{conflict.usage?.tournamentName}</strong> está usando essa quadra em
+            {" "}<strong>{conflict.usage?.gameLabel}</strong>.
+          </p>
+        )}
+        <p>Escolha a próxima quadra livre ou mantenha o número se o uso for intencional.</p>
         <div className="courtDuplicateActions courtOccupancyActions">
           <button type="button" className="secondaryBtn" onClick={() => onChoose("cancel")}>Cancelar</button>
           <button type="button" className="courtKeepNumberBtn" onClick={() => onChoose("same")}>Usar Quadra {conflict.number}</button>
