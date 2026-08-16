@@ -29461,3 +29461,46 @@ html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader
     padding: 7px 10px !important;
   }
 }
+
+/* Tipografia da fase de grupos: melhora a leitura sem alterar as dimensoes
+   dos cabecalhos, cartoes, linhas de atletas ou controles. */
+.schedule > .scheduleGroupSection > .scheduleGroupHeader h3 span,
+.schedule > .scheduleGroupSection > .scheduleGroupHeader h3 strong {
+  font-size: 22px !important;
+  line-height: 1 !important;
+}
+
+.schedule > .scheduleGroupSection .matchCardPhase {
+  font-size: 10px !important;
+}
+
+.schedule > .scheduleGroupSection .universalMatchCard .courtNameBadge,
+.schedule > .scheduleGroupSection .universalMatchCard button.courtNameBadge {
+  font-size: 12px !important;
+}
+
+.schedule > .scheduleGroupSection .matchTeamName {
+  font-size: 14px !important;
+  line-height: 1.15 !important;
+}
+
+@media (max-width: 640px) {
+  .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 span,
+  .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 strong {
+    font-size: 20px !important;
+  }
+
+  .schedule > .scheduleGroupSection .matchCardPhase {
+    font-size: 9.5px !important;
+  }
+
+  .schedule > .scheduleGroupSection .universalMatchCard .courtNameBadge,
+  .schedule > .scheduleGroupSection .universalMatchCard button.courtNameBadge {
+    font-size: 11px !important;
+  }
+
+  .schedule > .scheduleGroupSection .matchTeamName {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+}
