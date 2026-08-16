@@ -21894,6 +21894,47 @@ function ScheduleView({
   courtNumbers = [],
   onEditCourt = null,
 }) {
+  const groupedSchedule = [];
+
+  if (showGroupName) {
+    const groupsByName = new Map();
+
+    schedule.forEach((round, roundIndex) => {
+      round.forEach((game, gameIndex) => {
+        const groupName = String(game?.groupName || "Grupo").trim();
+        const groupKey = game?.groupId ?? groupName;
+
+        if (!groupsByName.has(groupKey)) {
+          const group = { key: groupKey, name: groupName, games: [] };
+          groupsByName.set(groupKey, group);
+          groupedSchedule.push(group);
+        }
+
+        groupsByName.get(groupKey).games.push({ game, roundIndex, gameIndex });
+      });
+    });
+  }
+
+  const renderGame = (game, roundIndex, gameIndex, key = gameIndex) => (
+    <UniversalMatchCard
+      key={key}
+      game={game}
+      phaseLabel={`Rodada ${roundIndex + 1}`}
+      courtNumbers={courtNumbers}
+      winningScore={winningScore}
+      readOnly={readOnly}
+      onEditCourt={!readOnly && onEditCourt ? () => onEditCourt({ scope: "schedule", roundIndex, gameIndex, game }) : null}
+      onScoreChange={!readOnly ? (field, value) => updateScore(roundIndex, gameIndex, field, value) : null}
+      onStatusToggle={!readOnly && onStatusToggle ? () => onStatusToggle(roundIndex, gameIndex) : null}
+      onCallGame={!readOnly ? () => speakGame(game, {
+        roundLabel: `Rodada ${roundIndex + 1}`,
+        includeGroup: showGroupName,
+        repeat: voiceRepeat,
+        courtNumbers,
+      }) : null}
+    />
+  );
+
   return (
     <div className={`schedule ${readOnly ? "readOnlySchedule publicSchedule" : ""}`}>
       {!readOnly ? (
@@ -21905,7 +21946,64 @@ function ScheduleView({
 
       {!readOnly && statusData ? <TournamentMatchStatusSummary data={statusData} /> : null}
 
-      {schedule.map((round, roundIndex) => (
+      {showGroupName ? (
+        <>
+          {!readOnly ? (
+            <div className="scheduleRoundCalls" aria-label="Chamadas das rodadas da fase de grupos">
+              <span className="scheduleRoundCallsLabel">Chamar rodada</span>
+              <div className="scheduleRoundCallsActions">
+                {schedule.map((round, roundIndex) => (
+                  <button
+                    type="button"
+                    className="voiceBtn scheduleRoundCallButton"
+                    key={`round-call-${roundIndex}`}
+                    onClick={() =>
+                      speakRound(round, roundIndex, {
+                        includeGroup: true,
+                        repeat: voiceRepeat,
+                        courtNumbers,
+                      })
+                    }
+                  >
+                    🔊 Rodada {roundIndex + 1}
+                  </button>
+                ))}
+                <button type="button" className="secondaryBtn stopBtn scheduleRoundStopButton" onClick={stopSpeech}>
+                  ⏹️ Parar
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {groupedSchedule.map((group) => {
+            const groupNameMatch = /^grupo\s+(.+)$/i.exec(group.name);
+
+            return (
+              <section
+                className={`roundCard scheduleGroupSection ${readOnly ? "readOnlyRoundCard publicReadOnlyRound" : ""}`}
+                key={group.key}
+              >
+                <div className="roundHeader scheduleGroupHeader">
+                  <h3>
+                    {groupNameMatch ? (
+                      <>
+                        <span>Grupo</span>
+                        <strong>{groupNameMatch[1]}</strong>
+                      </>
+                    ) : (
+                      <strong>{group.name}</strong>
+                    )}
+                  </h3>
+                </div>
+
+                {group.games.map(({ game, roundIndex, gameIndex }) =>
+                  renderGame(game, roundIndex, gameIndex, `${roundIndex}-${gameIndex}`)
+                )}
+              </section>
+            );
+          })}
+        </>
+      ) : schedule.map((round, roundIndex) => (
         <div className={`roundCard ${readOnly ? "readOnlyRoundCard publicReadOnlyRound" : ""}`} key={roundIndex}>
           <div className="roundHeader">
             <h3>Rodada {roundIndex + 1}</h3>
@@ -21938,25 +22036,7 @@ function ScheduleView({
           </div>
 
           {round.map((game, gameIndex) => {
-            return (
-              <UniversalMatchCard
-                key={gameIndex}
-                game={game}
-                phaseLabel={showGroupName && game.groupName ? `${game.groupName} · Rodada ${roundIndex + 1}` : `Rodada ${roundIndex + 1}`}
-                courtNumbers={courtNumbers}
-                winningScore={winningScore}
-                readOnly={readOnly}
-                onEditCourt={!readOnly && onEditCourt ? () => onEditCourt({ scope: "schedule", roundIndex, gameIndex, game }) : null}
-                onScoreChange={!readOnly ? (field, value) => updateScore(roundIndex, gameIndex, field, value) : null}
-                onStatusToggle={!readOnly && onStatusToggle ? () => onStatusToggle(roundIndex, gameIndex) : null}
-                onCallGame={!readOnly ? () => speakGame(game, {
-                  roundLabel: `Rodada ${roundIndex + 1}`,
-                  includeGroup: showGroupName,
-                  repeat: voiceRepeat,
-                  courtNumbers,
-                }) : null}
-              />
-            );
+            return renderGame(game, roundIndex, gameIndex);
           })}
         </div>
       ))}

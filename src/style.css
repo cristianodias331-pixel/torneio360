@@ -24606,6 +24606,165 @@ html[data-theme="dark"] .proDashboard.playAppShell button.participantAttendanceS
   grid-column: 1 / -1 !important;
 }
 
+/* Fase de grupos das copas: apenas reorganiza a apresentação por grupo. */
+.scheduleRoundCalls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7e3f1;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.scheduleRoundCallsLabel {
+  flex: 0 0 auto;
+  color: #53657c;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.scheduleRoundCallsActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.scheduleRoundCalls .scheduleRoundCallButton,
+.scheduleRoundCalls .scheduleRoundStopButton {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 6px 10px !important;
+  border-radius: 10px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.schedule > .scheduleGroupSection:not(.bracketRoundLane) {
+  align-items: start !important;
+}
+
+.scheduleGroupHeader {
+  min-height: 48px;
+  padding: 8px 12px !important;
+  border: 1px solid #c7d8ec !important;
+  border-radius: 13px !important;
+  background: linear-gradient(90deg, #edf5ff, #f8fbff) !important;
+}
+
+.scheduleGroupHeader h3 {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 7px !important;
+  margin: 0 !important;
+  color: #18304f !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+.scheduleGroupHeader h3 span {
+  color: #526985;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.scheduleGroupHeader h3 strong {
+  color: #1559c6;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: .02em;
+}
+
+.scheduleGroupSection .matchCardPhase {
+  min-height: 20px;
+  padding: 3px 7px;
+  border-color: #d4dfec;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 8px;
+  letter-spacing: .04em;
+}
+
+html[data-theme="dark"] .scheduleRoundCalls,
+.proDashboard.theme-dark .scheduleRoundCalls {
+  border-color: #30445c;
+  background: #121f2f;
+}
+
+html[data-theme="dark"] .scheduleRoundCallsLabel,
+.proDashboard.theme-dark .scheduleRoundCallsLabel {
+  color: #aebed1;
+}
+
+html[data-theme="dark"] .scheduleGroupHeader,
+.proDashboard.theme-dark .scheduleGroupHeader {
+  border-color: #37506b !important;
+  background: linear-gradient(90deg, #142943, #152334) !important;
+}
+
+html[data-theme="dark"] .scheduleGroupHeader h3,
+.proDashboard.theme-dark .scheduleGroupHeader h3 {
+  color: #e8f1ff !important;
+}
+
+html[data-theme="dark"] .scheduleGroupHeader h3 span,
+.proDashboard.theme-dark .scheduleGroupHeader h3 span {
+  color: #aebed1;
+}
+
+html[data-theme="dark"] .scheduleGroupHeader h3 strong,
+.proDashboard.theme-dark .scheduleGroupHeader h3 strong {
+  color: #7db7ff;
+}
+
+html[data-theme="dark"] .scheduleGroupSection .matchCardPhase,
+.proDashboard.theme-dark .scheduleGroupSection .matchCardPhase {
+  border-color: #41566f;
+  background: #182638;
+  color: #b7c5d6;
+}
+
+@media (max-width: 640px) {
+  .scheduleRoundCalls {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 9px;
+  }
+
+  .scheduleRoundCallsActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .scheduleRoundCalls .scheduleRoundCallButton,
+  .scheduleRoundCalls .scheduleRoundStopButton {
+    min-height: 30px !important;
+    padding-inline: 8px !important;
+    font-size: 9px !important;
+  }
+
+  .scheduleGroupHeader {
+    min-height: 44px;
+    padding: 7px 10px !important;
+  }
+
+  .scheduleGroupHeader h3 strong {
+    font-size: 20px;
+  }
+}
+
 /* Cada disputa é uma árvore independente; a rolagem pertence só à chave. */
 .cupBrackets.bracketTreeCollection {
   display: grid !important;
@@ -29241,4 +29400,64 @@ html[data-theme="dark"] .courtCenterLocationSummary .courtCenterCounters .paused
 .proDashboard.theme-dark .courtCenterLocationSummary .courtCenterCounters .paused {
   color: #a2470b !important;
   -webkit-text-fill-color: #a2470b !important;
+}
+
+/* Cabeçalho final dos grupos: vence camadas antigas de rodada sem alterar
+   dimensões ou estrutura dos cartões de jogo. */
+.schedule > .scheduleGroupSection > .scheduleGroupHeader {
+  min-height: 48px !important;
+  padding: 8px 12px !important;
+  border-color: #c7d8ec !important;
+  background: linear-gradient(90deg, #edf5ff, #f8fbff) !important;
+  color: #18304f !important;
+}
+
+.schedule > .scheduleGroupSection > .scheduleGroupHeader h3 {
+  width: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #18304f !important;
+  box-shadow: none !important;
+}
+
+.schedule > .scheduleGroupSection > .scheduleGroupHeader h3 span {
+  color: #526985 !important;
+}
+
+.schedule > .scheduleGroupSection > .scheduleGroupHeader h3 strong {
+  color: #1559c6 !important;
+  -webkit-text-fill-color: #1559c6 !important;
+}
+
+html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader,
+.proDashboard.theme-dark .schedule > .scheduleGroupSection > .scheduleGroupHeader {
+  border-color: #37506b !important;
+  background: linear-gradient(90deg, #142943, #152334) !important;
+  color: #e8f1ff !important;
+}
+
+html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader h3,
+.proDashboard.theme-dark .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 {
+  color: #e8f1ff !important;
+}
+
+html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 span,
+.proDashboard.theme-dark .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 span {
+  color: #aebed1 !important;
+}
+
+html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 strong,
+.proDashboard.theme-dark .schedule > .scheduleGroupSection > .scheduleGroupHeader h3 strong {
+  color: #7db7ff !important;
+  -webkit-text-fill-color: #7db7ff !important;
+}
+
+@media (max-width: 640px) {
+  .schedule > .scheduleGroupSection > .scheduleGroupHeader {
+    min-height: 44px !important;
+    padding: 7px 10px !important;
+  }
 }
