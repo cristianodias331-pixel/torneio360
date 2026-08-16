@@ -20830,8 +20830,17 @@ function isFixedMixedTeamConfig(config) {
   return config.type === "fixed12" || config.type === "fixed16";
 }
 
+function stripParticipantEmojis(value) {
+  return String(value || "")
+    .replace(/[0-9#*]\uFE0F?\u20E3/gu, " ")
+    .replace(/\p{Regional_Indicator}{2}/gu, " ")
+    .replace(/\p{Extended_Pictographic}(?:[\uFE0E\uFE0F]|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:[\uFE0E\uFE0F]|\p{Emoji_Modifier})?)*/gu, " ")
+    .replace(/[\u200D\uFE0E\uFE0F]/gu, " ")
+    .replace(/\p{Emoji_Modifier}/gu, " ");
+}
+
 function prepareParticipantLine(value) {
-  let line = String(value || "")
+  let line = stripParticipantEmojis(value)
     .normalize("NFKC")
     .replace(/[–—]/g, "-")
     .replace(/[^\p{L}\p{M}\p{N}\s+&/'’.\-:()[\]{}]/gu, " ")
@@ -20853,7 +20862,7 @@ function prepareParticipantLine(value) {
 }
 
 function sanitizeParticipantName(value) {
-  const sanitized = String(value || "")
+  const sanitized = stripParticipantEmojis(value)
     .normalize("NFKC")
     .replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, " ")
     .replace(/[^\p{L}\p{M}\s'’.]/gu, " ")
@@ -21124,10 +21133,10 @@ function ParticipantImportModal({ type, data, onClose, onApply }) {
             <h2 id="participant-import-title">Colar lista de nomes</h2>
             <p>
               {isFixedMixedTeams
-                ? "Uma dupla mista por linha. O homem será colocado no primeiro campo e a mulher no segundo. Separe os nomes por +, /, -, e ou &. Símbolos e emojis antes dos nomes serão ignorados."
+                ? "Uma dupla mista por linha. O homem será colocado no primeiro campo e a mulher no segundo. Separe os nomes por +, /, -, e ou &. Símbolos e emojis em qualquer posição serão ignorados."
                 : isTeams
-                ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis antes dos nomes serão ignorados."
-                : "Numeração, marcadores e emojis serão retirados automaticamente."}
+                ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis em qualquer posição serão ignorados."
+                : "Numeração, marcadores e emojis em qualquer posição serão retirados automaticamente."}
             </p>
           </div>
           <button type="button" className="participantImportClose" onClick={onClose} aria-label="Fechar importação">×</button>

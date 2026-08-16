@@ -39,12 +39,12 @@ assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração d
 const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
 const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
 const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
-const prepareParticipantLineSource = mainSource.slice(
-  mainSource.indexOf("function prepareParticipantLine(value)"),
+const participantImportSanitizersSource = mainSource.slice(
+  mainSource.indexOf("function stripParticipantEmojis(value)"),
   mainSource.indexOf("function sanitizeParticipantName(value)")
 );
 const prepareParticipantLineForTest = Function(
-  `"use strict"; ${prepareParticipantLineSource}; return prepareParticipantLine;`
+  `"use strict"; ${participantImportSanitizersSource}; return prepareParticipantLine;`
 )();
 
 assert.equal(normalizeCircuitParticipantKey("B\u00e1rbara"), normalizeCircuitParticipantKey("barbara"));
@@ -70,6 +70,8 @@ assert.equal(prepareParticipantLineForTest("• #3 Carlos + Ana"), "Carlos + Ana
 assert.equal(prepareParticipantLineForTest("👉 (4) Pedro / Beatriz"), "Pedro / Beatriz");
 assert.equal(prepareParticipantLineForTest("⚽ - 5º Lucas e Carla"), "Lucas e Carla");
 assert.equal(prepareParticipantLineForTest("✨ Dupla 12: Roberto & Fernanda"), "Roberto & Fernanda");
+assert.equal(prepareParticipantLineForTest("Ana 💜 + João 🏆"), "Ana + João");
+assert.equal(prepareParticipantLineForTest("Carlos 👨🏽‍🤝‍👨 / Beatriz 🇧🇷"), "Carlos / Beatriz");
 
 const requiredApplicationMarkers = [
   "supabase.auth.signInWithPassword",
@@ -675,6 +677,13 @@ assert.ok(
     && mainSource.indexOf('function normalizeParticipantAttendance(config, players, attendance)') < mainSource.indexOf('function normalizeTournamentData(type, rawData)')
     && mainSource.indexOf('function normalizeTournamentData(type, rawData)') < mainSource.indexOf('function TournamentScreen('),
   "Os utilitários de participantes precisam permanecer no escopo global antes da normalização dos torneios."
+);
+assert.ok(
+  mainSource.includes('function stripParticipantEmojis(value)')
+    && mainSource.includes('\\p{Extended_Pictographic}')
+    && mainSource.includes('\\p{Regional_Indicator}')
+    && mainSource.includes('Símbolos e emojis em qualquer posição serão ignorados.'),
+  "A importação em massa deve remover emojis completos em qualquer posição da lista colada."
 );
 assert.ok(
     mainSource.includes('const publicRankingReady = isCup || publicCompletionState.completed;')
