@@ -311,6 +311,7 @@ async function createCupPodiumShareFile({
   arenaPhotoUrl,
   podium = [],
   podiumVariant = "main",
+  tournamentDurationSeconds = 0,
 }) {
   const visiblePodium = podium.slice(0, podiumVariant === "parallel" ? 1 : 3);
   const canvas = document.createElement("canvas");
@@ -449,6 +450,15 @@ async function createCupPodiumShareFile({
       lineHeight: singleChampion ? 49 : 38,
       maxLines: 2,
     });
+    if (Number(item.playTimeSeconds || 0) > 0) {
+      context.fillStyle = "#a5f3fc";
+      context.font = `800 ${singleChampion ? 22 : 17}px Arial`;
+      context.fillText(
+        `Tempo em jogo: ${formatMatchDuration(item.playTimeSeconds)}`,
+        layout.x,
+        labelY + (singleChampion ? 166 : layout.place === 1 ? 142 : 138)
+      );
+    }
   });
 
   if (singleChampion) {
@@ -477,7 +487,13 @@ async function createCupPodiumShareFile({
   context.fillStyle = "rgba(255, 255, 255, 0.78)";
   context.font = "700 17px Arial";
   context.textAlign = "center";
-  context.fillText("Gerado pelo Torneio360 • torneio360.com", canvas.width / 2, canvas.height - 38);
+  context.fillText(
+    Number(tournamentDurationSeconds || 0) > 0
+      ? `Tempo geral do torneio: ${formatMatchDuration(tournamentDurationSeconds)} • Torneio360`
+      : "Gerado pelo Torneio360 • torneio360.com",
+    canvas.width / 2,
+    canvas.height - 38
+  );
 
   const blob = await new Promise((resolve, reject) => {
     canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Não foi possível gerar a imagem.")), "image/png", 0.96);
@@ -494,6 +510,7 @@ async function createRankingShareFile({
   rankingCriteria,
   columns = null,
   criteriaLabel = "",
+  tournamentDurationSeconds = 0,
   groups = [],
   pageNumber = 1,
   totalPages = 1,
@@ -633,7 +650,7 @@ async function createRankingShareFile({
 
       const stats = exportColumns
         .filter(({ key }) => row[key] !== undefined)
-        .map(({ key, label }) => `${label || getRankingColumnLabel(key)}: ${Number(row[key] || 0)}`);
+        .map(({ key, label }) => `${label || getRankingColumnLabel(key)}: ${formatRankingMetricValue(key, row[key])}`);
       context.fillStyle = "#475569";
       context.font = "700 13px Arial";
       context.textAlign = "right";
@@ -648,7 +665,10 @@ async function createRankingShareFile({
   context.fillStyle = "rgba(255, 255, 255, 0.76)";
   context.font = "700 17px Arial";
   context.textAlign = "center";
-  context.fillText(`Gerado pelo Torneio360 • torneio360.com • Página ${pageNumber} de ${totalPages}`, canvas.width / 2, canvas.height - 38);
+  const rankingFooter = Number(tournamentDurationSeconds || 0) > 0
+    ? `Tempo geral do torneio: ${formatMatchDuration(tournamentDurationSeconds)} • Torneio360 • Página ${pageNumber} de ${totalPages}`
+    : `Gerado pelo Torneio360 • torneio360.com • Página ${pageNumber} de ${totalPages}`;
+  context.fillText(rankingFooter, canvas.width / 2, canvas.height - 38);
 
   const blob = await new Promise((resolve, reject) => {
     canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Não foi possível gerar a imagem.")), "image/png", 0.96);
@@ -737,6 +757,7 @@ function printRankingDocument(config) {
     w: "Vitórias",
     pts: "Total de Games",
     bal: "Saldo de Games",
+    playTimeSeconds: "Tempo em jogo",
   };
   const style = printDocument.createElement("style");
   style.textContent = `
@@ -801,6 +822,14 @@ function printRankingDocument(config) {
     heading.appendChild(createRankingPrintElement(printDocument, "h1", "", config?.title || "Ranking"));
     heading.appendChild(createRankingPrintElement(printDocument, "p", "", config?.subtitle || "Torneio360"));
     heading.appendChild(createRankingPrintElement(printDocument, "p", "", `Critério: ${config?.criteriaLabel || criteria.label}`));
+    if (Number(config?.tournamentDurationSeconds || 0) > 0) {
+      heading.appendChild(createRankingPrintElement(
+        printDocument,
+        "p",
+        "",
+        `Tempo geral do torneio: ${formatMatchDuration(config.tournamentDurationSeconds)}`
+      ));
+    }
     page.appendChild(heading);
 
     pageGroups.forEach((group) => {
@@ -822,7 +851,7 @@ function printRankingDocument(config) {
         tableRow.appendChild(createRankingPrintElement(printDocument, "td", "", `${absoluteIndex + 1}º`));
         tableRow.appendChild(createRankingPrintElement(printDocument, "td", "", row.name || "Sem nome"));
         exportColumns.forEach(({ key }) => {
-          tableRow.appendChild(createRankingPrintElement(printDocument, "td", "", String(Number(row[key] || 0))));
+          tableRow.appendChild(createRankingPrintElement(printDocument, "td", "", formatRankingMetricValue(key, row[key])));
         });
         tableBody.appendChild(tableRow);
       });
@@ -2161,7 +2190,17 @@ function getRankingCriteria(value) {
 }
 
 function getRankingColumnLabel(key) {
-  return { w: "Vitórias", pts: "Total de Games", bal: "Saldo de games" }[key] || key;
+  return {
+    w: "Vitórias",
+    pts: "Total de Games",
+    bal: "Saldo de games",
+    playTimeSeconds: "Tempo em jogo",
+  }[key] || key;
+}
+
+function formatRankingMetricValue(key, value) {
+  if (key === "playTimeSeconds") return formatMatchDuration(value);
+  return String(Number(value || 0));
 }
 
 function formatDateBR(value) {
@@ -2950,6 +2989,146 @@ function isGameFinished(game, winningScore = 4) {
   return getScoreWinnerSide(game, winningScore) !== null;
 }
 
+function getMatchTimerTimestamp(value) {
+  const timestamp = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function getMatchElapsedSeconds(game, now = Date.now()) {
+  const storedSeconds = Math.max(0, Math.floor(Number(game?.matchTimerElapsedSeconds || 0)));
+  const startedAt = getMatchTimerTimestamp(game?.matchTimerStartedAt);
+  if (game?.inProgress !== true || startedAt === null) return storedSeconds;
+  return storedSeconds + Math.max(0, Math.floor((now - startedAt) / 1000));
+}
+
+function formatMatchDuration(value) {
+  const totalSeconds = Math.max(0, Math.floor(Number(value || 0)));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function startMatchTimer(game, now = Date.now()) {
+  if (!game || game.matchTimerStartedAt) return game;
+  const startedAt = new Date(now).toISOString();
+  game.matchTimerStartedAt = startedAt;
+  if (!game.matchTimerFirstStartedAt) game.matchTimerFirstStartedAt = startedAt;
+  delete game.matchTimerFinishedAt;
+  return game;
+}
+
+function stopMatchTimer(game, { finished = false, now = Date.now() } = {}) {
+  if (!game) return game;
+  game.matchTimerElapsedSeconds = getMatchElapsedSeconds(game, now);
+  delete game.matchTimerStartedAt;
+  if (finished && game.matchTimerFirstStartedAt) {
+    game.matchTimerFinishedAt = new Date(now).toISOString();
+  }
+  return game;
+}
+
+function resetMatchTimer(game) {
+  if (!game) return game;
+  delete game.matchTimerStartedAt;
+  delete game.matchTimerFirstStartedAt;
+  delete game.matchTimerFinishedAt;
+  delete game.matchTimerElapsedSeconds;
+  return game;
+}
+
+function getMatchTimerFields(game) {
+  if (!game) return {};
+  const fields = {
+    matchTimerElapsedSeconds: Math.max(0, Math.floor(Number(game.matchTimerElapsedSeconds || 0))),
+  };
+  if (game.matchTimerStartedAt) fields.matchTimerStartedAt = game.matchTimerStartedAt;
+  if (game.matchTimerFirstStartedAt) fields.matchTimerFirstStartedAt = game.matchTimerFirstStartedAt;
+  if (game.matchTimerFinishedAt) fields.matchTimerFinishedAt = game.matchTimerFinishedAt;
+  return fields;
+}
+
+function getTournamentTimingSummary(data = {}, now = Date.now()) {
+  const operationalGames = getTournamentOperationalGames(data);
+  const winningScore = getWinningScore(data);
+  const timedGames = operationalGames
+    .map((item) => item.storedGame || item.game)
+    .filter((game) => (
+      Boolean(game?.matchTimerFirstStartedAt)
+      || Boolean(game?.matchTimerStartedAt)
+      || Number(game?.matchTimerElapsedSeconds || 0) > 0
+    ));
+  const firstStarts = timedGames
+    .map((game) => getMatchTimerTimestamp(game.matchTimerFirstStartedAt || game.matchTimerStartedAt))
+    .filter((timestamp) => timestamp !== null);
+  const finishTimes = timedGames
+    .map((game) => getMatchTimerTimestamp(game.matchTimerFinishedAt))
+    .filter((timestamp) => timestamp !== null);
+  const hasActiveGame = timedGames.some((game) => game.inProgress === true && game.matchTimerStartedAt);
+  const firstStartedAt = firstStarts.length ? Math.min(...firstStarts) : null;
+  const lastRecordedAt = hasActiveGame
+    ? now
+    : finishTimes.length
+      ? Math.max(...finishTimes)
+      : firstStartedAt;
+
+  return {
+    timedGames: timedGames.length,
+    durationSeconds: firstStartedAt !== null && lastRecordedAt !== null
+      ? Math.max(0, Math.floor((lastRecordedAt - firstStartedAt) / 1000))
+      : 0,
+    complete: operationalGames.length > 0 && operationalGames.every((item) => {
+      const storedGame = item.storedGame || item.game;
+      return isGameFinished(item.game, winningScore)
+        && Boolean(storedGame?.matchTimerFirstStartedAt)
+        && Boolean(storedGame?.matchTimerFinishedAt);
+    }),
+  };
+}
+
+function TournamentTimingSummary({ data, compact = false }) {
+  const hasActiveTimer = getTournamentOperationalGames(data).some((item) => {
+    const game = item.storedGame || item.game;
+    return game?.inProgress === true && Boolean(game?.matchTimerStartedAt);
+  });
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    setNow(Date.now());
+    if (!hasActiveTimer) return undefined;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [hasActiveTimer, data]);
+
+  const summary = getTournamentTimingSummary(data, now);
+  if (!summary.complete) return null;
+
+  return (
+    <aside className={`tournamentTimingSummary ${compact ? "is-compact" : ""}`} aria-label="Resumo da cronometragem do torneio">
+      <span className="tournamentTimingIcon" aria-hidden="true">⏱</span>
+      <span>
+        <small>Tempo geral do torneio</small>
+        <strong>{formatMatchDuration(summary.durationSeconds)}</strong>
+      </span>
+      <em>{summary.timedGames} {summary.timedGames === 1 ? "partida cronometrada" : "partidas cronometradas"}</em>
+    </aside>
+  );
+}
+
+function getCupPlayTimeById(data = {}) {
+  const playTimeById = new Map();
+  if (!getTournamentTimingSummary(data).complete) return playTimeById;
+  const winningScore = getWinningScore(data);
+  getTournamentOperationalGames(data).forEach((item) => {
+    if (!isGameFinished(item.game, winningScore)) return;
+    const seconds = getMatchElapsedSeconds(item.storedGame || item.game);
+    if (seconds <= 0) return;
+    [...(item.game.ids1 || []), ...(item.game.ids2 || [])].forEach((id) => {
+      playTimeById.set(id, Number(playTimeById.get(id) || 0) + seconds);
+    });
+  });
+  return playTimeById;
+}
+
 function hasPlayableGameSides(game) {
   if (!game || game.isBye) return false;
 
@@ -2965,6 +3144,31 @@ function hasPlayableGameSides(game) {
       : Boolean(game.team2);
 
   return hasFirstSide && hasSecondSide;
+}
+
+function getGameParticipantIdentityEntries(game = {}) {
+  return ["1", "2"].flatMap((side) => {
+    const ids = Array.isArray(game[`ids${side}`]) ? game[`ids${side}`] : [];
+    const names = Array.isArray(game[`team${side}`]) ? game[`team${side}`] : [];
+
+    return ids.map((id, index) => ({
+      key: `participant:${id}`,
+      name: String(names[index] || names.join(" + ") || `Participante ${Number(id) + 1}`),
+    }));
+  });
+}
+
+function getSharedGameParticipants(firstGame, secondGame) {
+  const secondParticipants = new Map(
+    getGameParticipantIdentityEntries(secondGame).map((participant) => [participant.key, participant])
+  );
+
+  return getGameParticipantIdentityEntries(firstGame)
+    .filter((participant) => secondParticipants.has(participant.key))
+    .map((participant) => ({
+      ...participant,
+      name: participant.name || secondParticipants.get(participant.key)?.name || "Participante",
+    }));
 }
 
 function getTournamentOperationalGames(data = {}) {
@@ -3013,9 +3217,38 @@ function getTournamentOperationalGames(data = {}) {
   return games;
 }
 
-function getTournamentMatchStatusSummary(data = {}) {
+function getInProgressParticipantConflicts(data = {}, targetGame = {}, targetKey = "") {
   const winningScore = getWinningScore(data);
-  return getTournamentOperationalGames(data).reduce((summary, item) => {
+  const courtNumbers = Array.isArray(data.courtNumbers) ? data.courtNumbers : [];
+
+  return getTournamentOperationalGames(data)
+    .filter((item) => (
+      item.key !== targetKey
+      && !isGameFinished(item.game, winningScore)
+      && (item.storedGame?.inProgress === true || item.game?.inProgress === true)
+    ))
+    .map((item) => ({
+      participants: getSharedGameParticipants(targetGame, item.game),
+      gameLabel: item.label,
+      courtLabel: getGameCourtLabel(item.storedGame || item.game, courtNumbers),
+    }))
+    .filter((conflict) => conflict.participants.length > 0);
+}
+
+function getTournamentMatchStatusSummary(data = {}, { scope = "all", bracketMatchKeys = null } = {}) {
+  const winningScore = getWinningScore(data);
+  const allowedBracketMatchKeys = Array.isArray(bracketMatchKeys)
+    ? new Set(bracketMatchKeys.filter(Boolean))
+    : null;
+  const operationalGames = getTournamentOperationalGames(data).filter((item) => {
+    if (scope !== "all" && item.scope !== scope) return false;
+    if (item.scope === "bracket" && allowedBracketMatchKeys) {
+      return allowedBracketMatchKeys.has(item.storedGame?.matchKey);
+    }
+    return true;
+  });
+
+  return operationalGames.reduce((summary, item) => {
     if (isGameFinished(item.game, winningScore)) summary.finished += 1;
     else if (item.storedGame?.inProgress === true || item.game?.inProgress === true) summary.inProgress += 1;
     else summary.waiting += 1;
@@ -3042,8 +3275,16 @@ function getTournamentActiveCourtUsages(tournament, data = tournament?.data || {
     }));
 }
 
-function TournamentMatchStatusSummary({ data, compact = false, vertical = false }) {
-  const summary = useMemo(() => getTournamentMatchStatusSummary(data), [data]);
+function TournamentMatchStatusSummary({
+  data,
+  compact = false,
+  vertical = false,
+  scope = "all",
+  bracketMatchKeys = null,
+}) {
+  // A contagem é barata e precisa acompanhar até atualizações pontuais de placar/status.
+  // Evitar memoização aqui também protege torneios antigos que ainda atualizam dados aninhados.
+  const summary = getTournamentMatchStatusSummary(data, { scope, bracketMatchKeys });
 
   return (
     <div className={`tournamentMatchStatusSummary ${compact ? "is-compact" : ""} ${vertical ? "is-vertical" : ""}`} aria-label="Resumo dos jogos">
@@ -5992,6 +6233,7 @@ function rebuildCupBracketGames(currentData, existingScores = {}) {
     s1: existingScores[game.matchKey]?.s1 ?? game.s1 ?? "",
     s2: existingScores[game.matchKey]?.s2 ?? game.s2 ?? "",
     inProgress: existingScores[game.matchKey]?.inProgress === true,
+    ...getMatchTimerFields(existingScores[game.matchKey] || game),
     ...(existingScores[game.matchKey]?.courtNumberOverride
       ? { courtNumberOverride: existingScores[game.matchKey].courtNumberOverride }
       : {}),
@@ -6027,6 +6269,7 @@ function syncCupBracketScores(currentData) {
       ids1: game.ids1,
       ids2: game.ids2,
       inProgress: game.inProgress === true,
+      ...getMatchTimerFields(game),
       courtNumberOverride: game.courtNumberOverride,
     };
   });
@@ -6054,6 +6297,7 @@ function calculateParallelRanking(data, rankingCriteriaValue = defaultRankingCri
       ]),
     ])
   );
+  const playTimeById = getCupPlayTimeById(data);
 
   const rows = ids.map((id) => ({
     id,
@@ -6062,6 +6306,7 @@ function calculateParallelRanking(data, rankingCriteriaValue = defaultRankingCri
     w: 0,
     bal: 0,
     played: 0,
+    playTimeSeconds: Number(playTimeById.get(id) || 0),
   }));
 
   const tableById = {};
@@ -6125,6 +6370,7 @@ function calculateParallelRanking(data, rankingCriteriaValue = defaultRankingCri
 
 function calculateMainCupPodium(data) {
   const games = data.brackets || [];
+  const playTimeById = getCupPlayTimeById(data);
 
   const finalGame = games.find(
     (game) => game.phase === "main" && game.roundName === "Final"
@@ -6143,8 +6389,8 @@ function calculateMainCupPodium(data) {
   if (championId === null || runnerUpId === null) return [];
 
   const podium = [
-    { position: "🏆 Campeão", name: getCupTeamName(data, championId) },
-    { position: "🥈 Vice", name: getCupTeamName(data, runnerUpId) },
+    { position: "🏆 Campeão", name: getCupTeamName(data, championId), playTimeSeconds: Number(playTimeById.get(championId) || 0) },
+    { position: "🥈 Vice", name: getCupTeamName(data, runnerUpId), playTimeSeconds: Number(playTimeById.get(runnerUpId) || 0) },
   ];
 
   if (thirdPlaceGame) {
@@ -6152,7 +6398,7 @@ function calculateMainCupPodium(data) {
     const thirdId = getGameWinnerId(resolvedThirdPlace, data);
 
     if (thirdId !== null) {
-      podium.push({ position: "🥉 3º lugar", name: getCupTeamName(data, thirdId) });
+      podium.push({ position: "🥉 3º lugar", name: getCupTeamName(data, thirdId), playTimeSeconds: Number(playTimeById.get(thirdId) || 0) });
     }
   }
 
@@ -6161,6 +6407,7 @@ function calculateMainCupPodium(data) {
 
 function calculateCupBracketPodium(data, phase) {
   const games = data.brackets || [];
+  const playTimeById = getCupPlayTimeById(data);
   const finalGame = games.find(
     (game) => game.phase === phase && game.roundName === "Final"
   );
@@ -6177,8 +6424,8 @@ function calculateCupBracketPodium(data, phase) {
   if (championId === null || runnerUpId === null) return [];
 
   const podium = [
-    { position: "🏆 Campeão", name: getCupTeamName(data, championId) },
-    { position: "🥈 Vice", name: getCupTeamName(data, runnerUpId) },
+    { position: "🏆 Campeão", name: getCupTeamName(data, championId), playTimeSeconds: Number(playTimeById.get(championId) || 0) },
+    { position: "🥈 Vice", name: getCupTeamName(data, runnerUpId), playTimeSeconds: Number(playTimeById.get(runnerUpId) || 0) },
   ];
 
   if (thirdPlaceGame) {
@@ -6186,7 +6433,7 @@ function calculateCupBracketPodium(data, phase) {
     const thirdId = getGameWinnerId(resolvedThirdPlace, data);
 
     if (thirdId !== null) {
-      podium.push({ position: "🥉 3º lugar", name: getCupTeamName(data, thirdId) });
+      podium.push({ position: "🥉 3º lugar", name: getCupTeamName(data, thirdId), playTimeSeconds: Number(playTimeById.get(thirdId) || 0) });
     }
   }
 
@@ -6740,7 +6987,7 @@ function CupPodiumView({ podium, title = "Principal", variant = "main", shareCon
     podiumVariant: variant,
     groups: [{
       title: `Pódio da ${title}`,
-      rows: podiumPlaces.map((item) => ({ name: item.name })),
+      rows: podiumPlaces.map((item) => ({ name: item.name, playTimeSeconds: item.playTimeSeconds })),
     }],
   } : null;
 
@@ -6764,6 +7011,9 @@ function CupPodiumView({ podium, title = "Principal", variant = "main", shareCon
             <span className="cupPodiumAvatar">{getPodiumInitials(item.name)}</span>
             <strong>{item.position}</strong>
             <span className="cupPodiumName">{item.name}</span>
+            {Number(item.playTimeSeconds || 0) > 0 ? (
+              <span className="cupPodiumTime">Tempo em jogo: {formatMatchDuration(item.playTimeSeconds)}</span>
+            ) : null}
             <span className="cupPodiumStep" aria-hidden="true">{item.place}</span>
           </div>
         ))}
@@ -16893,6 +17143,7 @@ function TournamentScreen({
   const [courtEditor, setCourtEditor] = useState(null);
   const [courtDuplicateConfirm, setCourtDuplicateConfirm] = useState(null);
   const [courtOccupancyConflict, setCourtOccupancyConflict] = useState(null);
+  const [participantOccupancyConflict, setParticipantOccupancyConflict] = useState(null);
   const [courtConfigRevision, setCourtConfigRevision] = useState(0);
   const [shareLoading, setShareLoading] = useState(false);
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
@@ -18155,6 +18406,8 @@ function TournamentScreen({
         const game = copy.schedule?.[target.roundIndex]?.[target.gameIndex];
         if (!game || isGameFinished(game, getWinningScore(copy))) return prev;
         if (courtNumber) applyCourtNumberToGame(game, courtNumber, courtNumbers);
+        if (inProgress) startMatchTimer(game);
+        else stopMatchTimer(game);
         game.inProgress = inProgress;
         return copy;
       }
@@ -18165,7 +18418,10 @@ function TournamentScreen({
 
       copy.brackets = copy.brackets.map((game) => {
         if (game.matchKey !== target.matchKey) return game;
-        const nextGame = { ...game, inProgress };
+        const nextGame = { ...game };
+        if (inProgress) startMatchTimer(nextGame);
+        else stopMatchTimer(nextGame);
+        nextGame.inProgress = inProgress;
         if (courtNumber) applyCourtNumberToGame(nextGame, courtNumber, courtNumbers);
         return nextGame;
       });
@@ -18173,7 +18429,19 @@ function TournamentScreen({
     });
   }
 
-  function requestOperationalGameStart(target, game) {
+  function requestOperationalGameStart(target, game, { skipParticipantCheck = false } = {}) {
+    if (!skipParticipantCheck) {
+      const targetKey = target.scope === "schedule"
+        ? `schedule:${target.roundIndex}:${target.gameIndex}`
+        : `bracket:${target.matchKey}`;
+      const conflicts = getInProgressParticipantConflicts(data, game, targetKey);
+
+      if (conflicts.length > 0) {
+        setParticipantOccupancyConflict({ target, game, conflicts });
+        return;
+      }
+    }
+
     const courtNumbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
     const preferredCourtNumber = normalizedPreferredCourtNumbers[Math.max(0, Number(game?.court || 1) - 1)] || null;
     const courtNumber = game?.courtNumberOverride
@@ -18221,6 +18489,15 @@ function TournamentScreen({
       usage,
       target,
     });
+  }
+
+  function resolveParticipantOccupancyConflict(choice) {
+    if (!participantOccupancyConflict) return;
+    const conflict = participantOccupancyConflict;
+    setParticipantOccupancyConflict(null);
+    if (choice !== "continue") return;
+
+    requestOperationalGameStart(conflict.target, conflict.game, { skipParticipantCheck: true });
   }
 
   function resolveCourtOccupancyConflict(choice) {
@@ -18698,6 +18975,7 @@ function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clear
 
     copy.schedule[roundIndex][gameIndex][field] = normalizeScoreInput(value, winningScore);
     if (getScoreWinnerSide(copy.schedule[roundIndex][gameIndex], winningScore) !== null) {
+      stopMatchTimer(copy.schedule[roundIndex][gameIndex], { finished: true });
       copy.schedule[roundIndex][gameIndex].inProgress = false;
     }
 
@@ -18770,7 +19048,7 @@ function toggleBracketGameStatus(matchKey) {
 
   const target = { scope: "bracket", matchKey };
   if (storedGame.inProgress === true) setOperationalGameState(target, false);
-  else requestOperationalGameStart(target, storedGame);
+  else requestOperationalGameStart(target, targetGame);
 }
 
 function updateBracketScore(matchKey, field, value) {
@@ -18793,7 +19071,10 @@ function updateBracketScore(matchKey, field, value) {
       if (game.matchKey !== matchKey) return game;
 
       const updatedGame = { ...game, [field]: normalizeScoreInput(value, winningScore) };
-      if (getScoreWinnerSide(updatedGame, winningScore) !== null) updatedGame.inProgress = false;
+      if (getScoreWinnerSide(updatedGame, winningScore) !== null) {
+        stopMatchTimer(updatedGame, { finished: true });
+        updatedGame.inProgress = false;
+      }
       return updatedGame;
     });
 
@@ -18812,6 +19093,7 @@ function updateBracketScore(matchKey, field, value) {
         ids1: game.ids1,
         ids2: game.ids2,
         inProgress: game.inProgress === true,
+        ...getMatchTimerFields(game),
         courtNumberOverride: game.courtNumberOverride,
       };
     });
@@ -18825,7 +19107,7 @@ function clearScores() {
   const copy = structuredClone(data);
 
   copy.schedule = (copy.schedule || []).map((round) =>
-    round.map((game) => ({ ...game, s1: "", s2: "", inProgress: false }))
+    round.map((game) => resetMatchTimer({ ...game, s1: "", s2: "", inProgress: false }))
   );
 
   if (isCupType(config)) {
@@ -18858,12 +19140,14 @@ const sunsetSecondParallelVisible = isSunsetData(data);
 const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
 const sunsetFinalVisible = isSunsetData(data);
 const rankingOrganizer = data.publicInfo?.organizer || {};
+const tournamentTimingSummary = getTournamentTimingSummary(data);
 const tournamentRankingShareContext = {
   title: tournament.name,
   subtitle: getModalityDisplayName(tournament.type),
   arenaName: rankingOrganizer.arenaName || rankingOrganizer.organizerName || "Arena Torneio360",
   arenaPhotoUrl: rankingOrganizer.photoUrl || "",
   rankingCriteria: data.rankingCriteria || defaultRankingCriteria,
+  tournamentDurationSeconds: tournamentTimingSummary.complete ? tournamentTimingSummary.durationSeconds : 0,
 };
 const tournamentCircuitAction = typeof onManageCircuits === "function"
   ? { onClick: onManageCircuits, managed: circuitMembershipCount > 0 }
@@ -18942,6 +19226,14 @@ return (
       <CourtOccupancyModal
         conflict={courtOccupancyConflict}
         onChoose={resolveCourtOccupancyConflict}
+      />,
+      document.body
+    )}
+
+    {participantOccupancyConflict && createPortal(
+      <ParticipantOccupancyModal
+        conflict={participantOccupancyConflict}
+        onChoose={resolveParticipantOccupancyConflict}
       />,
       document.body
     )}
@@ -19328,6 +19620,8 @@ return (
                 </div>
               </div>
 
+              <TournamentTimingSummary data={data} />
+
               <div className="cupRankingSplit">
                 <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
@@ -19358,6 +19652,7 @@ return (
                       podium={parallelRanking.slice(0, 3).map((item, index) => ({
                         position: index === 0 ? "🏆 Campeão" : index === 1 ? "🥈 Vice" : "🥉 3º lugar",
                         name: item.name,
+                        playTimeSeconds: item.playTimeSeconds,
                       }))}
                       title={data.cupConfig?.repechageName || "Disputa Paralela"}
                       variant="parallel"
@@ -19490,6 +19785,8 @@ return (
               <h2>Ranking do dia</h2>
               <SavingStatusBadge />
             </div>
+
+            <TournamentTimingSummary data={data} />
 
             <RankingView
               ranking={ranking}
@@ -21757,6 +22054,53 @@ function CourtOccupancyModal({ conflict, onChoose }) {
   );
 }
 
+function ParticipantOccupancyModal({ conflict, onChoose }) {
+  if (!conflict) return null;
+
+  return (
+    <div className="courtDuplicateOverlay participantOccupancyOverlay" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onChoose("cancel");
+    }}>
+      <section className="courtDuplicateModal participantOccupancyModal" role="alertdialog" aria-modal="true" aria-labelledby="participant-occupancy-title">
+        <div className="courtDuplicateIcon">!</div>
+        <span className="courtDuplicateEyebrow">Participante já está jogando</span>
+        <h2 id="participant-occupancy-title">Há participantes em outro jogo</h2>
+        <p>O jogo pode ser chamado, mas os participantes abaixo já aparecem em outro confronto em andamento.</p>
+
+        <ul className="participantOccupancyList">
+          {conflict.conflicts.map((item, index) => (
+            <li key={`${item.gameLabel}-${item.courtLabel}-${index}`}>
+              <strong>{item.participants.map((participant) => participant.name).join(" e ")}</strong>
+              <span>{item.gameLabel} · {item.courtLabel}</span>
+            </li>
+          ))}
+        </ul>
+
+        <p className="participantOccupancyHint">Se a repetição for intencional, você ainda pode iniciar este jogo.</p>
+        <div className="courtDuplicateActions participantOccupancyActions">
+          <button type="button" className="secondaryBtn" onClick={() => onChoose("cancel")}>Cancelar</button>
+          <button type="button" className="participantOccupancyConfirmBtn" onClick={() => onChoose("continue")}>
+            Chamar mesmo assim
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function useLiveMatchElapsedSeconds(game, shouldTick) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    setNow(Date.now());
+    if (!shouldTick || !game?.matchTimerStartedAt) return undefined;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [shouldTick, game?.matchTimerStartedAt]);
+
+  return getMatchElapsedSeconds(game, now);
+}
+
 function UniversalMatchCard({
   game,
   phaseLabel,
@@ -21776,6 +22120,7 @@ function UniversalMatchCard({
   const winnerSide = isBye ? null : getScoreWinnerSide(game, winningScore);
   const isFinished = winnerSide !== null;
   const isInProgress = !isBye && !isFinished && !blocked && game?.inProgress === true;
+  const elapsedSeconds = useLiveMatchElapsedSeconds(game, isInProgress);
   const hasScore = game?.s1 !== "" && game?.s1 != null && game?.s2 !== "" && game?.s2 != null;
   const qualifiedTeam = game?.ids1?.length
     ? game?.team1
@@ -21816,6 +22161,7 @@ function UniversalMatchCard({
             : "is-waiting"
   }`;
   const canToggleStatus = !readOnly && !isBye && !isFinished && !blocked && Boolean(onStatusToggle);
+  const showMatchTimer = !isBye && !blocked;
   const team1AttendanceParticipants = getGameSideAttendanceParticipants(attendanceData, game, "team1");
   const team2AttendanceParticipants = getGameSideAttendanceParticipants(attendanceData, game, "team2");
 
@@ -21917,10 +22263,13 @@ function UniversalMatchCard({
           >
             <span className="matchStatusIndicator" aria-hidden="true">{isInProgress ? "●" : "▷"}</span>
             <span>{statusLabel}</span>
-            {!isInProgress ? <small>Clique para iniciar</small> : null}
+            {showMatchTimer ? <time className="matchStatusTimer" dateTime={`PT${elapsedSeconds}S`}>{formatMatchDuration(elapsedSeconds)}</time> : null}
           </button>
         ) : (
-          <span className={statusClassName}>{statusLabel}</span>
+          <span className={statusClassName}>
+            <span>{statusLabel}</span>
+            {showMatchTimer ? <time className="matchStatusTimer" dateTime={`PT${elapsedSeconds}S`}>{formatMatchDuration(elapsedSeconds)}</time> : null}
+          </span>
         )}
       </div>
 
@@ -22020,7 +22369,7 @@ function ScheduleView({
         />
       ) : null}
 
-      {!readOnly && statusData ? <TournamentMatchStatusSummary data={statusData} /> : null}
+      {!readOnly && statusData ? <TournamentMatchStatusSummary data={statusData} scope="schedule" /> : null}
 
       {showGroupName ? (
         <>
@@ -22123,6 +22472,7 @@ function ScheduleView({
 function calculateRanking(data, type, rankingCriteriaValue = defaultRankingCriteria) {
   const config = modalityConfig[type];
   const winningScore = getWinningScore(data);
+  const timingComplete = getTournamentTimingSummary(data).complete;
 
   if (!data.players) return [];
 
@@ -22148,6 +22498,7 @@ function calculateRanking(data, type, rankingCriteriaValue = defaultRankingCrite
     w: 0,
     bal: 0,
     played: 0,
+    playTimeSeconds: 0,
   }));
 
   (data.schedule || []).flat().forEach((game) => {
@@ -22161,12 +22512,14 @@ if (!winnerSide) return;
 
 const win1 = winnerSide === "team1";
 const win2 = winnerSide === "team2";
+const matchSeconds = timingComplete ? getMatchElapsedSeconds(game) : 0;
 
     game.ids1.forEach((id) => {
       if (!table[id]) return;
       table[id].pts += s1;
       table[id].bal += s1 - s2;
       table[id].played += 1;
+      table[id].playTimeSeconds += matchSeconds;
       if (win1) table[id].w += 1;
     });
 
@@ -22175,6 +22528,7 @@ const win2 = winnerSide === "team2";
       table[id].pts += s2;
       table[id].bal += s2 - s1;
       table[id].played += 1;
+      table[id].playTimeSeconds += matchSeconds;
       if (win2) table[id].w += 1;
     });
   });
@@ -22445,9 +22799,13 @@ function RankingView({ ranking, type, rankingCriteria, shareContext = null, circ
 
 function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareConfig = null, columns = null, showGames = true, circuitAction = null }) {
   const criteria = getRankingCriteria(rankingCriteria);
-  const visibleColumns = Array.isArray(columns) && columns.length
+  const baseColumns = Array.isArray(columns) && columns.length
     ? columns
     : criteria.order.map((key) => ({ key, label: getRankingColumnLabel(key) }));
+  const hasPlayTime = rows.some((row) => Number(row.playTimeSeconds || 0) > 0);
+  const visibleColumns = hasPlayTime && !baseColumns.some(({ key }) => key === "playTimeSeconds")
+    ? [...baseColumns, { key: "playTimeSeconds", label: getRankingColumnLabel("playTimeSeconds") }]
+    : baseColumns;
   const effectiveShareConfig = shareConfig ? { ...shareConfig, rankingCriteria: criteria.value, columns: visibleColumns } : null;
 
   return (
@@ -22484,7 +22842,7 @@ function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareCo
                 <td className="rankingRankCell">{showPodium ? podium(i) : i + 1}</td>
                 <td className="rankingNameCell">{p.name}</td>
                 {visibleColumns.map(({ key }) => (
-                  <td className="rankingStatCell" key={key}>{p[key] ?? 0}</td>
+                  <td className="rankingStatCell" key={key}>{formatRankingMetricValue(key, p[key])}</td>
                 ))}
                 {showGames ? <td className="rankingStatCell">{p.played}</td> : null}
               </tr>
@@ -22731,6 +23089,12 @@ function CupBracketView({
   courtNumbers = data.courtNumbers || [],
   onEditCourt = null,
 }) {
+  const visibleBracketMatchKeys = Object.values(groupedBrackets || {})
+    .flatMap((rounds) => Array.isArray(rounds) ? rounds : [])
+    .flatMap((round) => Array.isArray(round?.games) ? round.games : [])
+    .map((game) => game?.matchKey)
+    .filter(Boolean);
+
   return (
     <div>
       <VoiceRepeatSelector
@@ -22738,7 +23102,11 @@ function CupBracketView({
         setVoiceRepeat={setVoiceRepeat}
       />
 
-      <TournamentMatchStatusSummary data={data} />
+      <TournamentMatchStatusSummary
+        data={data}
+        scope="bracket"
+        bracketMatchKeys={visibleBracketMatchKeys}
+      />
 
       <div className="cupBrackets bracketTreeCollection">
         {groupedBrackets.main?.length > 0 && (
@@ -23719,12 +24087,14 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
     : [];
 
   const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
+  const publicTournamentTimingSummary = getTournamentTimingSummary(data);
   const publicRankingShareContext = {
     title: tournament.name,
     subtitle: getModalityDisplayName(tournament.type),
     arenaName: publicOrganizer.arenaName || publicOrganizer.organizerName || "Arena Torneio360",
     arenaPhotoUrl: publicOrganizer.photoUrl || "",
     rankingCriteria: data.rankingCriteria || defaultRankingCriteria,
+    tournamentDurationSeconds: publicTournamentTimingSummary.complete ? publicTournamentTimingSummary.durationSeconds : 0,
   };
 
   const publicAthletes = getRegisteredAthletesForPublic(data, config);
@@ -23984,6 +24354,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             <h2>{isCup ? "Ranking das chaves" : "Ranking do dia"}</h2>
             <span className="readOnlyBadge">Somente visualização</span>
           </div>
+          <TournamentTimingSummary data={data} compact />
           {!publicRankingReady ? (
             <div className="publicRankingLocked">
               <LockKeyhole aria-hidden="true" />
@@ -24016,6 +24387,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
                         podium={parallelRanking.slice(0, 3).map((item, index) => ({
                           position: index === 0 ? "🏆 Campeão" : index === 1 ? "🥈 Vice" : "🥉 3º lugar",
                           name: item.name,
+                          playTimeSeconds: item.playTimeSeconds,
                         }))}
                         title={data.cupConfig?.repechageName || "Disputa Paralela"}
                         variant="parallel"
