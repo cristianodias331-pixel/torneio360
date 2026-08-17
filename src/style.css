@@ -29596,3 +29596,262 @@ html[data-theme="dark"] .schedule > .scheduleGroupSection > .scheduleGroupHeader
     line-height: 1.15 !important;
   }
 }
+
+/* Cronometragem das partidas e do ranking.
+   O relogio permanece dentro do selo existente para nao aumentar os cartoes. */
+.matchCardStatus,
+.proDashboard.playAppShell button.matchCardStatus {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.matchStatusTimer {
+  display: inline-flex;
+  align-items: center;
+  min-width: 39px;
+  margin-left: 1px;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+  color: inherit !important;
+  font-size: .92em;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 950;
+  letter-spacing: .025em;
+  line-height: 1;
+  opacity: .88;
+}
+
+.bracketTree .matchStatusTimer {
+  min-width: 34px;
+  padding-left: 4px;
+  font-size: .88em;
+}
+
+.tournamentTimingSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px 0 16px;
+  padding: 9px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #17233a;
+  box-shadow: 0 7px 18px rgba(30, 64, 175, .08);
+}
+
+.tournamentTimingIcon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 10px;
+  background: #dbeafe;
+  font-size: 17px;
+}
+
+.tournamentTimingSummary > span:not(.tournamentTimingIcon) {
+  display: grid;
+  gap: 1px;
+}
+
+.tournamentTimingSummary small {
+  color: #526985;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.tournamentTimingSummary strong {
+  color: #1559c6;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.tournamentTimingSummary em {
+  padding-left: 10px;
+  border-left: 1px solid #bfdbfe;
+  color: #526985;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.cupPodiumTime {
+  min-height: 18px;
+  margin: -3px 3px 7px;
+  color: #a5f3fc !important;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850 !important;
+  line-height: 1.15;
+}
+
+html[data-theme="dark"] .tournamentTimingSummary,
+.proDashboard.theme-dark .tournamentTimingSummary {
+  border-color: #365f9d;
+  background: #142943;
+  color: #e8f1ff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .2);
+}
+
+html[data-theme="dark"] .tournamentTimingIcon,
+.proDashboard.theme-dark .tournamentTimingIcon {
+  background: #1d3c63;
+}
+
+html[data-theme="dark"] .tournamentTimingSummary small,
+html[data-theme="dark"] .tournamentTimingSummary em,
+.proDashboard.theme-dark .tournamentTimingSummary small,
+.proDashboard.theme-dark .tournamentTimingSummary em {
+  color: #b8c8db;
+}
+
+html[data-theme="dark"] .tournamentTimingSummary strong,
+.proDashboard.theme-dark .tournamentTimingSummary strong {
+  color: #7db7ff;
+}
+
+html[data-theme="dark"] .tournamentTimingSummary em,
+.proDashboard.theme-dark .tournamentTimingSummary em {
+  border-left-color: #365f9d;
+}
+
+@media (max-width: 640px) {
+  .matchStatusTimer {
+    min-width: 36px;
+    padding-left: 5px;
+  }
+
+  .bracketTree .matchStatusTimer {
+    min-width: 31px;
+    padding-left: 3px;
+    font-size: .83em;
+  }
+
+  .tournamentTimingSummary {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    width: 100%;
+    margin: 10px 0 13px;
+    padding: 8px 10px;
+  }
+
+  .tournamentTimingIcon {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+  }
+
+  .tournamentTimingSummary em {
+    grid-column: 1 / -1;
+    padding: 6px 0 0;
+    border-top: 1px solid #bfdbfe;
+    border-left: 0;
+  }
+
+  html[data-theme="dark"] .tournamentTimingSummary em,
+  .proDashboard.theme-dark .tournamentTimingSummary em {
+    border-top-color: #365f9d;
+    border-left: 0;
+  }
+
+  .cupPodiumTime {
+    font-size: 8.5px;
+  }
+}
+
+/* Aviso não bloqueante para participantes presentes em outro jogo. */
+.participantOccupancyModal {
+  width: min(560px, calc(100vw - 28px)) !important;
+}
+
+.participantOccupancyList {
+  display: grid !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-height: min(260px, 38vh) !important;
+  margin: 17px 0 13px !important;
+  padding: 0 !important;
+  overflow-y: auto !important;
+  list-style: none !important;
+}
+
+.participantOccupancyList li {
+  display: grid !important;
+  gap: 3px !important;
+  padding: 11px 13px !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: 14px !important;
+  background: #fff7ed !important;
+  text-align: left !important;
+}
+
+.participantOccupancyList strong {
+  color: #9a3412 !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+.participantOccupancyList span {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+}
+
+.participantOccupancyModal > p.participantOccupancyHint {
+  margin-bottom: 16px !important;
+  color: #475569 !important;
+  font-weight: 750 !important;
+}
+
+.participantOccupancyActions {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.participantOccupancyConfirmBtn {
+  border: 1px solid #ea580c !important;
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(234, 88, 12, .22) !important;
+}
+
+html[data-theme="dark"] .participantOccupancyList li,
+.proDashboard.theme-dark .participantOccupancyList li {
+  border-color: #7c4a1d !important;
+  background: #33220f !important;
+}
+
+html[data-theme="dark"] .participantOccupancyList strong,
+.proDashboard.theme-dark .participantOccupancyList strong {
+  color: #fdba74 !important;
+}
+
+html[data-theme="dark"] .participantOccupancyList span,
+.proDashboard.theme-dark .participantOccupancyList span,
+html[data-theme="dark"] .participantOccupancyModal > p.participantOccupancyHint,
+.proDashboard.theme-dark .participantOccupancyModal > p.participantOccupancyHint {
+  color: #cbd5e1 !important;
+}
+
+@media (max-width: 520px) {
+  .participantOccupancyModal {
+    max-height: calc(100dvh - 24px) !important;
+    padding: 20px 15px !important;
+    overflow-y: auto !important;
+  }
+
+  .participantOccupancyList {
+    max-height: 31vh !important;
+  }
+
+  .participantOccupancyActions {
+    grid-template-columns: 1fr !important;
+  }
+}

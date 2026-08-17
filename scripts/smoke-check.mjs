@@ -699,6 +699,13 @@ assert.ok(
   "O status persistente de jogo em andamento está ausente."
 );
 assert.ok(
+  mainSource.includes('scope="schedule"')
+    && mainSource.includes('scope="bracket"')
+    && mainSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
+    && mainSource.includes('scope !== "all" && item.scope !== scope'),
+  "O resumo das partidas deve separar fase de grupos, chaves visíveis e visão geral do torneio."
+);
+assert.ok(
   mainSource.includes('function prepareEditableBracketData(currentData)')
     && mainSource.includes('return syncCupBracketScores(copy);')
     && mainSource.includes('const copy = prepareEditableBracketData(prev);'),
@@ -1362,6 +1369,101 @@ assert.ok(
   publicArenaMigration.includes("jsonb_set(")
     && publicArenaMigration.includes("'{displayOrder}'"),
   "A reordenação pode substituir o objeto do torneio em vez de preservar placares e confrontos."
+);
+
+const timerHelpersSource = mainSource.slice(
+  mainSource.indexOf("function getMatchTimerTimestamp"),
+  mainSource.indexOf("function getTournamentTimingSummary")
+);
+const {
+  getMatchElapsedSeconds: getMatchElapsedSecondsForTest,
+  formatMatchDuration: formatMatchDurationForTest,
+  startMatchTimer: startMatchTimerForTest,
+  stopMatchTimer: stopMatchTimerForTest,
+} = Function(`${timerHelpersSource}; return { getMatchElapsedSeconds, formatMatchDuration, startMatchTimer, stopMatchTimer };`)();
+const timerTestGame = { inProgress: true, matchTimerElapsedSeconds: 30 };
+const timerStart = Date.parse("2026-08-16T12:00:00.000Z");
+startMatchTimerForTest(timerTestGame, timerStart);
+assert.equal(getMatchElapsedSecondsForTest(timerTestGame, timerStart + 15000), 45, "O cronômetro não soma o trecho ativo ao tempo salvo.");
+stopMatchTimerForTest(timerTestGame, { finished: true, now: timerStart + 15000 });
+assert.equal(timerTestGame.matchTimerElapsedSeconds, 45, "O cronômetro não preserva o tempo quando o placar é finalizado.");
+assert.equal(formatMatchDurationForTest(3661), "61:01", "O cronômetro não mantém minutos acima de 59 no formato MM:SS.");
+assert.ok(
+  mainSource.includes("function TournamentTimingSummary")
+    && mainSource.includes("complete: operationalGames.length > 0")
+    && mainSource.includes("if (!getTournamentTimingSummary(data).complete) return playTimeById")
+    && mainSource.includes("matchTimerFinishedAt")
+    && mainSource.includes('className="matchStatusTimer"')
+    && mainSource.includes('playTimeSeconds: "Tempo em jogo"')
+    && mainSource.includes("Tempo geral do torneio")
+    && styleSource.includes(".matchStatusTimer")
+    && styleSource.includes("html[data-theme=\"dark\"] .tournamentTimingSummary")
+    && styleSource.includes(".bracketTree .matchStatusTimer"),
+  "A cronometragem perdeu persistência, segurança contra dados incompletos, ranking, compartilhamento ou contraste responsivo."
+);
+
+const participantOccupancyHelpersSource = mainSource.slice(
+  mainSource.indexOf("function getGameParticipantIdentityEntries"),
+  mainSource.indexOf("function getTournamentOperationalGames")
+);
+const {
+  getSharedGameParticipants: getSharedGameParticipantsForTest,
+} = Function(`${participantOccupancyHelpersSource}; return { getSharedGameParticipants };`)();
+assert.deepEqual(
+  getSharedGameParticipantsForTest(
+    { ids1: [3], team1: ["Ana"], ids2: [8], team2: ["Bia"] },
+    { ids1: [3], team1: ["Ana"], ids2: [11], team2: ["Carla"] }
+  ).map((participant) => participant.name),
+  ["Ana"],
+  "O sistema não reconhece o mesmo participante em dois jogos."
+);
+assert.equal(
+  getSharedGameParticipantsForTest(
+    { ids1: [3], team1: ["João"], ids2: [], team2: [] },
+    { ids1: [9], team1: ["João"], ids2: [], team2: [] }
+  ).length,
+  0,
+  "O sistema confunde homônimos cadastrados como participantes diferentes."
+);
+const participantConflictSource = mainSource.slice(
+  mainSource.indexOf("function getInProgressParticipantConflicts"),
+  mainSource.indexOf("function getTournamentMatchStatusSummary")
+);
+const getInProgressParticipantConflictsForTest = Function(
+  "getWinningScore",
+  "getTournamentOperationalGames",
+  "isGameFinished",
+  "getSharedGameParticipants",
+  "getGameCourtLabel",
+  `${participantConflictSource}; return getInProgressParticipantConflicts;`
+)(
+  () => 4,
+  () => [
+    { key: "active", game: { ids1: [3], team1: ["Ana"], ids2: [6], team2: ["Bia"], inProgress: true }, label: "Grupo A · Rodada 1" },
+    { key: "waiting", game: { ids1: [3], team1: ["Ana"], ids2: [7], team2: ["Carla"], inProgress: false }, label: "Grupo A · Rodada 2" },
+    { key: "other", game: { ids1: [9], team1: ["Dani"], ids2: [10], team2: ["Eva"], inProgress: true }, label: "Grupo B · Rodada 1" },
+  ],
+  (game) => game.finished === true,
+  getSharedGameParticipantsForTest,
+  () => "Quadra 2"
+);
+const participantConflictsForTest = getInProgressParticipantConflictsForTest(
+  {},
+  { ids1: [3], team1: ["Ana"], ids2: [8], team2: ["Fê"] },
+  "target"
+);
+assert.equal(participantConflictsForTest.length, 1, "O aviso considera jogos aguardando ou participantes diferentes como ocupados.");
+assert.equal(participantConflictsForTest[0].participants[0].name, "Ana", "O aviso não identifica quem já está em jogo.");
+assert.ok(
+  mainSource.includes("function getInProgressParticipantConflicts")
+    && mainSource.includes("participantOccupancyConflict")
+    && mainSource.includes("Chamar mesmo assim")
+    && mainSource.includes("skipParticipantCheck: true")
+    && mainSource.includes("requestOperationalGameStart(target, targetGame)")
+    && styleSource.includes(".participantOccupancyModal")
+    && styleSource.includes('html[data-theme="dark"] .participantOccupancyList li')
+    && styleSource.includes("@media (max-width: 520px)"),
+  "O aviso não bloqueante de participantes ocupados perdeu a confirmação, as chaves ou a adaptação visual."
 );
 
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {
