@@ -73,7 +73,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
                 <article key={candidate.key} className={!entry?.confirmed ? "pending" : "confirmed"}>
                   <div>
                     <strong>{candidate.name}</strong>
-                    <small>{suggestionLabel}{candidate.tournaments?.length ? ` · ${candidate.tournaments.slice(0, 2).join(", ")}` : ""}</small>
+                    <small className="circuitGenderSuggestionLabel"><span>Sugestão</span><b>{suggestionLabel.replace("Sugestão: ", "")}</b>{candidate.tournaments?.length ? <em>· {candidate.tournaments.slice(0, 2).join(", ")}</em> : null}</small>
                   </div>
                   <div className="circuitGenderChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
                     <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.masculine} className={selectedGender === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.masculine)}>Masculino</button>
@@ -85,6 +85,38 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
           </div>
         </>
       ) : <p className="circuitGenderEmpty">Selecione os torneios do circuito para identificar os atletas.</p>}
+    </section>
+  );
+}
+
+export function CircuitGenderRegistryPanel({ candidates = [], value = {}, knownRegistry = {}, onChange }) {
+  const registry = useMemo(
+    () => mergeParticipantGenderRegistries(knownRegistry, value),
+    [knownRegistry, value]
+  );
+
+  return (
+    <section className="circuitStandaloneGenderRegistry">
+      <div className="circuitStandaloneGenderHeader">
+        <div>
+          <span>Cadastro da arena</span>
+          <strong>Gravar gênero dos atletas</strong>
+          <small>Confirme os nomes uma vez para reutilizar a identificação nos circuitos desta arena. É opcional e não interfere nos torneios.</small>
+        </div>
+        <FormatExplanationButton
+          iconOnly
+          ariaLabel="Entenda o cadastro de gênero dos atletas"
+          eyebrow="Cadastro da arena"
+          title="Identificação reutilizável"
+          intro="Esta função ajuda a separar rankings masculinos e femininos sem alterar participantes, confrontos ou placares."
+          sections={[
+            { title: "Confirmação", content: <p>O organizador confirma Masculino ou Feminino para cada nome. Sugestões nunca são gravadas automaticamente.</p> },
+            { title: "Reutilização", content: <p>Depois de salvo, o mesmo atleta pode ser reconhecido em outros torneios e circuitos desta arena.</p> },
+            { title: "Sem bloqueio", content: <p>Nomes não informados continuam normalmente no ranking geral e não impedem nenhuma etapa do evento.</p> },
+          ]}
+        />
+      </div>
+      <CircuitGenderRegistryEditor candidates={candidates} registry={registry} onChange={onChange} />
     </section>
   );
 }
@@ -133,14 +165,8 @@ export function CircuitRankingSettingsEditor({
   inheritedCriteria,
   mixedCriteria = false,
   tournamentFormat = "",
-  genderCandidates = [],
-  arenaGenderRegistry = {},
 }) {
   const settings = normalizeCircuitRankingSettings(value);
-  const effectiveGenderRegistry = useMemo(
-    () => mergeParticipantGenderRegistries(arenaGenderRegistry, settings.genderRegistry),
-    [arenaGenderRegistry, settings.genderRegistry]
-  );
 
   function updateSettings(patch) {
     onChange(normalizeCircuitRankingSettings({ ...settings, ...patch }));
@@ -166,11 +192,6 @@ export function CircuitRankingSettingsEditor({
           <button type="button" role="radio" aria-checked={settings.rankingDivision === "general"} className={settings.rankingDivision === "general" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "general" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "general" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Ranking geral</strong></span></button>
           <button type="button" role="radio" aria-checked={settings.rankingDivision === "gender"} className={settings.rankingDivision === "gender" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "gender" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "gender" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Masculino e feminino</strong></span></button>
         </div>
-        {settings.rankingDivision === "gender" ? <CircuitGenderRegistryEditor
-          candidates={genderCandidates}
-          registry={effectiveGenderRegistry}
-          onChange={(genderRegistry) => updateSettings({ genderRegistry })}
-        /> : null}
       </div>
     );
   }

@@ -6,6 +6,7 @@ import {
   getParticipantGender,
   mergeParticipantGenderRegistries,
   participantGenderValues,
+  setParticipantGender,
 } from "../../domain/participantGenderRegistry.mjs";
 import {
   isCupType,
@@ -268,7 +269,7 @@ function buildParticipantImportPreview(config, data, drafts, mode) {
   };
 }
 
-export default function ParticipantImportModal({ type, data, onClose, onApply, modalityConfig }) {
+export default function ParticipantImportModal({ type, data, knownRegistry = {}, onClose, onApply, modalityConfig }) {
   const config = modalityConfig[type];
   const isMixed = isMixedParticipantConfig(config);
   const isTeams = isTeamParticipantConfig(config);
@@ -276,10 +277,29 @@ export default function ParticipantImportModal({ type, data, onClose, onApply, m
   const [drafts, setDrafts] = useState({ general: "", men: "", women: "" });
   const [mode, setMode] = useState("available");
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [genderRegistryDraft, setGenderRegistryDraft] = useState(() => (
+    mergeParticipantGenderRegistries(data.participantGenders)
+  ));
   const preview = useMemo(
     () => buildParticipantImportPreview(config, data, drafts, mode),
     [config, data, drafts, mode]
   );
+  const genderCandidates = useMemo(() => {
+    if (!isTeams) return [];
+    const collected = collectTournamentGenderCandidates({
+      type,
+      name: data.eventName,
+      data: { ...data, players: preview.nextPlayers },
+    }, config);
+    return [...new Map(collected.map((candidate) => [candidate.key, candidate])).values()];
+  }, [config, data, isTeams, preview.nextPlayers, type]);
+  const effectiveGenderRegistry = useMemo(
+    () => mergeParticipantGenderRegistries(knownRegistry, genderRegistryDraft),
+    [genderRegistryDraft, knownRegistry]
+  );
+  const confirmedGenderCount = genderCandidates.filter((candidate) => (
+    getParticipantGender(effectiveGenderRegistry, candidate.name, { confirmedOnly: true }) !== participantGenderValues.unknown
+  )).length;
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -315,7 +335,22 @@ export default function ParticipantImportModal({ type, data, onClose, onApply, m
       return;
     }
 
-    onApply(preview.nextPlayers, preview);
+    onApply(preview.nextPlayers, {
+      ...preview,
+      participantGenders: genderRegistryDraft,
+    });
+  }
+
+  function chooseParticipantGender(candidate, gender) {
+    setGenderRegistryDraft((current) => setParticipantGender(current, candidate.name, gender));
+  }
+
+  function confirmGenderSuggestions() {
+    setGenderRegistryDraft((current) => genderCandidates.reduce((registry, candidate) => (
+      candidate.suggestion && candidate.suggestion !== participantGenderValues.unknown
+        ? setParticipantGender(registry, candidate.name, candidate.suggestion)
+        : registry
+    ), current));
   }
 
   return (
@@ -417,6 +452,47 @@ export default function ParticipantImportModal({ type, data, onClose, onApply, m
           </div>
         </div>
 
+        {isTeams && genderCandidates.length ? (
+          <section className="participantImportGenderStep" aria-labelledby="participant-import-gender-title">
+            <div className="participantImportGenderHeader">
+              <div>
+                <span>Etapa opcional</span>
+                <strong id="participant-import-gender-title">Confirmar gênero para os rankings</strong>
+                <small>Organize aqui os mesmos nomes da lista. Isso não interfere no torneio e nunca impede continuar.</small>
+              </div>
+              <b>{confirmedGenderCount} de {genderCandidates.length} confirmados</b>
+            </div>
+            <div className="participantImportGenderToolbar">
+              <p>Use nome e sobrenome. As sugestões servem apenas para reduzir o trabalho e só são gravadas após sua confirmação.</p>
+              <button type="button" className="genderSuggestionConfirmButton" onClick={confirmGenderSuggestions}>
+                Confirmar sugestões
+              </button>
+            </div>
+            <div className="participantImportGenderList">
+              {genderCandidates.map((candidate) => {
+                const selected = getParticipantGender(effectiveGenderRegistry, candidate.name, { confirmedOnly: true });
+                const suggestion = candidate.suggestion === participantGenderValues.masculine
+                  ? "Masculino"
+                  : candidate.suggestion === participantGenderValues.feminine
+                    ? "Feminino"
+                    : "Sem sugestão segura";
+                return (
+                  <article key={candidate.key}>
+                    <div className="participantImportGenderName">
+                      <strong>{candidate.name}</strong>
+                      <small><span>Sugestão</span><b>{suggestion}</b></small>
+                    </div>
+                    <div className="participantGenderPanelChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
+                      <button type="button" role="radio" aria-checked={selected === participantGenderValues.masculine} className={selected === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseParticipantGender(candidate, participantGenderValues.masculine)}>Masculino</button>
+                      <button type="button" role="radio" aria-checked={selected === participantGenderValues.feminine} className={selected === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => chooseParticipantGender(candidate, participantGenderValues.feminine)}>Feminino</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
         <div className="participantImportFooter">
           <button type="button" className="secondaryBtn" onClick={onClose}>Cancelar</button>
           <button type="button" onClick={handleApply} disabled={!preview.imported}>
@@ -438,55 +514,6 @@ function ParticipantAttendanceButton({ confirmed, onChange }) {
     >
       {confirmed ? "Confirmado" : "Pendente"}
     </button>
-  );
-}
-
-export function ParticipantGenderPanel({ type, data, knownRegistry = {}, onChange, modalityConfig }) {
-  const config = modalityConfig[type];
-  const teamFormat = config && isTeamParticipantConfig(config);
-  const candidates = useMemo(() => {
-    if (!teamFormat) return [];
-    const collected = collectTournamentGenderCandidates({ type, data, name: data.eventName }, config);
-    return [...new Map(collected.map((candidate) => [candidate.key, candidate])).values()];
-  }, [config, data, teamFormat, type]);
-  const effectiveRegistry = useMemo(
-    () => mergeParticipantGenderRegistries(knownRegistry, data.participantGenders),
-    [data.participantGenders, knownRegistry]
-  );
-
-  if (!teamFormat || candidates.length === 0) return null;
-
-  return (
-    <details className="participantGenderPanel">
-      <summary>
-        <span><strong>Gênero para rankings</strong><small>Opcional — não interfere no torneio</small></span>
-        <span>{candidates.filter((candidate) => getParticipantGender(effectiveRegistry, candidate.name, { confirmedOnly: true }) !== participantGenderValues.unknown).length} de {candidates.length} identificados</span>
-      </summary>
-      <div className="participantGenderPanelIntro">
-        <p>Confirme apenas quando quiser separar rankings masculino e feminino. Se não informar, nada será gravado como definitivo e o torneio seguirá normalmente.</p>
-        <strong>Use sempre nome e sobrenome para evitar confundir atletas com o mesmo primeiro nome.</strong>
-      </div>
-      <div className="participantGenderPanelList">
-        {candidates.map((candidate) => {
-          const selected = getParticipantGender(effectiveRegistry, candidate.name, { confirmedOnly: true });
-          const suggested = candidate.suggestion === participantGenderValues.masculine
-            ? "Sugestão: masculino"
-            : candidate.suggestion === participantGenderValues.feminine
-              ? "Sugestão: feminino"
-              : "Sem sugestão segura";
-          return (
-            <article key={candidate.key}>
-              <div><strong>{candidate.name}</strong><small>{suggested}</small></div>
-              <div className="participantGenderPanelChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
-                <button type="button" role="radio" aria-checked={selected === participantGenderValues.masculine} className={selected === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => onChange(candidate.name, participantGenderValues.masculine)}>Masculino</button>
-                <button type="button" role="radio" aria-checked={selected === participantGenderValues.feminine} className={selected === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => onChange(candidate.name, participantGenderValues.feminine)}>Feminino</button>
-                <button type="button" className="clear" onClick={() => onChange(candidate.name, participantGenderValues.unknown)}>Não informar</button>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </details>
   );
 }
 
