@@ -13,10 +13,329 @@ import {
   mergeConcurrentTournamentData,
   preservesTournamentCriticalData,
 } from "../src/offlineDataStore.mjs";
+import {
+  formatMatchDuration,
+  getMatchElapsedSeconds,
+  resetMatchTimer,
+  startMatchTimer,
+  stopMatchTimer,
+} from "../src/domain/matchTimer.mjs";
+import {
+  applyCourtNumberToGame,
+  createDefaultCourtNumbers,
+  getGameCourtLabel,
+  getGameCourtNumber,
+  normalizeCourtNumberValue,
+  normalizeCourtNumbers,
+} from "../src/domain/courtNumbers.mjs";
+import {
+  getMaxScore,
+  getScoreWinnerSide,
+  getWinningScore,
+  isGameFinished,
+  normalizeScoreInput,
+} from "../src/domain/scoreRules.mjs";
+import { formatParticipantName } from "../src/domain/participantNames.mjs";
+import {
+  getGameSideAttendanceParticipants,
+  getParticipantAttendanceEntries,
+  normalizeAttendanceList,
+  normalizeParticipantAttendance,
+  reconcileParticipantAttendance,
+  setParticipantAttendanceValue,
+} from "../src/domain/participantAttendance.mjs";
+import {
+  applyCircuitDrawOrder,
+  applyCircuitExtraPoints,
+  applyCircuitManualParticipants,
+  compareCircuitStageScores,
+  defaultCircuitPositionPoints,
+  getCircuitCupPlacementKey,
+  getCircuitPlacementColumns,
+  getCircuitPlacementLabel,
+  getCircuitTieBreakLabel,
+  getCircuitTieSignature,
+  getUnresolvedCircuitTieGroups,
+  normalizeCircuitPointValue,
+  normalizeCircuitRankingSettings,
+  normalizeCircuitTieBreakOrder,
+} from "../src/domain/circuitRankingSettings.mjs";
+import {
+  normalizeRankingExportGroups,
+  paginateRankingGroups,
+} from "../src/domain/rankingPagination.mjs";
+import {
+  getGameParticipantIdentityEntries,
+  getSharedGameParticipants,
+} from "../src/domain/gameParticipants.mjs";
+import {
+  defaultRankingCriteria,
+  formatRankingMetricValue,
+  getRankingColumnLabel,
+  getRankingCriteria,
+  rankingCriteriaOptions,
+} from "../src/domain/rankingCriteria.mjs";
+import {
+  calculateScheduleRanking,
+  calculateTeamGamesRanking,
+} from "../src/domain/rankingCalculation.mjs";
+import {
+  calculateCircuitTournamentRankingRows,
+  calculateTournamentRanking,
+} from "../src/domain/tournamentRanking.mjs";
+import {
+  calculateCircuitPlacementRowsByConfig,
+  calculateCupPlacementRows,
+  calculateRankPlacementRows,
+  isCompletedCircuitGame,
+} from "../src/domain/circuitPlacement.mjs";
+import {
+  buildCircuitRankingGroups,
+  buildCircuitRankingGroupsFromRecords,
+  buildCircuitTournamentRankingRecords,
+} from "../src/domain/circuitRankingAggregation.mjs";
+import {
+  getModalityDisplayName,
+  modalityDisplayNames,
+  modalityPickerDescriptions,
+  modalityPickerGroups,
+  normalizeModalitySearch,
+} from "../src/domain/modalityCatalog.mjs";
+import {
+  isCupType,
+  isFlexibleSimpleType,
+  isIndividualCupType,
+  isMixedType,
+  isReizinhoType,
+} from "../src/domain/modalityClassification.mjs";
+import {
+  getReizinhoPlayerCount,
+  getSimplePlayerCount,
+  getTournamentCourtCount,
+} from "../src/domain/modalitySettings.mjs";
+import {
+  fixed12Template,
+  super10MixedTemplate,
+  super12MixedTemplate,
+  super16MixedTemplate,
+  super8Template,
+} from "../src/domain/scheduleTemplates.mjs";
+import {
+  berger,
+  optimizeCourts,
+  shuffleArray,
+} from "../src/domain/scheduleGeneration.mjs";
+import {
+  createCearenseGroups,
+  createCupGroups,
+  createRoundRobinPairings,
+  describeCearenseGroupSizes,
+  getCupTeamName,
+  getCupTeams,
+  getGroupLetter,
+  getTeamName,
+} from "../src/domain/cupGroups.mjs";
+import {
+  getCupFormat,
+  isCampeonatoCearenseData,
+  isCearenseData,
+  isCearenseSecondParallelEnabled,
+  isCearenseThirdParallelEnabled,
+  isCopinhaData,
+  isOfficialCearenseData,
+  isPlayRankingData,
+  isSunsetData,
+} from "../src/domain/cupFormat.mjs";
+import {
+  generateCearenseGroupSchedule,
+  generateCupGroupSchedule,
+} from "../src/domain/cupGroupSchedule.mjs";
+import {
+  generateParallelRoundRobin,
+  getBracketSeedOrder,
+  getEliminationRoundName,
+  getLargestPowerOfTwo,
+  getNextPowerOfTwo,
+  seedBracket,
+} from "../src/domain/bracketBasics.mjs";
+import {
+  buildNextRound,
+  buildThirdPlaceGame,
+  getGameLoserId,
+  getGameWinnerId,
+  resolveBracketGame,
+} from "../src/domain/bracketProgression.mjs";
+import {
+  avoidSameGroupOpeningMatches,
+  buildCearenseEliminationRounds,
+  createCopinhaBracketGame,
+  getCopinhaPreliminaryPairs,
+} from "../src/domain/bracketConstruction.mjs";
+import {
+  buildPlayRankingParallelRounds,
+  getPlayRankingOpeningLosses,
+  pairPlayRankingTransferredEntries,
+} from "../src/domain/playRankingBracket.mjs";
+import {
+  buildCearenseThirdParallelRounds,
+  getCearenseThirdParallelSources,
+} from "../src/domain/cearenseThirdParallel.mjs";
+import {
+  buildSunsetChampionsRounds,
+  buildSunsetParallelFromMainRound,
+  getBracketChampionSource,
+  getSunsetMainSourceGames,
+} from "../src/domain/sunsetBracket.mjs";
+import {
+  buildCopinhaBracketFromPlan,
+  buildCopinhaEliminationRounds,
+  expandBracketPlanWithVisualByes,
+  getCopinhaEntryCode,
+  getCopinhaPlanEntry,
+} from "../src/domain/cupBracketConstruction.mjs";
+import {
+  getCopinhaHeadToHeadWinnerId,
+  getCopinhaManualTieOrder,
+  rankCearenseGroupRows,
+  rankCopinhaGroupRows,
+  rankOfficialCearenseGroupRows,
+} from "../src/domain/groupRankingRules.mjs";
+import {
+  compareCearenseCampaignMetrics,
+  compareOfficialCearenseChampions,
+  getCearenseCampaignTieKey,
+  getOfficialCearenseAdjustedBalance,
+  getOfficialCearenseChampionTieKey,
+  getReducedRatio,
+  greatestCommonDivisor,
+  haveSameCearenseCampaign,
+  rankCearenseCampaignEntries,
+} from "../src/domain/campaignRanking.mjs";
+import { calculateCupGroupRankings } from "../src/domain/cupGroupRanking.mjs";
+import {
+  getCearenseQualified,
+  getOfficialCearenseQualified,
+} from "../src/domain/cearenseQualification.mjs";
+import {
+  getCopinhaQualified,
+  getCopinhaSeededGroups,
+  getCup18Qualified,
+  getCup21Qualified,
+  getCupQualified,
+} from "../src/domain/cupQualification.mjs";
 
 const root = new URL("../", import.meta.url);
 const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
 const styleSource = readFileSync(new URL("src/style.css", root), "utf8");
+const rankingShareButtonSource = readFileSync(
+  new URL("src/features/rankingShare/RankingShareButton.jsx", root),
+  "utf8"
+);
+const rankingShareExportSource = readFileSync(
+  new URL("src/features/rankingShare/rankingShareExport.mjs", root),
+  "utf8"
+);
+const canvasToolsSource = readFileSync(new URL("src/features/media/canvasTools.mjs", root), "utf8");
+const tournamentWorkspaceTabsSource = readFileSync(
+  new URL("src/features/tournamentWorkspace/TournamentWorkspaceTabs.jsx", root),
+  "utf8"
+);
+const courtCenterModalSource = readFileSync(
+  new URL("src/features/courtCenter/CourtCenterModal.jsx", root),
+  "utf8"
+);
+const modalityPickerSource = readFileSync(
+  new URL("src/features/modalityPicker/ModalityPicker.jsx", root),
+  "utf8"
+);
+const matchControlsSource = readFileSync(
+  new URL("src/features/matchOperations/MatchControls.jsx", root),
+  "utf8"
+);
+const matchScheduleSource = readFileSync(
+  new URL("src/features/matchOperations/MatchSchedule.jsx", root),
+  "utf8"
+);
+const tournamentSummaryViewsSource = readFileSync(
+  new URL("src/features/matchOperations/TournamentSummaryViews.jsx", root),
+  "utf8"
+);
+const participantManagementSource = readFileSync(
+  new URL("src/features/participantManagement/ParticipantManagement.jsx", root),
+  "utf8"
+);
+const publicArenaPresentationSource = readFileSync(
+  new URL("src/features/publicArena/PublicArenaPresentation.jsx", root),
+  "utf8"
+);
+const rankingTablesSource = readFileSync(
+  new URL("src/features/ranking/RankingTables.jsx", root),
+  "utf8"
+);
+const cupPodiumSource = readFileSync(
+  new URL("src/features/ranking/CupPodiumView.jsx", root),
+  "utf8"
+);
+const tieBreakPanelsSource = readFileSync(
+  new URL("src/features/ranking/TieBreakPanels.jsx", root),
+  "utf8"
+);
+const cupBracketViewSource = readFileSync(
+  new URL("src/features/brackets/CupBracketView.jsx", root),
+  "utf8"
+);
+const publicBracketViewSource = readFileSync(
+  new URL("src/features/brackets/PublicBracketView.jsx", root),
+  "utf8"
+);
+const appUpdateNoticeSource = readFileSync(
+  new URL("src/features/appShell/AppUpdateNotice.jsx", root),
+  "utf8"
+);
+const shuffleVideoModalSource = readFileSync(
+  new URL("src/features/media/ShuffleVideoModal.jsx", root),
+  "utf8"
+);
+const tournamentErrorBoundarySource = readFileSync(
+  new URL("src/features/tournamentWorkspace/TournamentErrorBoundary.jsx", root),
+  "utf8"
+);
+const entryPresentationSource = readFileSync(
+  new URL("src/features/appShell/EntryPresentation.jsx", root),
+  "utf8"
+);
+const accessStatusViewsSource = readFileSync(
+  new URL("src/features/appShell/AccessStatusViews.jsx", root),
+  "utf8"
+);
+const tournamentFormatPanelsSource = readFileSync(
+  new URL("src/features/tournamentConfig/TournamentFormatPanels.jsx", root),
+  "utf8"
+);
+const tournamentFormatHelpSource = readFileSync(
+  new URL("src/features/tournamentConfig/TournamentFormatHelp.jsx", root),
+  "utf8"
+);
+const formatExplanationButtonSource = readFileSync(
+  new URL("src/features/tournamentConfig/FormatExplanationButton.jsx", root),
+  "utf8"
+);
+const circuitRankingSettingsPanelSource = readFileSync(
+  new URL("src/features/circuitManagement/CircuitRankingSettings.jsx", root),
+  "utf8"
+);
+const circuitExtraPointsPanelSource = readFileSync(
+  new URL("src/features/circuitManagement/CircuitExtraPointsPanel.jsx", root),
+  "utf8"
+);
+const tournamentCircuitManagerSource = readFileSync(
+  new URL("src/features/circuitManagement/TournamentCircuitManager.jsx", root),
+  "utf8"
+);
+const confirmationDialogsSource = readFileSync(
+  new URL("src/features/dialogs/ConfirmationDialogs.jsx", root),
+  "utf8"
+);
 const installSource = readFileSync(new URL("src/InstallAppBanner.jsx", root), "utf8");
 const indexSource = readFileSync(new URL("index.html", root), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("package.json", root), "utf8"));
@@ -39,13 +358,1169 @@ assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração d
 const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
 const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
 const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
-const participantImportSanitizersSource = mainSource.slice(
-  mainSource.indexOf("function stripParticipantEmojis(value)"),
-  mainSource.indexOf("function sanitizeParticipantName(value)")
+const groupRankingRulesSource = readFileSync(new URL("src/domain/groupRankingRules.mjs", root), "utf8");
+const campaignRankingSource = readFileSync(new URL("src/domain/campaignRanking.mjs", root), "utf8");
+const cearenseQualificationSource = readFileSync(new URL("src/domain/cearenseQualification.mjs", root), "utf8");
+const playRankingBracketSource = readFileSync(new URL("src/domain/playRankingBracket.mjs", root), "utf8");
+const cearenseThirdParallelSource = readFileSync(new URL("src/domain/cearenseThirdParallel.mjs", root), "utf8");
+const sunsetBracketSource = readFileSync(new URL("src/domain/sunsetBracket.mjs", root), "utf8");
+const cupBracketConstructionSource = readFileSync(new URL("src/domain/cupBracketConstruction.mjs", root), "utf8");
+const circuitRankingSettingsSource = readFileSync(new URL("src/domain/circuitRankingSettings.mjs", root), "utf8");
+const participantAttendanceSource = readFileSync(new URL("src/domain/participantAttendance.mjs", root), "utf8");
+const tournamentRankingSource = readFileSync(new URL("src/domain/tournamentRanking.mjs", root), "utf8");
+const circuitPlacementSource = readFileSync(new URL("src/domain/circuitPlacement.mjs", root), "utf8");
+const circuitRankingAggregationSource = readFileSync(new URL("src/domain/circuitRankingAggregation.mjs", root), "utf8");
+const participantImportSanitizersSource = participantManagementSource.slice(
+  participantManagementSource.indexOf("function stripParticipantEmojis(value)"),
+  participantManagementSource.indexOf("function sanitizeParticipantName(value)")
 );
 const prepareParticipantLineForTest = Function(
   `"use strict"; ${participantImportSanitizersSource}; return prepareParticipantLine;`
 )();
+
+assert.equal(getModalityDisplayName("Super 08"), "Super 8", "O nome público do Super 8 foi alterado.");
+assert.equal(getModalityDisplayName("Modalidade legada"), "Modalidade legada", "Modalidades legadas devem preservar o nome armazenado.");
+assert.equal(normalizeModalitySearch("  Torneio Cearense  "), "torneio cearense", "A busca de modalidades perdeu a normalização.");
+assert.deepEqual(
+  modalityPickerGroups.map((group) => group.title),
+  ["Duplas fixas", "Ranking individual", "Mistas", "Copas e modelos"],
+  "Os agrupamentos do seletor de modalidades foram alterados."
+);
+assert.equal(
+  modalityPickerDescriptions["Campeonato Cearense"],
+  "Grupos, chave principal e disputas paralelas configuráveis.",
+  "A descrição do Campeonato Cearense foi alterada."
+);
+for (const type of ["cup", "cup18", "cup21", "copinha", "cearense", "cearenseIndividual", "playranking", "sunset"]) {
+  assert.equal(isCupType({ type }), true, `A modalidade ${type} deixou de ser reconhecida como copa.`);
+}
+assert.equal(isCupType({ type: "mixed20" }), false, "Uma modalidade mista não pode ser reconhecida como copa.");
+for (const type of ["mixed10", "mixed12", "mixed16", "mixed20"]) {
+  assert.equal(isMixedType({ type }), true, `A modalidade ${type} deixou de ser reconhecida como mista.`);
+}
+assert.equal(isMixedType({ type: "super12" }), false, "O Super 12 individual não pode ser reconhecido como misto.");
+assert.equal(isFlexibleSimpleType({ type: "simple8" }), true, "A modalidade Simples deixou de ser reconhecida.");
+assert.equal(isReizinhoType({ type: "reizinho" }), true, "O Reizinho deixou de ser reconhecido.");
+assert.equal(isIndividualCupType({ type: "cearenseIndividual" }), true, "A copa individual deixou de ser reconhecida.");
+assert.equal(isIndividualCupType({ type: "legado", individualCup: true }), true, "A compatibilidade com copas individuais antigas foi perdida.");
+const flexibleSimpleConfig = {
+  type: "simple8",
+  total: 8,
+  defaultPlayers: 8,
+  allowedPlayerCounts: [4, 6, 8, 10, 12, 14],
+};
+assert.equal(getSimplePlayerCount(flexibleSimpleConfig, { simplePlayerCount: 10 }), 10, "A quantidade escolhida da modalidade Simples foi alterada.");
+assert.equal(getSimplePlayerCount(flexibleSimpleConfig, { players: Array(12).fill("") }), 12, "A quantidade já salva de jogadores não foi preservada.");
+assert.equal(getSimplePlayerCount(flexibleSimpleConfig, { simplePlayerCount: 9 }), 8, "Uma quantidade inválida não voltou ao padrão seguro.");
+const reizinhoConfig = { type: "reizinho", defaultPlayers: 4, allowedPlayerCounts: [4, 6] };
+assert.equal(getReizinhoPlayerCount(reizinhoConfig, { reizinhoPlayerCount: 6 }), 6, "A escolha do Reizinho de seis atletas foi alterada.");
+assert.equal(getTournamentCourtCount(flexibleSimpleConfig, { simplePlayerCount: 10 }), 5, "O número de quadras da modalidade Simples foi alterado.");
+assert.equal(getTournamentCourtCount(reizinhoConfig, { reizinhoPlayerCount: 6 }), 1, "O Reizinho deve preservar uma quadra lógica.");
+assert.equal(getTournamentCourtCount({ type: "super12", courts: 3 }), 3, "O número configurado de quadras foi alterado.");
+assert.equal(formatParticipantName("  ANA   MARIA  "), "Ana Maria", "A formatação deve preservar nomes compostos e normalizar espaços.");
+assert.equal(formatParticipantName("BÁRBARA DOS SANTOS"), "Bárbara dos Santos", "A formatação deve preservar acentos e conectores do português.");
+assert.equal(formatParticipantName("d'ÁVILA e ANA-CLARA"), "D'Ávila e Ana-Clara", "A formatação deve preservar apóstrofos, hífens e conectores.");
+assert.equal(formatParticipantName(""), "", "Um nome vazio deve permanecer vazio.");
+assert.deepEqual(normalizeAttendanceList([true, 1, false], 4), [true, false, false, false], "A presença simples deixou de aceitar somente confirmações explícitas.");
+const mixedAttendanceConfig = { type: "mixed10", men: 2, women: 2 };
+const mixedAttendancePlayers = { men: ["Ana", "Bia"], women: ["Carla", "Dora"] };
+assert.deepEqual(
+  normalizeParticipantAttendance(mixedAttendanceConfig, mixedAttendancePlayers, { men: [true], women: [false, true] }),
+  { men: [true, false], women: [false, true] },
+  "A presença das modalidades mistas perdeu sua estrutura salva."
+);
+const cupAttendanceConfig = { type: "cearense" };
+const cupAttendancePlayers = { teams: [{ a: "Ana", b: "Bia" }, { a: "Carla", b: "Dora" }] };
+const cupAttendance = normalizeParticipantAttendance(cupAttendanceConfig, cupAttendancePlayers, { teams: [{ a: true, b: false }] });
+assert.deepEqual(cupAttendance, { teams: [{ a: true, b: false }, { a: false, b: false }] }, "A presença das duplas perdeu sua estrutura salva.");
+const individualCupAttendance = normalizeParticipantAttendance(
+  { type: "cearenseIndividual" },
+  { teams: [{ a: "Ana", b: "Reserva" }] },
+  { teams: [{ a: true, b: true }] }
+);
+assert.deepEqual(individualCupAttendance, { teams: [{ a: true, b: false }] }, "A copa individual passou a confirmar um segundo integrante inexistente.");
+assert.deepEqual(
+  getParticipantAttendanceEntries(cupAttendanceConfig, { players: cupAttendancePlayers, participantAttendance: cupAttendance }).map((entry) => [entry.name, entry.confirmed]),
+  [["Ana", true], ["Bia", false], ["Carla", false], ["Dora", false]],
+  "A lista visual de presença das duplas foi alterada."
+);
+assert.deepEqual(
+  getGameSideAttendanceParticipants({ players: cupAttendancePlayers, participantAttendance: cupAttendance }, { ids1: [0] }, "team1"),
+  [{ name: "Ana", pending: false }, { name: "Bia", pending: true }],
+  "O indicador de ausência dentro do jogo foi alterado."
+);
+const mutableAttendance = [false];
+setParticipantAttendanceValue(mutableAttendance, { kind: "normal", index: 0 }, true);
+assert.deepEqual(mutableAttendance, [true], "A confirmação individual deixou de atualizar o campo correto.");
+assert.deepEqual(
+  reconcileParticipantAttendance({ type: "super8" }, ["  ANA MARIA ", "Bia"], ["Ana Maria", "Carla"], [true, true]),
+  [true, false],
+  "A presença não foi preservada somente para o mesmo participante na mesma vaga."
+);
+assert.equal(normalizeCircuitPointValue(12.6), 13, "A pontuação do circuito deve continuar sendo arredondada.");
+assert.equal(normalizeCircuitPointValue(-1), 0, "Uma pontuação negativa deve continuar sendo descartada.");
+assert.equal(normalizeCircuitPointValue("inválido"), 0, "Uma pontuação inválida deve continuar sendo descartada.");
+assert.equal(getCircuitCupPlacementKey("Semifinal"), "semifinal", "Uma eliminação na semifinal foi classificada incorretamente.");
+assert.equal(getCircuitCupPlacementKey("Quartas de final"), "quarterfinal", "Uma eliminação nas quartas foi classificada incorretamente.");
+assert.equal(getCircuitCupPlacementKey("Oitavas de final"), "round16", "Uma eliminação nas oitavas foi classificada incorretamente.");
+assert.equal(getCircuitCupPlacementKey("Preliminar"), "round32", "Uma eliminação preliminar foi classificada incorretamente.");
+assert.equal(getCircuitCupPlacementKey("Final"), "runnerUp", "O perdedor da final deixou de ser vice-campeão.");
+assert.equal(getCircuitPlacementLabel("champion"), "Campeão", "O rótulo do campeão foi alterado.");
+assert.equal(getCircuitPlacementLabel("", 7), "7º lugar", "O rótulo de uma colocação numérica foi alterado.");
+assert.deepEqual(
+  normalizeCircuitTieBreakOrder(["titles", "titles", "inválido"]),
+  ["titles", "wins"],
+  "Os critérios de desempate devem permanecer únicos, válidos e limitados a dois."
+);
+const defaultCircuitSettings = normalizeCircuitRankingSettings();
+assert.equal(defaultCircuitSettings.mode, "performance", "O modo padrão do circuito foi alterado.");
+assert.deepEqual(defaultCircuitSettings.points.positions, defaultCircuitPositionPoints, "A pontuação padrão das dez colocações foi alterada.");
+assert.equal(defaultCircuitSettings.points.otherPositions, 120, "A pontuação padrão das demais colocações foi alterada.");
+const customCircuitSettingsInput = {
+  mode: "placement",
+  tournamentFormat: "cup",
+  identity: "individual",
+  rankingDivision: "gender",
+  sourceCircuitIds: [1, "1", 2, ""],
+  tieBreakMode: "cearense",
+  points: { positions: [900], otherPositions: 75, cup: { champion: 1500 } },
+  extraPoints: [{ targetId: "ana", targetName: "Ana", points: 25 }],
+  manualParticipants: [{ id: "manual-ana", name: "  ANA   MARIA ", points: 30, wins: 2, totalGames: 18, balance: -2, played: 3 }],
+};
+const customCircuitSettingsSnapshot = JSON.stringify(customCircuitSettingsInput);
+const customCircuitSettings = normalizeCircuitRankingSettings(customCircuitSettingsInput);
+assert.equal(JSON.stringify(customCircuitSettingsInput), customCircuitSettingsSnapshot, "A normalização não pode alterar as configurações recebidas.");
+assert.deepEqual(customCircuitSettings.sourceCircuitIds, ["1", "2"], "Os circuitos de origem duplicados não foram removidos.");
+assert.equal(customCircuitSettings.manualParticipants[0].name, "Ana Maria", "O participante manual perdeu a formatação do nome.");
+assert.deepEqual(customCircuitSettings.tieBreakOrder, ["wins", "bestStage"], "O desempate compatível com o Cearense foi alterado.");
+assert.equal(customCircuitSettings.points.positions[0], 900, "Uma pontuação personalizada foi alterada.");
+assert.equal(customCircuitSettings.points.positions[1], defaultCircuitPositionPoints[1], "Uma pontuação padrão ausente não foi restaurada.");
+assert.equal(customCircuitSettings.points.cup.champion, 1500, "A pontuação personalizada do campeão foi alterada.");
+assert.equal(compareCircuitStageScores({ stageScores: [100, 50] }, { stageScores: [80, 70] }), -20, "A comparação das melhores etapas foi alterada.");
+assert.equal(compareCircuitStageScores({ bestStagePoints: 40 }, { bestStagePoints: 60 }), 20, "A comparação compatível com rankings antigos foi alterada.");
+const tiedCircuitRows = [
+  { id: "ana", name: "Ana", circuitPoints: 100, w: 2, stageScores: [80] },
+  { id: "bia", name: "Bia", circuitPoints: 100, w: 2, stageScores: [80] },
+];
+const tiedCircuitSignature = getCircuitTieSignature(tiedCircuitRows[0], customCircuitSettings);
+assert.equal(tiedCircuitSignature, getCircuitTieSignature(tiedCircuitRows[1], customCircuitSettings), "Linhas realmente empatadas receberam assinaturas diferentes.");
+assert.equal(getCircuitTieBreakLabel(customCircuitSettings), "Todas as pontuações → Vitórias → Melhores pontuações nas etapas → Sorteio", "O texto do desempate foi alterado.");
+const circuitDrawSettings = {
+  ...customCircuitSettings,
+  tieBreakDrawOrder: ["bia", "ana"],
+  tieBreakDrawSignatures: { ana: tiedCircuitSignature, bia: tiedCircuitSignature },
+};
+assert.equal(applyCircuitDrawOrder(tiedCircuitRows[0], tiedCircuitRows[1], circuitDrawSettings), 1, "A ordem do sorteio do desempate não foi respeitada.");
+assert.equal(getUnresolvedCircuitTieGroups([{ rows: tiedCircuitRows }], customCircuitSettings).length, 1, "Um empate ainda não sorteado deixou de ser identificado.");
+assert.equal(getUnresolvedCircuitTieGroups([{ rows: tiedCircuitRows }], circuitDrawSettings).length, 0, "Um empate já sorteado continua aparecendo como pendente.");
+assert.deepEqual(
+  getCircuitPlacementColumns(customCircuitSettings, { includeManual: true }).map((column) => column.key),
+  ["circuitPoints", "extraPoints", "w", "bestStagePoints", "pts", "bal", "played", "tournaments"],
+  "As colunas do ranking por pontos foram alteradas."
+);
+const circuitExtraRow = { id: "ana", name: "Ana", circuitPoints: 100, extraPoints: 0 };
+const circuitExtraGroups = { geral: { rows: new Map([["ana", circuitExtraRow]]) } };
+applyCircuitExtraPoints(circuitExtraGroups, customCircuitSettings);
+assert.equal(circuitExtraRow.circuitPoints, 125, "A pontuação extra não foi somada ao total principal.");
+assert.equal(circuitExtraRow.extraPoints, 25, "A pontuação extra não foi registrada separadamente para conferência.");
+const circuitManualGroups = { geral: { rows: new Map() } };
+applyCircuitManualParticipants(circuitManualGroups, customCircuitSettings);
+const circuitManualRow = circuitManualGroups.geral.rows.get("ana maria");
+assert.equal(circuitManualRow.name, "Ana Maria", "O participante manual não entrou no ranking com o nome formatado.");
+assert.equal(circuitManualRow.circuitPoints, 30, "Os pontos do participante manual não foram somados.");
+assert.equal(circuitManualRow.w, 2, "As vitórias do participante manual não foram somadas.");
+assert.equal(circuitManualRow.pts, 18, "O Total de Games do participante manual não foi somado.");
+const cupPlacementTournament = {
+  type: "cearense",
+  data: {
+    players: { teams: [{ a: "Ana", b: "Bia" }, { a: "Carla", b: "Dora" }] },
+    schedule: [],
+    brackets: [{ phase: "main", roundName: "Final", ids1: [0], ids2: [1], s1: "6", s2: "4" }],
+    winningScore: 6,
+  },
+};
+const cupPlacementSnapshot = JSON.stringify(cupPlacementTournament);
+assert.equal(isCompletedCircuitGame(cupPlacementTournament.data.brackets[0], cupPlacementTournament.data), true, "Uma final concluída deixou de ser reconhecida no circuito.");
+const cupPlacementRows = calculateCupPlacementRows({
+  tournament: cupPlacementTournament,
+  settings: { identity: "team" },
+  config: { type: "cearense" },
+});
+assert.equal(JSON.stringify(cupPlacementTournament), cupPlacementSnapshot, "O cálculo das colocações da Copa não pode alterar o torneio recebido.");
+assert.deepEqual(
+  cupPlacementRows.map(({ name, placementKey, circuitPoints }) => ({ name, placementKey, circuitPoints })),
+  [
+    { name: "Ana + Bia", placementKey: "champion", circuitPoints: 1000 },
+    { name: "Carla + Dora", placementKey: "runnerUp", circuitPoints: 800 },
+  ],
+  "Campeão e vice perderam suas colocações ou pontuações no circuito."
+);
+const rankPlacementTournament = {
+  type: "super8",
+  data: {
+    players: ["Ana", "Bia", "Carla", "Dora"],
+    schedule: [[{ ids1: [0, 1], ids2: [2, 3], s1: "4", s2: "2" }]],
+    winningScore: 4,
+  },
+};
+const rankPlacementRows = calculateRankPlacementRows({
+  tournament: rankPlacementTournament,
+  settings: {},
+  config: { type: "super8" },
+});
+assert.deepEqual(rankPlacementRows.map((row) => row.circuitPoints), [1000, 800, 670, 500], "A classificação final perdeu a tabela de pontos por posição.");
+assert.deepEqual(
+  calculateCircuitPlacementRowsByConfig({
+    tournament: rankPlacementTournament,
+    settings: {},
+    config: { type: "super8" },
+  }),
+  rankPlacementRows,
+  "O seletor das colocações deixou de encaminhar modalidades sem eliminatória."
+);
+const circuitAggregationInput = {
+  circuit: {
+    tournament_ids: ["etapa-1", "etapa-2", "ignorada"],
+    ranking_criteria: "wins_points_balance",
+  },
+  tournaments: [
+    {
+      id: "etapa-1",
+      type: "super8",
+      data: {
+        players: ["Barbara", "Bia", "Carla", "Dora"],
+        schedule: [[{ ids1: [0, 1], ids2: [2, 3], s1: "4", s2: "2" }]],
+        winningScore: 4,
+      },
+    },
+    {
+      id: "etapa-2",
+      type: "super8",
+      data: {
+        players: ["Bárbara", "Bia", "Carla", "Dora"],
+        schedule: [[{ ids1: [0, 2], ids2: [1, 3], s1: "4", s2: "1" }]],
+        winningScore: 4,
+      },
+    },
+    {
+      id: "ignorada",
+      type: "super8",
+      data: {
+        deletedAt: "2026-08-17T10:00:00.000Z",
+        players: ["Bárbara", "Bia", "Carla", "Dora"],
+        schedule: [[{ ids1: [0, 1], ids2: [2, 3], s1: "4", s2: "0" }]],
+        winningScore: 4,
+      },
+    },
+  ],
+  modalityConfigs: { super8: { type: "super8" } },
+};
+const circuitAggregationSnapshot = JSON.stringify(circuitAggregationInput);
+const circuitPerformanceGroups = buildCircuitRankingGroups(circuitAggregationInput);
+assert.equal(JSON.stringify(circuitAggregationInput), circuitAggregationSnapshot, "A agregação do circuito não pode alterar os torneios ou o circuito recebidos.");
+assert.deepEqual(circuitPerformanceGroups.map((group) => group.key), ["geral"], "Um circuito comum passou a criar divisões de ranking indevidas.");
+const aggregatedBarbara = circuitPerformanceGroups[0].rows.find((row) => row.name === "Bárbara");
+assert.ok(aggregatedBarbara, "Grafias com e sem acento deixaram de representar a mesma participante no circuito.");
+assert.equal(aggregatedBarbara.tournaments, 2, "As duas etapas válidas não foram acumuladas para a mesma participante.");
+assert.equal(aggregatedBarbara.w, 2, "As vitórias das etapas válidas não foram somadas.");
+assert.equal(circuitPerformanceGroups[0].rows.filter((row) => normalizeCircuitParticipantKey(row.name) === "barbara").length, 1, "A participante foi duplicada por causa do acento.");
+
+const combinedCircuitGroups = buildCircuitRankingGroups({
+  circuit: {
+    tournament_ids: [],
+    ranking_settings: {
+      mode: "placement",
+      sourceCircuitIds: ["origem-1"],
+      identity: "individual",
+    },
+    ranking_groups: [
+      { key: "geral", rows: [{ name: "Barbara", circuitPoints: 100, w: 1, tournaments: 1, stageScores: [100] }] },
+      { key: "geral", rows: [{ name: "Bárbara", circuitPoints: 80, w: 2, tournaments: 1, stageScores: [80] }] },
+    ],
+  },
+});
+assert.equal(combinedCircuitGroups[0].title, "Ranking geral por pontos", "O circuito somado perdeu o título do ranking por pontos.");
+assert.equal(combinedCircuitGroups[0].rows.length, 1, "O circuito somado duplicou a participante por causa do acento.");
+assert.equal(combinedCircuitGroups[0].rows[0].circuitPoints, 180, "Os pontos dos circuitos de origem não foram somados.");
+assert.equal(combinedCircuitGroups[0].rows[0].w, 3, "As vitórias dos circuitos de origem não foram somadas.");
+assert.deepEqual(combinedCircuitGroups[0].rows[0].stageScores, [100, 80], "As melhores etapas dos circuitos de origem perderam sua ordem.");
+const historicalCircuitGroups = buildCircuitRankingGroupsFromRecords({
+  records: [
+    { groupKey: "geral", playerKey: "barbara", name: "Barbara", w: 1, pts: 6, bal: 2, played: 1, tournaments: 1 },
+    { groupKey: "geral", playerKey: "bárbara", name: "Bárbara", w: 2, pts: 10, bal: 4, played: 2, tournaments: 1 },
+    { groupKey: "geral", playerKey: "bia", name: "Bia", w: 2, pts: 12, bal: 3, played: 2, tournaments: 1 },
+  ],
+  settings: { mode: "performance" },
+  criteriaValue: "wins_points_balance",
+});
+assert.deepEqual(
+  historicalCircuitGroups[0].rows.map(({ name, w, pts, bal, played, tournaments }) => ({ name, w, pts, bal, played, tournaments })),
+  [
+    { name: "Bárbara", w: 3, pts: 16, bal: 6, played: 3, tournaments: 2 },
+    { name: "Bia", w: 2, pts: 12, bal: 3, played: 2, tournaments: 1 },
+  ],
+  "A soma ou a ordenação do histórico já persistido do circuito foi alterada."
+);
+const historicalRecordsInput = circuitAggregationInput.tournaments.slice(0, 2);
+const historicalRecordsSnapshot = JSON.stringify(historicalRecordsInput);
+const historicalRecords = buildCircuitTournamentRankingRecords({
+  tournaments: historicalRecordsInput,
+  settings: { mode: "performance" },
+  modalityConfigs: circuitAggregationInput.modalityConfigs,
+});
+assert.equal(JSON.stringify(historicalRecordsInput), historicalRecordsSnapshot, "A preparação do histórico não pode alterar os torneios recebidos.");
+assert.equal(Object.keys(historicalRecords).length, 8, "O histórico perdeu participantes com jogos válidos nas duas etapas.");
+assert.equal(historicalRecords["etapa-1::geral::barbara"].w, 1, "O histórico da primeira etapa perdeu a vitória da participante.");
+assert.equal(historicalRecords["etapa-2::geral::barbara"].name, "Bárbara", "O histórico não preservou a melhor grafia disponível do nome.");
+
+function assertCompleteRound(round, participantCount, expectedGames, label) {
+  assert.equal(round.length, expectedGames, `${label} recebeu uma quantidade incorreta de jogos.`);
+  const participants = round.flat();
+  assert.equal(participants.length, expectedGames * 4, `${label} recebeu um jogo incompleto.`);
+  assert.deepEqual(
+    [...participants].sort((first, second) => first - second),
+    Array.from({ length: participantCount }, (_, index) => index + 1),
+    `${label} não utiliza cada participante exatamente uma vez na rodada.`
+  );
+}
+
+assert.equal(super8Template.length, 7, "O Super 8 deve preservar sete rodadas.");
+super8Template.forEach((round, index) => assertCompleteRound(round.map((game) => game.flat()), 8, 2, `Super 8 — rodada ${index + 1}`));
+assert.equal(super10MixedTemplate.length, 5, "O Super 10 mista deve preservar cinco rodadas.");
+assert.ok(super10MixedTemplate.every((round) => round.length === 2), "O Super 10 mista deve preservar dois jogos por rodada.");
+assert.equal(super12MixedTemplate.length, 6, "O Super 12 mista deve preservar seis rodadas.");
+super12MixedTemplate.forEach((round, index) => assertCompleteRound(round, 12, 3, `Super 12 mista — rodada ${index + 1}`));
+assert.equal(super16MixedTemplate.length, 8, "O Super 16 mista deve preservar oito rodadas.");
+super16MixedTemplate.forEach((round, index) => assertCompleteRound(round, 16, 4, `Super 16 mista — rodada ${index + 1}`));
+for (const [template, split, label] of [
+  [super10MixedTemplate, 5, "Super 10 mista"],
+  [super12MixedTemplate, 6, "Super 12 mista"],
+  [super16MixedTemplate, 8, "Super 16 mista"],
+]) {
+  for (const game of template.flat()) {
+    assert.ok(game[0] <= split && game[1] > split && game[2] <= split && game[3] > split, `${label} perdeu a formação homem/mulher das duplas.`);
+  }
+}
+assert.equal(fixed12Template.length, 5, "As seis duplas fixas devem preservar cinco rodadas.");
+const fixedPairKeys = new Set();
+for (const [roundIndex, round] of fixed12Template.entries()) {
+  assert.deepEqual(
+    [...round.flat()].sort((first, second) => first - second),
+    [1, 2, 3, 4, 5, 6],
+    `Duplas fixas — rodada ${roundIndex + 1} não utiliza todas as duplas.`
+  );
+  for (const pair of round) fixedPairKeys.add([...pair].sort((first, second) => first - second).join("-"));
+}
+assert.equal(fixedPairKeys.size, 15, "As seis duplas fixas devem se enfrentar uma única vez.");
+const bergerRounds = berger(8);
+assert.equal(bergerRounds.length, 7, "O gerador todos contra todos deve preservar sete rodadas para oito participantes.");
+const bergerPairs = new Set(bergerRounds.flat().map((pair) => [...pair].sort((first, second) => first - second).join("-")));
+assert.equal(bergerPairs.size, 28, "O gerador todos contra todos deve produzir cada confronto uma única vez.");
+const shuffleInput = [1, 2, 3, 4, 5, 6];
+const shuffled = shuffleArray(shuffleInput);
+assert.deepEqual(shuffleInput, [1, 2, 3, 4, 5, 6], "O sorteio não pode alterar a lista original.");
+assert.deepEqual([...shuffled].sort((first, second) => first - second), shuffleInput, "O sorteio deve preservar todos os participantes.");
+const courtSchedule = [
+  [{ key: "a", ids1: [1, 2], ids2: [3, 4] }, { key: "b", ids1: [5, 6], ids2: [7, 8] }],
+  [{ key: "c", ids1: [1, 3], ids2: [5, 7] }, { key: "d", ids1: [2, 4], ids2: [6, 8] }],
+];
+const courtScheduleSnapshot = JSON.stringify(courtSchedule);
+const balancedCourtSchedule = optimizeCourts(courtSchedule);
+assert.equal(JSON.stringify(courtSchedule), courtScheduleSnapshot, "A distribuição de quadras não pode alterar as rodadas originais.");
+for (const round of balancedCourtSchedule) {
+  assert.deepEqual(round.map((game) => game.court), [1, 2], "A distribuição deve preencher cada quadra lógica uma vez por rodada.");
+}
+assert.deepEqual(
+  balancedCourtSchedule.flat().map((game) => game.key).sort(),
+  ["a", "b", "c", "d"],
+  "A distribuição de quadras não pode criar ou remover jogos."
+);
+assert.equal(getTeamName({ a: "Ana", b: "Bia" }), "Ana + Bia", "O nome público de uma dupla foi alterado.");
+assert.equal(getTeamName({ a: "Ana", b: "" }), "Ana", "Uma dupla incompleta não deve ganhar separador vazio.");
+assert.equal(getTeamName(null), "", "Uma equipe inexistente deve permanecer sem nome.");
+const cupTeamsData = { players: { teams: [{ a: "Ana", b: "Bia" }] } };
+assert.deepEqual(getCupTeams(cupTeamsData), cupTeamsData.players.teams, "As equipes salvas da copa não foram lidas.");
+assert.equal(getCupTeamName(cupTeamsData, 0), "Ana + Bia", "O nome da equipe salva não foi preservado.");
+assert.equal(getGroupLetter(0), "A", "O primeiro grupo deixou de ser o Grupo A.");
+assert.equal(getGroupLetter(4), "E", "A sequência de letras dos grupos foi alterada.");
+const expectedAutomaticGroupSizes = new Map([
+  [4, [4]],
+  [5, [5]],
+  [6, [3, 3]],
+  [7, [4, 3]],
+  [8, [4, 4]],
+  [9, [3, 3, 3]],
+  [10, [4, 3, 3]],
+  [16, [4, 3, 3, 3, 3]],
+  [32, [4, 4, 3, 3, 3, 3, 3, 3, 3, 3]],
+]);
+for (const [teamCount, expectedSizes] of expectedAutomaticGroupSizes) {
+  const groups = createCearenseGroups(teamCount);
+  assert.deepEqual(groups.map((group) => group.teamIds.length), expectedSizes, `A formação automática de ${teamCount} participantes foi alterada.`);
+  assert.deepEqual(groups.flatMap((group) => group.teamIds), Array.from({ length: teamCount }, (_, index) => index), `A formação de ${teamCount} participantes perdeu ou repetiu equipes.`);
+}
+assert.deepEqual(createCearenseGroups(16, "all-four").map((group) => group.teamIds.length), [4, 4, 4, 4], "A opção de quatro grupos de quatro foi alterada.");
+assert.deepEqual(createCearenseGroups(12, "all-four").map((group) => group.teamIds.length), [4, 4, 4], "A formação completa em grupos de quatro foi alterada.");
+assert.deepEqual(createCearenseGroups(10, "all-four").map((group) => group.teamIds.length), [4, 3, 3], "Uma quantidade incompatível com grupos de quatro deve preservar a formação automática.");
+assert.equal(describeCearenseGroupSizes(createCearenseGroups(10)), "2 grupos de 3 duplas e 1 grupo de 4 duplas", "A descrição da formação dos grupos foi alterada.");
+assert.equal(describeCearenseGroupSizes(createCearenseGroups(8), "jogadores"), "2 grupos de 4 jogadores", "A descrição da copa individual foi alterada.");
+assert.deepEqual(createCupGroups(18).map((group) => group.teamIds.length), [3, 3, 3, 3, 3, 3], "A Copa de 18 perdeu os grupos de três.");
+assert.deepEqual(createCupGroups(16, "sunset", { groupFormation: "all-four" }).map((group) => group.teamIds.length), [4, 4, 4, 4], "A Copa Sunset perdeu a formação escolhida pelo organizador.");
+for (const participantCount of [3, 4]) {
+  const ids = Array.from({ length: participantCount }, (_, index) => index);
+  const snapshot = [...ids];
+  const rounds = createRoundRobinPairings(ids);
+  const pairs = new Set(rounds.flat().map((pair) => [...pair].sort((first, second) => first - second).join("-")));
+  assert.deepEqual(ids, snapshot, "A criação das rodadas de grupo não pode alterar a lista original.");
+  assert.equal(pairs.size, (participantCount * (participantCount - 1)) / 2, `O grupo de ${participantCount} perdeu confrontos do todos-contra-todos.`);
+}
+const cearenseFormatData = { cupConfig: { format: "cearense" } };
+const individualCearenseFormatData = { cupConfig: { format: "cearense-individual" } };
+const playRankingFormatData = { cupConfig: { format: "playranking" } };
+const sunsetFormatData = { cupConfig: { format: "sunset" } };
+assert.equal(getCupFormat({ cupConfig: { cupMode: "copinha" } }), "copinha", "O formato legado cupMode deixou de ser reconhecido.");
+assert.equal(isCopinhaData({ cupConfig: { format: "copinha" } }), true, "A Copinha deixou de ser reconhecida.");
+assert.equal(isCearenseData(cearenseFormatData), true, "O Campeonato Cearense deixou de ser reconhecido.");
+assert.equal(isCearenseData(individualCearenseFormatData), true, "O Campeonato Cearense Individual deixou de ser reconhecido.");
+assert.equal(isCampeonatoCearenseData(playRankingFormatData), false, "O Modelo Torneio 360 não pode ser confundido com o Campeonato Cearense oficial.");
+assert.equal(isSunsetData(sunsetFormatData), true, "A Copa Sunset deixou de ser reconhecida.");
+assert.equal(isOfficialCearenseData(sunsetFormatData), true, "A Copa Sunset deixou de compartilhar as regras oficiais previstas.");
+assert.equal(isPlayRankingData(playRankingFormatData), true, "O Modelo Torneio 360 deixou de ser reconhecido.");
+assert.equal(isCearenseSecondParallelEnabled(cearenseFormatData), false, "A 2ª paralela do Cearense deve respeitar a escolha do organizador.");
+assert.equal(isCearenseSecondParallelEnabled({ cupConfig: { format: "cearense", secondRepechageEnabled: true } }), true, "A 2ª paralela ativada deixou de ser reconhecida.");
+assert.equal(isCearenseSecondParallelEnabled(playRankingFormatData), true, "A paralela própria do Modelo Torneio 360 deve permanecer ativa.");
+assert.equal(isCearenseThirdParallelEnabled(sunsetFormatData), true, "As chaves próprias da Copa Sunset devem permanecer ativas.");
+assert.equal(isCearenseThirdParallelEnabled({ cupConfig: { format: "cearense", thirdRepechageEnabled: true } }), true, "A 3ª paralela ativada deixou de ser reconhecida.");
+
+function createNamedTeams(count) {
+  return { teams: Array.from({ length: count }, (_, index) => ({ a: `Atleta ${index + 1}`, b: `Parceiro ${index + 1}` })) };
+}
+
+function assertGroupSchedule(schedule, teamCount, expectedRoundCount, expectedGamesPerRound, label) {
+  assert.equal(schedule.length, expectedRoundCount, `${label} recebeu uma quantidade incorreta de rodadas.`);
+  assert.deepEqual(schedule.map((round) => round.length), expectedGamesPerRound, `${label} recebeu uma quantidade incorreta de jogos por rodada.`);
+  const pairKeys = schedule.flat().map((game) => [...game.ids1, ...game.ids2].sort((first, second) => first - second).join("-"));
+  assert.equal(new Set(pairKeys).size, pairKeys.length, `${label} repetiu um confronto na fase de grupos.`);
+  for (const round of schedule) {
+    assert.deepEqual(round.map((game) => game.court), Array.from({ length: round.length }, (_, index) => index + 1), `${label} alterou a numeração lógica das quadras.`);
+    assert.ok(round.every((game) => game.phase === "groups" && game.s1 === "" && game.s2 === ""), `${label} gerou partidas com fase ou placar incorretos.`);
+  }
+  assert.ok(schedule.flat().every((game) => game.ids1[0] < teamCount && game.ids2[0] < teamCount), `${label} gerou uma equipe inexistente.`);
+}
+
+const cearensePlayers = createNamedTeams(7);
+const cearensePlayersSnapshot = JSON.stringify(cearensePlayers);
+const cearenseGroupSchedule = generateCearenseGroupSchedule(cearensePlayers, { teamCount: 7, format: "cearense" });
+assertGroupSchedule(cearenseGroupSchedule, 7, 3, [3, 3, 3], "Campeonato Cearense com sete duplas");
+assert.equal(cearenseGroupSchedule.flat().length, 9, "Os grupos de quatro e três devem gerar nove partidas.");
+assert.equal(JSON.stringify(cearensePlayers), cearensePlayersSnapshot, "A geração da fase de grupos não pode alterar os participantes.");
+const sunsetGroupSchedule = generateCupGroupSchedule(createNamedTeams(16), { teamCount: 16, format: "sunset", groupFormation: "all-four" });
+assertGroupSchedule(sunsetGroupSchedule, 16, 3, [8, 8, 8], "Copa Sunset com grupos de quatro");
+const cup18GroupSchedule = generateCupGroupSchedule(createNamedTeams(18), { teamCount: 18, format: "cup18" });
+assertGroupSchedule(cup18GroupSchedule, 18, 3, [6, 6, 6], "Copa de 18 duplas");
+assert.equal(getLargestPowerOfTwo(14), 8, "A maior chave completa antes de 14 foi alterada.");
+assert.equal(getNextPowerOfTwo(14), 16, "A chave de 14 participantes deve continuar usando 16 posições.");
+assert.deepEqual(getBracketSeedOrder(4), [1, 4, 2, 3], "A ordem das sementes da chave de quatro foi alterada.");
+assert.deepEqual(getBracketSeedOrder(8), [1, 8, 4, 5, 2, 7, 3, 6], "A ordem das sementes da chave de oito foi alterada.");
+assert.deepEqual(
+  [2, 4, 8, 16, 32].map(getEliminationRoundName),
+  ["Final", "Semifinal", "Quartas de final", "Oitavas de final", "Fase de 32"],
+  "Os nomes das fases eliminatórias foram alterados."
+);
+assert.equal(getEliminationRoundName(64), "Rodada de 64", "Uma chave maior perdeu seu nome de compatibilidade.");
+const seededExpectations = new Map([
+  [4, [[1, 4], [2, 3]]],
+  [7, [[2, 7], [3, 6], [4, 5]]],
+  [8, [[1, 8], [4, 5], [3, 6], [2, 7]]],
+  [14, [[3, 14], [4, 13], [5, 12], [6, 11], [7, 10], [8, 9]]],
+  [16, [[1, 16], [8, 9], [5, 12], [4, 13], [3, 14], [6, 11], [7, 10], [2, 15]]],
+]);
+for (const [teamCount, expectedPairs] of seededExpectations) {
+  const ids = Array.from({ length: teamCount }, (_, index) => index + 1);
+  const snapshot = [...ids];
+  const games = seedBracket(ids, "main");
+  assert.deepEqual(games.map((game) => [game.ids1[0], game.ids2[0]]), expectedPairs, `A distribuição da chave de ${teamCount} foi alterada.`);
+  assert.deepEqual(ids, snapshot, "A criação da chave não pode alterar a lista classificada.");
+  assert.ok(games.every((game, index) => game.phase === "main" && game.court === index + 1 && game.s1 === "" && game.s2 === ""), `A chave de ${teamCount} perdeu seus campos iniciais.`);
+}
+const parallelRoundRobin = generateParallelRoundRobin([10, 20, 30, 40]);
+assert.equal(parallelRoundRobin.length, 6, "A disputa paralela de quatro equipes deve preservar seis partidas.");
+assert.equal(new Set(parallelRoundRobin.map((game) => [...game.ids1, ...game.ids2].sort().join("-"))).size, 6, "A disputa paralela deve manter todos contra todos uma vez.");
+assert.deepEqual(parallelRoundRobin.map((game) => game.court), [1, 2, 1, 2, 1, 2], "A alternância lógica das quadras da paralela foi alterada.");
+const completedBracketGame = { ids1: [0], ids2: [1], s1: "4", s2: "2" };
+assert.equal(getGameWinnerId(completedBracketGame), 0, "O vencedor da partida eliminatória foi alterado.");
+assert.equal(getGameLoserId(completedBracketGame), 1, "O perdedor da partida eliminatória foi alterado.");
+assert.equal(getGameWinnerId({ ids1: [2], ids2: [], isBye: true, s1: "", s2: "" }), 2, "A classificação automática por BYE foi alterada.");
+assert.equal(getGameLoserId({ ids1: [2], ids2: [], isBye: true, s1: "", s2: "" }), null, "Um BYE não pode produzir perdedor.");
+assert.equal(getGameWinnerId({ ids1: [0], ids2: [1], s1: "", s2: "" }), null, "Uma partida sem placar não pode produzir vencedor.");
+const bracketSemifinals = seedBracket([0, 1, 2, 3], "main").map((game, index) => ({
+  ...game,
+  s1: index === 0 ? "4" : "1",
+  s2: index === 0 ? "2" : "4",
+}));
+const bracketFinal = buildNextRound(bracketSemifinals, "main", "Final", "final");
+assert.equal(bracketFinal.length, 1, "Duas semifinais devem gerar uma final.");
+assert.deepEqual([bracketFinal[0].source1, bracketFinal[0].source2], ["main_sf_1", "main_sf_2"], "A final perdeu a origem das semifinais.");
+const bracketThirdPlace = buildThirdPlaceGame(bracketSemifinals, "main");
+assert.deepEqual([bracketThirdPlace[0].source1Mode, bracketThirdPlace[0].source2Mode], ["loser", "loser"], "O 3º lugar deve receber os perdedores das semifinais.");
+const bracketData = {
+  winningScore: 4,
+  players: {
+    teams: [
+      { a: "Equipe 1", b: "" },
+      { a: "Equipe 2", b: "" },
+      { a: "Equipe 3", b: "" },
+      { a: "Equipe 4", b: "" },
+    ],
+  },
+};
+const allProgressionGames = [...bracketSemifinals, ...bracketFinal, ...bracketThirdPlace];
+const resolvedFinal = resolveBracketGame(bracketFinal[0], allProgressionGames, bracketData);
+assert.deepEqual([resolvedFinal.ids1, resolvedFinal.ids2], [[0], [2]], "Os vencedores das semifinais não avançaram corretamente para a final.");
+assert.deepEqual([resolvedFinal.team1, resolvedFinal.team2], [["Equipe 1"], ["Equipe 3"]], "Os nomes dos finalistas não foram resolvidos corretamente.");
+const resolvedThirdPlace = resolveBracketGame(bracketThirdPlace[0], allProgressionGames, bracketData);
+assert.deepEqual([resolvedThirdPlace.ids1, resolvedThirdPlace.ids2], [[3], [1]], "Os perdedores das semifinais não avançaram corretamente para o 3º lugar.");
+assert.deepEqual(buildThirdPlaceGame([], "main"), [], "Sem duas semifinais não pode existir disputa de 3º lugar.");
+assert.equal(getCopinhaEntryCode({ groupPosition: 1, groupRank: 3 }), "c3", "A campeã de grupo perdeu seu código no plano da chave.");
+assert.equal(getCopinhaEntryCode({ groupPosition: 2, groupRank: 4 }), "r4", "A segunda colocada perdeu seu código no plano da chave.");
+assert.equal(getCopinhaEntryCode({ groupPosition: 3, groupRank: 2 }), "t2", "A terceira colocada perdeu seu código no plano da chave.");
+const plannedEntryByCode = { c1: { id: 7 } };
+assert.deepEqual(getCopinhaPlanEntry("c1", plannedEntryByCode, "main"), { id: 7 }, "Uma entrada direta do plano deixou de resolver a classificada.");
+assert.deepEqual(
+  getCopinhaPlanEntry("w:m1", plannedEntryByCode, "main"),
+  { sourceMatchKey: "main_m1", sourceMode: "winner" },
+  "A referência à vencedora de um jogo do plano foi alterada."
+);
+assert.deepEqual(
+  getCopinhaPlanEntry("l:m2", plannedEntryByCode, "main"),
+  { sourceMatchKey: "main_m2", sourceMode: "loser" },
+  "A referência à perdedora de um jogo do plano foi alterada."
+);
+const compactBracketPlan = [
+  { title: "1ª Rodada", games: [["m1", "c1", "r2"]] },
+  { title: "Semifinal", games: [["m2", "w:m1", "c2"]] },
+  { title: "3º lugar", games: [["m3", "l:m2", "l:m4"]] },
+];
+const compactBracketPlanSnapshot = JSON.stringify(compactBracketPlan);
+const expandedBracketPlan = expandBracketPlanWithVisualByes(compactBracketPlan);
+assert.equal(expandedBracketPlan[0].games.length, 2, "A expansão visual deixou de criar o BYE necessário.");
+assert.deepEqual(expandedBracketPlan[0].games[0], ["m1", "c1", "r2"], "A expansão visual alterou o confronto existente.");
+assert.match(expandedBracketPlan[0].games[1][0], /^visual_bye_/, "O BYE visual perdeu sua chave identificadora.");
+assert.match(expandedBracketPlan[1].games[0][2], /^w:visual_bye_/, "A fase seguinte deixou de apontar para o BYE visual.");
+assert.equal(JSON.stringify(compactBracketPlan), compactBracketPlanSnapshot, "A expansão visual não pode alterar o plano original.");
+const plannedBracketEntries = [
+  { id: 0, groupPosition: 1, groupRank: 1 },
+  { id: 1, groupPosition: 2, groupRank: 1 },
+];
+const plannedBracketEntriesSnapshot = JSON.stringify(plannedBracketEntries);
+const plannedBracket = buildCopinhaBracketFromPlan(
+  plannedBracketEntries,
+  "main",
+  "Eliminatória Principal",
+  [{ title: "Final", games: [["final_1", "c1", "r1"]] }]
+);
+assert.deepEqual([plannedBracket[0].games[0].ids1, plannedBracket[0].games[0].ids2], [[0], [1]], "O plano da chave deixou de posicionar as classificadas.");
+assert.equal(plannedBracket[0].games[0].matchKey, "main_final_1", "O plano da chave alterou a chave persistida do confronto.");
+assert.equal(JSON.stringify(plannedBracketEntries), plannedBracketEntriesSnapshot, "A aplicação do plano não pode alterar as classificadas.");
+const copinhaEliminationEntries = [
+  { id: 0, groupId: 0 },
+  { id: 1, groupId: 1 },
+  { id: 2, groupId: 0 },
+  { id: 3, groupId: 1 },
+  { id: 4, groupId: 2 },
+  { id: 5, groupId: 3 },
+];
+const copinhaEliminationSnapshot = JSON.stringify(copinhaEliminationEntries);
+const copinhaEliminationRounds = buildCopinhaEliminationRounds(
+  copinhaEliminationEntries,
+  "main",
+  "Eliminatória Principal",
+  true
+);
+assert.deepEqual(
+  copinhaEliminationRounds.map((round) => round.title),
+  ["Preliminar", "Semifinal", "3º lugar", "Final"],
+  "A sequência eliminatória compatível de seis classificadas foi alterada."
+);
+assert.equal(copinhaEliminationRounds[0].games.length, 2, "Seis classificadas devem produzir dois jogos preliminares.");
+assert.deepEqual(
+  copinhaEliminationRounds[0].games.flatMap((game) => [...game.ids1, ...game.ids2]).sort((first, second) => first - second),
+  [2, 3, 4, 5],
+  "A fase preliminar recebeu participantes incorretos."
+);
+assert.deepEqual(
+  copinhaEliminationRounds[1].games.flatMap((game) => [...game.ids1, ...game.ids2]).sort((first, second) => first - second),
+  [0, 1],
+  "As classificadas diretas deixaram de entrar na semifinal."
+);
+assert.equal(JSON.stringify(copinhaEliminationEntries), copinhaEliminationSnapshot, "A construção compatível da chave não pode alterar as classificadas.");
+const preliminaryEntries = [
+  { id: 0, groupId: 0 },
+  { id: 1, groupId: 0 },
+  { id: 2, groupId: 1 },
+  { id: 3, groupId: 1 },
+];
+const preliminaryEntriesSnapshot = JSON.stringify(preliminaryEntries);
+const preliminaryPairs = getCopinhaPreliminaryPairs(preliminaryEntries);
+assert.deepEqual(
+  preliminaryPairs.map((pair) => pair.map((entry) => entry.id)),
+  [[0, 3], [1, 2]],
+  "A fase preliminar deixou de evitar adversários do mesmo grupo."
+);
+assert.deepEqual(
+  preliminaryPairs.flat().map((entry) => entry.id).sort((first, second) => first - second),
+  [0, 1, 2, 3],
+  "A fase preliminar perdeu ou repetiu um participante."
+);
+assert.equal(JSON.stringify(preliminaryEntries), preliminaryEntriesSnapshot, "A fase preliminar não pode alterar a lista classificada.");
+const constructedBracketGame = createCopinhaBracketGame({
+  bracketType: "main",
+  roundName: "Semifinal",
+  matchKey: "main_sf_1",
+  entry1: { id: 7 },
+  entry2: { sourceMatchKey: "main_qf_1", sourceMode: "winner" },
+  court: 2,
+});
+assert.deepEqual(
+  constructedBracketGame,
+  {
+    phase: "main",
+    roundName: "Semifinal",
+    matchKey: "main_sf_1",
+    source1: null,
+    source2: "main_qf_1",
+    source1Mode: null,
+    source2Mode: "winner",
+    ids1: [7],
+    ids2: [],
+    team1: null,
+    team2: null,
+    s1: "",
+    s2: "",
+    court: 2,
+  },
+  "O cartão criado para a chave perdeu sua origem, participante ou campos iniciais."
+);
+const openingSlots = [
+  { id: 0, groupId: 0, groupPosition: 1 },
+  { id: 1, groupId: 0, groupPosition: 2 },
+  { id: 2, groupId: 1, groupPosition: 1 },
+  { id: 3, groupId: 1, groupPosition: 2 },
+];
+const openingSlotsSnapshot = JSON.stringify(openingSlots);
+const arrangedOpeningSlots = avoidSameGroupOpeningMatches(openingSlots);
+for (let index = 0; index < arrangedOpeningSlots.length; index += 2) {
+  assert.notEqual(arrangedOpeningSlots[index].groupId, arrangedOpeningSlots[index + 1].groupId, "A primeira fase colocou participantes do mesmo grupo frente a frente.");
+}
+assert.deepEqual(
+  arrangedOpeningSlots.map((entry) => entry.id).sort((first, second) => first - second),
+  [0, 1, 2, 3],
+  "A reorganização da primeira fase perdeu ou repetiu um participante."
+);
+assert.equal(JSON.stringify(openingSlots), openingSlotsSnapshot, "A reorganização da chave não pode alterar a lista classificada.");
+const cearenseBracketEntries = [
+  { id: 0, groupId: 0, groupPosition: 1, name: "A" },
+  { id: 1, groupId: 1, groupPosition: 1, name: "B" },
+  { id: 2, groupId: 2, groupPosition: 1, name: "C" },
+  { id: 3, groupId: 0, groupPosition: 2, name: "D" },
+  { id: 4, groupId: 1, groupPosition: 2, name: "E" },
+];
+const cearenseBracketEntriesSnapshot = JSON.stringify(cearenseBracketEntries);
+const cearenseEliminationRounds = buildCearenseEliminationRounds(
+  cearenseBracketEntries,
+  "main",
+  "Eliminatória Principal",
+  true
+);
+assert.deepEqual(
+  cearenseEliminationRounds.map((round) => round.title),
+  ["Quartas de final", "Semifinal", "3º lugar", "Final"],
+  "A sequência da chave principal do Campeonato Cearense foi alterada."
+);
+const cearenseOpeningGames = cearenseEliminationRounds[0].games;
+assert.equal(cearenseOpeningGames.length, 4, "Cinco classificados devem ocupar uma chave de oito posições.");
+assert.equal(cearenseOpeningGames.filter((game) => game.isBye).length, 3, "Cinco classificados devem receber exatamente três BYEs.");
+assert.deepEqual(
+  cearenseOpeningGames.flatMap((game) => [...game.ids1, ...game.ids2]).sort((first, second) => first - second),
+  [0, 1, 2, 3, 4],
+  "A distribuição dos BYEs perdeu ou repetiu um classificado."
+);
+assert.equal(JSON.stringify(cearenseBracketEntries), cearenseBracketEntriesSnapshot, "A construção da eliminatória não pode alterar os classificados.");
+const transferredParallelEntries = [
+  { id: 10, groupId: 0, name: "Transferido A" },
+  { id: 11, groupId: 1, name: "Transferido B" },
+];
+const originalParallelEntries = [
+  { id: 20, groupId: 0, name: "Paralela A" },
+  { id: 21, groupId: 1, name: "Paralela B" },
+  { id: 22, groupId: 2, name: "Paralela C" },
+];
+const transferredParallelSnapshot = JSON.stringify(transferredParallelEntries);
+const originalParallelSnapshot = JSON.stringify(originalParallelEntries);
+const transferredPairing = pairPlayRankingTransferredEntries(transferredParallelEntries, originalParallelEntries);
+assert.equal(transferredPairing.pairs.length, 2, "Cada eliminado transferido deve receber um adversário da paralela.");
+assert.ok(
+  transferredPairing.pairs.every(([transferred, opponent]) => opponent && transferred.groupId !== opponent.groupId),
+  "Um eliminado transferido enfrentou alguém do próprio grupo apesar de existir alternativa."
+);
+assert.deepEqual(transferredPairing.remainingOriginals.map((entry) => entry.id), [20], "A lista restante da paralela foi alterada.");
+assert.equal(JSON.stringify(transferredParallelEntries), transferredParallelSnapshot, "O pareamento não pode alterar os eliminados transferidos.");
+assert.equal(JSON.stringify(originalParallelEntries), originalParallelSnapshot, "O pareamento não pode alterar os classificados originais da paralela.");
+const extendedOriginalParallelEntries = [
+  ...originalParallelEntries,
+  { id: 23, groupId: 3, name: "Paralela D" },
+  { id: 24, groupId: 4, name: "Paralela E" },
+];
+const extendedOriginalParallelSnapshot = JSON.stringify(extendedOriginalParallelEntries);
+const playRankingParallelRounds = buildPlayRankingParallelRounds(
+  transferredParallelEntries,
+  extendedOriginalParallelEntries,
+  "Disputa Paralela"
+);
+assert.deepEqual(
+  playRankingParallelRounds.map((round) => round.title),
+  ["Quartas de final", "Semifinal", "Final"],
+  "A sequência da paralela do Modelo Torneio 360 foi alterada."
+);
+const playRankingOpeningGames = playRankingParallelRounds[0].games;
+assert.equal(playRankingOpeningGames.length, 4, "Sete participantes devem ocupar quatro confrontos iniciais.");
+assert.equal(playRankingOpeningGames.filter((game) => game.isBye).length, 1, "Sete participantes devem produzir exatamente um BYE.");
+assert.deepEqual(
+  playRankingOpeningGames.flatMap((game) => [...game.ids1, ...game.ids2]).sort((first, second) => first - second),
+  [10, 11, 20, 21, 22, 23, 24],
+  "A paralela perdeu ou repetiu um participante na abertura."
+);
+assert.equal(JSON.stringify(transferredParallelEntries), transferredParallelSnapshot, "A criação da paralela não pode alterar os eliminados transferidos.");
+assert.equal(JSON.stringify(extendedOriginalParallelEntries), extendedOriginalParallelSnapshot, "A criação da paralela não pode alterar seus classificados originais.");
+const openingLossQualified = [
+  { id: 0, name: "A", groupId: 0, w: 3, bal: 8, pts: 12, played: 3 },
+  { id: 1, name: "B", groupId: 1, w: 2, bal: 4, pts: 10, played: 3 },
+  { id: 2, name: "C", groupId: 2, w: 2, bal: 3, pts: 9, played: 3 },
+  { id: 3, name: "D", groupId: 3, w: 1, bal: 1, pts: 8, played: 3 },
+];
+const openingLossRounds = [{
+  title: "Semifinal",
+  games: [
+    { matchKey: "main_sf_1", ids1: [0], ids2: [1], isBye: false, s1: "", s2: "" },
+    { matchKey: "main_sf_2", ids1: [2], ids2: [3], isBye: false, s1: "", s2: "" },
+  ],
+}];
+const openingLossData = {
+  winningScore: 4,
+  brackets: [
+    { matchKey: "main_sf_1", s1: "4", s2: "3" },
+    { matchKey: "main_sf_2", s1: "4", s2: "1" },
+  ],
+};
+const openingLossDataSnapshot = JSON.stringify(openingLossData);
+const openingLosses = getPlayRankingOpeningLosses(openingLossData, openingLossRounds, openingLossQualified);
+assert.equal(openingLosses.ready, true, "A paralela não reconheceu a conclusão da primeira fase principal.");
+assert.deepEqual(openingLosses.losses.map((entry) => entry.id), [1, 3], "Os melhores perdedores da abertura foram ordenados incorretamente.");
+assert.deepEqual(
+  openingLosses.losses.map((entry) => [entry.openingLossMargin, entry.openingLossGames]),
+  [[1, 3], [3, 1]],
+  "A margem ou os games dos eliminados da abertura foram alterados."
+);
+assert.equal(JSON.stringify(openingLossData), openingLossDataSnapshot, "A leitura dos eliminados não pode alterar os placares salvos.");
+assert.equal(
+  getPlayRankingOpeningLosses(
+    { ...openingLossData, brackets: openingLossData.brackets.slice(0, 1) },
+    openingLossRounds,
+    openingLossQualified
+  ).ready,
+  false,
+  "A disputa paralela não pode ser liberada com um confronto inicial pendente."
+);
+const thirdParallelMainRounds = [
+  {
+    title: "Oitavas de final",
+    games: [
+      { matchKey: "main_r16_1", isBye: false },
+      { matchKey: "main_r16_2", isBye: false },
+    ],
+  },
+  {
+    title: "Quartas de final",
+    games: [
+      { matchKey: "main_qf_1", isBye: false },
+      { matchKey: "main_qf_2", isBye: false },
+    ],
+  },
+  {
+    title: "Semifinal",
+    games: [
+      { matchKey: "main_sf_1", isBye: false },
+      { matchKey: "main_sf_2", isBye: false },
+    ],
+  },
+];
+const thirdParallelMainRoundsSnapshot = JSON.stringify(thirdParallelMainRounds);
+const thirdParallelSources = getCearenseThirdParallelSources(thirdParallelMainRounds);
+assert.deepEqual(
+  thirdParallelSources.sections.map((section) => section.round.title),
+  ["Quartas de final", "Oitavas de final"],
+  "A 3ª disputa paralela deixou de reunir quartas e a fase anterior aplicável."
+);
+assert.deepEqual(
+  thirdParallelSources.games.map((game) => game.matchKey),
+  ["main_qf_1", "main_qf_2", "main_r16_1", "main_r16_2"],
+  "As origens da 3ª disputa paralela foram alteradas."
+);
+const thirdParallelRounds = buildCearenseThirdParallelRounds(thirdParallelMainRounds, "3ª Disputa Paralela");
+assert.deepEqual(
+  thirdParallelRounds.map((round) => round.title),
+  ["Semifinal", "Final"],
+  "Quatro eliminados devem continuar formando semifinal e final na 3ª paralela."
+);
+assert.deepEqual(
+  thirdParallelRounds[0].games.map((game) => [game.source1, game.source2]),
+  [["main_qf_1", "main_r16_2"], ["main_qf_2", "main_r16_1"]],
+  "A 3ª paralela deixou de cruzar os eliminados das duas fases."
+);
+assert.ok(
+  thirdParallelRounds[0].games.every((game) => game.source1Mode === "loser" && game.source2Mode === "loser"),
+  "A 3ª paralela deve receber somente os perdedores das fases de origem."
+);
+assert.equal(JSON.stringify(thirdParallelMainRounds), thirdParallelMainRoundsSnapshot, "A 3ª paralela não pode alterar a chave principal salva.");
+const semifinalOnlyThirdParallel = buildCearenseThirdParallelRounds(
+  [{
+    title: "Semifinal",
+    games: [
+      { matchKey: "main_sf_1", isBye: false },
+      { matchKey: "main_sf_2", isBye: false },
+    ],
+  }],
+  "3ª Disputa Paralela"
+);
+assert.deepEqual(semifinalOnlyThirdParallel.map((round) => round.title), ["Final"], "Dois eliminados devem entrar diretamente na final da 3ª paralela.");
+assert.deepEqual(
+  [semifinalOnlyThirdParallel[0].games[0].source1, semifinalOnlyThirdParallel[0].games[0].source2],
+  ["main_sf_1", "main_sf_2"],
+  "A final direta da 3ª paralela perdeu seus dois eliminados."
+);
+const sunsetMainRounds = [
+  {
+    title: "3º lugar",
+    games: Array.from({ length: 4 }, (_, index) => ({ matchKey: `main_third_${index + 1}`, isBye: false })),
+  },
+  {
+    title: "Quartas de final",
+    games: [
+      { matchKey: "main_qf_1", isBye: false },
+      { matchKey: "main_qf_2", isBye: false },
+      { matchKey: "main_qf_3", isBye: false },
+      { matchKey: "main_qf_4", isBye: true },
+    ],
+  },
+];
+const sunsetMainRoundsSnapshot = JSON.stringify(sunsetMainRounds);
+assert.deepEqual(
+  getSunsetMainSourceGames(sunsetMainRounds, 4).map((game) => game.matchKey),
+  ["main_qf_1", "main_qf_2", "main_qf_3"],
+  "A Copa Sunset escolheu a disputa de 3º lugar ou incluiu um BYE como origem."
+);
+const sunsetParallelRounds = buildSunsetParallelFromMainRound(
+  sunsetMainRounds,
+  4,
+  "thirdParallel",
+  "3ª Disputa Paralela"
+);
+assert.deepEqual(
+  sunsetParallelRounds.map((round) => round.title),
+  ["Semifinal", "Final"],
+  "Três eliminados da fase principal devem formar semifinal e final na Copa Sunset."
+);
+assert.equal(sunsetParallelRounds[0].games.filter((game) => game.isBye).length, 1, "Três eliminados da Copa Sunset devem produzir um BYE.");
+assert.deepEqual(
+  sunsetParallelRounds[0].games.flatMap((game) => [game.source1, game.source2]).filter(Boolean).sort(),
+  ["main_qf_1", "main_qf_2", "main_qf_3"],
+  "A paralela da Copa Sunset perdeu ou repetiu uma origem."
+);
+assert.equal(JSON.stringify(sunsetMainRounds), sunsetMainRoundsSnapshot, "A montagem da Copa Sunset não pode alterar a chave principal salva.");
+const sunsetBracketSet = {
+  main: [{ title: "Final", games: [{ matchKey: "main_final_1" }] }],
+  repechage: [{ title: "Final", games: [{ matchKey: "repechage_final_1" }] }],
+  secondParallel: [{ title: "Final", games: [{ matchKey: "secondParallel_final_1" }] }],
+  thirdParallel: [{ title: "Final", games: [{ matchKey: "thirdParallel_final_1" }] }],
+};
+assert.deepEqual(
+  getBracketChampionSource(sunsetBracketSet.main),
+  { sourceMatchKey: "main_final_1", sourceMode: "winner" },
+  "A campeã de uma chave da Copa Sunset perdeu sua origem."
+);
+assert.equal(getBracketChampionSource([{ title: "Semifinal", games: [] }]), null, "Uma chave sem final não pode produzir campeã.");
+const twoSunsetChampions = buildSunsetChampionsRounds(
+  { ...sunsetBracketSet, secondParallel: [], thirdParallel: [] },
+  "Etapa Sunset"
+);
+assert.deepEqual(twoSunsetChampions.map((round) => round.title), ["Final"], "Duas campeãs devem entrar diretamente na final Sunset.");
+assert.deepEqual(
+  [twoSunsetChampions[0].games[0].source1, twoSunsetChampions[0].games[0].source2],
+  ["main_final_1", "repechage_final_1"],
+  "A final Sunset de duas campeãs perdeu suas origens."
+);
+const threeSunsetChampions = buildSunsetChampionsRounds(
+  { ...sunsetBracketSet, thirdParallel: [] },
+  "Etapa Sunset"
+);
+assert.deepEqual(threeSunsetChampions.map((round) => round.title), ["Semifinal", "Final"], "Três campeãs devem formar semifinal e final Sunset.");
+assert.equal(threeSunsetChampions[1].games[0].source1, "main_final_1", "A campeã principal deixou de avançar diretamente na chave Sunset de três campeãs.");
+const fourSunsetChampions = buildSunsetChampionsRounds(sunsetBracketSet, "Etapa Sunset");
+assert.deepEqual(fourSunsetChampions.map((round) => round.title), ["Semifinal", "Final"], "Quatro campeãs devem formar duas semifinais e uma final Sunset.");
+assert.deepEqual(
+  fourSunsetChampions[0].games.map((game) => [game.source1, game.source2]),
+  [["main_final_1", "repechage_final_1"], ["secondParallel_final_1", "thirdParallel_final_1"]],
+  "Os cruzamentos entre as quatro campeãs da Copa Sunset foram alterados."
+);
+const threeFinishedGroupGames = [
+  { ids1: [0], ids2: [1], s1: "4", s2: "2" },
+  { ids1: [0], ids2: [2], s1: "1", s2: "4" },
+  { ids1: [1], ids2: [2], s1: "4", s2: "3" },
+];
+assert.equal(getCopinhaHeadToHeadWinnerId(0, 1, threeFinishedGroupGames, 4), 0, "O confronto direto deixou de reconhecer o vencedor.");
+assert.equal(getCopinhaHeadToHeadWinnerId(0, 3, threeFinishedGroupGames, 4), null, "Um confronto inexistente não pode produzir vencedor.");
+const basicTiedRows = [
+  { id: 0, name: "Ana", w: 1, bal: 0, pts: 6 },
+  { id: 1, name: "Bia", w: 1, bal: 0, pts: 6 },
+  { id: 2, name: "Carla", w: 1, bal: 0, pts: 6 },
+];
+assert.deepEqual(getCopinhaManualTieOrder(basicTiedRows, [2, 0, 1]), [2, 0, 1], "A ordem registrada pelo sorteio foi alterada.");
+assert.equal(getCopinhaManualTieOrder(basicTiedRows, [2, 0]), null, "Uma ordem incompleta não pode resolver o empate.");
+assert.equal(getCopinhaManualTieOrder(basicTiedRows, [2, 2, 0]), null, "Uma ordem duplicada não pode resolver o empate.");
+const unfinishedCopinha = rankCopinhaGroupRows(basicTiedRows, threeFinishedGroupGames.slice(0, 2), 4);
+assert.deepEqual(unfinishedCopinha.unresolvedTieIds, [], "Um grupo incompleto não deve solicitar sorteio.");
+const tripleCopinhaTie = rankCopinhaGroupRows(basicTiedRows, threeFinishedGroupGames, 4);
+assert.deepEqual(tripleCopinhaTie.unresolvedTieIds, [0, 1, 2], "Três duplas empatadas devem permanecer para sorteio.");
+const resolvedTripleCopinhaTie = rankCopinhaGroupRows(basicTiedRows, threeFinishedGroupGames, 4, [2, 0, 1]);
+assert.deepEqual(resolvedTripleCopinhaTie.rows.map((row) => row.id), [2, 0, 1], "O sorteio registrado não foi aplicado ao grupo.");
+const twoTiedRows = [
+  { id: 0, name: "Ana", w: 1, bal: 0, pts: 6 },
+  { id: 1, name: "Bia", w: 1, bal: 0, pts: 6 },
+  { id: 2, name: "Carla", w: 0, bal: -2, pts: 4 },
+];
+const directCopinhaTie = rankCopinhaGroupRows(twoTiedRows, threeFinishedGroupGames, 4);
+assert.deepEqual(directCopinhaTie.rows.slice(0, 2).map((row) => row.id), [0, 1], "O confronto direto da Copinha não foi aplicado.");
+assert.deepEqual(directCopinhaTie.unresolvedTieIds, [], "Um confronto direto válido não pode permanecer pendente.");
+const customCriteria = { order: ["pts", "w", "bal"] };
+const cearenseTie = rankCearenseGroupRows(basicTiedRows, threeFinishedGroupGames, 4, customCriteria);
+assert.deepEqual(cearenseTie.unresolvedTieIds, [0, 1, 2], "O empate absoluto do Modelo Torneio 360 deve solicitar sorteio.");
+const resolvedCearenseTie = rankCearenseGroupRows(basicTiedRows, threeFinishedGroupGames, 4, customCriteria, [1, 2, 0]);
+assert.deepEqual(resolvedCearenseTie.rows.map((row) => row.id), [1, 2, 0], "A ordem sorteada do empate absoluto não foi preservada.");
+const officialDirectTie = rankOfficialCearenseGroupRows(twoTiedRows, threeFinishedGroupGames, 4);
+assert.deepEqual(officialDirectTie.rows.slice(0, 2).map((row) => row.id), [0, 1], "O confronto direto oficial entre duas duplas não foi aplicado.");
+const officialTripleTie = rankOfficialCearenseGroupRows(basicTiedRows, threeFinishedGroupGames, 4);
+assert.deepEqual(officialTripleTie.unresolvedTieIds, [0, 1, 2], "O empate oficial entre três duplas deve solicitar sorteio.");
+function completeGroupScheduleWithLowerIdWinning(schedule) {
+  return schedule.map((round) => round.map((game) => {
+    const firstWins = game.ids1[0] < game.ids2[0];
+    return {
+      ...game,
+      s1: firstWins ? "4" : "2",
+      s2: firstWins ? "2" : "4",
+    };
+  }));
+}
+const standardGroupPlayers = createNamedTeams(6);
+const standardGroupSchedule = completeGroupScheduleWithLowerIdWinning(
+  generateCupGroupSchedule(standardGroupPlayers, { teamCount: 6, format: "standard" })
+);
+const standardGroupScheduleSnapshot = JSON.stringify(standardGroupSchedule);
+const standardGroupRankings = calculateCupGroupRankings({
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 6, format: "standard" },
+  players: standardGroupPlayers,
+  schedule: standardGroupSchedule,
+});
+assert.equal(standardGroupRankings.length, 2, "A tabela padrão perdeu um dos grupos.");
+assert.deepEqual(standardGroupRankings[0].rows.map((row) => row.id), [0, 1, 2], "A ordem da tabela padrão foi alterada.");
+assert.deepEqual(
+  standardGroupRankings[0].rows.map(({ id, w, pts, bal, played }) => ({ id, w, pts, bal, played })),
+  [
+    { id: 0, w: 2, pts: 8, bal: 4, played: 2 },
+    { id: 1, w: 1, pts: 6, bal: 0, played: 2 },
+    { id: 2, w: 0, pts: 4, bal: -4, played: 2 },
+  ],
+  "A soma de vitórias, games, saldo ou partidas da fase de grupos foi alterada."
+);
+assert.equal(standardGroupRankings[0].rankingMode, "standard", "A tabela comum perdeu seu modo de classificação.");
+assert.equal(JSON.stringify(standardGroupSchedule), standardGroupScheduleSnapshot, "O cálculo do ranking não pode alterar os jogos salvos.");
+const officialGroupPlayers = createNamedTeams(7);
+const officialGroupSchedule = completeGroupScheduleWithLowerIdWinning(
+  generateCupGroupSchedule(officialGroupPlayers, { teamCount: 7, format: "cearense" })
+);
+const officialGroupData = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 7, format: "cearense" },
+  players: officialGroupPlayers,
+  schedule: officialGroupSchedule,
+};
+const officialGroupRankings = calculateCupGroupRankings(officialGroupData);
+assert.deepEqual(officialGroupRankings.map((group) => group.id), [0, 1], "Um empate entre campeões não pode reordenar os grupos antes do sorteio.");
+assert.ok(officialGroupRankings.every((group) => group.rankingMode === "cearense-official"), "O ranking oficial perdeu sua identificação.");
+assert.ok(officialGroupRankings.every((group) => group.groupRank === undefined), "Um empate oficial pendente não pode criar ordem definitiva dos grupos.");
+const officialResolvedGroupRankings = calculateCupGroupRankings({
+  ...officialGroupData,
+  cupConfig: {
+    ...officialGroupData.cupConfig,
+    campaignTieBreakOverrides: { "campeoes-saldo-ajustado:4/1": [4, 0] },
+  },
+});
+assert.deepEqual(officialResolvedGroupRankings.map((group) => group.id), [1, 0], "O sorteio registrado não reordenou os campeões oficiais.");
+assert.deepEqual(officialResolvedGroupRankings.map((group) => group.groupRank), [1, 2], "A posição definitiva dos grupos oficiais foi alterada.");
+const officialQualifiedBeforeTieBreak = getOfficialCearenseQualified(officialGroupData);
+assert.deepEqual(officialQualifiedBeforeTieBreak.main.map((row) => row.id), [0, 4, 1, 5], "Os dois primeiros de cada grupo deixaram de avançar à chave principal.");
+assert.deepEqual(officialQualifiedBeforeTieBreak.repechage.map((row) => row.id), [2, 6, 3], "As posições abaixo do segundo lugar deixaram de ir à disputa paralela.");
+assert.equal(officialQualifiedBeforeTieBreak.unresolvedCampaignTies.length, 1, "O empate oficial entre campeões deixou de solicitar sorteio.");
+const officialQualifiedAfterTieBreak = getOfficialCearenseQualified({
+  ...officialGroupData,
+  cupConfig: {
+    ...officialGroupData.cupConfig,
+    campaignTieBreakOverrides: { "campeoes-saldo-ajustado:4/1": [4, 0] },
+  },
+});
+assert.deepEqual(officialQualifiedAfterTieBreak.main.map((row) => row.id), [4, 0, 5, 1], "A ordem oficial de campeões e segundos foi alterada após o sorteio.");
+assert.deepEqual(officialQualifiedAfterTieBreak.repechage.map((row) => row.id), [6, 2, 3], "A ordem oficial da disputa paralela foi alterada após o sorteio.");
+assert.equal(officialQualifiedAfterTieBreak.unresolvedCampaignTies.length, 0, "O desempate oficial registrado não pode permanecer pendente.");
+assert.deepEqual(
+  getCearenseQualified({
+    ...officialGroupData,
+    cupConfig: {
+      ...officialGroupData.cupConfig,
+      campaignTieBreakOverrides: { "campeoes-saldo-ajustado:4/1": [4, 0] },
+    },
+  }),
+  officialQualifiedAfterTieBreak,
+  "O classificador geral deixou de encaminhar o formato oficial para sua regra própria."
+);
+const playRankingQualified = getCearenseQualified({
+  ...officialGroupData,
+  cupConfig: { teamCount: 7, format: "playranking" },
+});
+assert.deepEqual(playRankingQualified.main.map((row) => row.id), [0, 4, 1, 5], "O Modelo Torneio 360 deixou de enviar campeões e segundos à principal.");
+assert.deepEqual(playRankingQualified.repechage.map((row) => row.id), [2, 3, 6], "O Modelo Torneio 360 alterou os classificados iniciais da paralela.");
+assert.deepEqual(
+  playRankingQualified.unresolvedCampaignTies.map((tie) => tie.scope).sort(),
+  ["campeoes", "paralela"],
+  "Os empates proporcionais entre grupos deixaram de ser identificados por disputa."
+);
+const copinhaPlayers = createNamedTeams(9);
+const copinhaSchedule = completeGroupScheduleWithLowerIdWinning(
+  generateCupGroupSchedule(copinhaPlayers, { teamCount: 9, format: "copinha" })
+);
+const copinhaData = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 9, format: "copinha" },
+  players: copinhaPlayers,
+  schedule: copinhaSchedule,
+};
+const copinhaGroupsBeforeTieBreak = getCopinhaSeededGroups(copinhaData);
+assert.deepEqual(copinhaGroupsBeforeTieBreak.rankedGroups.map((group) => group.id), [0, 1, 2], "Os grupos da Copinha foram reordenados antes do sorteio.");
+assert.deepEqual(copinhaGroupsBeforeTieBreak.unresolvedGroupTies, [{ tieKey: "2:4", groupIds: [0, 1, 2] }], "O empate entre campeões da Copinha deixou de ser identificado.");
+const resolvedCopinhaData = {
+  ...copinhaData,
+  cupConfig: { ...copinhaData.cupConfig, groupTieBreakOverrides: { "2:4": [2, 1, 0] } },
+};
+assert.deepEqual(getCopinhaSeededGroups(resolvedCopinhaData).rankedGroups.map((group) => group.id), [2, 1, 0], "A ordem sorteada dos grupos da Copinha não foi preservada.");
+const copinhaQualified = getCopinhaQualified(resolvedCopinhaData);
+assert.deepEqual(copinhaQualified.main.map((row) => row.id), [6, 3, 0, 7, 4, 1], "A Copinha alterou a ordem de campeões e segundos classificados.");
+assert.deepEqual(copinhaQualified.repechage.map((row) => row.id), [8, 5, 2], "A Copinha alterou a ordem da consolação.");
+assert.deepEqual(getCupQualified(resolvedCopinhaData), copinhaQualified, "O classificador geral deixou de encaminhar a Copinha à regra própria.");
+const standardQualificationData = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 6, format: "standard" },
+  players: standardGroupPlayers,
+  schedule: standardGroupSchedule,
+};
+const standardQualified = getCupQualified(standardQualificationData);
+assert.deepEqual(standardQualified.main.map((row) => row.id), [0, 3, 1, 4], "A Copa padrão alterou os dois classificados de cada grupo.");
+assert.deepEqual(standardQualified.repechage.map((row) => row.id), [2, 5], "A Copa padrão alterou os terceiros colocados.");
+const cup18Players = createNamedTeams(18);
+const cup18Data = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 18, format: "cup18" },
+  players: cup18Players,
+  schedule: completeGroupScheduleWithLowerIdWinning(generateCupGroupSchedule(cup18Players, { teamCount: 18, format: "cup18" })),
+};
+const cup18Qualified = getCup18Qualified(cup18Data);
+assert.deepEqual(
+  [cup18Qualified.main.length, cup18Qualified.repechage.length],
+  [14, 4],
+  "A compatibilidade da Copa de 18 deixou de classificar doze equipes diretas e dois melhores terceiros."
+);
+assert.equal(cup18Qualified.main.filter((row) => row.groupPosition === 3).length, 2, "A Copa de 18 deve manter somente dois terceiros na principal.");
+const cup21Players = createNamedTeams(21);
+const cup21Data = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 21, format: "cup21" },
+  players: cup21Players,
+  schedule: completeGroupScheduleWithLowerIdWinning(generateCupGroupSchedule(cup21Players, { teamCount: 21, format: "cup21" })),
+};
+const cup21Qualified = getCup21Qualified(cup21Data);
+assert.deepEqual([cup21Qualified.main.length, cup21Qualified.repechage.length], [14, 7], "A compatibilidade da Copa de 21 alterou principal ou paralela.");
+assert.deepEqual(
+  getCupQualified({ ...cup21Data, cupConfig: { teamCount: 21 } }),
+  cup21Qualified,
+  "Um torneio antigo de 21 duplas deixou de usar sua regra compatível."
+);
+const proportionalCampaignTwoGames = { id: 10, name: "Ana", groupId: 0, groupPosition: 1, played: 2, w: 2, bal: 6, pts: 12 };
+const proportionalCampaignThreeGames = { id: 20, name: "Bia", groupId: 1, groupPosition: 1, played: 3, w: 3, bal: 9, pts: 18 };
+assert.equal(compareCearenseCampaignMetrics(proportionalCampaignTwoGames, proportionalCampaignThreeGames), 0, "Campanhas proporcionais de grupos diferentes deixaram de ser equivalentes.");
+assert.equal(haveSameCearenseCampaign(proportionalCampaignTwoGames, proportionalCampaignThreeGames), true, "A equivalência proporcional entre grupos foi alterada.");
+assert.ok(
+  compareCearenseCampaignMetrics(
+    proportionalCampaignTwoGames,
+    { ...proportionalCampaignThreeGames, w: 2 }
+  ) < 0,
+  "A campanha com melhor percentual de vitórias deixou de vir primeiro."
+);
+assert.equal(greatestCommonDivisor(12, 18), 6, "O divisor comum usado nas chaves de empate foi alterado.");
+assert.equal(getReducedRatio(-4, 6), "-2/3", "A redução de saldos negativos foi alterada.");
+assert.equal(
+  getCearenseCampaignTieKey("campeoes", proportionalCampaignTwoGames),
+  getCearenseCampaignTieKey("campeoes", proportionalCampaignThreeGames),
+  "Campanhas proporcionais deixaram de compartilhar a mesma chave de desempate."
+);
+const unresolvedCampaigns = rankCearenseCampaignEntries(
+  [proportionalCampaignTwoGames, proportionalCampaignThreeGames],
+  {},
+  "campeoes"
+);
+assert.equal(unresolvedCampaigns.unresolvedTies.length, 1, "Um empate proporcional entre grupos deixou de solicitar sorteio.");
+assert.deepEqual(unresolvedCampaigns.unresolvedTies[0].teamIds, [10, 20], "O empate entre grupos perdeu seus participantes.");
+const campaignTieKey = getCearenseCampaignTieKey("campeoes", proportionalCampaignTwoGames);
+const resolvedCampaigns = rankCearenseCampaignEntries(
+  [proportionalCampaignTwoGames, proportionalCampaignThreeGames],
+  { [campaignTieKey]: [20, 10] },
+  "campeoes"
+);
+assert.deepEqual(resolvedCampaigns.rows.map((row) => row.id), [20, 10], "A ordem sorteada entre campanhas equivalentes não foi preservada.");
+assert.equal(resolvedCampaigns.unresolvedTies.length, 0, "Um sorteio registrado não pode permanecer pendente.");
+const sameGroupCampaigns = rankCearenseCampaignEntries(
+  [
+    { ...proportionalCampaignTwoGames, id: 30, groupPosition: 1 },
+    { ...proportionalCampaignTwoGames, id: 31, name: "Carla", groupPosition: 2 },
+  ],
+  {},
+  "paralela"
+);
+assert.deepEqual(sameGroupCampaigns.rows.map((row) => row.id), [30, 31], "A posição original dentro do mesmo grupo foi alterada.");
+assert.equal(sameGroupCampaigns.unresolvedTies.length, 0, "Duas posições do mesmo grupo não podem abrir sorteio entre grupos.");
+const officialFourTeamChampion = { bal: 6, groupSize: 4 };
+const officialThreeTeamChampion = { bal: 4, groupSize: 3 };
+assert.deepEqual(getOfficialCearenseAdjustedBalance(officialFourTeamChampion), { numerator: 12, denominator: 3 }, "O saldo ajustado do grupo de quatro foi alterado.");
+assert.deepEqual(getOfficialCearenseAdjustedBalance(officialThreeTeamChampion), { numerator: 4, denominator: 1 }, "O saldo do grupo de três foi alterado.");
+assert.equal(compareOfficialCearenseChampions(officialFourTeamChampion, officialThreeTeamChampion), 0, "Saldos oficiais equivalentes deixaram de empatar.");
+assert.equal(
+  getOfficialCearenseChampionTieKey(officialFourTeamChampion),
+  getOfficialCearenseChampionTieKey(officialThreeTeamChampion),
+  "Campeões com saldo oficial equivalente deixaram de compartilhar a chave de sorteio."
+);
 
 assert.equal(normalizeCircuitParticipantKey("B\u00e1rbara"), normalizeCircuitParticipantKey("barbara"));
 assert.equal(normalizeCircuitParticipantKey("Jo\u00e3o da Silva"), normalizeCircuitParticipantKey("joao da silva"));
@@ -72,6 +1547,130 @@ assert.equal(prepareParticipantLineForTest("⚽ - 5º Lucas e Carla"), "Lucas e 
 assert.equal(prepareParticipantLineForTest("✨ Dupla 12: Roberto & Fernanda"), "Roberto & Fernanda");
 assert.equal(prepareParticipantLineForTest("Ana 💜 + João 🏆"), "Ana + João");
 assert.equal(prepareParticipantLineForTest("Carlos 👨🏽‍🤝‍👨 / Beatriz 🇧🇷"), "Carlos / Beatriz");
+
+assert.equal(getMaxScore(4), 4, "O limite do placar de quatro games foi alterado.");
+assert.equal(getMaxScore(6), 7, "O limite do placar de seis games foi alterado.");
+assert.equal(normalizeScoreInput("8", 6), "7", "O placar não respeita o limite da partida.");
+assert.equal(normalizeScoreInput("-2", 4), "0", "O placar não deve aceitar valor negativo.");
+assert.equal(getWinningScore({ winningScore: 6 }), 6, "A pontuação escolhida pelo organizador não é lida.");
+assert.equal(getScoreWinnerSide({ s1: "6", s2: "4" }, 6), "team1", "O vencedor da partida não é reconhecido.");
+assert.equal(getScoreWinnerSide({ s1: "4", s2: "4" }, 4), null, "O empate não pode finalizar uma partida.");
+assert.equal(isGameFinished({ s1: "2", s2: "4" }, 4), true, "A partida concluída não é reconhecida.");
+
+const normalizedRankingGroups = normalizeRankingExportGroups([
+  { title: "Ranking geral", rows: [{ name: "Ana" }, { name: "Bia" }, { name: "Carla" }, { name: "Dani" }] },
+  { title: "Vazio", rows: [] },
+]);
+assert.equal(normalizedRankingGroups.length, 1, "Grupos vazios não devem gerar páginas de ranking.");
+const rankingPages = paginateRankingGroups(normalizedRankingGroups, {
+  maxHeight: 192,
+  rowHeight: 64,
+  groupOverhead: 64,
+});
+assert.equal(rankingPages.length, 2, "O ranking não foi dividido conforme o espaço disponível.");
+assert.equal(rankingPages[0][0].rows.length, 2, "A primeira página recebeu uma quantidade incorreta de participantes.");
+assert.equal(rankingPages[1][0].title, "Ranking geral — continuação", "A continuação do ranking perdeu sua identificação.");
+assert.equal(rankingPages[1][0].startIndex, 2, "A numeração da continuação do ranking foi reiniciada.");
+assert.equal(defaultRankingCriteria, "wins_points_balance", "O critério padrão do ranking foi alterado.");
+assert.equal(rankingCriteriaOptions.length, 6, "Alguma ordem válida dos critérios de ranking foi removida.");
+assert.deepEqual(getRankingCriteria("points_balance_wins").order, ["pts", "bal", "w"], "A ordem escolhida do ranking não é respeitada.");
+assert.equal(getRankingCriteria("inexistente").value, defaultRankingCriteria, "Um critério inválido não retorna ao padrão seguro.");
+assert.equal(getRankingColumnLabel("pts"), "Total de Games", "A nomenclatura de Total de Games foi alterada.");
+assert.equal(formatRankingMetricValue("playTimeSeconds", 125), "02:05", "O tempo em jogo não é formatado no ranking.");
+
+const scheduleRanking = calculateScheduleRanking({
+  names: ["Ana", "Bia", "Carla", "Dani"],
+  schedule: [[
+    {
+      ids1: [0, 1],
+      ids2: [2, 3],
+      s1: "4",
+      s2: "2",
+      matchTimerElapsedSeconds: 75,
+    },
+    { ids1: [0, 2], ids2: [1, 3], s1: "", s2: "" },
+  ]],
+  winningScore: 4,
+  timingComplete: true,
+  rankingCriteriaValue: "wins_points_balance",
+});
+assert.deepEqual(
+  scheduleRanking.map(({ name, w, pts, bal, played, playTimeSeconds }) => ({ name, w, pts, bal, played, playTimeSeconds })),
+  [
+    { name: "Ana", w: 1, pts: 4, bal: 2, played: 1, playTimeSeconds: 75 },
+    { name: "Bia", w: 1, pts: 4, bal: 2, played: 1, playTimeSeconds: 75 },
+    { name: "Carla", w: 0, pts: 2, bal: -2, played: 1, playTimeSeconds: 75 },
+    { name: "Dani", w: 0, pts: 2, bal: -2, played: 1, playTimeSeconds: 75 },
+  ],
+  "A soma de vitórias, games, saldo, partidas ou tempo do ranking básico foi alterada."
+);
+const tournamentRankingData = {
+  players: ["Ana", "Bia", "Carla", "Dani"],
+  schedule: [[{ ids1: [0, 1], ids2: [2, 3], s1: "4", s2: "2", matchTimerElapsedSeconds: 75 }]],
+  winningScore: 4,
+};
+assert.deepEqual(
+  calculateTournamentRanking({
+    data: tournamentRankingData,
+    config: { type: "super8" },
+    rankingCriteriaValue: "wins_points_balance",
+    timingComplete: true,
+  }).map(({ name, w, pts, bal, played }) => ({ name, w, pts, bal, played })),
+  scheduleRanking.map(({ name, w, pts, bal, played }) => ({ name, w, pts, bal, played })),
+  "A delegação do ranking do torneio alterou o resultado matemático."
+);
+assert.deepEqual(
+  calculateTournamentRanking({
+    data: { players: { teams: [{ a: "Ana", b: "Bia" }, { a: "Carla", b: "Dani" }] }, schedule: [] },
+    config: { type: "fixed12" },
+  }).map((row) => row.name),
+  ["Ana + Bia", "Carla + Dani"],
+  "O ranking das duplas fixas perdeu a composição dos nomes."
+);
+assert.ok(
+  tournamentRankingSource.includes("return calculateScheduleRanking({")
+    && tournamentRankingSource.includes("rankingCriteriaValue,"),
+  "O ranking principal não utiliza o cálculo de domínio protegido."
+);
+const teamGamesRanking = calculateTeamGamesRanking({
+  names: ["Dupla A", "Dupla B", "Dupla sem jogo"],
+  games: [
+    { ids1: [0], ids2: [1], s1: "6", s2: "4" },
+    { ids1: [1], ids2: [0], s1: "7", s2: "6" },
+  ],
+  winningScore: 6,
+  rankingCriteriaValue: "wins_points_balance",
+});
+assert.deepEqual(
+  teamGamesRanking.map(({ name, w, pts, bal, played }) => ({ name, w, pts, bal, played })),
+  [
+    { name: "Dupla A", w: 1, pts: 12, bal: 1, played: 2 },
+    { name: "Dupla B", w: 1, pts: 11, bal: -1, played: 2 },
+  ],
+  "A tabela acumulada das copas mudou vitórias, games, saldo ou remoção de equipes sem partidas."
+);
+assert.deepEqual(
+  calculateCircuitTournamentRankingRows({
+    data: {
+      players: { teams: [{ a: "Dupla A", b: "" }, { a: "Dupla B", b: "" }, { a: "Dupla sem jogo", b: "" }] },
+      schedule: [[
+        { ids1: [0], ids2: [1], s1: "6", s2: "4" },
+        { ids1: [1], ids2: [0], s1: "7", s2: "6" },
+      ]],
+      brackets: [],
+      winningScore: 6,
+    },
+    config: { type: "cearense" },
+    rankingCriteriaValue: "wins_points_balance",
+  }).map(({ name, w, pts, bal, played }) => ({ name, w, pts, bal, played })),
+  teamGamesRanking.map(({ name, w, pts, bal, played }) => ({ name, w, pts, bal, played })),
+  "A delegação do ranking acumulado das copas alterou os resultados."
+);
+assert.ok(
+  tournamentRankingSource.includes("return calculateTeamGamesRanking({")
+    && tournamentRankingSource.includes("names: teams.map((team) => getTeamName(team))"),
+  "O ranking acumulado das copas não utiliza o cálculo de domínio protegido."
+);
 
 const requiredApplicationMarkers = [
   "supabase.auth.signInWithPassword",
@@ -103,16 +1702,16 @@ for (const marker of requiredApplicationMarkers) {
 }
 
 assert.ok(
-  mainSource.includes('const advanceScoreFocus = (side, currentInput) =>')
-    && mainSource.includes('side === "team1" ? game?.s2 : game?.s1')
-    && mainSource.includes('advanceScoreFocus(side, currentInput)')
-    && mainSource.includes('advanceScoreFocus(side, event.currentTarget)'),
+  matchScheduleSource.includes('const advanceScoreFocus = (side, currentInput) =>')
+    && matchScheduleSource.includes('side === "team1" ? game?.s2 : game?.s1')
+    && matchScheduleSource.includes('advanceScoreFocus(side, currentInput)')
+    && matchScheduleSource.includes('advanceScoreFocus(side, event.currentTarget)'),
   "O preenchimento do placar deve avançar para o adversário independentemente do lado iniciado."
 );
 
-const noticeModalSource = mainSource.slice(
-  mainSource.indexOf("function NoticeModal("),
-  mainSource.indexOf("function ConfirmRegenerationModal(")
+const noticeModalSource = confirmationDialogsSource.slice(
+  confirmationDialogsSource.indexOf("function NoticeModal("),
+  confirmationDialogsSource.indexOf("function ConfirmRegenerationModal(")
 );
 assert.ok(
   noticeModalSource.includes("return createPortal(")
@@ -128,12 +1727,12 @@ assert.ok(
 );
 
 assert.ok(
-  mainSource.includes("function ModalityPicker(")
-    && mainSource.includes('title: "Duplas fixas"')
-    && mainSource.includes('title: "Ranking individual"')
-    && mainSource.includes('title: "Mistas"')
-    && mainSource.includes('title: "Copas e modelos"')
-    && mainSource.includes('placeholder="Ex.: Super 8, Copa ou Simples"')
+  modalityPickerSource.includes("export default function ModalityPicker(")
+    && modalityPickerGroups.some((group) => group.title === "Duplas fixas")
+    && modalityPickerGroups.some((group) => group.title === "Ranking individual")
+    && modalityPickerGroups.some((group) => group.title === "Mistas")
+    && modalityPickerGroups.some((group) => group.title === "Copas e modelos")
+    && modalityPickerSource.includes('placeholder="Ex.: Super 8, Copa ou Simples"')
     && mainSource.includes("<ModalityPicker value={newType}")
     && mainSource.includes("<ModalityPicker value={item.type}")
     && styleSource.includes(".modalityPickerPanel")
@@ -142,7 +1741,7 @@ assert.ok(
     && styleSource.includes('html[data-theme="dark"] .proDashboard.playAppShell .modalityPickerTrigger')
     && styleSource.includes("top: max(10px, env(safe-area-inset-top)) !important")
     && styleSource.includes("max-height: none !important")
-    && mainSource.includes('querySelector(".playTopbar")'),
+    && modalityPickerSource.includes('querySelector(".playTopbar")'),
   "O seletor de modalidades perdeu a busca, os grupos, a seleção lilás ou a adaptação para celular."
 );
 
@@ -221,7 +1820,7 @@ assert.ok(
     && mainSource.includes("refreshVisibleProfiles")
     && mainSource.includes('window.addEventListener("focus", refreshArenas)')
     && mainSource.includes('document.addEventListener("visibilitychange", handleVisibilityChange)')
-    && mainSource.includes('className="publicArenaDirectoryOrganizer"')
+    && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"')
     && mainSource.includes('className="arenaFeedOrganizer"'),
   "O diretório de arenas não atualiza automaticamente ou não identifica o organizador nos cartões."
 );
@@ -243,7 +1842,7 @@ const expectedModalityLabels = [
 ];
 
 for (const label of expectedModalityLabels) {
-  assert.ok(mainSource.includes(label), `Nome de modalidade ausente: ${label}`);
+  assert.ok(Object.values(modalityDisplayNames).includes(label), `Nome de modalidade ausente: ${label}`);
 }
 
 const premiumModalities = mainSource.slice(
@@ -266,41 +1865,51 @@ assert.ok(premiumPositions.every((position) => position >= 0), "A lista Premium 
 assert.deepEqual([...premiumPositions].sort((a, b) => a - b), premiumPositions, "A ordem das modalidades está incorreta.");
 assert.ok(premiumModalities.includes('"Modelo Play Ranking"'), "O Modelo Play Ranking não está liberado no plano Premium.");
 assert.ok(
-  mainSource.includes('"Modelo Play Ranking": "Modelo Torneio 360"'),
+  modalityDisplayNames["Modelo Play Ranking"] === "Modelo Torneio 360",
   "O nome público do Modelo Torneio 360 não preserva a modalidade interna existente."
 );
 assert.ok(
   mainSource.includes("allowedPlayerCounts: [4, 6, 8, 10, 12, 14]")
-    && mainSource.includes("function SimpleConfigPanel")
+    && tournamentFormatPanelsSource.includes("function SimpleConfigPanel")
+    && tournamentFormatPanelsSource.includes("config.allowedPlayerCounts.map")
     && mainSource.includes("berger(players.length)"),
   "A modalidade Simples não permite escolher as quantidades pares de 4 a 14 ou perdeu o todos contra todos."
 );
+assert.ok(
+  tournamentFormatPanelsSource.includes("function ReizinhoConfigPanel")
+    && tournamentFormatPanelsSource.includes("export default function CupConfigPanel")
+    && tournamentFormatPanelsSource.includes("secondRepechageEnabled")
+    && tournamentFormatPanelsSource.includes("thirdRepechageEnabled")
+    && tournamentFormatPanelsSource.includes("groupFormation")
+    && mainSource.includes("<CupConfigPanelView"),
+  "Os painéis de formato perderam quantidades, paralelas, formação de grupos ou a composição com o torneio."
+);
 
 assert.ok(mainSource.includes('type: "playranking"'), "A configuração do Modelo Play Ranking está ausente.");
-assert.ok(mainSource.includes("function getPlayRankingOpeningLosses"), "A transferência das derrotadas da primeira fase está ausente.");
-assert.ok(mainSource.includes("function buildPlayRankingParallelRounds"), "A chave paralela especial do Modelo Play Ranking está ausente.");
-assert.ok(mainSource.includes("function TournamentFormatInfoButton"), "A explicação dinâmica dos modelos está ausente.");
+assert.ok(playRankingBracketSource.includes("function getPlayRankingOpeningLosses"), "A transferência das derrotadas da primeira fase está ausente.");
+assert.ok(playRankingBracketSource.includes("function buildPlayRankingParallelRounds"), "A chave paralela especial do Modelo Play Ranking está ausente.");
+assert.ok(tournamentFormatHelpSource.includes("export default function TournamentFormatInfoButton"), "A explicação dinâmica dos modelos está ausente.");
 assert.ok(
   mainSource.includes("getCearenseFormatSummary(")
-    && mainSource.includes('isSunset ? data.cupConfig?.groupFormation : "automatic"'),
+    && tournamentFormatHelpSource.includes('isSunset ? data.cupConfig?.groupFormation : "automatic"'),
   "A explicação não acompanha a quantidade, o formato individual ou a formação dos grupos escolhida."
 );
 assert.ok(mainSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
 assert.ok(styleSource.includes(".formatInfoDialog"), "A explicação dinâmica está sem acabamento responsivo.");
 
 assert.ok(
-  mainSource.includes("function rankOfficialCearenseGroupRows")
-    && mainSource.includes("function getOfficialCearenseQualified")
+  groupRankingRulesSource.includes("function rankOfficialCearenseGroupRows")
+    && cearenseQualificationSource.includes("function getOfficialCearenseQualified")
     && mainSource.includes("const cearenseMainBracketPlans")
-    && mainSource.includes("function expandBracketPlanWithVisualByes")
-    && mainSource.includes("isBye: Boolean(firstEntry) !== Boolean(secondEntry)")
-    && mainSource.includes("function getCearenseThirdParallelSources")
-    && mainSource.includes("games: [...quarterfinalGames, ...previousRoundGames]")
+    && cupBracketConstructionSource.includes("function expandBracketPlanWithVisualByes")
+    && cupBracketConstructionSource.includes("isBye: Boolean(firstEntry) !== Boolean(secondEntry)")
+    && cearenseThirdParallelSource.includes("function getCearenseThirdParallelSources")
+    && cearenseThirdParallelSource.includes("games: [...quarterfinalGames, ...previousRoundGames]")
     && mainSource.includes("getNextPowerOfTwo(thirdParallelEligibleCount)")
-    && mainSource.includes("sourceEntries.length === 2")
-    && mainSource.includes("sourceEntries.length === 4")
-    && mainSource.includes("function buildCearenseThirdParallelRounds")
-    && mainSource.includes('"thirdParallel",')
+    && cearenseThirdParallelSource.includes("sourceEntries.length === 2")
+    && cearenseThirdParallelSource.includes("sourceEntries.length === 4")
+    && cearenseThirdParallelSource.includes("function buildCearenseThirdParallelRounds")
+    && cearenseThirdParallelSource.includes('"thirdParallel",')
     && mainSource.includes('defaultThirdRepechageName: "3ª Disputa Paralela"')
     && mainSource.includes('phase === "thirdParallel"')
     && mainSource.includes('activeMatchesTab === "paralela3"')
@@ -309,7 +1918,7 @@ assert.ok(
 );
 assert.ok(
   styleSource.includes(".cearenseGroupRankingStack")
-    && mainSource.includes("melhor grupo ·"),
+    && tieBreakPanelsSource.includes("melhor grupo ·"),
   "A ordem visual dos melhores grupos do Campeonato Cearense está ausente."
 );
 
@@ -419,12 +2028,12 @@ assert.ok(
   "O Campeonato Cearense Individual perdeu a configuração de partidas um contra um."
 );
 assert.ok(
-  mainSource.includes("function ConfirmModalityChangeModal")
-    && mainSource.includes("function ConfirmEventGroupModalityChangeModal")
+  confirmationDialogsSource.includes("function ConfirmModalityChangeModal")
+    && confirmationDialogsSource.includes("function ConfirmEventGroupModalityChangeModal")
     && mainSource.includes("const modalityChanged = editForm.type !== editTarget.type")
     && mainSource.includes("createInitialData(editForm.type, nextModalityConfig)")
     && mainSource.includes("confirmModalityChanges: true")
-    && mainSource.includes("Trocar modalidade"),
+    && confirmationDialogsSource.includes("Trocar modalidade"),
   "A edição segura da modalidade de um torneio existente está ausente."
 );
 assert.ok(
@@ -474,7 +2083,7 @@ assert.deepEqual(
   "A ordem da linha colada deve preencher o homem antes da mulher."
 );
 assert.ok(
-  mainSource.includes("fixedMixedTeams ? orderFixedMixedPair(...cleanedNames) : cleanedNames"),
+  participantManagementSource.includes("fixedMixedTeams ? orderFixedMixedPair(...cleanedNames) : cleanedNames"),
   "O importador em massa não está aplicando a ordem das duplas mistas fixas."
 );
 
@@ -520,15 +2129,20 @@ assert.ok(
 assert.ok(mainSource.includes('type: "mixed20"'), "A modalidade Super 20 mista não está cadastrada.");
 assert.ok(mainSource.includes('config.type === "mixed20"'), "A tabela fixa do Super 20 mista não está ligada ao gerador.");
 
-assert.ok(mainSource.includes("function normalizeCourtNumbers"), "Os números personalizados das quadras não são normalizados.");
-assert.ok(mainSource.includes("function getGameCourtNumber"), "A exibição das quadras não possui uma fonte numérica única e segura.");
-assert.ok(mainSource.includes('return `Quadra ${getGameCourtNumber(game, courtNumbers)}`'), "A palavra Quadra não permanece fixa na apresentação.");
+assert.deepEqual(normalizeCourtNumbers(["Quadra 8", "", "12"], 3), ["8", "2", "12"], "Os números personalizados das quadras não são normalizados.");
+assert.deepEqual(createDefaultCourtNumbers(3), ["1", "2", "3"], "A sequência padrão das quadras foi alterada.");
+assert.equal(normalizeCourtNumberValue("Quadra 0007"), "7", "O número visível da quadra não é normalizado.");
+assert.equal(getGameCourtNumber({ court: 2 }, ["4", "8"]), "8", "A exibição das quadras não possui uma fonte numérica única e segura.");
+assert.equal(getGameCourtLabel({ court: 2 }, ["4", "8"]), "Quadra 8", "A palavra Quadra não permanece fixa na apresentação.");
+const courtOverrideGame = { court: 1, courtLabelOverride: "Quadra 3" };
+applyCourtNumberToGame(courtOverrideGame, "Quadra 9", ["1"]);
+assert.deepEqual(courtOverrideGame, { court: 1, courtNumberOverride: "9" }, "A troca rápida não preserva somente o número escolhido.");
 assert.ok(mainSource.includes('courtNumbers: createDefaultCourtNumbers'), "Novos torneios não recebem os números padrão das quadras.");
-assert.ok(mainSource.includes("function CourtConfigPanel"), "A configuração prévia das quadras está ausente.");
-assert.ok(mainSource.includes("function CourtAssignmentModal"), "A troca rápida de quadra durante os jogos está ausente.");
+assert.ok(matchControlsSource.includes("function CourtConfigPanel"), "A configuração prévia das quadras está ausente.");
+assert.ok(matchControlsSource.includes("function CourtAssignmentModal"), "A troca rápida de quadra durante os jogos está ausente.");
 assert.ok(mainSource.includes("courtNumberOverride"), "O número escolhido para um jogo não é persistido.");
-assert.ok(mainSource.includes("function ConfirmDuplicateCourtModal"), "A confirmação de número de quadra repetido está ausente.");
-assert.ok(mainSource.includes("Confirmar repetição"), "O usuário não consegue confirmar duas partidas na mesma quadra.");
+assert.ok(matchControlsSource.includes("function ConfirmDuplicateCourtModal"), "A confirmação de número de quadra repetido está ausente.");
+assert.ok(matchControlsSource.includes("Confirmar repetição"), "O usuário não consegue confirmar duas partidas na mesma quadra.");
 assert.ok(!mainSource.includes("Quadras trocadas"), "O sistema ainda troca automaticamente os números das quadras.");
 assert.ok(mainSource.includes("getGameCourtLabel(game, courtNumbers)"), "A chamada por voz não usa o número visível da quadra.");
 assert.ok(styleSource.includes("QUADRAS PERSONALIZADAS — AGOSTO 2026"), "O acabamento visual das quadras personalizadas está ausente.");
@@ -565,39 +2179,45 @@ assert.ok(
   mainSource.includes('.rpc("get_public_arena_bundle",'),
   "O perfil público não consulta o pacote seguro e atualizado da arena."
 );
-assert.ok(mainSource.includes('title="Ranking do dia"'), "O ranking do torneio não usa o título Ranking do dia.");
+assert.ok(rankingTablesSource.includes('title="Ranking do dia"'), "O ranking do torneio não usa o título Ranking do dia.");
+assert.ok(
+  cupPodiumSource.includes("export default function CupPodiumView")
+    && cupPodiumSource.includes('presentation: "podium"')
+    && cupPodiumSource.includes('variant === "parallel" ? 1 : 3'),
+  "A apresentação do pódio das Copas perdeu a principal ou o campeão das disputas paralelas."
+);
 assert.ok(mainSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
 assert.ok(
-  mainSource.includes("function CircuitTournamentFormatSelector")
-    && mainSource.includes("Classificação final")
-    && mainSource.includes("Fases alcançadas")
+  circuitRankingSettingsPanelSource.includes("function CircuitTournamentFormatSelector")
+    && circuitRankingSettingsPanelSource.includes("Classificação final")
+    && circuitRankingSettingsPanelSource.includes("Fases alcançadas")
     && mainSource.includes("getCircuitCompatibleTournaments")
     && mainSource.includes("getTournamentCircuitFormat"),
   "O circuito não separa classificação final e fases alcançadas antes da escolha dos torneios."
 );
 assert.ok(
-  mainSource.includes("const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140]")
-    && mainSource.includes("defaultCircuitOtherPositionPoints")
-    && mainSource.includes("normalizedSettings.points.otherPositions")
-    && mainSource.includes("Outras colocações"),
+  circuitRankingSettingsSource.includes("const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140]")
+    && circuitRankingSettingsSource.includes("defaultCircuitOtherPositionPoints")
+    && circuitPlacementSource.includes("normalizedSettings.points.otherPositions")
+    && circuitRankingSettingsPanelSource.includes("Outras colocações"),
   "A pontuação por classificação final não limita os campos individuais ao 10º lugar ou não pontua as demais colocações."
 );
 assert.ok(
-  mainSource.includes("return unique.slice(0, 2)")
+  circuitRankingSettingsSource.includes("return unique.slice(0, 2)")
     && !mainSource.includes('{ value: "none", label: "Sem critério adicional"')
     && styleSource.includes("grid-template-columns: repeat(2, minmax(0, 1fr))"),
   "O ranking do circuito ainda permite um terceiro critério de desempate."
 );
 assert.ok(
-  mainSource.includes("tournamentFormat === circuitTournamentFormats.placement ? <section>")
-    && mainSource.includes("tournamentFormat === circuitTournamentFormats.cup ? <section>")
-    && mainSource.includes("Disputas paralelas")
-    && mainSource.includes("nunca pontuam"),
+  circuitRankingSettingsPanelSource.includes("tournamentFormat === circuitTournamentFormats.placement ? <section>")
+    && circuitRankingSettingsPanelSource.includes("tournamentFormat === circuitTournamentFormats.cup ? <section>")
+    && circuitRankingSettingsPanelSource.includes("Disputas paralelas")
+    && circuitRankingSettingsPanelSource.includes("nunca pontuam"),
   "As configurações exclusivas de cada formato ou a explicação das disputas paralelas estão incompletas."
 );
 assert.ok(
-  mainSource.includes('className="circuitChoiceCheck circuitFormatCheck"')
-    && mainSource.includes('className="circuitChoiceCheck"')
+  circuitRankingSettingsPanelSource.includes('className="circuitChoiceCheck circuitFormatCheck"')
+    && circuitRankingSettingsPanelSource.includes('className="circuitChoiceCheck"')
     && styleSource.includes(".circuitFormatOptions button:is(.selected, [aria-checked=\"true\"])")
     && styleSource.includes(".circuitChoiceCheck")
     && styleSource.includes("var(--ui-surface-raised)"),
@@ -605,10 +2225,13 @@ assert.ok(
 );
 assert.ok(mainSource.includes('tournaments={tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
 assert.ok(mainSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
-assert.ok(mainSource.includes('pts: "Total de Games"'), "A coluna de games ainda usa a nomenclatura antiga.");
 assert.ok(
-  mainSource.includes("const stats = exportColumns")
-    && mainSource.includes("criteriaLabel || criteria.label"),
+  rankingShareExportSource.includes('pts: "Total de Games"'),
+  "A coluna de games ainda usa a nomenclatura antiga."
+);
+assert.ok(
+  rankingShareExportSource.includes("const stats = exportColumns")
+    && rankingShareExportSource.includes("criteriaLabel || criteria.label"),
   "A imagem compartilhada não respeita nem identifica a ordem de critérios do ranking."
 );
 assert.ok(
@@ -617,40 +2240,85 @@ assert.ok(
   "O compartilhamento do ranking do circuito não recebe seu critério efetivo."
 );
 assert.ok(
-  mainSource.includes('async function copyRankingImageToClipboard(file)')
-    && mainSource.includes('new Blob([await file.arrayBuffer()], { type: "image/png" })')
-    && mainSource.includes('if (isMobileShareDevice() && await nativeShareRankingFiles(files, config))')
-    && mainSource.includes('const imageCopied = await copyRankingImageToClipboard(files[0]);'),
+  rankingShareExportSource.includes('async function copyRankingImageToClipboard(file)')
+    && rankingShareExportSource.includes('new Blob([await file.arrayBuffer()], { type: "image/png" })')
+    && rankingShareExportSource.includes('if (isMobileShareDevice() && await nativeShareRankingFiles(files, config))')
+    && rankingShareExportSource.includes('const imageCopied = await copyRankingImageToClipboard(files[0]);'),
   "O compartilhamento não separa o envio móvel da cópia PNG direta no notebook."
 );
 assert.ok(
-  mainSource.includes('className="rankingExportDialog"')
-    && mainSource.includes('Imprimir / salvar PDF multipágina')
-    && mainSource.includes('downloadRankingFiles(exportFiles)')
-    && mainSource.includes('createRankingShareFiles(config)')
-    && mainSource.includes('paginateRankingGroups(normalizedGroups')
+  rankingShareButtonSource.includes('className="rankingExportDialog"')
+    && rankingShareButtonSource.includes('Imprimir / salvar PDF multipágina')
+    && rankingShareButtonSource.includes('downloadRankingFiles(exportFiles)')
+    && rankingShareButtonSource.includes('shareRankingImages(config)')
+    && rankingShareExportSource.includes('paginateRankingGroups(normalizedGroups')
     && styleSource.includes('.rankingExportOverlay'),
   "O ranking não apresenta exportação paginada para imagem, impressão e download."
 );
 assert.ok(
-  mainSource.includes('async function createCupPodiumShareFile({')
-    && mainSource.includes('config?.presentation === "podium"')
-    && mainSource.includes('presentation: "podium"')
-    && mainSource.includes('const podiumLimit = variant === "parallel" ? 1 : 3;'),
+  rankingShareButtonSource.includes("export default function RankingShareButton")
+    && rankingShareButtonSource.includes('from "./rankingShareExport.mjs"')
+    && mainSource.includes('import RankingShareButton from "./features/rankingShare/RankingShareButton.jsx";'),
+  "O componente visual de compartilhamento não preserva a interface das ações existentes."
+);
+assert.ok(
+  canvasToolsSource.includes('export const TORNEIO360_LOGO = "/torneio360-logo.png";')
+    && canvasToolsSource.includes("export function loadShareImage(source)")
+    && canvasToolsSource.includes("export function drawRoundedRect(context")
+    && canvasToolsSource.includes("export function getPodiumInitials(name)"),
+  "As ferramentas de mídia compartilhadas não foram preservadas no módulo extraído."
+);
+assert.ok(
+  tournamentWorkspaceTabsSource.includes("export default function TournamentWorkspaceTabs")
+    && tournamentWorkspaceTabsSource.includes("MatchStatusSummary")
+    && tournamentWorkspaceTabsSource.includes('className="desktopTournamentTabs"')
+    && tournamentWorkspaceTabsSource.includes('className="mobileTournamentWorkspaceActions"')
+    && tournamentWorkspaceTabsSource.includes("Central de torneios")
+    && tournamentWorkspaceTabsSource.includes("Remover da barra?")
+    && tournamentWorkspaceTabsSource.includes("TOURNAMENT_TAB_COLORS")
+    && mainSource.includes("<TournamentWorkspaceTabsView {...props} MatchStatusSummary={TournamentMatchStatusSummary}"),
+  "A Central de Torneios Abertos perdeu abas, versão móvel, busca, confirmação ou resumo dos jogos."
+);
+assert.ok(
+  courtCenterModalSource.includes("export default function CourtCenterModal")
+    && courtCenterModalSource.includes("configured: true")
+    && courtCenterModalSource.includes("Quantas quadras estão disponíveis neste local?")
+    && courtCenterModalSource.includes("A quadra será liberada automaticamente ao concluir o placar.")
+    && courtCenterModalSource.includes("Distribuição inicial por torneio")
+    && courtCenterModalSource.includes("Os jogos e as rodadas não serão alterados.")
+    && mainSource.includes("<CourtCenterModalView")
+    && mainSource.includes("normalizeCourtCenterEntry={normalizeCourtCenterEntry}"),
+  "A Central de Quadras perdeu capacidade, ocupação, preferências ou compatibilidade com o estado salvo."
+);
+assert.ok(
+  rankingShareExportSource.includes('async function createCupPodiumShareFile({')
+    && rankingShareExportSource.includes('config?.presentation === "podium"')
+    && cupPodiumSource.includes('presentation: "podium"')
+    && cupPodiumSource.includes('const podiumLimit = variant === "parallel" ? 1 : 3;'),
   "O compartilhamento das copas não preserva o pódio visual ou ainda mostra vice e terceiro nas disputas paralelas."
 );
 assert.ok(
-  mainSource.includes("const RANKING_SHARE_ROW_HEIGHT = 64;")
-    && mainSource.includes("const RANKING_SHARE_GROUP_OVERHEAD = 64;")
-    && mainSource.includes('context.font = "800 18px Arial";'),
+  rankingShareExportSource.includes("const RANKING_SHARE_ROW_HEIGHT = 64;")
+    && rankingShareExportSource.includes("const RANKING_SHARE_GROUP_OVERHEAD = 64;")
+    && rankingShareExportSource.includes('context.font = "800 18px Arial";'),
   "O ranking completo voltou a usar linhas grandes e pode mostrar menos de dez participantes por imagem."
 );
 assert.ok(
-  mainSource.includes('function wrapCanvasItems(context, items, maxWidth')
-    && mainSource.includes('wrapCanvasItems(context, stats, 430).forEach'),
+  canvasToolsSource.includes('function wrapCanvasItems(context, items, maxWidth')
+    && rankingShareExportSource.includes('wrapCanvasItems(context, stats, 430).forEach'),
   "O compartilhamento do ranking ainda pode ocultar critérios com reticências."
 );
-assert.ok(mainSource.includes(': "Compartilhar ranking";'), "O botão compacto não identifica que compartilha o ranking.");
+assert.ok(
+  rankingShareButtonSource.includes(': "Compartilhar ranking";'),
+  "O botão compacto não identifica que compartilha o ranking."
+);
+assert.ok(
+  tieBreakPanelsSource.includes("function TieBreakDrawOverlay")
+    && tieBreakPanelsSource.includes("function CopinhaTieBreakPanel")
+    && tieBreakPanelsSource.includes("function CupGroupRankingView")
+    && tieBreakPanelsSource.includes("Sortear em 5 segundos"),
+  "Os painéis de desempate ou a tabela dos grupos perderam a apresentação existente."
+);
 assert.ok(
   mainSource.includes('const [newRankingCriteria, setNewRankingCriteria] = useState("");')
     && mainSource.includes('if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === newRankingCriteria))')
@@ -661,10 +2329,9 @@ assert.ok(
   "A criação do torneio ainda permite salvar sem escolher explicitamente o critério do ranking."
 );
 assert.ok(
-  mainSource.includes('function formatParticipantName(value)')
-    && mainSource.includes('function normalizeParticipantAttendance(config, players, attendance)')
-    && mainSource.includes('function getGameSideAttendanceParticipants(data, game, side)')
-    && mainSource.includes('className="matchAttendancePending"')
+  participantAttendanceSource.includes('function normalizeParticipantAttendance(config, players, attendance)')
+    && participantAttendanceSource.includes('function getGameSideAttendanceParticipants(data, game, side)')
+    && matchScheduleSource.includes('className="matchAttendancePending"')
     && !mainSource.includes('if (!ensureParticipantsConfirmed()) return;')
     && mainSource.includes('function showGeneratedGamesNotice(message)')
     && mainSource.includes('A geração foi concluída normalmente e os placares continuam liberados.')
@@ -673,16 +2340,14 @@ assert.ok(
   "A presença deve continuar visível nos jogos sem impedir a geração das rodadas."
 );
 assert.ok(
-  mainSource.indexOf('function formatParticipantName(value)') < mainSource.indexOf('function normalizeTournamentData(type, rawData)')
-    && mainSource.indexOf('function normalizeParticipantAttendance(config, players, attendance)') < mainSource.indexOf('function normalizeTournamentData(type, rawData)')
-    && mainSource.indexOf('function normalizeTournamentData(type, rawData)') < mainSource.indexOf('function TournamentScreen('),
+  mainSource.indexOf('function normalizeTournamentData(type, rawData)') < mainSource.indexOf('function TournamentScreen('),
   "Os utilitários de participantes precisam permanecer no escopo global antes da normalização dos torneios."
 );
 assert.ok(
-  mainSource.includes('function stripParticipantEmojis(value)')
-    && mainSource.includes('\\p{Extended_Pictographic}')
-    && mainSource.includes('\\p{Regional_Indicator}')
-    && mainSource.includes('Símbolos e emojis em qualquer posição serão ignorados.'),
+  participantManagementSource.includes('function stripParticipantEmojis(value)')
+    && participantManagementSource.includes('\\p{Extended_Pictographic}')
+    && participantManagementSource.includes('\\p{Regional_Indicator}')
+    && participantManagementSource.includes('Símbolos e emojis em qualquer posição serão ignorados.'),
   "A importação em massa deve remover emojis completos em qualquer posição da lista colada."
 );
 assert.ok(
@@ -694,14 +2359,14 @@ assert.ok(
 assert.ok(
   mainSource.includes('function toggleScheduleGameStatus(roundIndex, gameIndex)')
     && mainSource.includes('function toggleBracketGameStatus(matchKey)')
-    && mainSource.includes('Jogo em andamento')
-    && mainSource.includes('is-in-progress'),
+    && matchScheduleSource.includes('Jogo em andamento')
+    && matchScheduleSource.includes('is-in-progress'),
   "O status persistente de jogo em andamento está ausente."
 );
 assert.ok(
-  mainSource.includes('scope="schedule"')
-    && mainSource.includes('scope="bracket"')
-    && mainSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
+  matchScheduleSource.includes('scope="schedule"')
+    && cupBracketViewSource.includes('scope="bracket"')
+    && cupBracketViewSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
     && mainSource.includes('scope !== "all" && item.scope !== scope'),
   "O resumo das partidas deve separar fase de grupos, chaves visíveis e visão geral do torneio."
 );
@@ -725,43 +2390,59 @@ assert.ok(
   "A edição conjunta de eventos com várias categorias está ausente."
 );
 assert.ok(mainSource.includes('allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4)'), "O Campeonato Cearense não aceita todas as quantidades de 4 a 32 duplas.");
-assert.ok(mainSource.includes('function createCearenseGroups(teamCount, groupFormation = "automatic")'), "A distribuição própria de grupos do Campeonato Cearense está ausente.");
+assert.deepEqual(createCearenseGroups(7).map((group) => group.teamIds.length), [4, 3], "A distribuição própria de grupos do Campeonato Cearense está ausente.");
 assert.ok(
   mainSource.includes('"Copa Sunset": {')
     && mainSource.includes('type: "sunset"')
     && mainSource.includes('function generateSunsetBrackets(data)')
-    && mainSource.includes('function buildSunsetChampionsRounds(brackets, bracketTitle)')
+    && sunsetBracketSource.includes('function buildSunsetChampionsRounds(brackets, bracketTitle)')
     && mainSource.includes('groupFormation === "all-four"')
     && mainSource.includes('phase === "secondParallel"')
     && mainSource.includes('phase === "sunsetFinal"')
     && styleSource.includes('.sunsetGroupFormationChoice'),
   "A Copa Sunset perdeu a formação opcional de grupos de quatro ou suas chaves independentes."
 );
-assert.ok(mainSource.includes('function compareCearenseCampaignMetrics(first, second)'), "A comparação normalizada entre grupos está ausente.");
+assert.ok(campaignRankingSource.includes('function compareCearenseCampaignMetrics(first, second)'), "A comparação normalizada entre grupos está ausente.");
 assert.ok(mainSource.includes('function generateCearenseBrackets(data)'), "As chaves Principal e Paralela do Campeonato Cearense estão ausentes.");
 assert.ok(mainSource.includes('campaignTieBreakOverrides'), "O sorteio de empate absoluto entre grupos não é persistido.");
-assert.ok(mainSource.includes('className="matchByeScore">BYE</span>'), "Os BYEs do Campeonato Cearense não são identificados no cartão universal da chave.");
+assert.ok(matchScheduleSource.includes('className="matchByeScore">BYE</span>'), "Os BYEs do Campeonato Cearense não são identificados no cartão universal da chave.");
 assert.ok(!mainSource.includes('Classificação automática (BYE)'), "O texto longo de classificação automática ainda aparece no BYE.");
 assert.ok(mainSource.includes('buildCearenseEliminationRounds(qualified.main, "main", mainName, true)'), "A chave principal do Campeonato Cearense não cria a disputa de 3º lugar.");
 assert.ok(
-  mainSource.includes("function UniversalMatchCard(")
-    && mainSource.includes('className="matchTeamStack"')
-    && mainSource.includes('className="matchVsDivider"')
-    && mainSource.includes('className="bracketTreeViewport"')
-    && mainSource.includes('className="bracketTreeCanvas"')
+  matchScheduleSource.includes("function UniversalMatchCard(")
+    && matchScheduleSource.includes('className="matchTeamStack"')
+    && matchScheduleSource.includes('className="matchVsDivider"')
+    && cupBracketViewSource.includes('className="bracketTreeViewport"')
+    && cupBracketViewSource.includes('className="bracketTreeCanvas"')
     && styleSource.includes(".bracketTreeViewport")
     && styleSource.includes("overflow-x: auto")
     && styleSource.includes(".bracketMatchNode.hasNext.isTopSeed::after"),
   "O cartão universal ou o esqueleto conectado da Copa não está presente."
 );
-assert.ok(mainSource.includes('showPodium={false}'), "A classificação da fase de grupos ainda exibe troféus de pódio.");
+assert.ok(
+  cupBracketViewSource.includes("export default function CupBracketView")
+    && cupBracketViewSource.includes("export function BracketColumn")
+    && cupBracketViewSource.includes("MatchStatusSummary")
+    && cupBracketViewSource.includes("speakBracketRound")
+    && mainSource.includes("<CupBracketViewComponent"),
+  "A apresentação das chaves perdeu fases, resumo, chamadas ou a composição com a tela do torneio."
+);
+assert.ok(
+  publicBracketViewSource.includes("export function PublicScheduleView")
+    && publicBracketViewSource.includes("export function PublicCupBracketView")
+    && publicBracketViewSource.includes("export function PublicBracketColumn")
+    && publicBracketViewSource.includes("readOnly")
+    && mainSource.includes("<PublicCupBracketView"),
+  "A visualização pública perdeu rodadas, chaves, paralelas ou o modo somente leitura."
+);
+assert.ok(tieBreakPanelsSource.includes('showPodium={false}'), "A classificação da fase de grupos ainda exibe troféus de pódio.");
 assert.ok(mainSource.includes('tournamentTab: "participantes"'), "Abrir um torneio não direciona para Participantes.");
 assert.ok(mainSource.includes('public_id: generatePublicId()'), "Novos torneios não recebem link público automaticamente.");
-assert.ok(mainSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
+assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
 assert.ok(mainSource.includes('navigator.serviceWorker.register("/sw.js")'), "O service worker do app não está registrado.");
 assert.ok(!mainSource.includes("@torenio360"), "O usuário do Instagram continua escrito incorretamente.");
 assert.ok(!mainSource.includes("data:image/png;base64"), "Ainda existem imagens PNG Base64 no JavaScript.");
-assert.ok(mainSource.includes("function ConfirmCircuitDeleteModal"), "A exclusão do circuito não possui confirmação própria.");
+assert.ok(confirmationDialogsSource.includes("function ConfirmCircuitDeleteModal"), "A exclusão do circuito não possui confirmação própria.");
 assert.ok(!mainSource.includes('window.confirm("Excluir este circuito?'), "A exclusão do circuito ainda usa a confirmação simples do navegador.");
 assert.ok(mainSource.includes('const [circuitEditForm, setCircuitEditForm]'), "A edição do circuito não abre em um formulário separado.");
 assert.ok(mainSource.includes("function getAutomaticEventStatus"), "O status de torneios e circuitos não é calculado automaticamente pelas datas.");
@@ -779,7 +2460,7 @@ assert.ok(
   "O cabeçalho do circuito ainda pode exibir o monograma duplicado."
 );
 assert.ok(styleSource.includes(".rankingTableScroll > .rankingTable"), "Os rankings internos não possuem rolagem horizontal responsiva.");
-assert.ok(mainSource.includes('className="rankingTablePanel"'), "O painel do ranking não isola a largura mínima da tabela.");
+assert.ok(rankingTablesSource.includes('className="rankingTablePanel"'), "O painel do ranking não isola a largura mínima da tabela.");
 assert.ok(
   /\.rankingTablePanel\s*\{[^}]*min-width:\s*0\s*!important;/s.test(styleSource),
   "A largura da tabela ainda pode expandir a página inteira."
@@ -807,8 +2488,8 @@ assert.ok(mainSource.includes("Este e-mail já possui uma conta"), "O cadastro n
 assert.ok(mainSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
 assert.ok(mainSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
 assert.ok(mainSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
-assert.ok(mainSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
-assert.ok(mainSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");
+assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
+assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");
 assert.ok(styleSource.includes("CONTATOS PÚBLICOS, TESTE GRÁTIS E ACESSO VENCIDO"), "Os novos destaques públicos estão sem estilos.");
 
 assert.ok(
@@ -820,30 +2501,30 @@ assert.ok(
   mainSource.includes("rankingHistorySaved = await saveCircuitHistoryToSupabase("),
   "O salvamento do circuito ainda ignora falhas no histórico do ranking."
 );
-assert.ok(mainSource.includes("function applyCircuitExtraPoints"), "A pontuação extra do circuito não entra no cálculo do ranking.");
-assert.ok(mainSource.includes("target.circuitPoints = Number(target.circuitPoints || 0) + entry.points"), "A pontuação extra não é somada ao total principal.");
-assert.ok(mainSource.includes('className="confirmOverlay" role="dialog"') && mainSource.includes("Excluir esta pontuação extra?"), "A exclusão da pontuação extra não usa a confirmação segura da plataforma.");
+assert.ok(circuitRankingSettingsSource.includes("function applyCircuitExtraPoints"), "A pontuação extra do circuito não entra no cálculo do ranking.");
+assert.ok(circuitRankingSettingsSource.includes("target.circuitPoints = Number(target.circuitPoints || 0) + entry.points"), "A pontuação extra não é somada ao total principal.");
+assert.ok(circuitExtraPointsPanelSource.includes('className="confirmOverlay" role="dialog"') && circuitExtraPointsPanelSource.includes("Excluir esta pontuação extra?"), "A exclusão da pontuação extra não usa a confirmação segura da plataforma.");
 assert.ok(styleSource.includes("button.createCircuitButton") && styleSource.includes("button.combineCircuitsButton"), "As cores semânticas das ações dos circuitos não estão protegidas da regra neutra global.");
 assert.ok(mainSource.includes("Somar circuitos"), "A ação para somar circuitos está ausente.");
-assert.ok(mainSource.includes("Masculino e feminino"), "O ranking separado das duplas mistas está ausente.");
+assert.ok(circuitRankingSettingsPanelSource.includes("Masculino e feminino"), "O ranking separado das duplas mistas está ausente.");
 assert.ok(
-  mainSource.includes("if (Number(row.played || 0) <= 0) return;"),
+  circuitRankingAggregationSource.includes("if (Number(row.played || 0) <= 0) return;"),
   "Participantes sem jogo válido ainda podem entrar no ranking do circuito."
 );
 assert.ok(
-  mainSource.includes("const games = [...(data.schedule || []).flat(), ...bracketGames];"),
+  tournamentRankingSource.includes("const games = [...(data.schedule || []).flat(), ...bracketGames];"),
   "O ranking do circuito não soma a fase de grupos e o mata-mata das Copas."
 );
 assert.ok(
   mainSource.includes('.filter((game) => game.phase === "main")')
     && mainSource.includes("function calculateCircuitPlacementRows")
-    && mainSource.includes("function CircuitRankingSettingsEditor")
-    && mainSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
-    && mainSource.includes('className="circuitTieBreakOrder"')
-    && mainSource.includes("getCircuitTieBreakLabel(settings)")
-    && mainSource.includes('const mainBracketGames = (data.brackets || []).filter((game) => game.phase === "main")')
+    && circuitRankingSettingsPanelSource.includes("function CircuitRankingSettingsEditor")
+    && circuitRankingSettingsPanelSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
+    && circuitRankingSettingsPanelSource.includes('className="circuitTieBreakOrder"')
+    && circuitRankingSettingsPanelSource.includes("getCircuitTieBreakLabel(settings)")
+    && tournamentRankingSource.includes('const mainBracketGames = (data.brackets || []).filter((game) => game.phase === "main")')
     && styleSource.includes('button:is(.selected, [aria-checked="true"])')
-    && mainSource.includes("Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa"),
+    && circuitRankingSettingsPanelSource.includes("Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa"),
   "O ranking configurável não exclui as paralelas ou perdeu sua configuração explicativa."
 );
 assert.ok(
@@ -894,7 +2575,7 @@ assert.ok(
   "O torneio público ainda usa somente a cópia antiga dos dados da arena."
 );
 assert.ok(
-  mainSource.includes('className="circuitIdentityHint"'),
+  circuitRankingSettingsPanelSource.includes('className="circuitIdentityHint"'),
   "O circuito não orienta sobre a identidade dos participantes pelo nome."
 );
 assert.ok(
@@ -921,8 +2602,8 @@ assert.ok(
   "A alça de três traços não recebeu o novo contraste visual."
 );
 assert.ok(
-  mainSource.includes('preparedLine.split(/\\s*(?:\\+|&|\\/|-|\\s+[xX]\\s+|\\s+[eE]\\s+)\\s*/u)')
-    && mainSource.includes("Espaços dentro do nome continuam sendo nome e sobrenome."),
+  participantManagementSource.includes('preparedLine.split(/\\s*(?:\\+|&|\\/|-|\\s+[xX]\\s+|\\s+[eE]\\s+)\\s*/u)')
+    && participantManagementSource.includes("Espaços dentro do nome continuam sendo nome e sobrenome."),
   "A importação de duplas não reconhece todos os separadores sem preservar nomes compostos."
 );
 const fixedPairSeparator = /\s*(?:\+|&|\/|-|\s+[xX]\s+|\s+[eE]\s+)\s*/u;
@@ -947,9 +2628,12 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes("function isRegistrationDeadlineOpen(deadline)")
-    && (mainSource.match(/<PublicRegistrationStatus open=\{registrationOpen\}/g) || []).length >= 1
+    && publicArenaPresentationSource.includes("<RegistrationStatus open={registrationOpen}")
     && !mainSource.includes("isCircuitRegistrationOpen")
-    && (mainSource.match(/className=\{`publicCircuitStatus \$\{circuitStatus\}`\}/g) || []).length === 2,
+    && (
+      (mainSource.match(/className=\{`publicCircuitStatus \$\{circuitStatus\}`\}/g) || []).length
+      + (publicArenaPresentationSource.match(/className=\{`publicCircuitStatus \$\{circuitStatus\}`\}/g) || []).length
+    ) === 1,
   "Torneios devem mostrar inscrições; circuitos devem mostrar somente andamento ou encerramento."
 );
 assert.ok(
@@ -970,11 +2654,48 @@ assert.ok(
   "Eventos independentes ainda podem ser agrupados ou as categorias não possuem configuração própria."
 );
 assert.ok(
-  mainSource.includes("function AppUpdateNotice")
-    && mainSource.includes('/app-version.json?t=')
+  appUpdateNoticeSource.includes("function AppUpdateNotice")
+    && appUpdateNoticeSource.includes('/app-version.json?t=')
+    && mainSource.includes("<AppUpdateNotice />")
     && packageJson.scripts?.prebuild === "node scripts/write-build-version.mjs"
     && typeof appVersion.version === "string",
   "O app instalado não possui verificação profissional de novas versões."
+);
+assert.ok(
+  entryPresentationSource.includes("export function PlanCard")
+    && entryPresentationSource.includes("export function Info")
+    && entryPresentationSource.includes("export function BeachLogo")
+    && entryPresentationSource.includes("export function PlatformSupportLinks")
+    && entryPresentationSource.includes("export const PLATFORM_SUPPORT")
+    && mainSource.includes("<BeachLogo")
+    && mainSource.includes("<PlatformSupportLinks")
+    && !mainSource.includes("function PlanCard(")
+    && !mainSource.includes("function PlatformSupportLinks("),
+  "A apresentação da entrada, da marca e do suporte voltou a depender do arquivo principal."
+);
+assert.ok(
+  accessStatusViewsSource.includes("export function ProfileUnavailable")
+    && accessStatusViewsSource.includes("export function AccessPreparing")
+    && accessStatusViewsSource.includes("export function Blocked")
+    && accessStatusViewsSource.includes("export function FreeTrialNotice")
+    && mainSource.includes("<ProfileUnavailable")
+    && mainSource.includes("<AccessPreparing")
+    && mainSource.includes("<Blocked")
+    && mainSource.includes("<FreeTrialNotice")
+    && !mainSource.includes("function AccessPreparing("),
+  "As telas visuais de situação do acesso voltaram a depender do arquivo principal."
+);
+assert.ok(
+  publicArenaPresentationSource.includes("export function PublicArenaHeroHeaderView")
+    && publicArenaPresentationSource.includes("export function PublicArenaTournamentCardsView")
+    && publicArenaPresentationSource.includes("export function PublicArenaPageView")
+    && publicArenaPresentationSource.includes("export function PublicArenaDirectoryView")
+    && publicArenaPresentationSource.includes("export function PublicPlatformHomeView")
+    && mainSource.includes("<PublicArenaHeroHeaderView")
+    && mainSource.includes("<PublicArenaTournamentCardsView")
+    && mainSource.includes("<PublicArenaPageView")
+    && mainSource.includes("function PublicArenaPage("),
+  "A apresentação pública da arena voltou a depender da consulta ou da composição principal."
 );
 const expandedCircuitLayout = styleSource.match(/\.circuitManagerPage \.circuitItem\.expanded \{([\s\S]*?)\}/)?.[1] || "";
 assert.ok(
@@ -1030,7 +2751,7 @@ assert.ok(
   "Criar e mover para a lixeira voltaram a aguardar sincronizações secundárias antes de atualizar a tela."
 );
 assert.ok(
-  mainSource.includes("Quero me inscrever em")
+  publicArenaPresentationSource.includes("Quero me inscrever em")
     && mainSource.includes("registrationDeadline: details.registrationDeadline || \"\"")
     && styleSource.includes("PERFIL PÚBLICO DA ARENA — INSCRIÇÕES E MOBILE FINAL"),
   "A inscrição pública não preserva a data limite ou não encaminha ao WhatsApp da arena."
@@ -1246,7 +2967,7 @@ assert.ok(
   "A sincronização ainda pode pedir escolha manual ou aceitar uma versão antiga."
 );
 assert.ok(
-  mainSource.includes("function ConfirmRegenerationModal")
+  confirmationDialogsSource.includes("function ConfirmRegenerationModal")
     && mainSource.includes("function requestShuffleNames()")
     && mainSource.includes("function requestGenerate()")
     && mainSource.includes("function requestGenerateBrackets()")
@@ -1258,15 +2979,15 @@ assert.ok(
   "A repetição de sorteios ou gerações não pede confirmação sobre os dados que podem mudar."
 );
 assert.ok(
-  mainSource.includes("function FormatExplanationButton")
-    && mainSource.includes("function SimpleFormatInfoButton")
-    && mainSource.includes("Como funciona com ${playerCount} jogadores")
+  formatExplanationButtonSource.includes("export default function FormatExplanationButton")
+    && formatExplanationButtonSource.includes("export function SimpleFormatInfoButton")
+    && formatExplanationButtonSource.includes("Como funciona com ${playerCount} jogadores")
     && !mainSource.includes('<div className="infoBox">\n          <p><strong>Todos contra todos:</strong>'),
   "A modalidade Simples não está usando o mesmo padrão roxo de explicação dos demais formatos."
 );
 assert.ok(
-  mainSource.includes("function ParallelDisputeChoice")
-    && mainSource.includes("Realizar {ordinal} disputa paralela?")
+  tournamentFormatHelpSource.includes("export function ParallelDisputeChoice")
+    && tournamentFormatHelpSource.includes("Realizar {ordinal} disputa paralela?")
     && mainSource.includes("secondRepechageEnabled: null")
     && mainSource.includes("thirdRepechageEnabled: null")
     && mainSource.includes('Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")')
@@ -1279,10 +3000,10 @@ assert.ok(
   mainSource.includes("parallelOpeningRound: getEliminationRoundName(parallelBracketSize)")
     && mainSource.includes("const thirdParallelSources = thirdParallelPlan")
     && mainSource.includes("const thirdParallel = {")
-    && mainSource.includes("Todos os 3º colocados são ordenados primeiro")
-    && mainSource.includes("summary.thirdParallel.sourceRound")
-    && mainSource.includes("summary.thirdParallel.matchCount")
-    && mainSource.includes("O que acontece ao escolher Sim ou Não"),
+    && tournamentFormatHelpSource.includes("Todos os 3º colocados são ordenados primeiro")
+    && tournamentFormatHelpSource.includes("summary.thirdParallel.sourceRound")
+    && tournamentFormatHelpSource.includes("summary.thirdParallel.matchCount")
+    && tournamentFormatHelpSource.includes("O que acontece ao escolher Sim ou Não"),
   "As explicações das disputas paralelas deixaram de detalhar participantes, ordem, chave, BYEs ou efeitos da escolha."
 );
 assert.ok(
@@ -1309,14 +3030,14 @@ assert.ok(
 assert.ok(
   mainSource.includes("function createShuffleVideoSnapshot")
     && mainSource.includes("function createShuffleVideoFile")
-    && mainSource.includes("function ShuffleVideoModal")
+    && shuffleVideoModalSource.includes("export default function ShuffleVideoModal")
     && mainSource.includes("function getShuffleVideoMotionOrder")
     && mainSource.includes("const previousOrder = getShuffleVideoMotionOrder")
     && mainSource.includes("const nextOrder = getShuffleVideoMotionOrder")
     && mainSource.includes("copy.lastShuffleVideo = videoSnapshot")
-    && mainSource.includes("Continuar sem gerar")
-    && mainSource.includes("Baixar vídeo")
-    && !mainSource.includes("Compartilhar vídeo")
+    && shuffleVideoModalSource.includes("Continuar sem gerar")
+    && shuffleVideoModalSource.includes("Baixar vídeo")
+    && !shuffleVideoModalSource.includes("Compartilhar vídeo")
     && !mainSource.includes("function shareShuffleVideo")
     && mainSource.includes("const SHUFFLE_VIDEO_WIDTH = 720")
     && mainSource.includes("const SHUFFLE_VIDEO_HEIGHT = 1280")
@@ -1341,24 +3062,24 @@ assert.ok(
   "O torneio pode ser fechado antes de concluir o último salvamento."
 );
 assert.ok(
-  mainSource.includes("function TournamentCircuitManagerModal")
-    && mainSource.includes("+ Adicionar ao circuito")
-    && mainSource.includes("Gerenciar circuitos")
+  tournamentCircuitManagerSource.includes("function TournamentCircuitManagerModal")
+    && tournamentCircuitManagerSource.includes("+ Adicionar ao circuito")
+    && tournamentCircuitManagerSource.includes("Gerenciar circuitos")
     && mainSource.includes("saveTournamentCircuitMembership")
-    && mainSource.includes("Criar novo circuito com este torneio")
+    && tournamentCircuitManagerSource.includes("Criar novo circuito com este torneio")
     && styleSource.includes(".tournamentCircuitOverlay")
     && styleSource.includes("max-height: calc(100dvh - 20px)")
     && styleSource.includes('html[data-theme="dark"] .tournamentCircuitDialog'),
   "O atalho do ranking para circuitos perdeu o gerenciamento, a criação guiada ou a adaptação aos temas e ao celular."
 );
 assert.ok(
-  mainSource.includes("manualParticipants: sourceManualParticipants.map")
-    && mainSource.includes("function applyCircuitManualParticipants")
-    && mainSource.includes('Adicionar ${participantLabel} manualmente')
-    && mainSource.includes("Participantes e resultados complementares")
-    && mainSource.includes("Somar ao atleta existente?")
-    && mainSource.includes("Cadastros manuais")
-    && mainSource.includes("applyCircuitManualParticipants(groups, rankingSettings)")
+  circuitRankingSettingsSource.includes("manualParticipants: sourceManualParticipants.map")
+    && circuitRankingSettingsSource.includes("function applyCircuitManualParticipants")
+    && circuitExtraPointsPanelSource.includes('Adicionar ${participantLabel} manualmente')
+    && circuitExtraPointsPanelSource.includes("Participantes e resultados complementares")
+    && circuitExtraPointsPanelSource.includes("Somar ao atleta existente?")
+    && circuitExtraPointsPanelSource.includes("Cadastros manuais")
+    && circuitRankingAggregationSource.includes("applyCircuitManualParticipants(groups, rankingSettings)")
     && mainSource.includes("getCircuitPlacementColumns(rankingSettings, { includeManual: true })")
     && !mainSource.includes('columns.push({ key: "manualPoints", label: "Manual" })')
     && styleSource.includes(".circuitManualParticipantContent")
@@ -1371,46 +3092,47 @@ assert.ok(
   "A reordenação pode substituir o objeto do torneio em vez de preservar placares e confrontos."
 );
 
-const timerHelpersSource = mainSource.slice(
-  mainSource.indexOf("function getMatchTimerTimestamp"),
-  mainSource.indexOf("function getTournamentTimingSummary")
-);
-const {
-  getMatchElapsedSeconds: getMatchElapsedSecondsForTest,
-  formatMatchDuration: formatMatchDurationForTest,
-  startMatchTimer: startMatchTimerForTest,
-  stopMatchTimer: stopMatchTimerForTest,
-} = Function(`${timerHelpersSource}; return { getMatchElapsedSeconds, formatMatchDuration, startMatchTimer, stopMatchTimer };`)();
 const timerTestGame = { inProgress: true, matchTimerElapsedSeconds: 30 };
 const timerStart = Date.parse("2026-08-16T12:00:00.000Z");
-startMatchTimerForTest(timerTestGame, timerStart);
-assert.equal(getMatchElapsedSecondsForTest(timerTestGame, timerStart + 15000), 45, "O cronômetro não soma o trecho ativo ao tempo salvo.");
-stopMatchTimerForTest(timerTestGame, { finished: true, now: timerStart + 15000 });
+startMatchTimer(timerTestGame, timerStart);
+assert.equal(getMatchElapsedSeconds(timerTestGame, timerStart + 15000), 45, "O cronômetro não soma o trecho ativo ao tempo salvo.");
+stopMatchTimer(timerTestGame, { finished: true, now: timerStart + 15000 });
 assert.equal(timerTestGame.matchTimerElapsedSeconds, 45, "O cronômetro não preserva o tempo quando o placar é finalizado.");
-assert.equal(formatMatchDurationForTest(3661), "61:01", "O cronômetro não mantém minutos acima de 59 no formato MM:SS.");
+assert.equal(formatMatchDuration(3661), "61:01", "O cronômetro não mantém minutos acima de 59 no formato MM:SS.");
+assert.equal(formatMatchDuration(-10), "00:00", "O cronômetro não deve exibir duração negativa.");
+assert.equal(startMatchTimer(null), null, "O cronômetro deve tolerar jogo ausente.");
+const resetTimerTestGame = {
+  matchTimerStartedAt: "2026-08-16T12:00:00.000Z",
+  matchTimerFirstStartedAt: "2026-08-16T12:00:00.000Z",
+  matchTimerFinishedAt: "2026-08-16T12:01:00.000Z",
+  matchTimerElapsedSeconds: 60,
+};
+resetMatchTimer(resetTimerTestGame);
+assert.deepEqual(resetTimerTestGame, {}, "A redefinição do jogo deve remover todos os dados do cronômetro.");
 assert.ok(
   mainSource.includes("function TournamentTimingSummary")
+    && tournamentSummaryViewsSource.includes("export function TournamentTimingSummaryView")
+    && tournamentSummaryViewsSource.includes("export function TournamentMatchStatusSummaryView")
     && mainSource.includes("complete: operationalGames.length > 0")
     && mainSource.includes("if (!getTournamentTimingSummary(data).complete) return playTimeById")
     && mainSource.includes("matchTimerFinishedAt")
-    && mainSource.includes('className="matchStatusTimer"')
-    && mainSource.includes('playTimeSeconds: "Tempo em jogo"')
-    && mainSource.includes("Tempo geral do torneio")
+    && matchScheduleSource.includes('className="matchStatusTimer"')
+    && rankingShareExportSource.includes('playTimeSeconds: "Tempo em jogo"')
+    && rankingShareExportSource.includes("Tempo geral do torneio")
     && styleSource.includes(".matchStatusTimer")
     && styleSource.includes("html[data-theme=\"dark\"] .tournamentTimingSummary")
     && styleSource.includes(".bracketTree .matchStatusTimer"),
   "A cronometragem perdeu persistência, segurança contra dados incompletos, ranking, compartilhamento ou contraste responsivo."
 );
-
-const participantOccupancyHelpersSource = mainSource.slice(
-  mainSource.indexOf("function getGameParticipantIdentityEntries"),
-  mainSource.indexOf("function getTournamentOperationalGames")
+assert.ok(
+  tournamentErrorBoundarySource.includes("export default class TournamentErrorBoundary")
+    && tournamentErrorBoundarySource.includes("Os dados salvos dessa edição precisam ser revisados")
+    && mainSource.includes("<TournamentErrorBoundary"),
+  "A proteção visual contra falhas ao abrir um torneio está ausente."
 );
-const {
-  getSharedGameParticipants: getSharedGameParticipantsForTest,
-} = Function(`${participantOccupancyHelpersSource}; return { getSharedGameParticipants };`)();
+
 assert.deepEqual(
-  getSharedGameParticipantsForTest(
+  getSharedGameParticipants(
     { ids1: [3], team1: ["Ana"], ids2: [8], team2: ["Bia"] },
     { ids1: [3], team1: ["Ana"], ids2: [11], team2: ["Carla"] }
   ).map((participant) => participant.name),
@@ -1418,12 +3140,17 @@ assert.deepEqual(
   "O sistema não reconhece o mesmo participante em dois jogos."
 );
 assert.equal(
-  getSharedGameParticipantsForTest(
+  getSharedGameParticipants(
     { ids1: [3], team1: ["João"], ids2: [], team2: [] },
     { ids1: [9], team1: ["João"], ids2: [], team2: [] }
   ).length,
   0,
   "O sistema confunde homônimos cadastrados como participantes diferentes."
+);
+assert.deepEqual(
+  getGameParticipantIdentityEntries({ ids1: [4], team1: ["Bárbara"], ids2: [], team2: [] }),
+  [{ key: "participant:4", name: "Bárbara" }],
+  "A identificação interna do participante não preserva o nome exibido."
 );
 const participantConflictSource = mainSource.slice(
   mainSource.indexOf("function getInProgressParticipantConflicts"),
@@ -1444,7 +3171,7 @@ const getInProgressParticipantConflictsForTest = Function(
     { key: "other", game: { ids1: [9], team1: ["Dani"], ids2: [10], team2: ["Eva"], inProgress: true }, label: "Grupo B · Rodada 1" },
   ],
   (game) => game.finished === true,
-  getSharedGameParticipantsForTest,
+  getSharedGameParticipants,
   () => "Quadra 2"
 );
 const participantConflictsForTest = getInProgressParticipantConflictsForTest(
@@ -1457,7 +3184,7 @@ assert.equal(participantConflictsForTest[0].participants[0].name, "Ana", "O avis
 assert.ok(
   mainSource.includes("function getInProgressParticipantConflicts")
     && mainSource.includes("participantOccupancyConflict")
-    && mainSource.includes("Chamar mesmo assim")
+    && matchControlsSource.includes("Chamar mesmo assim")
     && mainSource.includes("skipParticipantCheck: true")
     && mainSource.includes("requestOperationalGameStart(target, targetGame)")
     && styleSource.includes(".participantOccupancyModal")
