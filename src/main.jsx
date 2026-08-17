@@ -84,7 +84,6 @@ import {
   TournamentTimingSummaryView,
 } from "./features/matchOperations/TournamentSummaryViews.jsx";
 import ParticipantImportModalView, {
-  ParticipantGenderPanel as ParticipantGenderPanelView,
   PlayerInputs as PlayerInputsView,
 } from "./features/participantManagement/ParticipantManagement.jsx";
 import {
@@ -119,6 +118,7 @@ import FormatExplanationButton, {
 } from "./features/tournamentConfig/FormatExplanationButton.jsx";
 import CircuitExtraPointsPanel from "./features/circuitManagement/CircuitExtraPointsPanel.jsx";
 import {
+  CircuitGenderRegistryPanel,
   CircuitRankingSettingsEditor,
   CircuitTournamentFormatSelector,
 } from "./features/circuitManagement/CircuitRankingSettings.jsx";
@@ -9168,6 +9168,16 @@ setNewPublicInfo({
               )}
             </div>
 
+            <CircuitGenderRegistryPanel
+              candidates={getCircuitGenderCandidates(circuitEditForm)}
+              value={circuitEditForm.rankingSettings?.genderRegistry}
+              knownRegistry={getArenaParticipantGenderRegistry()}
+              onChange={(genderRegistry) => setCircuitEditForm((prev) => ({
+                ...prev,
+                rankingSettings: { ...prev.rankingSettings, genderRegistry },
+              }))}
+            />
+
             {getCircuitFormFormat(circuitEditForm) ? <CircuitRankingSettingsEditor
               value={circuitEditForm.rankingSettings}
               onChange={(rankingSettings) => setCircuitEditForm((prev) => ({ ...prev, rankingSettings }))}
@@ -9176,8 +9186,6 @@ setNewPublicInfo({
               inheritedCriteria={getCircuitCriteriaInfo(circuitEditForm.tournamentIds).value}
               mixedCriteria={getCircuitCriteriaInfo(circuitEditForm.tournamentIds).mixed}
               tournamentFormat={getCircuitFormFormat(circuitEditForm)}
-              genderCandidates={getCircuitGenderCandidates(circuitEditForm)}
-              arenaGenderRegistry={getArenaParticipantGenderRegistry()}
               onRankingCriteriaChange={(rankingCriteria, rankingCriteriaMode) => setCircuitEditForm((prev) => ({ ...prev, rankingCriteria, rankingCriteriaMode }))}
             /> : null}
 
@@ -9945,6 +9953,16 @@ setNewPublicInfo({
       )}
     </div>
 
+    <CircuitGenderRegistryPanel
+      candidates={getCircuitGenderCandidates(circuitForm)}
+      value={circuitForm.rankingSettings?.genderRegistry}
+      knownRegistry={getArenaParticipantGenderRegistry()}
+      onChange={(genderRegistry) => setCircuitForm((prev) => ({
+        ...prev,
+        rankingSettings: { ...prev.rankingSettings, genderRegistry },
+      }))}
+    />
+
     {getCircuitFormFormat(circuitForm) ? <CircuitRankingSettingsEditor
       value={circuitForm.rankingSettings}
       onChange={(rankingSettings) => setCircuitForm((prev) => ({ ...prev, rankingSettings }))}
@@ -9953,8 +9971,6 @@ setNewPublicInfo({
       inheritedCriteria={getCircuitCriteriaInfo(circuitForm.tournamentIds).value}
       mixedCriteria={getCircuitCriteriaInfo(circuitForm.tournamentIds).mixed}
       tournamentFormat={getCircuitFormFormat(circuitForm)}
-      genderCandidates={getCircuitGenderCandidates(circuitForm)}
-      arenaGenderRegistry={getArenaParticipantGenderRegistry()}
       onRankingCriteriaChange={(rankingCriteria, rankingCriteriaMode) => setCircuitForm((prev) => ({ ...prev, rankingCriteria, rankingCriteriaMode }))}
     /> : null}
 
@@ -13053,13 +13069,6 @@ function TournamentScreen({
     });
   }
 
-  function updateParticipantGender(name, gender) {
-    setData((previous) => ({
-      ...previous,
-      participantGenders: setParticipantGender(previous.participantGenders, name, gender),
-    }));
-  }
-
   function resolveParticipantOccupancyConflict(choice) {
     if (!participantOccupancyConflict) return;
     const conflict = participantOccupancyConflict;
@@ -13205,6 +13214,7 @@ function TournamentScreen({
     setParticipantImportBackup({
       players: structuredClone(data.players),
       participantAttendance: structuredClone(data.participantAttendance),
+      participantGenders: structuredClone(data.participantGenders),
     });
     copy.participantAttendance = reconcileParticipantAttendance(
       config,
@@ -13213,6 +13223,10 @@ function TournamentScreen({
       copy.participantAttendance
     );
     copy.players = structuredClone(nextPlayers);
+    copy.participantGenders = mergeParticipantGenderRegistries(
+      copy.participantGenders,
+      summary.participantGenders
+    );
     delete copy.lastShuffleVideo;
     setData(refreshGameParticipantNames(copy));
     setParticipantImportOpen(false);
@@ -13229,6 +13243,7 @@ function TournamentScreen({
     const copy = structuredClone(data);
     copy.players = structuredClone(participantImportBackup.players);
     copy.participantAttendance = structuredClone(participantImportBackup.participantAttendance);
+    copy.participantGenders = structuredClone(participantImportBackup.participantGenders);
     setParticipantImportBackup(null);
     setData(refreshGameParticipantNames(copy));
     showNotice("success", "Importação desfeita", "A lista de participantes voltou ao estado anterior.");
@@ -13762,6 +13777,7 @@ return (
       <ParticipantImportModal
         type={tournament.type}
         data={data}
+        knownRegistry={arenaGenderRegistry}
         onClose={() => setParticipantImportOpen(false)}
         onApply={importParticipants}
       />,
@@ -14000,14 +14016,6 @@ return (
               </button>
             </div>
           </div>
-
-          <ParticipantGenderPanelView
-            type={tournament.type}
-            data={data}
-            knownRegistry={arenaGenderRegistry}
-            onChange={updateParticipantGender}
-            modalityConfig={modalityConfig}
-          />
 
           <PlayerInputs
             type={tournament.type}
