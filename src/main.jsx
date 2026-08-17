@@ -84,6 +84,7 @@ import {
   TournamentTimingSummaryView,
 } from "./features/matchOperations/TournamentSummaryViews.jsx";
 import ParticipantImportModalView, {
+  ParticipantGenderPanel as ParticipantGenderPanelView,
   PlayerInputs as PlayerInputsView,
 } from "./features/participantManagement/ParticipantManagement.jsx";
 import {
@@ -189,6 +190,14 @@ import {
   reconcileParticipantAttendance,
   setParticipantAttendanceValue,
 } from "./domain/participantAttendance.mjs";
+import {
+  getParticipantGender,
+  mergeParticipantGenderRegistries,
+  mergeTournamentGenderCandidates,
+  normalizeParticipantGenderRegistry,
+  participantGenderValues,
+  setParticipantGender,
+} from "./domain/participantGenderRegistry.mjs";
 import {
   applyCircuitDrawOrder,
   circuitRankingModes,
@@ -5362,6 +5371,33 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .filter(Boolean);
   }
 
+  function getArenaParticipantGenderRegistry() {
+    const circuitRegistries = circuitsRef.current.map((circuit) => (
+      normalizeCircuitRankingSettings(circuit?.rankingSettings).genderRegistry
+    ));
+    const tournamentRegistries = tournamentsRef.current.map((tournament) => (
+      tournament?.data?.participantGenders
+    ));
+    return mergeParticipantGenderRegistries(...circuitRegistries, ...tournamentRegistries);
+  }
+
+  function getCircuitGenderCandidates(form, tournamentSource = tournaments) {
+    const selectedIds = new Set((form?.tournamentIds || []).map((id) => String(id)));
+    const selectedTournaments = tournamentSource.filter((tournament) => selectedIds.has(String(tournament.id)));
+    return mergeTournamentGenderCandidates(selectedTournaments, modalityConfig);
+  }
+
+  function getEffectiveCircuitRankingSettings(value) {
+    const settings = normalizeCircuitRankingSettings(value);
+    return normalizeCircuitRankingSettings({
+      ...settings,
+      genderRegistry: mergeParticipantGenderRegistries(
+        getArenaParticipantGenderRegistry(),
+        settings.genderRegistry
+      ),
+    });
+  }
+
   function getTournamentCircuitFormat(tournament) {
     return isCupType(modalityConfig[tournament?.type])
       ? circuitTournamentFormats.cup
@@ -5427,7 +5463,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       tournamentIds: [],
       rankingCriteria: defaultRankingCriteria,
       rankingCriteriaMode: "automatic",
-      rankingSettings: normalizeCircuitRankingSettings(),
+      rankingSettings: normalizeCircuitRankingSettings({
+        genderRegistry: getArenaParticipantGenderRegistry(),
+      }),
     });
   }
 
@@ -5518,7 +5556,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         ? form.rankingCriteria
         : getCircuitCriteriaInfo(form.tournamentIds || []).value,
       ranking_criteria_mode: form.rankingCriteriaMode === "manual" ? "manual" : "automatic",
-      ranking_settings: normalizeCircuitRankingSettings({ ...form.rankingSettings, tournamentFormat }),
+      ranking_settings: normalizeCircuitRankingSettings({
+        ...form.rankingSettings,
+        tournamentFormat,
+        genderRegistry: mergeParticipantGenderRegistries(
+          getArenaParticipantGenderRegistry(),
+          form.rankingSettings?.genderRegistry
+        ),
+      }),
       updated_at: new Date().toISOString(),
     };
 
@@ -5728,7 +5773,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       tournamentIds: [tournament.id],
       rankingCriteria: details.rankingCriteria || defaultRankingCriteria,
       rankingCriteriaMode: "automatic",
-      rankingSettings: normalizeCircuitRankingSettings({ tournamentFormat }),
+      rankingSettings: normalizeCircuitRankingSettings({
+        tournamentFormat,
+        genderRegistry: getArenaParticipantGenderRegistry(),
+      }),
     });
     setCircuitStatusFilter("active");
     setCreateCircuitOpen(true);
@@ -5745,7 +5793,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       tournamentIds: Array.isArray(circuit.tournamentIds) ? circuit.tournamentIds : [],
       rankingCriteria: getCircuitEffectiveCriteria(circuit),
       rankingCriteriaMode: circuit.rankingCriteriaMode === "manual" ? "manual" : "automatic",
-      rankingSettings: normalizeCircuitRankingSettings(circuit.rankingSettings),
+      rankingSettings: getEffectiveCircuitRankingSettings(circuit.rankingSettings),
     });
   }
 
@@ -6028,7 +6076,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   function getCircuitTournamentRankingRecords(circuit, tournamentSource = tournaments) {
     const records = {};
-    const rankingSettings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
+    const rankingSettings = getEffectiveCircuitRankingSettings(circuit?.rankingSettings);
 
     if (rankingSettings.sourceCircuitIds.length > 0) {
       rankingSettings.sourceCircuitIds.forEach((sourceId) => {
@@ -6081,7 +6129,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function getCircuitRanking(circuit, criteriaValue = getCircuitEffectiveCriteria(circuit), tournamentSource = tournaments) {
-    const rankingSettings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
+    const rankingSettings = getEffectiveCircuitRankingSettings(circuit?.rankingSettings);
     const history = rankingSettings.sourceCircuitIds.length > 0 ? {} : buildCircuitRankingHistory(circuit, tournamentSource);
     const records = [];
 
@@ -8774,6 +8822,7 @@ setNewPublicInfo({
                 onRegisterNavigationGuard={registerTournamentNavigationGuard}
                 onManageCircuits={() => setCircuitTournamentTarget(selected)}
                 circuitMembershipCount={getTournamentCircuitMembership(selected).length}
+                arenaGenderRegistry={getArenaParticipantGenderRegistry()}
                 centralCourtNumbers={activeCourtCenter.numbers}
                 centralUnavailableCourtNumbers={activeCourtCenter.unavailableNumbers}
                 preferredCourtNumbers={activeTournamentPreferredCourtNumbers}
@@ -9127,6 +9176,8 @@ setNewPublicInfo({
               inheritedCriteria={getCircuitCriteriaInfo(circuitEditForm.tournamentIds).value}
               mixedCriteria={getCircuitCriteriaInfo(circuitEditForm.tournamentIds).mixed}
               tournamentFormat={getCircuitFormFormat(circuitEditForm)}
+              genderCandidates={getCircuitGenderCandidates(circuitEditForm)}
+              arenaGenderRegistry={getArenaParticipantGenderRegistry()}
               onRankingCriteriaChange={(rankingCriteria, rankingCriteriaMode) => setCircuitEditForm((prev) => ({ ...prev, rankingCriteria, rankingCriteriaMode }))}
             /> : null}
 
@@ -9902,6 +9953,8 @@ setNewPublicInfo({
       inheritedCriteria={getCircuitCriteriaInfo(circuitForm.tournamentIds).value}
       mixedCriteria={getCircuitCriteriaInfo(circuitForm.tournamentIds).mixed}
       tournamentFormat={getCircuitFormFormat(circuitForm)}
+      genderCandidates={getCircuitGenderCandidates(circuitForm)}
+      arenaGenderRegistry={getArenaParticipantGenderRegistry()}
       onRankingCriteriaChange={(rankingCriteria, rankingCriteriaMode) => setCircuitForm((prev) => ({ ...prev, rankingCriteria, rankingCriteriaMode }))}
     /> : null}
 
@@ -10605,6 +10658,7 @@ function createInitialData(type, config) {
   rankingCriteria: defaultRankingCriteria,
   winningScore: 4,
   gender: "",
+  participantGenders: {},
   eventDate: "",
   eventDay: "",
   location: "",
@@ -10836,6 +10890,7 @@ function normalizeTournamentData(type, rawData) {
     namesShuffled: Boolean(source.namesShuffled),
     schedule: normalizeSchedule(source.schedule),
     courtNumbers: normalizeCourtNumbers(sourceCourtNumbers, courtCount),
+    participantGenders: normalizeParticipantGenderRegistry(source.participantGenders),
   };
   delete normalized.courtLabels;
 
@@ -11556,6 +11611,7 @@ function TournamentScreen({
   onRegisterNavigationGuard,
   onManageCircuits,
   circuitMembershipCount = 0,
+  arenaGenderRegistry = {},
   onOpenCourtCenter,
   onRegisterCentralCourtNumber,
   onCourtUsagesChange,
@@ -12705,10 +12761,23 @@ function TournamentScreen({
     const formattedValue = formatParticipantNameWhileTyping(value);
     copy.participantAttendance = normalizeParticipantAttendance(config, copy.players, copy.participantAttendance);
 
+    const previousName = path.kind === "normal"
+      ? copy.players[path.index]
+      : path.kind === "men"
+        ? copy.players.men[path.index]
+        : path.kind === "women"
+          ? copy.players.women[path.index]
+          : copy.players.teams[path.index]?.[path.field];
+    const previousGender = getParticipantGender(copy.participantGenders, previousName, { confirmedOnly: true });
+
     if (path.kind === "normal") copy.players[path.index] = formattedValue;
     if (path.kind === "men") copy.players.men[path.index] = formattedValue;
     if (path.kind === "women") copy.players.women[path.index] = formattedValue;
     if (path.kind === "team") copy.players.teams[path.index][path.field] = formattedValue;
+    if (previousGender !== participantGenderValues.unknown && previousName !== formattedValue) {
+      copy.participantGenders = setParticipantGender(copy.participantGenders, previousName, participantGenderValues.unknown);
+      copy.participantGenders = setParticipantGender(copy.participantGenders, formattedValue, previousGender);
+    }
     setParticipantAttendanceValue(copy.participantAttendance, path, false);
     delete copy.lastShuffleVideo;
 
@@ -12982,6 +13051,13 @@ function TournamentScreen({
       usage,
       target,
     });
+  }
+
+  function updateParticipantGender(name, gender) {
+    setData((previous) => ({
+      ...previous,
+      participantGenders: setParticipantGender(previous.participantGenders, name, gender),
+    }));
   }
 
   function resolveParticipantOccupancyConflict(choice) {
@@ -13895,7 +13971,7 @@ return (
           <div className="participantImportBar">
             <div>
               <strong><ClipboardPaste aria-hidden="true" /> Preencher vários participantes</strong>
-              <p>Cole uma lista do WhatsApp ou de outro lugar e confira as vagas antes de aplicar.</p>
+              <p>Cole uma lista do WhatsApp ou de outro lugar, use nome e sobrenome e confira as vagas antes de aplicar.</p>
             </div>
 
             <div className="participantImportActions">
@@ -13924,6 +14000,14 @@ return (
               </button>
             </div>
           </div>
+
+          <ParticipantGenderPanelView
+            type={tournament.type}
+            data={data}
+            knownRegistry={arenaGenderRegistry}
+            onChange={updateParticipantGender}
+            modalityConfig={modalityConfig}
+          />
 
           <PlayerInputs
             type={tournament.type}

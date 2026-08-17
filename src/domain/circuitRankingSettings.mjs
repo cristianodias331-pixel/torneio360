@@ -3,6 +3,7 @@ import {
   normalizeCircuitParticipantKey,
 } from "../circuitNameIdentity.mjs";
 import { formatParticipantName } from "./participantNames.mjs";
+import { normalizeParticipantGenderRegistry } from "./participantGenderRegistry.mjs";
 
 export const circuitRankingModes = {
   performance: "performance",
@@ -92,6 +93,7 @@ export function normalizeCircuitRankingSettings(value) {
       : (source.tournamentFormat === circuitTournamentFormats.placement ? circuitTournamentFormats.placement : ""),
     identity: source.identity === "team" ? "team" : "individual",
     rankingDivision: source.identity !== "team" && source.rankingDivision === "gender" ? "gender" : "general",
+    genderRegistry: normalizeParticipantGenderRegistry(source.genderRegistry),
     sourceCircuitIds: [...new Set(sourceCircuitIds.map((id) => String(id)).filter(Boolean))],
     extraPoints: sourceExtraPoints.map((entry, index) => ({
       id: String(entry?.id || `extra-${index + 1}`),

@@ -17,6 +17,25 @@ import { isCupType, isIndividualCupType, isMixedType } from "./modalityClassific
 import { formatParticipantName } from "./participantNames.mjs";
 import { defaultRankingCriteria, getRankingCriteria } from "./rankingCriteria.mjs";
 import { calculateCircuitTournamentRankingRows } from "./tournamentRanking.mjs";
+import {
+  participantGenderValues,
+  resolveTournamentParticipantGender,
+} from "./participantGenderRegistry.mjs";
+
+function resolveCircuitRowGroup({ row, tournament, config, rankingSettings }) {
+  const fallback = row.groupKey
+    || (isMixedType(config) ? (Number(row.id) < Number(config.men || 0) ? "masculino" : "feminino") : "geral");
+  if (rankingSettings.rankingDivision !== "gender") return fallback;
+  const gender = resolveTournamentParticipantGender({
+    tournament,
+    settings: rankingSettings,
+    name: row.name,
+    fallbackGender: fallback,
+  });
+  return gender === participantGenderValues.masculine || gender === participantGenderValues.feminine
+    ? gender
+    : "geral";
+}
 
 export function buildCircuitRankingGroups({
   circuit,
@@ -110,7 +129,6 @@ export function buildCircuitRankingGroups({
           rankingCriteriaValue: tournament.data?.rankingCriteria || defaultRankingCriteria,
           timingComplete,
         });
-      const separated = isMixedType(config);
       const teamRanking = (
         (isCupType(config) && !isIndividualCupType(config))
         || config.type === "fixed12"
@@ -120,8 +138,7 @@ export function buildCircuitRankingGroups({
       rows.forEach((row) => {
         if (Number(row.played || 0) <= 0) return;
 
-        const groupKey = row.groupKey
-          || (separated ? (row.id < config.men ? "masculino" : "feminino") : "geral");
+        const groupKey = resolveCircuitRowGroup({ row, tournament, config, rankingSettings });
         const name = String(row.name || "Sem nome").trim() || "Sem nome";
         const playerKey = normalizeCircuitParticipantKey(name, teamRanking);
         const current = groups[groupKey].rows.get(playerKey) || {
@@ -329,7 +346,6 @@ export function buildCircuitTournamentRankingRecords({
       return;
     }
 
-    const separated = isMixedType(config);
     const teamRanking = (
       (isCupType(config) && !isIndividualCupType(config))
       || config?.type === "fixed12"
@@ -338,8 +354,7 @@ export function buildCircuitTournamentRankingRecords({
     const nameOccurrences = new Map();
 
     rows.forEach((row) => {
-      const groupKey = row.groupKey
-        || (separated ? (row.id < config.men ? "masculino" : "feminino") : "geral");
+      const groupKey = resolveCircuitRowGroup({ row, tournament, config, rankingSettings });
       const name = String(row.name || "Sem nome").trim() || "Sem nome";
       const key = `${groupKey}::${normalizeCircuitParticipantKey(name, teamRanking)}`;
       nameOccurrences.set(key, (nameOccurrences.get(key) || 0) + 1);
@@ -347,8 +362,7 @@ export function buildCircuitTournamentRankingRecords({
 
     rows.forEach((row, rowIndex) => {
       if (Number(row.played || 0) <= 0) return;
-      const groupKey = row.groupKey
-        || (separated ? (row.id < config.men ? "masculino" : "feminino") : "geral");
+      const groupKey = resolveCircuitRowGroup({ row, tournament, config, rankingSettings });
       const name = String(row.name || "Sem nome").trim() || "Sem nome";
       const normalizedName = normalizeCircuitParticipantKey(name, teamRanking);
       const duplicateNameKey = `${groupKey}::${normalizedName}`;
