@@ -314,7 +314,10 @@ import {
   buildPlayRankingParallelRounds,
   getPlayRankingOpeningLosses,
 } from "./domain/playRankingBracket.mjs";
-import { buildCearenseThirdParallelRounds } from "./domain/cearenseThirdParallel.mjs";
+import {
+  buildCearenseThirdParallelRounds,
+  getCearenseThirdParallelSources,
+} from "./domain/cearenseThirdParallel.mjs";
 import {
   buildSunsetChampionsRounds,
   buildSunsetParallelFromMainRound,

@@ -1904,6 +1904,7 @@ assert.ok(
     && cupBracketConstructionSource.includes("function expandBracketPlanWithVisualByes")
     && cupBracketConstructionSource.includes("isBye: Boolean(firstEntry) !== Boolean(secondEntry)")
     && cearenseThirdParallelSource.includes("function getCearenseThirdParallelSources")
+    && /import\s*\{[^}]*getCearenseThirdParallelSources[^}]*\}\s*from\s*["']\.\/domain\/cearenseThirdParallel\.mjs["']/.test(mainSource)
     && cearenseThirdParallelSource.includes("games: [...quarterfinalGames, ...previousRoundGames]")
     && mainSource.includes("getNextPowerOfTwo(thirdParallelEligibleCount)")
     && cearenseThirdParallelSource.includes("sourceEntries.length === 2")
