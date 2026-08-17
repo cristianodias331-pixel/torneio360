@@ -37,6 +37,11 @@ import {
 } from "../src/domain/scoreRules.mjs";
 import { formatParticipantName } from "../src/domain/participantNames.mjs";
 import {
+  getParticipantGender,
+  participantGenderValues,
+  setParticipantGender,
+} from "../src/domain/participantGenderRegistry.mjs";
+import {
   getGameSideAttendanceParticipants,
   getParticipantAttendanceEntries,
   normalizeAttendanceList,
@@ -2084,8 +2089,20 @@ assert.deepEqual(
   "A ordem da linha colada deve preencher o homem antes da mulher."
 );
 assert.ok(
-  participantManagementSource.includes("fixedMixedTeams ? orderFixedMixedPair(...cleanedNames) : cleanedNames"),
-  "O importador em massa não está aplicando a ordem das duplas mistas fixas."
+  !participantManagementSource.includes("orderFixedMixedPair")
+    && participantManagementSource.includes("A ordem colada será preservada"),
+  "O importador deve preservar a ordem colada e confirmar o gênero separadamente."
+);
+const confirmedGenderRegistry = setParticipantGender({}, "Bárbara Souza", participantGenderValues.feminine);
+assert.equal(
+  getParticipantGender(confirmedGenderRegistry, "Barbara Souza", { confirmedOnly: true }),
+  participantGenderValues.feminine,
+  "A confirmação de gênero deve reconhecer o mesmo nome com ou sem acento."
+);
+assert.deepEqual(
+  setParticipantGender(confirmedGenderRegistry, "Barbara Souza", participantGenderValues.unknown),
+  {},
+  "Não informar o gênero não deve persistir uma classificação definitiva."
 );
 
 assert.equal(super20MixedTemplate.length, 10, "O Super 20 mista deve possuir 10 rodadas.");

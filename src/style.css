@@ -17569,6 +17569,74 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .combinedCircuitNotice svg { flex: 0 0 18px; width: 18px; }
 .combinedCircuitList button { font: inherit; }
 .circuitGenderDivision { display: grid; gap: 12px; margin-top: 14px; padding: 14px; border: 1px solid var(--ui-border, #d7e0ec); border-radius: 16px; background: var(--ui-surface-muted, #f5f8fc); }
+.circuitGenderRegistry {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, #8b5cf6 35%, var(--ui-border, #d7e0ec));
+  border-radius: 16px;
+  background: var(--ui-surface-raised, #fff);
+}
+.circuitGenderRegistryHeader,
+.circuitGenderRegistryTools,
+.circuitGenderCandidateList article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.circuitGenderRegistryHeader > div,
+.circuitGenderCandidateList article > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.circuitGenderRegistryHeader strong,
+.circuitGenderCandidateList article strong { color: var(--ui-text-strong, #0d1b36); }
+.circuitGenderRegistryHeader span,
+.circuitGenderCandidateList article small,
+.circuitGenderEmpty { color: var(--ui-muted, #687992); font-size: .76rem; font-weight: 700; line-height: 1.4; }
+.circuitGenderCounter { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; }
+.circuitGenderCounter.pending { border: 1px solid #f97316; background: #fff7ed; color: #c2410c; }
+.circuitGenderCounter.complete { border: 1px solid #22c55e; background: #f0fdf4; color: #15803d; }
+.circuitGenderRegistryTools label { flex: 1 1 240px; }
+.circuitGenderRegistryTools input {
+  width: 100%;
+  min-width: 0;
+  border-color: var(--ui-border, #cfdaea);
+  background: var(--ui-surface-muted, #f8fafc);
+  color: var(--ui-text-strong, #0d1b36);
+}
+.proDashboard.playAppShell .circuitGenderSuggestionButton,
+.circuitGenderSuggestionButton {
+  min-height: 42px;
+  border: 1px solid #8b5cf6 !important;
+  background: color-mix(in srgb, #8b5cf6 12%, var(--ui-surface-raised, #fff)) !important;
+  background-image: none !important;
+  color: #6d28d9 !important;
+  box-shadow: none !important;
+}
+.circuitGenderCandidateList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.circuitGenderCandidateList article {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--ui-border, #d7e0ec);
+  border-radius: 13px;
+  background: var(--ui-surface-muted, #f8fafc);
+}
+.circuitGenderCandidateList article.pending { border-color: color-mix(in srgb, #f97316 35%, var(--ui-border, #d7e0ec)); }
+.circuitGenderChoices { display: flex; flex: 0 0 auto; gap: 5px; }
+.proDashboard.playAppShell .circuitGenderChoices button,
+.circuitGenderChoices button {
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--ui-border, #cbd5e1) !important;
+  background: var(--ui-surface-raised, #fff) !important;
+  background-image: none !important;
+  color: var(--ui-text, #334155) !important;
+  box-shadow: none !important;
+  font-size: .7rem;
+}
+.proDashboard.playAppShell .circuitGenderChoices button.selected.masculine,
+.circuitGenderChoices button.selected.masculine { border-color: #2563eb !important; background: #dbeafe !important; color: #1d4ed8 !important; }
+.proDashboard.playAppShell .circuitGenderChoices button.selected.feminine,
+.circuitGenderChoices button.selected.feminine { border-color: #a855f7 !important; background: #f3e8ff !important; color: #7e22ce !important; }
 
 .circuitExtraPointsPanel { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-border, #d7e0ec); }
 .circuitManualAdjustmentsHeader {
@@ -17614,6 +17682,22 @@ html[data-theme="dark"] .circuitGenderDivision,
 html[data-theme="dark"] .circuitManualAdjustmentsHeader,
 html[data-theme="dark"] .circuitExtraPointsContent,
 html[data-theme="dark"] .circuitExtraHistory > article { color: #dbe7f5; }
+html[data-theme="dark"] .circuitGenderRegistry,
+.proDashboard.theme-dark .circuitGenderRegistry,
+html[data-theme="dark"] .circuitGenderCandidateList article,
+.proDashboard.theme-dark .circuitGenderCandidateList article { background: #111d2d; border-color: #304158; }
+html[data-theme="dark"] .circuitGenderCounter.pending,
+.proDashboard.theme-dark .circuitGenderCounter.pending { background: #452514; color: #fed7aa; }
+html[data-theme="dark"] .circuitGenderCounter.complete,
+.proDashboard.theme-dark .circuitGenderCounter.complete { background: #123b2a; color: #bbf7d0; }
+html[data-theme="dark"] .circuitGenderSuggestionButton,
+.proDashboard.theme-dark .circuitGenderSuggestionButton { background: rgba(139,92,246,.16) !important; color: #ddd6fe !important; }
+html[data-theme="dark"] .circuitGenderChoices button,
+.proDashboard.theme-dark .circuitGenderChoices button { background: #172436 !important; color: #dbe7f5 !important; border-color: #40516a !important; }
+html[data-theme="dark"] .circuitGenderChoices button.selected.masculine,
+.proDashboard.theme-dark .circuitGenderChoices button.selected.masculine { background: #17356b !important; color: #bfdbfe !important; }
+html[data-theme="dark"] .circuitGenderChoices button.selected.feminine,
+.proDashboard.theme-dark .circuitGenderChoices button.selected.feminine { background: #40205f !important; color: #e9d5ff !important; }
 
 @media (max-width: 760px) {
   .circuitManagerToolbarActions { width: 100%; grid-template-columns: 1fr 1fr; }
@@ -17625,6 +17709,14 @@ html[data-theme="dark"] .circuitExtraHistory > article { color: #dbe7f5; }
   .proDashboard.playAppShell .circuitExtraSave, .circuitExtraSave { grid-column: 1 / -1; width: 100%; }
   .circuitExtraHistory > article { align-items: stretch; flex-direction: column; }
   .circuitExtraHistory article button { width: 100%; }
+  .circuitGenderRegistryHeader,
+  .circuitGenderRegistryTools,
+  .circuitGenderCandidateList article { align-items: stretch; flex-direction: column; }
+  .circuitGenderCandidateList { grid-template-columns: 1fr; }
+  .circuitGenderRegistryTools label { flex-basis: auto; }
+  .circuitGenderSuggestionButton,
+  .circuitGenderChoices { width: 100%; }
+  .circuitGenderChoices button { flex: 1 1 0; }
 }
 
 @media (max-width: 430px) {
@@ -20397,6 +20489,57 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   line-height: 1 !important;
   white-space: nowrap;
 }
+
+.proDashboard .participantGenderPanel {
+  margin: 0 0 16px;
+  border: 1px solid color-mix(in srgb, #8b5cf6 34%, var(--ui-border));
+  border-radius: 15px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-text);
+  overflow: clip;
+}
+.proDashboard .participantGenderPanel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  color: var(--ui-text-strong);
+  cursor: pointer;
+  list-style: none;
+}
+.proDashboard .participantGenderPanel > summary::-webkit-details-marker { display: none; }
+.proDashboard .participantGenderPanel > summary::after { content: "⌄"; color: #7c3aed; font-size: 1.1rem; font-weight: 950; }
+.proDashboard .participantGenderPanel[open] > summary::after { content: "⌃"; }
+.proDashboard .participantGenderPanel > summary > span:first-child { display: grid; gap: 2px; }
+.proDashboard .participantGenderPanel > summary small,
+.proDashboard .participantGenderPanel > summary > span:last-child { color: var(--ui-muted); font-size: .72rem; font-weight: 800; }
+.proDashboard .participantGenderPanelIntro { display: grid; gap: 4px; padding: 0 14px 12px; border-top: 1px solid var(--ui-border); }
+.proDashboard .participantGenderPanelIntro p { margin: 10px 0 0; color: var(--ui-muted); font-size: .8rem; line-height: 1.45; }
+.proDashboard .participantGenderPanelIntro strong { color: #6d28d9; font-size: .78rem; }
+.proDashboard .participantGenderPanelList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 14px 14px; }
+.proDashboard .participantGenderPanelList article { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; padding: 10px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface-raised); }
+.proDashboard .participantGenderPanelList article > div:first-child { display: grid; gap: 2px; min-width: 0; }
+.proDashboard .participantGenderPanelList article strong { overflow: hidden; color: var(--ui-text-strong); text-overflow: ellipsis; white-space: nowrap; }
+.proDashboard .participantGenderPanelList article small { color: var(--ui-muted); font-size: .68rem; font-weight: 750; }
+.proDashboard .participantGenderPanelChoices { display: flex; flex: 0 0 auto; gap: 4px; }
+.proDashboard .participantGenderPanelChoices button {
+  min-height: 32px !important;
+  padding: 6px 8px !important;
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface-muted) !important;
+  background-image: none !important;
+  color: var(--ui-text) !important;
+  box-shadow: none !important;
+  font-size: .66rem !important;
+}
+.proDashboard .participantGenderPanelChoices button.selected.masculine { border-color: #2563eb !important; background: #dbeafe !important; color: #1d4ed8 !important; }
+.proDashboard .participantGenderPanelChoices button.selected.feminine { border-color: #a855f7 !important; background: #f3e8ff !important; color: #7e22ce !important; }
+.proDashboard .participantGenderPanelChoices button.clear { color: var(--ui-muted) !important; }
+.proDashboard.theme-dark .participantGenderPanelIntro strong { color: #c4b5fd; }
+.proDashboard.theme-dark .participantGenderPanelChoices button { background: #172436 !important; color: #dbe7f5 !important; border-color: #40516a !important; }
+.proDashboard.theme-dark .participantGenderPanelChoices button.selected.masculine { background: #17356b !important; color: #bfdbfe !important; }
+.proDashboard.theme-dark .participantGenderPanelChoices button.selected.feminine { background: #40205f !important; color: #e9d5ff !important; }
 
 @media (max-width: 1000px) {
   .proDashboard .participantAttendanceColumns {
@@ -24783,6 +24926,14 @@ html[data-theme="dark"] .scheduleGroupSection .matchCardPhase,
     padding-inline: 8px !important;
     font-size: 9px !important;
   }
+
+  .proDashboard .participantGenderPanel > summary { align-items: flex-start; padding: 11px 12px; }
+  .proDashboard .participantGenderPanel > summary > span:last-child { max-width: 95px; text-align: right; }
+  .proDashboard .participantGenderPanelIntro { padding-inline: 12px; }
+  .proDashboard .participantGenderPanelList { grid-template-columns: 1fr; padding: 0 12px 12px; }
+  .proDashboard .participantGenderPanelList article { align-items: stretch; flex-direction: column; }
+  .proDashboard .participantGenderPanelChoices { display: grid; grid-template-columns: 1fr 1fr; }
+  .proDashboard .participantGenderPanelChoices button.clear { grid-column: 1 / -1; }
 
   .scheduleGroupHeader {
     min-height: 44px;

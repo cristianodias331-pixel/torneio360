@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import {
   circuitTieBreakOptions,
@@ -8,6 +8,86 @@ import {
   normalizeCircuitRankingSettings,
 } from "../../domain/circuitRankingSettings.mjs";
 import { rankingCriteriaOptions } from "../../domain/rankingCriteria.mjs";
+import {
+  mergeParticipantGenderRegistries,
+  participantGenderValues,
+  setParticipantGender,
+} from "../../domain/participantGenderRegistry.mjs";
+
+function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
+  const [search, setSearch] = useState("");
+  const normalizedRegistry = useMemo(() => mergeParticipantGenderRegistries(registry), [registry]);
+  const visibleCandidates = useMemo(() => {
+    const query = search.trim().normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
+    return candidates.filter((candidate) => !query || `${candidate.name} ${(candidate.tournaments || []).join(" ")}`
+      .normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").includes(query));
+  }, [candidates, search]);
+  const pendingCount = candidates.filter((candidate) => !normalizedRegistry[candidate.key]?.confirmed).length;
+
+  function chooseGender(candidate, gender) {
+    onChange(setParticipantGender(normalizedRegistry, candidate.name, gender));
+  }
+
+  function applySuggestions() {
+    const next = candidates.reduce((current, candidate) => (
+      candidate.suggestion && candidate.suggestion !== participantGenderValues.unknown
+        ? setParticipantGender(current, candidate.name, candidate.suggestion)
+        : current
+    ), normalizedRegistry);
+    onChange(next);
+  }
+
+  return (
+    <section className="circuitGenderRegistry">
+      <div className="circuitGenderRegistryHeader">
+        <div>
+          <strong>Identificação dos atletas</strong>
+          <span>Confirme somente para separar os rankings masculino e feminino. Isso nunca bloqueia o torneio.</span>
+        </div>
+        <span className={`circuitGenderCounter ${pendingCount ? "pending" : "complete"}`}>
+          {pendingCount ? `${pendingCount} a confirmar` : "Todos confirmados"}
+        </span>
+      </div>
+
+      {candidates.length ? (
+        <>
+          <div className="circuitGenderRegistryTools">
+            <label>
+              <span className="srOnly">Pesquisar atleta</span>
+              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar atleta..." />
+            </label>
+            <button type="button" className="circuitGenderSuggestionButton" onClick={applySuggestions}>
+              Confirmar sugestões conhecidas
+            </button>
+          </div>
+          <div className="circuitGenderCandidateList">
+            {visibleCandidates.map((candidate) => {
+              const entry = normalizedRegistry[candidate.key];
+              const selectedGender = entry?.confirmed ? entry.gender : participantGenderValues.unknown;
+              const suggestionLabel = candidate.suggestion === participantGenderValues.masculine
+                ? "Sugestão: masculino"
+                : candidate.suggestion === participantGenderValues.feminine
+                  ? "Sugestão: feminino"
+                  : "Sistema em dúvida";
+              return (
+                <article key={candidate.key} className={!entry?.confirmed ? "pending" : "confirmed"}>
+                  <div>
+                    <strong>{candidate.name}</strong>
+                    <small>{suggestionLabel}{candidate.tournaments?.length ? ` · ${candidate.tournaments.slice(0, 2).join(", ")}` : ""}</small>
+                  </div>
+                  <div className="circuitGenderChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
+                    <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.masculine} className={selectedGender === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.masculine)}>Masculino</button>
+                    <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.feminine} className={selectedGender === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.feminine)}>Feminino</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
+      ) : <p className="circuitGenderEmpty">Selecione os torneios do circuito para identificar os atletas.</p>}
+    </section>
+  );
+}
 
 export function CircuitTournamentFormatSelector({ value, onChange }) {
   return (
@@ -53,8 +133,14 @@ export function CircuitRankingSettingsEditor({
   inheritedCriteria,
   mixedCriteria = false,
   tournamentFormat = "",
+  genderCandidates = [],
+  arenaGenderRegistry = {},
 }) {
   const settings = normalizeCircuitRankingSettings(value);
+  const effectiveGenderRegistry = useMemo(
+    () => mergeParticipantGenderRegistries(arenaGenderRegistry, settings.genderRegistry),
+    [arenaGenderRegistry, settings.genderRegistry]
+  );
 
   function updateSettings(patch) {
     onChange(normalizeCircuitRankingSettings({ ...settings, ...patch }));
@@ -70,6 +156,23 @@ export function CircuitRankingSettingsEditor({
           : normalizeCircuitPointValue(pointValue)),
     };
     updateSettings({ points });
+  }
+
+  function renderGenderDivision() {
+    return (
+      <div className="circuitGenderDivision">
+        <div className="circuitSettingsTitleRow"><div><strong>Como exibir campeonatos de duplas mistas?</strong><span>O organizador confirma cada atleta; a ordem dos nomes não interfere.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os rankings masculino e feminino" eyebrow="Duplas mistas" title="Rankings separados por gênero" intro="A separação é opcional e não interfere nos jogos ou nos dados já salvos." sections={[{ title: "Ranking geral", content: <p>Todos os atletas aparecem em uma única tabela.</p> }, { title: "Masculino e feminino", content: <p>Cada atleta recebe integralmente seus resultados ou pontos, mas aparece no ranking confirmado pelo organizador.</p> }, { title: "Sistema em dúvida", content: <p>A plataforma pode sugerir uma opção usando a modalidade e confirmações anteriores da própria arena. Quando não houver segurança, mostrará “A confirmar”.</p> }, { title: "Sem bloqueio", content: <p>Não informar o gênero nunca impede cadastro, sorteio, jogos ou placares. O atleta permanece no ranking geral até a confirmação.</p> }]} /></div>
+        <div className="circuitCompactChoices" role="radiogroup" aria-label="Divisão do ranking individual">
+          <button type="button" role="radio" aria-checked={settings.rankingDivision === "general"} className={settings.rankingDivision === "general" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "general" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "general" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Ranking geral</strong></span></button>
+          <button type="button" role="radio" aria-checked={settings.rankingDivision === "gender"} className={settings.rankingDivision === "gender" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "gender" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "gender" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Masculino e feminino</strong></span></button>
+        </div>
+        {settings.rankingDivision === "gender" ? <CircuitGenderRegistryEditor
+          candidates={genderCandidates}
+          registry={effectiveGenderRegistry}
+          onChange={(genderRegistry) => updateSettings({ genderRegistry })}
+        /> : null}
+      </div>
+    );
   }
 
   const cupPointFields = [
@@ -131,13 +234,6 @@ export function CircuitRankingSettingsEditor({
               <button type="button" role="radio" aria-checked={settings.identity === "individual"} className={settings.identity === "individual" ? "selected" : ""} onClick={() => updateSettings({ identity: "individual" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.identity === "individual" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Individual</strong></span></button>
               <button type="button" role="radio" aria-checked={settings.identity === "team"} className={settings.identity === "team" ? "selected" : ""} onClick={() => updateSettings({ identity: "team" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.identity === "team" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Por dupla</strong></span></button>
             </div>
-            {settings.identity === "individual" ? <div className="circuitGenderDivision">
-              <div className="circuitSettingsTitleRow"><div><strong>Como exibir campeonatos de duplas mistas?</strong><span>Na dupla, o 1º nome representa o masculino e o 2º, o feminino</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os rankings masculino e feminino" eyebrow="Duplas mistas" title="Rankings separados por gênero" intro="A separação é uma escolha do organizador e não tenta descobrir o gênero pelo nome." sections={[{ title: "Ranking geral", content: <p>Todos os atletas aparecem em uma única tabela.</p> }, { title: "Masculino e feminino", content: <p>Em cada dupla fixa mista, o primeiro atleta entra no Ranking Masculino e o segundo no Ranking Feminino. Ambos recebem integralmente os pontos conquistados pela dupla.</p> }, { title: "Padronização", content: <p>Cadastre sempre o homem no primeiro campo e a mulher no segundo. A plataforma usa somente essa posição, sem tentar interpretar nomes.</p> }]} /></div>
-              <div className="circuitCompactChoices" role="radiogroup" aria-label="Divisão do ranking individual">
-                <button type="button" role="radio" aria-checked={settings.rankingDivision === "general"} className={settings.rankingDivision === "general" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "general" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "general" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Ranking geral</strong></span></button>
-                <button type="button" role="radio" aria-checked={settings.rankingDivision === "gender"} className={settings.rankingDivision === "gender" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "gender" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "gender" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Masculino e feminino</strong></span></button>
-              </div>
-            </div> : null}
           </section>
 
           {tournamentFormat === circuitTournamentFormats.placement ? <section>
@@ -160,6 +256,8 @@ export function CircuitRankingSettingsEditor({
           </section>
         </div>
       )}
+
+      {(settings.mode === "performance" || settings.identity === "individual") ? renderGenderDivision() : null}
 
       <small className="circuitIdentityHint">O ranking unifica automaticamente nomes que diferem somente pela acentuação. Use nome e sobrenome para diferenciar homônimos.</small>
     </div>

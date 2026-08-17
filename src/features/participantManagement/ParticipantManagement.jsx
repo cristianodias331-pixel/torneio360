@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { orderFixedMixedPair } from "../../fixedMixedTeamOrder.mjs";
 import { formatParticipantName } from "../../domain/participantNames.mjs";
 import { normalizeParticipantAttendance } from "../../domain/participantAttendance.mjs";
+import {
+  collectTournamentGenderCandidates,
+  getParticipantGender,
+  mergeParticipantGenderRegistries,
+  participantGenderValues,
+} from "../../domain/participantGenderRegistry.mjs";
 import {
   isCupType,
   isIndividualCupType,
@@ -63,7 +68,7 @@ function sanitizeParticipantName(value) {
   return formatParticipantName(sanitized);
 }
 
-function parseParticipantList(value, { splitTeams = false, fixedMixedTeams = false } = {}) {
+function parseParticipantList(value, { splitTeams = false } = {}) {
   const names = [];
   let ignored = 0;
   let recognizedTeams = 0;
@@ -86,7 +91,7 @@ function parseParticipantList(value, { splitTeams = false, fixedMixedTeams = fal
 
       if (splitTeams && cleanedNames.length === 2) {
         recognizedTeams += 1;
-        names.push(...(fixedMixedTeams ? orderFixedMixedPair(...cleanedNames) : cleanedNames));
+        names.push(...cleanedNames);
         return;
       }
 
@@ -187,8 +192,7 @@ function buildParticipantImportPreview(config, data, drafts, mode) {
   }
 
   if (isTeamParticipantConfig(config)) {
-    const fixedMixedTeams = isFixedMixedTeamConfig(config);
-    const parsed = parseParticipantList(drafts.general, { splitTeams: true, fixedMixedTeams });
+    const parsed = parseParticipantList(drafts.general, { splitTeams: true });
     const currentValues = data.players.teams.flatMap((team) => [team.a, team.b]);
     const result = fillParticipantSlots(
       currentValues,
@@ -323,10 +327,10 @@ export default function ParticipantImportModal({ type, data, onClose, onApply, m
             <h2 id="participant-import-title">Colar lista de nomes</h2>
             <p>
               {isFixedMixedTeams
-                ? "Uma dupla mista por linha. O homem será colocado no primeiro campo e a mulher no segundo. Separe os nomes por +, /, -, e ou &. Símbolos e emojis em qualquer posição serão ignorados."
+                ? "Uma dupla por linha. A ordem colada será preservada; o gênero poderá ser confirmado separadamente para o ranking. Separe os nomes por +, /, -, e ou &. Símbolos e emojis em qualquer posição serão ignorados. Use nome e sobrenome."
                 : isTeams
-                ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis em qualquer posição serão ignorados."
-                : "Numeração, marcadores e emojis em qualquer posição serão retirados automaticamente."}
+                ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis em qualquer posição serão ignorados. Use nome e sobrenome."
+                : "Numeração, marcadores e emojis em qualquer posição serão retirados automaticamente. Use nome e sobrenome."}
             </p>
           </div>
           <button type="button" className="participantImportClose" onClick={onClose} aria-label="Fechar importação">×</button>
@@ -434,6 +438,55 @@ function ParticipantAttendanceButton({ confirmed, onChange }) {
     >
       {confirmed ? "Confirmado" : "Pendente"}
     </button>
+  );
+}
+
+export function ParticipantGenderPanel({ type, data, knownRegistry = {}, onChange, modalityConfig }) {
+  const config = modalityConfig[type];
+  const teamFormat = config && isTeamParticipantConfig(config);
+  const candidates = useMemo(() => {
+    if (!teamFormat) return [];
+    const collected = collectTournamentGenderCandidates({ type, data, name: data.eventName }, config);
+    return [...new Map(collected.map((candidate) => [candidate.key, candidate])).values()];
+  }, [config, data, teamFormat, type]);
+  const effectiveRegistry = useMemo(
+    () => mergeParticipantGenderRegistries(knownRegistry, data.participantGenders),
+    [data.participantGenders, knownRegistry]
+  );
+
+  if (!teamFormat || candidates.length === 0) return null;
+
+  return (
+    <details className="participantGenderPanel">
+      <summary>
+        <span><strong>Gênero para rankings</strong><small>Opcional — não interfere no torneio</small></span>
+        <span>{candidates.filter((candidate) => getParticipantGender(effectiveRegistry, candidate.name, { confirmedOnly: true }) !== participantGenderValues.unknown).length} de {candidates.length} identificados</span>
+      </summary>
+      <div className="participantGenderPanelIntro">
+        <p>Confirme apenas quando quiser separar rankings masculino e feminino. Se não informar, nada será gravado como definitivo e o torneio seguirá normalmente.</p>
+        <strong>Use sempre nome e sobrenome para evitar confundir atletas com o mesmo primeiro nome.</strong>
+      </div>
+      <div className="participantGenderPanelList">
+        {candidates.map((candidate) => {
+          const selected = getParticipantGender(effectiveRegistry, candidate.name, { confirmedOnly: true });
+          const suggested = candidate.suggestion === participantGenderValues.masculine
+            ? "Sugestão: masculino"
+            : candidate.suggestion === participantGenderValues.feminine
+              ? "Sugestão: feminino"
+              : "Sem sugestão segura";
+          return (
+            <article key={candidate.key}>
+              <div><strong>{candidate.name}</strong><small>{suggested}</small></div>
+              <div className="participantGenderPanelChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
+                <button type="button" role="radio" aria-checked={selected === participantGenderValues.masculine} className={selected === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => onChange(candidate.name, participantGenderValues.masculine)}>Masculino</button>
+                <button type="button" role="radio" aria-checked={selected === participantGenderValues.feminine} className={selected === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => onChange(candidate.name, participantGenderValues.feminine)}>Feminino</button>
+                <button type="button" className="clear" onClick={() => onChange(candidate.name, participantGenderValues.unknown)}>Não informar</button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 

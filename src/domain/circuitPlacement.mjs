@@ -9,6 +9,18 @@ import { isCupType, isMixedType } from "./modalityClassification.mjs";
 import { defaultRankingCriteria } from "./rankingCriteria.mjs";
 import { getScoreWinnerSide, getWinningScore } from "./scoreRules.mjs";
 import { calculateCircuitTournamentRankingRows } from "./tournamentRanking.mjs";
+import {
+  participantGenderValues,
+  resolveTournamentParticipantGender,
+} from "./participantGenderRegistry.mjs";
+
+function resolveCircuitGenderGroup({ tournament, settings, name, fallbackGender }) {
+  if (normalizeCircuitRankingSettings(settings).rankingDivision !== "gender") return "geral";
+  const gender = resolveTournamentParticipantGender({ tournament, settings, name, fallbackGender });
+  return gender === participantGenderValues.masculine || gender === participantGenderValues.feminine
+    ? gender
+    : "geral";
+}
 
 export function isCompletedCircuitGame(game, data) {
   const resolved = resolveBracketGame(game, data?.brackets || [], data || {});
@@ -80,9 +92,12 @@ export function calculateCupPlacementRows({
       ...base,
       id: `${id}:${athleteIndex}`,
       name,
-      groupKey: normalizedSettings.rankingDivision === "gender"
-        ? (athleteIndex === 0 ? "masculino" : "feminino")
-        : "geral",
+      groupKey: resolveCircuitGenderGroup({
+        tournament,
+        settings: normalizedSettings,
+        name,
+        fallbackGender: participantGenderValues.unknown,
+      }),
     }));
   });
 }
@@ -117,7 +132,14 @@ export function calculateRankPlacementRows({
       : normalizedSettings.points.otherPositions;
     const base = {
       ...row,
-      groupKey,
+      groupKey: normalizedSettings.rankingDivision === "gender"
+        ? resolveCircuitGenderGroup({
+          tournament,
+          settings: normalizedSettings,
+          name: row.name,
+          fallbackGender: groupKey,
+        })
+        : groupKey,
       circuitPoints: points,
       placementKey: `position${position}`,
       placementLabel: getCircuitPlacementLabel("", position),
@@ -134,8 +156,13 @@ export function calculateRankPlacementRows({
       id: `${row.id}:${athleteIndex}`,
       name,
       groupKey: normalizedSettings.rankingDivision === "gender"
-        ? (athleteIndex === 0 ? "masculino" : "feminino")
-        : groupKey,
+        ? resolveCircuitGenderGroup({
+          tournament,
+          settings: normalizedSettings,
+          name,
+          fallbackGender: participantGenderValues.unknown,
+        })
+        : base.groupKey,
     }));
   }));
 }
