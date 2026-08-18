@@ -467,14 +467,16 @@ ${url}`;
 
 const ARENA_DIRECTORY_REFRESH_INTERVAL_MS = 60_000;
 const ARENA_DIRECTORY_RETRY_DELAY_MS = 450;
-const ARENA_DIRECTORY_CACHE_KEY = "t360.public-arena-directory.v1";
+const ARENA_DIRECTORY_CACHE_KEY = "t360.public-arena-directory.v2";
 const ARENA_DIRECTORY_CACHE_MAX_AGE_MS = 5 * 60_000;
-const PUBLIC_ARENA_BUNDLE_CACHE_PREFIX = "t360.public-arena-bundle.v1";
+const PUBLIC_ARENA_BUNDLE_CACHE_PREFIX = "t360.public-arena-bundle.v2";
 const PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS = 30 * 60_000;
 const PUBLIC_ARENA_REQUEST_TIMEOUT_MS = 12_000;
 let publicArenaDirectoryRequestInFlight = null;
 const publicArenaBundleMemoryCache = new Map();
 const publicTournamentDetailMemoryCache = new Map();
+const publicCircuitDetailMemoryCache = new Map();
+const publicArenaPhotoMemoryCache = new Map();
 
 function readPublicArenaCache(key, maxAge) {
   if (typeof window === "undefined") return null;
@@ -656,6 +658,69 @@ async function fetchPublicTournamentDetail(publicId) {
   }
 
   return { data: null, error: lastError, fromCache: false };
+}
+
+async function fetchPublicCircuitDetail(circuitId) {
+  const normalizedCircuitId = String(circuitId || "").trim();
+  if (!normalizedCircuitId) {
+    return { data: null, error: new Error("Identificador público do circuito não informado.") };
+  }
+
+  const cached = publicCircuitDetailMemoryCache.get(normalizedCircuitId);
+  if (cached?.data && Date.now() - cached.savedAt <= PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS) {
+    return { data: cached.data, error: null, fromCache: true };
+  }
+
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
+
+    try {
+      const result = await supabase
+        .rpc("get_public_circuit", { p_circuit_id: normalizedCircuitId })
+        .abortSignal(controller.signal);
+
+      if (!result.error && result.data?.id) {
+        publicCircuitDetailMemoryCache.set(normalizedCircuitId, {
+          data: result.data,
+          savedAt: Date.now(),
+        });
+        return { data: result.data, error: null, fromCache: false };
+      }
+
+      lastError = result.error || new Error("Circuito público não encontrado.");
+    } catch (error) {
+      lastError = error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+
+    if (attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
+    }
+  }
+
+  return { data: null, error: lastError, fromCache: false };
+}
+
+async function fetchPublicArenaPhoto(arenaId) {
+  const normalizedArenaId = String(arenaId || "").trim();
+  if (!normalizedArenaId) return "";
+  if (publicArenaPhotoMemoryCache.has(normalizedArenaId)) {
+    return publicArenaPhotoMemoryCache.get(normalizedArenaId) || "";
+  }
+
+  try {
+    const result = await supabase.rpc("get_public_arena_photo", {
+      p_organizer_id: normalizedArenaId,
+    });
+    const photoUrl = result.error ? "" : String(result.data || "");
+    publicArenaPhotoMemoryCache.set(normalizedArenaId, photoUrl);
+    return photoUrl;
+  } catch (error) {
+    return "";
+  }
 }
 
 function getAutomaticEventStatus(endDate) {
@@ -3510,6 +3575,51 @@ function openOrganizerPanel() {
   window.location.assign(url.toString());
 }
 
+function LazyArenaPhoto({ arena, alt }) {
+  const arenaId = String(arena?.id || "");
+  const initialSource = String(arena?.photo_url || "");
+  const [source, setSource] = useState(initialSource);
+  const triggerRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    let observer = null;
+    setSource(initialSource);
+
+    if (initialSource || !arena?.has_photo || !arenaId) {
+      return () => { active = false; };
+    }
+
+    const loadPhoto = async () => {
+      const photoUrl = await fetchPublicArenaPhoto(arenaId);
+      if (active && photoUrl) setSource(photoUrl);
+    };
+
+    if (typeof window.IntersectionObserver === "function" && triggerRef.current) {
+      observer = new window.IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer?.disconnect();
+        void loadPhoto();
+      }, { rootMargin: "240px" });
+      observer.observe(triggerRef.current);
+    } else {
+      void loadPhoto();
+    }
+
+    return () => {
+      active = false;
+      observer?.disconnect();
+    };
+  }, [arenaId, arena?.has_photo, initialSource]);
+
+  if (source) {
+    return <img src={source} alt={alt || "Foto da arena"} loading="lazy" decoding="async" />;
+  }
+
+  const arenaName = arena?.arena_name || arena?.name || "Arena";
+  return <span ref={triggerRef}>{arenaName.slice(0, 2).toUpperCase()}</span>;
+}
+
 function PublicArenaDirectorySection({ title = "Encontre uma arena", description = "Acompanhe torneios, circuitos, jogos e rankings sem precisar fazer login." }) {
   const [initialDirectoryCache] = useState(() => readPublicArenaDirectoryCache());
   const [arenas, setArenas] = useState(() => initialDirectoryCache || []);
@@ -3585,6 +3695,7 @@ function PublicArenaDirectorySection({ title = "Encontre uma arena", description
       error={error}
       arenas={filteredArenas}
       onOpenArena={(arena) => window.location.assign(getArenaPublicUrl(arena.id))}
+      ArenaPhoto={LazyArenaPhoto}
     />
   );
 }
@@ -9745,7 +9856,7 @@ setNewPublicInfo({
     {filteredArenaProfiles.map((arena) => (
       <article className="arenaFeedCard" key={arena.id}>
         <div className="arenaFeedCover registeredArenaCover">
-          {arena.photo_url ? <img src={arena.photo_url} alt={arena.arena_name || arena.name || "Arena"} /> : <span>{(arena.arena_name || arena.name || "Arena").slice(0, 2).toUpperCase()}</span>}
+          <LazyArenaPhoto arena={arena} alt={arena.arena_name || arena.name || "Arena"} />
         </div>
         <strong>{arena.arena_name || arena.name || "Arena cadastrada"}</strong>
         <small className="arenaFeedOrganizer"><UserRound aria-hidden="true" /> Organizador: {arena.name || "Não informado"}</small>
@@ -15222,6 +15333,44 @@ function PublicArenaLoadingScreen() {
   );
 }
 
+function normalizePublicCircuitForDisplay(circuit, { directoryEntry = true } = {}) {
+  const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
+  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings);
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
+  const rankingGroups = (circuit?.ranking_groups || []).map((group) => ({
+    ...group,
+    rows: [...(group.rows || [])].sort((first, second) => {
+      if (placementMode) {
+        const pointDifference = Number(second.circuitPoints || second.circuit_points || 0) - Number(first.circuitPoints || first.circuit_points || 0);
+        if (pointDifference !== 0) return pointDifference;
+        for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
+          if (criterion === "bestStage") {
+            const difference = compareCircuitStageScores(first, second);
+            if (difference !== 0) return difference;
+            continue;
+          }
+          const option = circuitTieBreakOptions.find((item) => item.value === criterion);
+          const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
+          if (difference !== 0) return difference;
+        }
+        const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
+        if (drawDifference !== 0) return drawDifference;
+      }
+      for (const key of criteria.order) {
+        const difference = Number(second[key] || 0) - Number(first[key] || 0);
+        if (difference !== 0) return difference;
+      }
+      return String(first.name || "").localeCompare(String(second.name || ""), "pt-BR");
+    }),
+  }));
+
+  return {
+    ...circuit,
+    directoryEntry,
+    ranking_groups: rankingGroups,
+  };
+}
+
 function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [loading, setLoading] = useState(true);
   const [minimumLoadingElapsed, setMinimumLoadingElapsed] = useState(false);
@@ -15232,6 +15381,23 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [selectedCircuit, setSelectedCircuit] = useState(null);
   const [openingPublicId, setOpeningPublicId] = useState(null);
+  const [openingCircuitId, setOpeningCircuitId] = useState(null);
+
+  function loadProfilePhotoInBackground(profile) {
+    const profileId = String(profile?.id || "");
+    if (!profileId || profile?.photo_url || !profile?.has_photo) return;
+
+    void fetchPublicArenaPhoto(profileId).then((photoUrl) => {
+      if (!photoUrl) return;
+      setBundle((current) => {
+        if (String(current?.profile?.id || "") !== profileId) return current;
+        return {
+          ...current,
+          profile: { ...current.profile, photo_url: photoUrl },
+        };
+      });
+    });
+  }
 
   async function loadBundle({ silent = false } = {}) {
     if (!silent) setLoading(true);
@@ -15245,40 +15411,12 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
         setBundle(null);
       }
     } else {
-      const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
-        const criteria = getRankingCriteria(circuit.ranking_criteria || defaultRankingCriteria);
-        const rankingSettings = normalizeCircuitRankingSettings(circuit.ranking_settings);
-        const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
-        const rankingGroups = (circuit.ranking_groups || []).map((group) => ({
-          ...group,
-          rows: [...(group.rows || [])].sort((first, second) => {
-            if (placementMode) {
-              const pointDifference = Number(second.circuitPoints || second.circuit_points || 0) - Number(first.circuitPoints || first.circuit_points || 0);
-              if (pointDifference !== 0) return pointDifference;
-              for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
-                if (criterion === "bestStage") {
-                  const difference = compareCircuitStageScores(first, second);
-                  if (difference !== 0) return difference;
-                  continue;
-                }
-                const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-                const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
-                if (difference !== 0) return difference;
-              }
-              const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
-              if (drawDifference !== 0) return drawDifference;
-            }
-            for (const key of criteria.order) {
-              const difference = Number(second[key] || 0) - Number(first[key] || 0);
-              if (difference !== 0) return difference;
-            }
-            return String(first.name || "").localeCompare(String(second.name || ""), "pt-BR");
-          }),
-        }));
-        return { ...circuit, ranking_groups: rankingGroups };
-      });
+      const normalizedCircuits = (result.data.circuits || []).map((circuit) => (
+        normalizePublicCircuitForDisplay(circuit, { directoryEntry: true })
+      ));
       const normalizedBundle = { ...result.data, circuits: normalizedCircuits };
       setBundle(normalizedBundle);
+      loadProfilePhotoInBackground(normalizedBundle.profile);
       setSelectedTournament((current) => {
         if (!current) return null;
         const directoryItem = (normalizedBundle.tournaments || []).find((item) => item.id === current.id);
@@ -15290,7 +15428,12 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       });
       setSelectedCircuit((current) => {
         if (!current) return null;
-        return normalizedCircuits.find((item) => String(item.id) === String(current.id)) || null;
+        const directoryItem = normalizedCircuits.find((item) => String(item.id) === String(current.id));
+        if (!directoryItem) return null;
+        if (current.directoryEntry !== true) {
+          return { ...directoryItem, ...current };
+        }
+        return directoryItem;
       });
       setError("");
     }
@@ -15307,6 +15450,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     const cachedBundle = readPublicArenaBundleCache({ arenaId, publicId });
     if (cachedBundle?.profile) {
       setBundle(cachedBundle);
+      loadProfilePhotoInBackground(cachedBundle.profile);
       setError("");
       setLoading(false);
       void loadBundle({ silent: true });
@@ -15340,6 +15484,24 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     }
 
     setSelectedTournament({ ...result.data, directoryEntry: false });
+  }
+
+  async function openPublicCircuit(item) {
+    if (!item?.directoryEntry) {
+      setSelectedCircuit(item);
+      return;
+    }
+
+    setOpeningCircuitId(item.id);
+    const result = await fetchPublicCircuitDetail(item.id);
+    setOpeningCircuitId(null);
+
+    if (result.error || !result.data) {
+      console.error(result.error);
+      return;
+    }
+
+    setSelectedCircuit(normalizePublicCircuitForDisplay(result.data, { directoryEntry: false }));
   }
 
   if (loading || !minimumLoadingElapsed) {
@@ -15418,8 +15580,9 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       onArenaTabChange={setActiveArenaTab}
       onStatusTabChange={setActiveStatusTab}
       onOpenTournament={openPublicTournament}
-      onOpenCircuit={setSelectedCircuit}
+      onOpenCircuit={openPublicCircuit}
       openingPublicId={openingPublicId}
+      openingCircuitId={openingCircuitId}
       getWhatsAppUrl={getBrazilianWhatsAppUrl}
       getCircuitStatus={(item) => normalizeCircuitStatus(getAutomaticEventStatus(item.end_date || item.endDate))}
       getCircuitDateLabel={(item) => item.start_date ? `${formatDateBR(item.start_date)} até ${formatDateBR(item.end_date)}` : ""}
