@@ -20893,7 +20893,7 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   place-items: center;
   overflow: hidden;
   min-height: 100dvh;
-  background: #030911;
+  background: radial-gradient(circle at 50% 48%, #071321 0%, #030911 58%, #01050a 100%);
   isolation: isolate;
 }
 
@@ -20902,32 +20902,19 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: #030911;
-}
-
-.publicArenaLoadingBackdrop {
-  position: absolute;
-  inset: -8%;
-  width: 116%;
-  height: 116%;
-  object-fit: cover;
-  filter: blur(34px) brightness(0.48) saturate(0.82);
-  opacity: 0.92;
-  transform: scale(1.06);
-  pointer-events: none;
+  background: radial-gradient(circle at 50% 48%, rgba(14, 33, 55, 0.54), transparent 58%);
 }
 
 .publicArenaLoadingVideo {
   position: relative;
   z-index: 1;
-  width: min(100vw, 56.25dvh);
-  height: min(100dvh, 177.78vw);
-  max-width: 100vw;
-  max-height: 100dvh;
-  object-fit: contain;
+  width: min(88vw, 540px, 70dvh);
+  height: min(88vw, 540px, 70dvh);
+  object-fit: cover;
+  object-position: center;
   background: transparent;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, #000 0%, #000 58%, rgba(0, 0, 0, 0.88) 66%, rgba(0, 0, 0, 0.38) 76%, transparent 88%);
+  mask-image: radial-gradient(circle at center, #000 0%, #000 58%, rgba(0, 0, 0, 0.88) 66%, rgba(0, 0, 0, 0.38) 76%, transparent 88%);
   pointer-events: none;
 }
 
@@ -20954,12 +20941,8 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 
 @media (max-width: 640px) {
   .publicArenaLoadingVideo {
-    width: min(100vw, 56.25dvh);
-    height: min(100dvh, 177.78vw);
-  }
-
-  .publicArenaLoadingBackdrop {
-    filter: blur(24px) brightness(0.5) saturate(0.86);
+    width: min(92vw, 430px, 62dvh);
+    height: min(92vw, 430px, 62dvh);
   }
 
   .publicArenaLoadingCaption {

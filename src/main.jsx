@@ -15031,16 +15031,6 @@ function PublicArenaLoadingScreen() {
   return (
     <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da arena">
       <video
-        className="publicArenaLoadingBackdrop"
-        src="/arena-profile-loading.mp4"
-        autoPlay
-        muted
-        playsInline
-        loop
-        preload="auto"
-        aria-hidden="true"
-      />
-      <video
         className="publicArenaLoadingVideo"
         src="/arena-profile-loading.mp4"
         autoPlay
