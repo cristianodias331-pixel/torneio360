@@ -15028,16 +15028,19 @@ function PublicArenaTournamentCards(props) {
 const PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000;
 
 function PublicArenaLoadingScreen() {
+  const [videoReady, setVideoReady] = useState(false);
+
   return (
     <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da arena">
       <video
-        className="publicArenaLoadingVideo"
+        className={`publicArenaLoadingVideo${videoReady ? " isReady" : ""}`}
         src="/arena-profile-loading.mp4"
         autoPlay
         muted
         playsInline
         loop
         preload="auto"
+        onPlaying={() => window.requestAnimationFrame(() => setVideoReady(true))}
         aria-hidden="true"
       />
       <div className="publicArenaLoadingCaption">Carregando perfil da arena...</div>
