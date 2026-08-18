@@ -20905,17 +20905,35 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   background: #030911;
 }
 
+.publicArenaLoadingBackdrop {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  object-fit: cover;
+  filter: blur(34px) brightness(0.48) saturate(0.82);
+  opacity: 0.92;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+
 .publicArenaLoadingVideo {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1;
+  width: min(100vw, 56.25dvh);
+  height: min(100dvh, 177.78vw);
   max-width: 100vw;
   max-height: 100dvh;
   object-fit: contain;
-  background: #030911;
+  background: transparent;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  pointer-events: none;
 }
 
 .publicArenaLoadingCaption {
   position: absolute;
+  z-index: 2;
   left: 50%;
   bottom: max(22px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
@@ -20936,8 +20954,12 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 
 @media (max-width: 640px) {
   .publicArenaLoadingVideo {
-    width: 100vw;
-    height: 100dvh;
+    width: min(100vw, 56.25dvh);
+    height: min(100dvh, 177.78vw);
+  }
+
+  .publicArenaLoadingBackdrop {
+    filter: blur(24px) brightness(0.5) saturate(0.86);
   }
 
   .publicArenaLoadingCaption {
