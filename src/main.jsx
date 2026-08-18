@@ -167,10 +167,9 @@ import {
   normalizeCourtNumbers,
 } from "./domain/courtNumbers.mjs";
 import {
-  formatMatchDuration,
+  formatMatchTotalDuration,
   getMatchElapsedSeconds,
   getMatchTimerFields,
-  getMatchTimerTimestamp,
   resetMatchTimer,
   startMatchTimer,
   stopMatchTimer,
@@ -1892,25 +1891,15 @@ function getTournamentTimingSummary(data = {}, now = Date.now()) {
       || Boolean(game?.matchTimerStartedAt)
       || Number(game?.matchTimerElapsedSeconds || 0) > 0
     ));
-  const firstStarts = timedGames
-    .map((game) => getMatchTimerTimestamp(game.matchTimerFirstStartedAt || game.matchTimerStartedAt))
-    .filter((timestamp) => timestamp !== null);
-  const finishTimes = timedGames
-    .map((game) => getMatchTimerTimestamp(game.matchTimerFinishedAt))
-    .filter((timestamp) => timestamp !== null);
-  const hasActiveGame = timedGames.some((game) => game.inProgress === true && game.matchTimerStartedAt);
-  const firstStartedAt = firstStarts.length ? Math.min(...firstStarts) : null;
-  const lastRecordedAt = hasActiveGame
-    ? now
-    : finishTimes.length
-      ? Math.max(...finishTimes)
-      : firstStartedAt;
 
   return {
     timedGames: timedGames.length,
-    durationSeconds: firstStartedAt !== null && lastRecordedAt !== null
-      ? Math.max(0, Math.floor((lastRecordedAt - firstStartedAt) / 1000))
-      : 0,
+    // O tempo geral representa trabalho efetivo de quadra. Intervalos entre
+    // partidas (inclusive de um dia para o outro) nunca entram na soma.
+    durationSeconds: timedGames.reduce(
+      (total, game) => total + getMatchElapsedSeconds(game, now),
+      0
+    ),
     complete: operationalGames.length > 0 && operationalGames.every((item) => {
       const storedGame = item.storedGame || item.game;
       return isGameFinished(item.game, winningScore)
@@ -1939,7 +1928,7 @@ function TournamentTimingSummary({ data, compact = false }) {
     <TournamentTimingSummaryView
       summary={summary}
       compact={compact}
-      formatDuration={formatMatchDuration}
+      formatDuration={formatMatchTotalDuration}
     />
   );
 }
