@@ -3218,6 +3218,16 @@ const timerTestGame = { inProgress: true, matchTimerElapsedSeconds: 30 };
 const timerStart = Date.parse("2026-08-16T12:00:00.000Z");
 startMatchTimer(timerTestGame, timerStart);
 assert.equal(getMatchElapsedSeconds(timerTestGame, timerStart + 15000), 45, "O cronômetro não soma o trecho ativo ao tempo salvo.");
+assert.equal(
+  getMatchElapsedSeconds({
+    matchTimerElapsedSeconds: 45,
+    matchTimerStartedAt: new Date(timerStart).toISOString(),
+    matchTimerFinishedAt: new Date(timerStart + 45000).toISOString(),
+    inProgress: true,
+  }, timerStart + 3600000),
+  45,
+  "Uma partida finalizada voltou a acumular tempo por causa de estado antigo."
+);
 stopMatchTimer(timerTestGame, { finished: true, now: timerStart + 15000 });
 assert.equal(timerTestGame.matchTimerElapsedSeconds, 45, "O cronômetro não preserva o tempo quando o placar é finalizado.");
 assert.equal(formatMatchDuration(3661), "61:01", "O cronômetro não mantém minutos acima de 59 no formato MM:SS.");

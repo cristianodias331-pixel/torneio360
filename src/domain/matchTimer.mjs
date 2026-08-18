@@ -5,6 +5,21 @@ export function getMatchTimerTimestamp(value) {
 
 export function getMatchElapsedSeconds(game, now = Date.now()) {
   const storedSeconds = Math.max(0, Math.floor(Number(game?.matchTimerElapsedSeconds || 0)));
+  const finishedAt = getMatchTimerTimestamp(game?.matchTimerFinishedAt);
+
+  // Um término registrado sempre congela o cronômetro. Essa precedência
+  // também corrige partidas antigas que ficaram com `inProgress` ou
+  // `matchTimerStartedAt` salvos por uma sincronização anterior.
+  if (finishedAt !== null) {
+    if (storedSeconds > 0) return storedSeconds;
+    const firstStartedAt = getMatchTimerTimestamp(
+      game?.matchTimerFirstStartedAt || game?.matchTimerStartedAt
+    );
+    return firstStartedAt === null
+      ? 0
+      : Math.max(0, Math.floor((finishedAt - firstStartedAt) / 1000));
+  }
+
   const startedAt = getMatchTimerTimestamp(game?.matchTimerStartedAt);
   if (game?.inProgress !== true || startedAt === null) return storedSeconds;
   return storedSeconds + Math.max(0, Math.floor((now - startedAt) / 1000));

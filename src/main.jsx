@@ -1910,9 +1910,13 @@ function getTournamentTimingSummary(data = {}, now = Date.now()) {
 }
 
 function TournamentTimingSummary({ data, compact = false }) {
+  const winningScore = getWinningScore(data);
   const hasActiveTimer = getTournamentOperationalGames(data).some((item) => {
     const game = item.storedGame || item.game;
-    return game?.inProgress === true && Boolean(game?.matchTimerStartedAt);
+    return !isGameFinished(item.game, winningScore)
+      && !game?.matchTimerFinishedAt
+      && game?.inProgress === true
+      && Boolean(game?.matchTimerStartedAt);
   });
   const [now, setNow] = useState(() => Date.now());
 
