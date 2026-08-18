@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { isMixedType } from "../../domain/modalityClassification.mjs";
 import {
@@ -54,16 +54,52 @@ export default function RankingView({ ranking, type, rankingCriteria, shareConte
   );
 }
 
-export function RankingTable({ title, rows, rankingCriteria, showPodium = true, shareConfig = null, columns = null, showGames = true, circuitAction = null, CircuitButton }) {
+export function RankingTable({
+  title,
+  rows,
+  rankingCriteria,
+  showPodium = true,
+  shareConfig = null,
+  columns = null,
+  showGames = true,
+  circuitAction = null,
+  CircuitButton,
+  progressive = false,
+  initialRowCount = 30,
+  searchPlaceholder = "Pesquisar atleta ou dupla",
+}) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const pageSize = Math.max(10, Number(initialRowCount) || 30);
+  const [rankingSearch, setRankingSearch] = useState("");
+  const [visibleRowCount, setVisibleRowCount] = useState(pageSize);
   const criteria = getRankingCriteria(rankingCriteria);
   const baseColumns = Array.isArray(columns) && columns.length
     ? columns
     : criteria.order.map((key) => ({ key, label: getRankingColumnLabel(key) }));
-  const hasPlayTime = rows.some((row) => Number(row.playTimeSeconds || 0) > 0);
+  const hasPlayTime = safeRows.some((row) => Number(row.playTimeSeconds || 0) > 0);
   const visibleColumns = hasPlayTime && !baseColumns.some(({ key }) => key === "playTimeSeconds")
     ? [...baseColumns, { key: "playTimeSeconds", label: getRankingColumnLabel("playTimeSeconds") }]
     : baseColumns;
   const effectiveShareConfig = shareConfig ? { ...shareConfig, rankingCriteria: criteria.value, columns: visibleColumns } : null;
+  const indexedRows = useMemo(
+    () => safeRows.map((row, rankingIndex) => ({ row, rankingIndex })),
+    [safeRows]
+  );
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = rankingSearch.trim().toLocaleLowerCase("pt-BR");
+    if (!normalizedSearch) return indexedRows;
+    return indexedRows.filter(({ row }) => (
+      String(row?.name || "").toLocaleLowerCase("pt-BR").includes(normalizedSearch)
+    ));
+  }, [indexedRows, rankingSearch]);
+  const renderedRows = progressive
+    ? filteredRows.slice(0, visibleRowCount)
+    : filteredRows;
+  const showProgressiveControls = progressive && safeRows.length > pageSize;
+
+  useEffect(() => {
+    setVisibleRowCount(pageSize);
+  }, [pageSize, rankingSearch, safeRows]);
 
   return (
     <div className="rankingTablePanel">
@@ -74,6 +110,21 @@ export function RankingTable({ title, rows, rankingCriteria, showPodium = true, 
           {circuitAction && CircuitButton ? <CircuitButton {...circuitAction} /> : null}
         </div>
       </div>
+
+      {showProgressiveControls ? (
+        <div className="rankingProgressiveToolbar">
+          <label className="rankingProgressiveSearch">
+            <span className="srOnly">Pesquisar em {title}</span>
+            <input
+              type="search"
+              value={rankingSearch}
+              onChange={(event) => setRankingSearch(event.target.value)}
+              placeholder={searchPlaceholder}
+            />
+          </label>
+          <small>Exibindo {renderedRows.length} de {filteredRows.length}</small>
+        </div>
+      ) : null}
 
       <p className="rankingScrollHint" aria-hidden="true">Deslize a tabela para ver todos os dados →</p>
       <div
@@ -94,9 +145,9 @@ export function RankingTable({ title, rows, rankingCriteria, showPodium = true, 
           </thead>
 
           <tbody>
-            {rows.map((p, i) => (
-              <tr key={p.id}>
-                <td className="rankingRankCell">{showPodium ? podium(i) : i + 1}</td>
+            {renderedRows.map(({ row: p, rankingIndex }) => (
+              <tr key={p.id || `${p.name}-${rankingIndex}`}>
+                <td className="rankingRankCell">{showPodium ? podium(rankingIndex) : rankingIndex + 1}</td>
                 <td className="rankingNameCell">{p.name}</td>
                 {visibleColumns.map(({ key }) => (
                   <td className="rankingStatCell" key={key}>{formatRankingMetricValue(key, p[key])}</td>
@@ -107,6 +158,15 @@ export function RankingTable({ title, rows, rankingCriteria, showPodium = true, 
           </tbody>
         </table>
       </div>
+      {progressive && visibleRowCount < filteredRows.length ? (
+        <button
+          type="button"
+          className="rankingLoadMoreButton"
+          onClick={() => setVisibleRowCount((current) => current + pageSize)}
+        >
+          Carregar mais {Math.min(pageSize, filteredRows.length - visibleRowCount)} nome(s)
+        </button>
+      ) : null}
     </div>
   );
 }
