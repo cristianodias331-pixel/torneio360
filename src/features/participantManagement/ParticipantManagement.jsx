@@ -7,6 +7,7 @@ import {
   getParticipantGender,
   inferTournamentGenderMode,
   mergeParticipantGenderRegistries,
+  orderConfirmedMixedTeams,
   participantGenderValues,
   setParticipantGender,
   tournamentGenderModes,
@@ -352,7 +353,7 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
       return;
     }
 
-    let resolvedRegistry = genderRegistryDraft;
+    let resolvedRegistry = mergeParticipantGenderRegistries(knownRegistry, genderRegistryDraft);
     genderCandidates.forEach((candidate) => {
       let gender = getParticipantGender(effectiveGenderRegistry, candidate.name, { confirmedOnly: true });
       if (hasSingleTournamentGender) {
@@ -371,13 +372,7 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
     if (isFixedMixedTeams && Array.isArray(preview.nextPlayers?.teams)) {
       nextPlayers = {
         ...preview.nextPlayers,
-        teams: preview.nextPlayers.teams.map((team) => {
-          const firstGender = getParticipantGender(resolvedRegistry, team?.a, { confirmedOnly: true });
-          const secondGender = getParticipantGender(resolvedRegistry, team?.b, { confirmedOnly: true });
-          return firstGender === participantGenderValues.feminine && secondGender === participantGenderValues.masculine
-            ? { ...team, a: team.b, b: team.a }
-            : team;
-        }),
+        teams: orderConfirmedMixedTeams(preview.nextPlayers.teams, resolvedRegistry),
       };
     }
 
@@ -413,13 +408,8 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
     if (!isFixedMixedTeams || !Array.isArray(preview.nextPlayers?.teams)) return preview.groups;
     return [{
       label: "Duplas",
-      values: preview.nextPlayers.teams.map((team) => {
-        const firstGender = getParticipantGender(effectiveGenderRegistry, team?.a, { confirmedOnly: true });
-        const secondGender = getParticipantGender(effectiveGenderRegistry, team?.b, { confirmedOnly: true });
-        return firstGender === participantGenderValues.feminine && secondGender === participantGenderValues.masculine
-          ? `${team.b} + ${team.a}`
-          : `${team.a} + ${team.b}`;
-      }),
+      values: orderConfirmedMixedTeams(preview.nextPlayers.teams, effectiveGenderRegistry)
+        .map((team) => `${team.a} + ${team.b}`),
     }];
   }, [effectiveGenderRegistry, isFixedMixedTeams, preview.groups, preview.nextPlayers]);
 

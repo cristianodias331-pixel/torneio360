@@ -164,6 +164,20 @@ export function getParticipantGender(registry, name, { confirmedOnly = false } =
   return entry.gender;
 }
 
+export function orderConfirmedMixedTeams(teams, registry) {
+  if (!Array.isArray(teams)) return [];
+
+  return teams.map((team) => {
+    const firstGender = getParticipantGender(registry, team?.a, { confirmedOnly: true });
+    const secondGender = getParticipantGender(registry, team?.b, { confirmedOnly: true });
+
+    return firstGender === participantGenderValues.feminine
+      && secondGender === participantGenderValues.masculine
+      ? { ...team, a: team.b, b: team.a }
+      : team;
+  });
+}
+
 function isAutomaticParticipantName(name) {
   const normalized = String(name || "").trim().toLocaleLowerCase("pt-BR");
   return !normalized || /^(?:atleta [12](?: da dupla \d+)?|participante \d+|jogador \d+|homem \d+|mulher \d+)$/u.test(normalized);

@@ -41,6 +41,7 @@ import {
   getTournamentGenderLabel,
   getParticipantGender,
   inferTournamentGenderMode,
+  orderConfirmedMixedTeams,
   participantGenderValues,
   setParticipantGender,
   tournamentGenderModes,
@@ -2116,8 +2117,21 @@ assert.deepEqual(
 assert.ok(
   !participantManagementSource.includes("orderFixedMixedPair")
     && participantManagementSource.includes("o parceiro receberá automaticamente o gênero oposto")
-    && participantManagementSource.includes("firstGender === participantGenderValues.feminine"),
+    && participantManagementSource.includes("orderConfirmedMixedTeams"),
   "O importador misto deve vincular os gêneros da dupla e colocar o homem na primeira posição."
+);
+assert.deepEqual(
+  orderConfirmedMixedTeams(
+    [{ a: "Ana", b: "Mario" }, { a: "Carlos", b: "Junia" }],
+    {
+      ana: { name: "Ana", gender: "feminino", confirmed: true },
+      mario: { name: "Mario", gender: "masculino", confirmed: true },
+      carlos: { name: "Carlos", gender: "masculino", confirmed: true },
+      junia: { name: "Junia", gender: "feminino", confirmed: true },
+    }
+  ),
+  [{ a: "Mario", b: "Ana" }, { a: "Carlos", b: "Junia" }],
+  "Duplas fixas mistas confirmadas devem salvar o homem primeiro e a mulher depois."
 );
 assert.equal(
   inferTournamentGenderMode({ participantGenderMode: "mista" }),
