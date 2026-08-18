@@ -4355,6 +4355,25 @@ function getEffectiveTournamentGenderMode(type, value) {
   return normalizeTournamentGenderMode(value);
 }
 
+function getGenderCompatibleTournamentTypes(types, genderMode) {
+  const normalizedMode = normalizeTournamentGenderMode(genderMode);
+  if (
+    normalizedMode !== tournamentGenderModes.masculine
+    && normalizedMode !== tournamentGenderModes.feminine
+  ) {
+    return types;
+  }
+
+  return (types || []).filter((type) => !isMixedType(modalityConfig[type]));
+}
+
+function getCompatibleTournamentType(currentType, genderMode, types) {
+  const compatibleTypes = getGenderCompatibleTournamentTypes(types, genderMode);
+  return compatibleTypes.includes(currentType)
+    ? currentType
+    : (compatibleTypes[0] || currentType);
+}
+
 function getStoredTournamentGenderFields(type, mode, customLabel = "") {
   const participantGenderMode = getEffectiveTournamentGenderMode(type, mode);
   return {
@@ -4395,26 +4414,17 @@ function TournamentGenderSelector({ type, value, customValue = "", onChange, onC
 
   return (
     <div className={`tournamentGenderSelector ${compact ? "compact" : ""}`}>
-      <div className="tournamentGenderChoices" role="radiogroup" aria-label="Gênero do torneio">
-        {tournamentGenderOptions.map((option) => {
-          const selected = selectedValue === option.value;
-          const disabled = fixedByModality && option.value !== tournamentGenderModes.mixed;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              className={selected ? "selected" : ""}
-              disabled={disabled}
-              onClick={() => onChange(option.value)}
-            >
-              {selected ? <span aria-hidden="true">✓</span> : null}
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+      <select
+        className="tournamentGenderSelect"
+        value={selectedValue}
+        disabled={fixedByModality}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="Gênero do torneio"
+      >
+        {tournamentGenderOptions.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
       {fixedByModality ? <small className="tournamentGenderHint">Esta modalidade já separa homens e mulheres automaticamente.</small> : null}
       {selectedValue === tournamentGenderModes.other ? (
         <input
@@ -8068,7 +8078,13 @@ setNewPublicInfo({
   }
 
   function updateEditForm(field, value) {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
+    setEditForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "participantGenderMode") {
+        next.type = getCompatibleTournamentType(prev.type, value, allowedTypes);
+      }
+      return next;
+    });
   }
 
   async function saveEditedTournament({ confirmModalityChange = false } = {}) {
@@ -8286,7 +8302,13 @@ setNewPublicInfo({
       ...current,
       categories: current.categories.map((category) => (
         category.key === key
-          ? { ...category, [field]: value }
+          ? {
+            ...category,
+            [field]: value,
+            ...(field === "participantGenderMode"
+              ? { type: getCompatibleTournamentType(category.type, value, allowedTypes) }
+              : {}),
+          }
           : category
       )),
     }));
@@ -8543,7 +8565,15 @@ setNewPublicInfo({
 
   function updateCategorySchedule(index, field, value) {
     setNewCategorySchedules((prev) =>
-      prev.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item)
+      prev.map((item, itemIndex) => itemIndex === index
+        ? {
+          ...item,
+          [field]: value,
+          ...(field === "participantGenderMode"
+            ? { type: getCompatibleTournamentType(item.type, value, allowedTypes) }
+            : {}),
+        }
+        : item)
     );
   }
 
@@ -9051,7 +9081,7 @@ setNewPublicInfo({
 
               <div className="formField">
                 <label>Modalidade</label>
-                <ModalityPicker value={editForm.type} options={allowedTypes} onChange={(type) => updateEditForm("type", type)} legacyLabel="Modalidade legada preservada neste torneio." />
+                <ModalityPicker value={editForm.type} options={getGenderCompatibleTournamentTypes(allowedTypes, editForm.participantGenderMode)} onChange={(type) => updateEditForm("type", type)} legacyLabel="Modalidade legada preservada neste torneio." />
               </div>
 
               <div className="formField fullField tournamentGenderField">
@@ -9204,7 +9234,7 @@ setNewPublicInfo({
                       </div>
                       <div className="formField">
                         <label>Modalidade</label>
-                        <ModalityPicker value={category.type} options={allowedTypes} onChange={(type) => updateEventGroupCategory(category.key, "type", type)} legacyLabel="Modalidade legada preservada nesta categoria." />
+                        <ModalityPicker value={category.type} options={getGenderCompatibleTournamentTypes(allowedTypes, category.participantGenderMode)} onChange={(type) => updateEventGroupCategory(category.key, "type", type)} legacyLabel="Modalidade legada preservada nesta categoria." />
                         {category.hasGeneratedGames ? <small>Ao trocar a modalidade, a confirmação explicará quais dados esportivos serão reiniciados.</small> : null}
                       </div>
                       <div className="formField fullField tournamentGenderField">
@@ -9604,7 +9634,10 @@ setNewPublicInfo({
         type={newType}
         value={newGenderMode}
         customValue={newGenderOther}
-        onChange={setNewGenderMode}
+        onChange={(value) => {
+          setNewGenderMode(value);
+          setNewType((currentType) => getCompatibleTournamentType(currentType, value, allowedTypes));
+        }}
         onCustomChange={setNewGenderOther}
       />
     </div>
@@ -9628,7 +9661,7 @@ setNewPublicInfo({
 
           <div className="formField compactField categoryWideField">
             <label>Modalidade</label>
-            <ModalityPicker value={item.type} options={allowedTypes} onChange={(type) => updateCategorySchedule(index, "type", type)} />
+            <ModalityPicker value={item.type} options={getGenderCompatibleTournamentTypes(allowedTypes, item.participantGenderMode)} onChange={(type) => updateCategorySchedule(index, "type", type)} />
           </div>
 
           <div className="formField compactField categoryWideField tournamentGenderField">
@@ -9823,7 +9856,7 @@ setNewPublicInfo({
 
   <div className="formField fullField">
     <label>Modalidade</label>
-    <ModalityPicker value={newType} options={allowedTypes} onChange={setNewType} />
+    <ModalityPicker value={newType} options={getGenderCompatibleTournamentTypes(allowedTypes, newGenderMode)} onChange={setNewType} />
   </div>
 
   <div className="formField">
