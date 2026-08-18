@@ -3274,9 +3274,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function getCircuitGenderCandidates(form, tournamentSource = tournaments) {
-    const selectedIds = new Set((form?.tournamentIds || []).map((id) => String(id)));
-    const selectedTournaments = tournamentSource.filter((tournament) => selectedIds.has(String(tournament.id)));
-    return mergeTournamentGenderCandidates(selectedTournaments, modalityConfig);
+    const selectedTournaments = getCircuitSelectedTournaments(form || {}, tournamentSource);
+    const currentCircuit = form?._baseCircuit
+      || circuitsRef.current.find((circuit) => String(circuit.id) === String(form?.id));
+    return mergeTournamentGenderCandidates(selectedTournaments, modalityConfig, {
+      rankingRecords: currentCircuit?.rankingHistory || {},
+    });
   }
 
   function getEffectiveCircuitRankingSettings(value) {
@@ -3698,16 +3701,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function editCircuit(circuit) {
     await loadFullTournamentRows(circuit.tournamentIds || [], { silentError: true });
+    const rankingHistory = await loadCircuitRankingHistory(circuit.id);
+    const latestCircuit = circuitsRef.current.find((item) => String(item.id) === String(circuit.id)) || circuit;
+    const editableCircuit = rankingHistory
+      ? { ...latestCircuit, rankingHistory }
+      : latestCircuit;
     setCircuitEditForm({
-      _baseCircuit: circuit,
-      id: circuit.id,
-      name: circuit.name || "",
-      startDate: circuit.startDate || "",
-      endDate: circuit.endDate || "",
-      tournamentIds: Array.isArray(circuit.tournamentIds) ? circuit.tournamentIds : [],
-      rankingCriteria: getCircuitEffectiveCriteria(circuit),
-      rankingCriteriaMode: circuit.rankingCriteriaMode === "manual" ? "manual" : "automatic",
-      rankingSettings: getEffectiveCircuitRankingSettings(circuit.rankingSettings),
+      _baseCircuit: editableCircuit,
+      id: editableCircuit.id,
+      name: editableCircuit.name || "",
+      startDate: editableCircuit.startDate || "",
+      endDate: editableCircuit.endDate || "",
+      tournamentIds: Array.isArray(editableCircuit.tournamentIds) ? editableCircuit.tournamentIds : [],
+      rankingCriteria: getCircuitEffectiveCriteria(editableCircuit),
+      rankingCriteriaMode: editableCircuit.rankingCriteriaMode === "manual" ? "manual" : "automatic",
+      rankingSettings: getEffectiveCircuitRankingSettings(editableCircuit.rankingSettings),
     });
   }
 
