@@ -80,7 +80,15 @@ export function RankingTable({
   const visibleColumns = hasPlayTime && !baseColumns.some(({ key }) => key === "playTimeSeconds")
     ? [...baseColumns, { key: "playTimeSeconds", label: getRankingColumnLabel("playTimeSeconds") }]
     : baseColumns;
-  const effectiveShareConfig = shareConfig ? { ...shareConfig, rankingCriteria: criteria.value, columns: visibleColumns } : null;
+  const effectiveShareConfig = shareConfig
+    ? {
+      ...shareConfig,
+      rankingCriteria: criteria.value,
+      columns: Array.isArray(shareConfig.columns) && shareConfig.columns.length
+        ? shareConfig.columns
+        : visibleColumns,
+    }
+    : null;
   const indexedRows = useMemo(
     () => safeRows.map((row, rankingIndex) => ({ row, rankingIndex })),
     [safeRows]

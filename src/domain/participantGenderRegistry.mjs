@@ -66,7 +66,10 @@ export function inferTournamentGenderMode(data = {}) {
   const explicit = normalizeTournamentGenderMode(data.participantGenderMode || data.genderMode);
   if (validTournamentGenderModes.has(explicit) && explicit) return explicit;
 
-  const legacyGender = String(data.gender || "");
+  const legacyGender = [data.gender, data.category]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(" ");
   const normalizedLegacy = legacyGender
     .normalize("NFD")
     .replace(/\p{M}/gu, "")

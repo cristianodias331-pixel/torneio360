@@ -69,7 +69,7 @@ export default function RankingShareButton({ config }) {
               ? "Compartilhado"
               : status === "error"
                 ? "Tentar novamente"
-                : "Compartilhar ranking";
+                : config.buttonLabel || "Compartilhar ranking";
 
   return (
     <>

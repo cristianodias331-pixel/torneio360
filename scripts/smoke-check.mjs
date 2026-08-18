@@ -1125,8 +1125,13 @@ assert.equal(getUnresolvedCircuitTieGroups([{ rows: tiedCircuitRows }], customCi
 assert.equal(getUnresolvedCircuitTieGroups([{ rows: tiedCircuitRows }], circuitDrawSettings).length, 0, "Um empate já sorteado continua aparecendo como pendente.");
 assert.deepEqual(
   getCircuitPlacementColumns(customCircuitSettings, { includeManual: true }).map((column) => column.key),
-  ["circuitPoints", "extraPoints", "w", "bestStagePoints", "pts", "bal", "played", "tournaments"],
+  ["circuitPoints", "w", "bestStagePoints", "pts", "bal", "played", "tournaments"],
   "As colunas do ranking por pontos foram alteradas."
+);
+assert.deepEqual(
+  getCircuitPlacementColumns(customCircuitSettings, { totalsOnly: true }),
+  [{ key: "circuitPoints", label: "Total de pontos" }],
+  "O compartilhamento do ranking por pontos deve exibir somente a pontuação total."
 );
 const circuitExtraRow = { id: "ana", name: "Ana", circuitPoints: 100, extraPoints: 0 };
 const circuitExtraGroups = { geral: { rows: new Map([["ana", circuitExtraRow]]) } };
@@ -1270,6 +1275,67 @@ assert.deepEqual(
     { name: "Bia", w: 2, pts: 12, bal: 3, played: 2, tournaments: 1 },
   ],
   "A soma ou a ordenação do histórico já persistido do circuito foi alterada."
+);
+const historicalGenderGroups = buildCircuitRankingGroupsFromRecords({
+  records: [
+    {
+      tournamentId: "copa-masculina",
+      groupKey: "geral",
+      playerKey: "carlos",
+      name: "Carlos",
+      circuitPoints: 500,
+      placementKey: "quarterfinal",
+      placementLabel: "Quartas de final",
+      w: 2,
+      pts: 14,
+      bal: 3,
+      played: 3,
+      tournaments: 1,
+    },
+    {
+      tournamentId: "copa-mista",
+      groupKey: "geral",
+      playerKey: "ana",
+      name: "Ana",
+      circuitPoints: 170,
+      placementKey: "groupStage",
+      placementLabel: "Fase de grupos",
+      w: 1,
+      pts: 9,
+      bal: -1,
+      played: 2,
+      tournaments: 1,
+    },
+  ],
+  settings: {
+    mode: "placement",
+    identity: "individual",
+    rankingDivision: "gender",
+    genderRegistry: {
+      ana: { name: "Ana", gender: "feminino", confirmed: true },
+    },
+  },
+  criteriaValue: "wins_points_balance",
+  tournaments: [
+    { id: "copa-masculina", type: "cearense", data: { category: "Masculino até C" } },
+    { id: "copa-mista", type: "cearense", data: { participantGenderMode: "mista" } },
+  ],
+  modalityConfigs: { cearense: { type: "cearense" } },
+});
+assert.deepEqual(
+  historicalGenderGroups.map(({ key }) => key),
+  ["masculino", "feminino"],
+  "Registros antigos de fases alcançadas não foram direcionados aos rankings por gênero."
+);
+assert.equal(
+  historicalGenderGroups.find(({ key }) => key === "masculino")?.rows[0]?.circuitPoints,
+  500,
+  "Os pontos das quartas de final foram perdidos ao corrigir o ranking masculino."
+);
+assert.equal(
+  historicalGenderGroups.find(({ key }) => key === "feminino")?.rows[0]?.circuitPoints,
+  170,
+  "Os pontos de participação na fase de grupos foram perdidos ao corrigir o ranking feminino."
 );
 const historicalRecordsInput = circuitAggregationInput.tournaments.slice(0, 2);
 const historicalRecordsSnapshot = JSON.stringify(historicalRecordsInput);
@@ -3024,8 +3090,8 @@ assert.ok(
   "O compartilhamento do ranking ainda pode ocultar critérios com reticências."
 );
 assert.ok(
-  rankingShareButtonSource.includes(': "Compartilhar ranking";'),
-  "O botão compacto não identifica que compartilha o ranking."
+  rankingShareButtonSource.includes('config.buttonLabel || "Compartilhar ranking"'),
+  "O botão compacto não identifica o ranking compartilhado."
 );
 assert.ok(
   tieBreakPanelsSource.includes("function TieBreakDrawOverlay")

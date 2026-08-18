@@ -18,6 +18,7 @@ import { formatParticipantName } from "./participantNames.mjs";
 import { defaultRankingCriteria, getRankingCriteria } from "./rankingCriteria.mjs";
 import { calculateCircuitTournamentRankingRows } from "./tournamentRanking.mjs";
 import {
+  getParticipantGender,
   participantGenderValues,
   resolveTournamentParticipantGender,
 } from "./participantGenderRegistry.mjs";
@@ -215,13 +216,20 @@ export function buildCircuitRankingGroupsFromRecords({
   records = [],
   settings,
   criteriaValue = defaultRankingCriteria,
+  tournaments = [],
+  modalityConfigs = {},
 }) {
   const rankingSettings = normalizeCircuitRankingSettings(settings);
   const placementMode = rankingSettings.mode === circuitRankingModes.placement
     || rankingSettings.sourceCircuitIds.length > 0;
+  const tournamentById = new Map(
+    (tournaments || []).map((tournament) => [String(tournament?.id || ""), tournament])
+  );
   const groups = {
     geral: {
-      title: placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado",
+      title: rankingSettings.rankingDivision === "gender"
+        ? "Gênero a confirmar"
+        : placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado",
       rows: new Map(),
     },
     masculino: { title: "Ranking Masculino", rows: new Map() },
@@ -229,7 +237,26 @@ export function buildCircuitRankingGroupsFromRecords({
   };
 
   (records || []).forEach((record) => {
-    const groupKey = record.groupKey || "geral";
+    const storedGroupKey = record.groupKey || "geral";
+    const tournament = tournamentById.get(String(record.tournamentId || ""));
+    const config = tournament ? modalityConfigs[tournament.type] : null;
+    const registeredGender = getParticipantGender(
+      rankingSettings.genderRegistry,
+      record.name,
+      { confirmedOnly: true }
+    );
+    const resolvedGroupKey = rankingSettings.rankingDivision === "gender"
+      ? tournament
+        ? resolveCircuitRowGroup({ row: record, tournament, config, rankingSettings })
+        : registeredGender
+      : storedGroupKey;
+    const groupKey = resolvedGroupKey === participantGenderValues.masculine
+      || resolvedGroupKey === participantGenderValues.feminine
+      ? resolvedGroupKey
+      : storedGroupKey === participantGenderValues.masculine
+        || storedGroupKey === participantGenderValues.feminine
+        ? storedGroupKey
+        : "geral";
     const table = groups[groupKey]?.rows || groups.geral.rows;
     const name = String(record.name || "Sem nome").trim() || "Sem nome";
     const key = normalizeCircuitParticipantKey(record.playerKey || name, Boolean(record.isTeam));
