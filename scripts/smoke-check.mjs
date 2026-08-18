@@ -3230,8 +3230,11 @@ assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela
 assert.ok(styleSource.includes("CONTATOS PÚBLICOS, TESTE GRÁTIS E ACESSO VENCIDO"), "Os novos destaques públicos estão sem estilos.");
 
 assert.ok(
-  mainSource.includes("const circuitPersistence = await persistCircuitRankings(")
-    && mainSource.includes("persistedTournament.id"),
+  mainSource.includes("let circuitPersistence = await persistCircuitRankings(")
+    && mainSource.includes("persistedTournament.id")
+    && mainSource.includes("{ affectedTournamentId: affectedId }")
+    && mainSource.includes('.eq("tournament_id", normalizedAffectedTournamentId)')
+    && !mainSource.includes('"Placar salvo; ranking pendente"'),
   "O placar pode ser marcado como salvo antes de atualizar o ranking dos circuitos."
 );
 assert.ok(
