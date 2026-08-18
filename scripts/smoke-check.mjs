@@ -37,9 +37,13 @@ import {
 } from "../src/domain/scoreRules.mjs";
 import { formatParticipantName } from "../src/domain/participantNames.mjs";
 import {
+  getOppositeParticipantGender,
+  getTournamentGenderLabel,
   getParticipantGender,
+  inferTournamentGenderMode,
   participantGenderValues,
   setParticipantGender,
+  tournamentGenderModes,
 } from "../src/domain/participantGenderRegistry.mjs";
 import {
   getGameSideAttendanceParticipants,
@@ -187,6 +191,7 @@ import {
 } from "../src/domain/cearenseThirdParallel.mjs";
 import {
   buildSunsetChampionsRounds,
+  buildSunsetMainRunnerUpFallback,
   buildSunsetParallelFromMainRound,
   getBracketChampionSource,
   getSunsetMainSourceGames,
@@ -1248,6 +1253,26 @@ const sunsetBracketSet = {
   secondParallel: [{ title: "Final", games: [{ matchKey: "secondParallel_final_1" }] }],
   thirdParallel: [{ title: "Final", games: [{ matchKey: "thirdParallel_final_1" }] }],
 };
+const sunsetRunnerUpFallback = buildSunsetMainRunnerUpFallback(
+  sunsetBracketSet.main,
+  "2ª Disputa Paralela"
+);
+assert.deepEqual(
+  sunsetRunnerUpFallback.map((round) => round.title),
+  ["Final"],
+  "Sem eliminadas das oitavas, o vice da Principal deve ocupar a 2ª disputa paralela."
+);
+assert.equal(sunsetRunnerUpFallback[0].games[0].source1, "main_final_1");
+assert.equal(sunsetRunnerUpFallback[0].games[0].source1Mode, "loser");
+assert.equal(sunsetRunnerUpFallback[0].games[0].isBye, true);
+assert.deepEqual(
+  buildSunsetChampionsRounds({
+    ...sunsetBracketSet,
+    secondParallel: sunsetRunnerUpFallback,
+  }, "Etapa Sunset")[0].games.map((game) => [game.source1, game.source2]),
+  [["main_final_1", "repechage_final_1"], ["secondParallel_final_1", "thirdParallel_final_1"]],
+  "O vice da Principal deve completar as duas semifinais da etapa Sunset sem alterar os cruzamentos."
+);
 assert.deepEqual(
   getBracketChampionSource(sunsetBracketSet.main),
   { sourceMatchKey: "main_final_1", sourceMode: "winner" },
@@ -2090,8 +2115,31 @@ assert.deepEqual(
 );
 assert.ok(
   !participantManagementSource.includes("orderFixedMixedPair")
-    && participantManagementSource.includes("A ordem colada será preservada"),
-  "O importador deve preservar a ordem colada e confirmar o gênero separadamente."
+    && participantManagementSource.includes("o parceiro receberá automaticamente o gênero oposto")
+    && participantManagementSource.includes("firstGender === participantGenderValues.feminine"),
+  "O importador misto deve vincular os gêneros da dupla e colocar o homem na primeira posição."
+);
+assert.equal(
+  inferTournamentGenderMode({ participantGenderMode: "mista" }),
+  tournamentGenderModes.mixed,
+  "O gênero estruturado do torneio deve reconhecer a opção Mista."
+);
+assert.equal(
+  inferTournamentGenderMode({ gender: "Masculino iniciante" }),
+  tournamentGenderModes.masculine,
+  "Torneios antigos devem continuar reconhecendo gênero no campo legado."
+);
+assert.equal(getTournamentGenderLabel(tournamentGenderModes.open), "Livre");
+assert.equal(
+  getOppositeParticipantGender(participantGenderValues.masculine),
+  participantGenderValues.feminine,
+  "Uma confirmação masculina em dupla mista deve definir a parceira como feminina."
+);
+assert.ok(
+  mainSource.includes("Categoria")
+    && mainSource.includes("TournamentGenderSelector")
+    && mainSource.includes("participantGenderMode"),
+  "Criação e edição devem separar Categoria da escolha estruturada de Gênero."
 );
 const confirmedGenderRegistry = setParticipantGender({}, "Bárbara Souza", participantGenderValues.feminine);
 assert.equal(

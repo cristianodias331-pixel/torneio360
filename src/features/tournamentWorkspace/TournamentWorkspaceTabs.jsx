@@ -79,6 +79,7 @@ export default function TournamentWorkspaceTabs({
       const searchable = [
         tournament.name,
         getModalityDisplayName(tournament.type),
+        tournament.data?.category,
         tournament.data?.gender,
         tournament.data?.eventName,
       ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
@@ -283,7 +284,7 @@ export default function TournamentWorkspaceTabs({
                     <span className="tournamentTabsModalItemColor" aria-hidden="true" />
                     <div className="tournamentTabsModalItemCopy">
                       <strong>{tournament.name}</strong>
-                      <span>{getModalityDisplayName(tournament.type)}{tournament.data?.gender ? ` · ${tournament.data.gender}` : ""}</span>
+                      <span>{getModalityDisplayName(tournament.type)}{[...new Set([tournament.data?.category, tournament.data?.gender].filter(Boolean))].map((label) => ` · ${label}`).join("")}</span>
                     </div>
                     {isOpen ? <span className="tournamentTabsOpenBadge">{isActive ? "Em uso" : "Aberto"}</span> : null}
                     <button type="button" onClick={() => selectTournament(tournament)} disabled={isBusy || isActive}>

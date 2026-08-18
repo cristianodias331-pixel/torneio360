@@ -191,12 +191,16 @@ import {
   setParticipantAttendanceValue,
 } from "./domain/participantAttendance.mjs";
 import {
+  getTournamentGenderLabel,
   getParticipantGender,
+  inferTournamentGenderMode,
   mergeParticipantGenderRegistries,
   mergeTournamentGenderCandidates,
   normalizeParticipantGenderRegistry,
+  normalizeTournamentGenderMode,
   participantGenderValues,
   setParticipantGender,
+  tournamentGenderModes,
 } from "./domain/participantGenderRegistry.mjs";
 import {
   applyCircuitDrawOrder,
@@ -329,6 +333,7 @@ import {
 } from "./domain/cearenseThirdParallel.mjs";
 import {
   buildSunsetChampionsRounds,
+  buildSunsetMainRunnerUpFallback,
   buildSunsetParallelFromMainRound,
 } from "./domain/sunsetBracket.mjs";
 import { calculateCupGroupRankings } from "./domain/cupGroupRanking.mjs";
@@ -753,7 +758,10 @@ function getPublicTournamentDirectoryItem(tournament) {
       eventEndDate: details.eventEndDate || details.eventDate || "",
       eventStartTime: details.eventStartTime || "",
       location: details.location || "",
+      category: details.category || "",
       gender: details.gender || "",
+      participantGenderMode: details.participantGenderMode || "",
+      genderOther: details.genderOther || "",
       coverImageUrl: details.coverImageUrl || "",
       registrationDeadline: details.registrationDeadline || "",
       eventName: details.eventName || "",
@@ -2187,12 +2195,15 @@ function generateSunsetBrackets(data) {
     "repechage",
     firstParallelName
   );
-  const secondParallelRounds = buildSunsetParallelFromMainRound(
+  const secondParallelFromRoundOf16 = buildSunsetParallelFromMainRound(
     mainRounds,
     8,
     "secondParallel",
     secondParallelName
   );
+  const secondParallelRounds = secondParallelFromRoundOf16.length > 0
+    ? secondParallelFromRoundOf16
+    : buildSunsetMainRunnerUpFallback(mainRounds, secondParallelName);
   const thirdParallelRounds = buildSunsetParallelFromMainRound(
     mainRounds,
     4,
@@ -2736,12 +2747,18 @@ function calculateCupBracketPodium(data, phase) {
   const championId = getGameWinnerId(resolvedFinal, data);
   const runnerUpId = getGameLoserId(resolvedFinal, data);
 
-  if (championId === null || runnerUpId === null) return [];
+  const isSunsetRunnerUpFallback = isSunsetData(data)
+    && phase === "secondParallel"
+    && finalGame.automaticQualification === "mainRunnerUp";
+  if (championId === null || (runnerUpId === null && !isSunsetRunnerUpFallback)) return [];
 
   const podium = [
     { position: "🏆 Campeão", name: getCupTeamName(data, championId), playTimeSeconds: Number(playTimeById.get(championId) || 0) },
-    { position: "🥈 Vice", name: getCupTeamName(data, runnerUpId), playTimeSeconds: Number(playTimeById.get(runnerUpId) || 0) },
   ];
+
+  if (runnerUpId !== null) {
+    podium.push({ position: "🥈 Vice", name: getCupTeamName(data, runnerUpId), playTimeSeconds: Number(playTimeById.get(runnerUpId) || 0) });
+  }
 
   if (thirdPlaceGame) {
     const resolvedThirdPlace = resolveBracketGame(thirdPlaceGame, games, data);
@@ -4325,6 +4342,93 @@ function CourtCenterModal(props) {
   );
 }
 
+const tournamentGenderOptions = [
+  { value: tournamentGenderModes.masculine, label: "Masculino" },
+  { value: tournamentGenderModes.feminine, label: "Feminino" },
+  { value: tournamentGenderModes.mixed, label: "Mista" },
+  { value: tournamentGenderModes.open, label: "Livre" },
+  { value: tournamentGenderModes.other, label: "Outro" },
+];
+
+function getEffectiveTournamentGenderMode(type, value) {
+  if (isMixedType(modalityConfig[type])) return tournamentGenderModes.mixed;
+  return normalizeTournamentGenderMode(value);
+}
+
+function getStoredTournamentGenderFields(type, mode, customLabel = "") {
+  const participantGenderMode = getEffectiveTournamentGenderMode(type, mode);
+  return {
+    participantGenderMode,
+    genderOther: participantGenderMode === tournamentGenderModes.other ? String(customLabel || "").trim() : "",
+    gender: getTournamentGenderLabel(participantGenderMode, customLabel),
+  };
+}
+
+function getEditableTournamentGenderFields(details = {}, type = "") {
+  const inferredMode = inferTournamentGenderMode(details);
+  const participantGenderMode = getEffectiveTournamentGenderMode(
+    type,
+    inferredMode || tournamentGenderModes.open
+  );
+  return {
+    category: String(details.category || ""),
+    participantGenderMode,
+    genderOther: participantGenderMode === tournamentGenderModes.other
+      ? String(details.genderOther || details.gender || "")
+      : String(details.genderOther || ""),
+  };
+}
+
+function getTournamentClassificationLabels(details = {}) {
+  const category = String(details.category || "").trim();
+  const structuredGender = getTournamentGenderLabel(
+    inferTournamentGenderMode(details),
+    details.genderOther
+  );
+  const gender = String(structuredGender || details.gender || "").trim();
+  return [...new Set([category, gender].filter(Boolean))];
+}
+
+function TournamentGenderSelector({ type, value, customValue = "", onChange, onCustomChange, compact = false }) {
+  const fixedByModality = isMixedType(modalityConfig[type]);
+  const selectedValue = getEffectiveTournamentGenderMode(type, value);
+
+  return (
+    <div className={`tournamentGenderSelector ${compact ? "compact" : ""}`}>
+      <div className="tournamentGenderChoices" role="radiogroup" aria-label="Gênero do torneio">
+        {tournamentGenderOptions.map((option) => {
+          const selected = selectedValue === option.value;
+          const disabled = fixedByModality && option.value !== tournamentGenderModes.mixed;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              className={selected ? "selected" : ""}
+              disabled={disabled}
+              onClick={() => onChange(option.value)}
+            >
+              {selected ? <span aria-hidden="true">✓</span> : null}
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      {fixedByModality ? <small className="tournamentGenderHint">Esta modalidade já separa homens e mulheres automaticamente.</small> : null}
+      {selectedValue === tournamentGenderModes.other ? (
+        <input
+          className="tournamentGenderOtherInput"
+          value={customValue}
+          onChange={(event) => onCustomChange(event.target.value)}
+          placeholder="Escreva o gênero"
+          aria-label="Outro gênero"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function Dashboard({ profile, user, onProfileChange }) {
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
@@ -4350,10 +4454,14 @@ function Dashboard({ profile, user, onProfileChange }) {
   const publicArenaProfilesMountedRef = useRef(true);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("");
-const [newGender, setNewGender] = useState("");
+const [newCategory, setNewCategory] = useState("");
+const [newGenderMode, setNewGenderMode] = useState("");
+const [newGenderOther, setNewGenderOther] = useState("");
 const [newMultiCategoryEvent, setNewMultiCategoryEvent] = useState("nao");
 const [newCategorySchedules, setNewCategorySchedules] = useState([{
   category: "",
+  participantGenderMode: "",
+  genderOther: "",
   date: "",
   endDate: "",
   registrationDeadline: "",
@@ -5041,7 +5149,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       item.name,
       getModalityDisplayName(item.type),
       details.eventName,
-      details.gender,
+      ...getTournamentClassificationLabels(details),
       details.category,
       details.location,
       details.eventDate,
@@ -7305,6 +7413,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   return;
 }
 
+    const effectiveNewGenderMode = getEffectiveTournamentGenderMode(newType, newGenderMode);
+    if (!isMultiCategory && !effectiveNewGenderMode) {
+      showNotice("warning", "Gênero obrigatório", "Escolha Masculino, Feminino, Mista, Livre ou Outro.");
+      return;
+    }
+    if (!isMultiCategory && effectiveNewGenderMode === tournamentGenderModes.other && !newGenderOther.trim()) {
+      showNotice("warning", "Informe o gênero", "Escreva o gênero escolhido na opção Outro.");
+      return;
+    }
+
     if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === newRankingCriteria)) {
       showNotice("warning", "Critério obrigatório", "Escolha a ordem dos critérios do ranking antes de criar o torneio.");
       return;
@@ -7343,6 +7461,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     if (isMultiCategory) {
       const incompleteCategory = validCategorySchedules.find((item) => (
         !allowedTypes.includes(item.type)
+        || !getEffectiveTournamentGenderMode(item.type, item.participantGenderMode)
+        || Boolean(
+          getEffectiveTournamentGenderMode(item.type, item.participantGenderMode) === tournamentGenderModes.other
+          && !item.genderOther?.trim()
+        )
         || !rankingCriteriaOptions.some((option) => option.value === item.rankingCriteria)
         || !item.date
         || !["4", "6", 4, 6].includes(item.winningScore)
@@ -7350,7 +7473,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         || Boolean(item.registrationDeadline && item.registrationDeadline > item.date)
       ));
       if (incompleteCategory) {
-        showNotice("warning", "Categoria incompleta", `Revise modalidade, data e critério de ${incompleteCategory.category}.`);
+        showNotice("warning", "Categoria incompleta", `Revise gênero, modalidade, data e critério de ${incompleteCategory.category}.`);
         return;
       }
     }
@@ -7401,7 +7524,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           data: {
             ...createInitialData(categoryType, categoryConfig),
             ...baseData,
-            gender: item.category.trim(),
+            category: item.category.trim(),
+            ...getStoredTournamentGenderFields(categoryType, item.participantGenderMode, item.genderOther),
             eventDate: item.date,
             eventStartDate: item.date,
             eventEndDate: item.endDate || item.date,
@@ -7426,7 +7550,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           data: {
             ...createInitialData(newType, config),
             ...baseData,
-            gender: newGender,
+            category: newCategory.trim(),
+            ...getStoredTournamentGenderFields(newType, newGenderMode, newGenderOther),
             eventDate: newDate,
             eventDay: getWeekdayBR(newDate),
             eventStartTime: newEventStartTime,
@@ -7460,10 +7585,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     setNewName("");
     setNewType("");
-setNewGender("");
+setNewCategory("");
+setNewGenderMode("");
+setNewGenderOther("");
 setNewMultiCategoryEvent("nao");
 setNewCategorySchedules([{
   category: "",
+  participantGenderMode: "",
+  genderOther: "",
   date: "",
   endDate: "",
   registrationDeadline: "",
@@ -7918,12 +8047,15 @@ setNewPublicInfo({
 
   function openEditTournament(tournament) {
     const details = tournament.data || {};
+    const genderFields = getEditableTournamentGenderFields(details, tournament.type);
     setEditTarget(tournament);
     setEditForm({
       name: tournament.name || "",
       type: tournament.type || "",
       eventName: details.eventName || "",
-      gender: details.gender || "",
+      category: genderFields.category,
+      participantGenderMode: genderFields.participantGenderMode,
+      genderOther: genderFields.genderOther,
       eventDate: details.eventDate || "",
       eventEndDate: details.eventEndDate || details.eventDate || "",
       registrationDeadline: details.registrationDeadline || "",
@@ -7969,6 +8101,16 @@ setNewPublicInfo({
       return;
     }
 
+    const effectiveEditGenderMode = getEffectiveTournamentGenderMode(editForm.type, editForm.participantGenderMode);
+    if (!effectiveEditGenderMode) {
+      showNotice("warning", "Gênero obrigatório", "Escolha Masculino, Feminino, Mista, Livre ou Outro.");
+      return;
+    }
+    if (effectiveEditGenderMode === tournamentGenderModes.other && !editForm.genderOther.trim()) {
+      showNotice("warning", "Informe o gênero", "Escreva o gênero escolhido na opção Outro.");
+      return;
+    }
+
     const isGroupedCategory = Boolean(editTarget.data?.multiCategoryEvent);
     const structuralData = modalityChanged
       ? createInitialData(editForm.type, nextModalityConfig)
@@ -7981,7 +8123,8 @@ setNewPublicInfo({
       eventCoverImageUrl: editTarget.data?.eventCoverImageUrl,
       usesEventCover: editTarget.data?.usesEventCover,
       eventName: editForm.eventName.trim(),
-      gender: editForm.gender,
+      category: editForm.category.trim(),
+      ...getStoredTournamentGenderFields(editForm.type, editForm.participantGenderMode, editForm.genderOther),
       eventDate: editForm.eventDate,
       eventStartDate: editForm.eventDate,
       eventEndDate: isGroupedCategory ? editForm.eventDate : (editForm.eventEndDate || editForm.eventDate),
@@ -8107,14 +8250,16 @@ setNewPublicInfo({
       publicInfo: firstDetails.publicInfo || buildTournamentPublicInfo(),
       categories: (groupItems.length ? groupItems : group.items).map((tournament) => {
         const details = tournament.data || {};
+        const genderFields = getEditableTournamentGenderFields(details, tournament.type);
         const usesEventCover = details.usesEventCover === true
           || (!details.usesEventCover && Boolean(eventCoverImageUrl) && details.coverImageUrl === eventCoverImageUrl);
         return {
           key: tournament.id,
           id: tournament.id,
           original: tournament,
-          name: tournament.name || details.gender || "",
-          gender: details.gender || tournament.name || "",
+          name: tournament.name || details.category || details.gender || "",
+          participantGenderMode: genderFields.participantGenderMode,
+          genderOther: genderFields.genderOther,
           type: tournament.type || "",
           eventDate: details.eventDate || "",
           eventEndDate: details.eventEndDate || details.eventDate || "",
@@ -8141,7 +8286,7 @@ setNewPublicInfo({
       ...current,
       categories: current.categories.map((category) => (
         category.key === key
-          ? { ...category, [field]: value, ...(field === "name" ? { gender: value } : {}) }
+          ? { ...category, [field]: value }
           : category
       )),
     }));
@@ -8157,7 +8302,8 @@ setNewPublicInfo({
           id: null,
           original: null,
           name: "",
-          gender: "",
+          participantGenderMode: "",
+          genderOther: "",
           type: "",
           eventDate: "",
           eventEndDate: "",
@@ -8208,6 +8354,11 @@ setNewPublicInfo({
     const invalidCategory = activeCategories.find((category) => (
       !category.name.trim()
       || (!allowedTypes.includes(category.type) && category.original?.type !== category.type)
+      || !getEffectiveTournamentGenderMode(category.type, category.participantGenderMode)
+      || Boolean(
+        getEffectiveTournamentGenderMode(category.type, category.participantGenderMode) === tournamentGenderModes.other
+        && !category.genderOther?.trim()
+      )
       || !category.eventDate
       || !rankingCriteriaOptions.some((option) => option.value === category.rankingCriteria)
       || ![4, 6].includes(Number(category.winningScore))
@@ -8219,7 +8370,7 @@ setNewPublicInfo({
       showNotice(
         "warning",
         "Categoria incompleta",
-        `Revise nome, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
+        `Revise nome, gênero, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
       );
       return;
     }
@@ -8258,7 +8409,8 @@ setNewPublicInfo({
           : formatDateBR(groupStartDate),
         eventCoverImageUrl: editEventGroup.coverImageUrl || "",
         usesEventCover: category.usesEventCover,
-        gender: category.gender.trim() || category.name.trim(),
+        category: category.name.trim(),
+        ...getStoredTournamentGenderFields(category.type, category.participantGenderMode, category.genderOther),
         eventDate: category.eventDate,
         eventStartDate: category.eventDate,
         eventEndDate: category.eventEndDate || category.eventDate,
@@ -8312,7 +8464,8 @@ setNewPublicInfo({
           publicInfo: editEventGroup.publicInfo,
           publishedOnProfile: true,
           publishedAt: new Date().toISOString(),
-          gender: category.gender.trim() || category.name.trim(),
+          category: category.name.trim(),
+          ...getStoredTournamentGenderFields(category.type, category.participantGenderMode, category.genderOther),
           eventDate: category.eventDate,
           eventStartDate: category.eventDate,
           eventEndDate: category.eventEndDate || category.eventDate,
@@ -8397,6 +8550,8 @@ setNewPublicInfo({
   function addCategorySchedule() {
     setNewCategorySchedules((prev) => [...prev, {
       category: "",
+      participantGenderMode: "",
+      genderOther: "",
       date: "",
       endDate: "",
       registrationDeadline: "",
@@ -8890,13 +9045,24 @@ setNewPublicInfo({
               </div>
 
               <div className="formField">
-                <label>Categoria/Gênero</label>
-                <input value={editForm.gender} onChange={(e) => updateEditForm("gender", e.target.value)} placeholder="Ex: Masculino iniciante" />
+                <label>Categoria</label>
+                <input value={editForm.category} onChange={(e) => updateEditForm("category", e.target.value)} placeholder="Ex: Iniciante, Open ou Sub-18" />
               </div>
 
               <div className="formField">
                 <label>Modalidade</label>
                 <ModalityPicker value={editForm.type} options={allowedTypes} onChange={(type) => updateEditForm("type", type)} legacyLabel="Modalidade legada preservada neste torneio." />
+              </div>
+
+              <div className="formField fullField tournamentGenderField">
+                <label>Gênero</label>
+                <TournamentGenderSelector
+                  type={editForm.type}
+                  value={editForm.participantGenderMode}
+                  customValue={editForm.genderOther}
+                  onChange={(value) => updateEditForm("participantGenderMode", value)}
+                  onCustomChange={(value) => updateEditForm("genderOther", value)}
+                />
               </div>
 
               <div className="formField">
@@ -9033,13 +9199,24 @@ setNewPublicInfo({
                   ) : (
                     <div className="editTournamentGrid eventGroupCategoryFields">
                       <div className="formField">
-                        <label>Categoria/Gênero</label>
+                        <label>Categoria</label>
                         <input value={category.name} onChange={(event) => updateEventGroupCategory(category.key, "name", event.target.value)} />
                       </div>
                       <div className="formField">
                         <label>Modalidade</label>
                         <ModalityPicker value={category.type} options={allowedTypes} onChange={(type) => updateEventGroupCategory(category.key, "type", type)} legacyLabel="Modalidade legada preservada nesta categoria." />
                         {category.hasGeneratedGames ? <small>Ao trocar a modalidade, a confirmação explicará quais dados esportivos serão reiniciados.</small> : null}
+                      </div>
+                      <div className="formField fullField tournamentGenderField">
+                        <label>Gênero</label>
+                        <TournamentGenderSelector
+                          compact
+                          type={category.type}
+                          value={category.participantGenderMode}
+                          customValue={category.genderOther}
+                          onChange={(value) => updateEventGroupCategory(category.key, "participantGenderMode", value)}
+                          onCustomChange={(value) => updateEventGroupCategory(category.key, "genderOther", value)}
+                        />
                       </div>
                       <div className="formField">
                         <label>Início</label>
@@ -9323,7 +9500,7 @@ setNewPublicInfo({
               {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
               {details.eventStartTime ? <span><Clock3 aria-hidden="true" /> {details.eventStartTime}</span> : null}
               {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
-              {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
+              {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
             </div>
             {selectedArenaProfile.whatsapp_group_link ? (
               <button type="button" onClick={() => window.open(selectedArenaProfile.whatsapp_group_link, "_blank", "noopener,noreferrer")}>Inscreva-se</button>
@@ -9412,14 +9589,26 @@ setNewPublicInfo({
   </div>
 
   {newMultiCategoryEvent === "nao" && (
-  <div className="formField">
-    <label>Categoria/Gênero</label>
-    <input
-      value={newGender}
-      onChange={(e) => setNewGender(e.target.value)}
-      placeholder="Ex: Masculino iniciante"
-    />
-  </div>
+  <>
+    <div className="formField">
+      <label>Categoria</label>
+      <input
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+        placeholder="Ex: Iniciante, Open ou Sub-18"
+      />
+    </div>
+    <div className="formField fullField tournamentGenderField">
+      <label>Gênero</label>
+      <TournamentGenderSelector
+        type={newType}
+        value={newGenderMode}
+        customValue={newGenderOther}
+        onChange={setNewGenderMode}
+        onCustomChange={setNewGenderOther}
+      />
+    </div>
+  </>
   )}
 
   {newMultiCategoryEvent === "sim" && (
@@ -9433,13 +9622,25 @@ setNewPublicInfo({
       {newCategorySchedules.map((item, index) => (
         <div className="categoryScheduleItem categoryTournamentCard" key={index}>
           <div className="formField compactField">
-            <label>Categoria/Gênero</label>
-            <input value={item.category} onChange={(e) => updateCategorySchedule(index, "category", e.target.value)} placeholder="Ex: Masculino iniciante" />
+            <label>Categoria</label>
+            <input value={item.category} onChange={(e) => updateCategorySchedule(index, "category", e.target.value)} placeholder="Ex: Iniciante ou Open" />
           </div>
 
           <div className="formField compactField categoryWideField">
             <label>Modalidade</label>
             <ModalityPicker value={item.type} options={allowedTypes} onChange={(type) => updateCategorySchedule(index, "type", type)} />
+          </div>
+
+          <div className="formField compactField categoryWideField tournamentGenderField">
+            <label>Gênero</label>
+            <TournamentGenderSelector
+              compact
+              type={item.type}
+              value={item.participantGenderMode}
+              customValue={item.genderOther}
+              onChange={(value) => updateCategorySchedule(index, "participantGenderMode", value)}
+              onCustomChange={(value) => updateCategorySchedule(index, "genderOther", value)}
+            />
           </div>
 
           <div className="formField compactField">
@@ -9734,7 +9935,7 @@ setNewPublicInfo({
 
                     <div className="tournamentMeta">
                       {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> {details.eventName}</span> : null}
-                      {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
+                      {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
                       {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
                       {details.eventStartTime ? <span><Clock3 aria-hidden="true" /> {details.eventStartTime}</span> : null}
                       {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
@@ -9816,7 +10017,7 @@ setNewPublicInfo({
 
                     <div className="tournamentMeta">
                       {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> {details.eventName}</span> : null}
-                      {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
+                      {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
                       {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
                       {details.eventStartTime ? <span><Clock3 aria-hidden="true" /> {details.eventStartTime}</span> : null}
                       {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
@@ -10283,7 +10484,7 @@ setNewPublicInfo({
     const details = item.data || {};
     const haystack = showingCircuits
       ? `${item.name} ${item.startDate} ${item.endDate}`
-      : `${item.name} ${getModalityDisplayName(item.type)} ${details.gender || ""} ${details.location || ""}`;
+      : `${item.name} ${getModalityDisplayName(item.type)} ${getTournamentClassificationLabels(details).join(" ")} ${details.location || ""}`;
     return normalizeModalitySearch(haystack).includes(normalizedTerm);
   });
 
@@ -10374,7 +10575,7 @@ setNewPublicInfo({
                     ) : (
                       <>
                         {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> Várias categorias</span> : null}
-                        {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
+                        {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
                         {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
                         {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
                       </>
@@ -10478,7 +10679,7 @@ setNewPublicInfo({
               </div>
               <div className="tournamentMeta">
                 {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> {details.eventName}</span> : null}
-                {details.gender ? <span><Tag aria-hidden="true" /> {details.gender}</span> : null}
+                {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
                 {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
                 {details.eventStartTime ? <span><Clock3 aria-hidden="true" /> {details.eventStartTime}</span> : null}
                 {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
@@ -10673,7 +10874,10 @@ function createInitialData(type, config) {
   const base = {
   rankingCriteria: defaultRankingCriteria,
   winningScore: 4,
+  category: "",
   gender: "",
+  participantGenderMode: "",
+  genderOther: "",
   participantGenders: {},
   eventDate: "",
   eventDay: "",
@@ -10883,6 +11087,7 @@ function normalizeTournamentData(type, rawData) {
     : null;
   const validWinningScore = [4, 6].includes(Number(source.winningScore));
   const validRankingCriteria = rankingCriteriaOptions.some((item) => item.value === source.rankingCriteria);
+  const participantGenderMode = getEffectiveTournamentGenderMode(type, inferTournamentGenderMode(source));
   const usedCourtNumbers = [
     ...(Array.isArray(source.schedule) ? source.schedule.flat() : []),
     ...(Array.isArray(source.brackets) ? source.brackets : []),
@@ -10906,6 +11111,16 @@ function normalizeTournamentData(type, rawData) {
     namesShuffled: Boolean(source.namesShuffled),
     schedule: normalizeSchedule(source.schedule),
     courtNumbers: normalizeCourtNumbers(sourceCourtNumbers, courtCount),
+    category: typeof source.category === "string"
+      ? source.category
+      : (source.participantGenderMode ? "" : String(source.gender || "")),
+    participantGenderMode,
+    genderOther: typeof source.genderOther === "string" ? source.genderOther : "",
+    gender: String(
+      source.gender
+      || getTournamentGenderLabel(participantGenderMode, source.genderOther)
+      || ""
+    ),
     participantGenders: normalizeParticipantGenderRegistry(source.participantGenders),
   };
   delete normalized.courtLabels;
@@ -13599,6 +13814,13 @@ function updateScore(roundIndex, gameIndex, field, value) {
 function prepareEditableBracketData(currentData) {
   const copy = structuredClone(currentData);
 
+  // A Copa Sunset pode precisar materializar a vaga automática da vice da
+  // Principal em torneios criados antes desta regra. A sincronização reaproveita
+  // os placares pelos matchKeys e apenas completa a estrutura ausente.
+  if (isSunsetData(copy)) {
+    return syncCupBracketScores(copy);
+  }
+
   // Torneios cearenses antigos podem exibir a 3ª disputa gerada em memória,
   // embora os novos jogos ainda não existam no array salvo. Sincronizar antes
   // da edição torna esses jogos persistentes sem perder placares anteriores.
@@ -13910,7 +14132,7 @@ return (
           <div className="tournamentHeaderMeta">
             <span><Trophy aria-hidden="true" /> {getModalityDisplayName(tournament.type)}</span>
             {data.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> Várias categorias</span> : null}
-            {data.gender ? <span><Tag aria-hidden="true" /> {data.gender}</span> : null}
+            {getTournamentClassificationLabels(data).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
             {data.eventPeriodLabel || data.eventDate ? <span><CalendarDays aria-hidden="true" /> {data.eventPeriodLabel || formatDateBR(data.eventDate)}</span> : null}
             {data.eventDay ? <span><CalendarDays aria-hidden="true" /> {data.eventDay}</span> : null}
             {data.registrationDeadline ? <span><CalendarDays aria-hidden="true" /> Inscrições até {formatDateBR(data.registrationDeadline)}</span> : null}
@@ -14329,7 +14551,7 @@ return (
                 ) : currentBrackets.secondParallel?.length > 0 ? (
                   <CupBracketView groupedBrackets={{ main: [], repechage: [], secondParallel: currentBrackets.secondParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} onEditCourt={requestCourtAssignment} />
                 ) : (
-                  <p>Esta configuração não possui ao menos duas derrotadas na fase de oitavas para formar a 2ª disputa paralela.</p>
+                  <p>Sem eliminadas suficientes nas oitavas, a vice-campeã da Principal ocupará automaticamente esta vaga.</p>
                 )}
               </section>
             ) : null}
@@ -14683,7 +14905,8 @@ function getSafeCupPresentation(data, config) {
   }
 
   try {
-    const presentationData = isCampeonatoCearenseData(data) && data.cupConfig?.cearenseBracketVersion === 2
+    const presentationData = isSunsetData(data)
+      || (isCampeonatoCearenseData(data) && data.cupConfig?.cearenseBracketVersion === 2)
       ? syncCupBracketScores(data)
       : data;
     return {
@@ -15398,7 +15621,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
           <h1>{tournament.name}</h1>
           <p>
             {getModalityDisplayName(tournament.type)}
-            {data.gender ? ` · ${data.gender}` : ""}
+            {getTournamentClassificationLabels(data).map((label) => ` · ${label}`).join("")}
             {data.eventDay ? ` · ${data.eventDay}` : ""}
             {data.eventDate ? ` · ${formatDateBR(data.eventDate)}` : ""}
             {data.location ? ` · ${data.location}` : ""}
@@ -15596,7 +15819,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
                       courtNumbers={data.courtNumbers || []}
                     />
                   )
-                  : <p>Esta configuração não possui ao menos duas derrotadas na fase de oitavas para formar a 2ª disputa paralela.</p>}
+                  : <p>Sem eliminadas suficientes nas oitavas, a vice-campeã da Principal ocupará automaticamente esta vaga.</p>}
             </div>
           ) : null}
 

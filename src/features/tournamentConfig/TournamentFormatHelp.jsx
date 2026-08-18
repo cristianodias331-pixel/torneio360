@@ -323,7 +323,7 @@ export default function TournamentFormatInfoButton({
                     <div>
                       <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
                       <p>Recebe exclusivamente as duplas derrotadas na fase de oitavas da Eliminatória Principal. Quando a abertura da chave de 16 tiver BYEs, entram apenas as derrotadas nos confrontos realmente disputados.</p>
-                      <p>Se houver menos de duas eliminadas elegíveis, esta chave não será formada.</p>
+                      <p>Quando não houver eliminadas suficientes nas oitavas para formar esta chave, a dupla vice-campeã da Eliminatória Principal será considerada automaticamente a vencedora da 2ª disputa paralela.</p>
                     </div>
                   </article>
                   <article>
@@ -338,8 +338,8 @@ export default function TournamentFormatInfoButton({
                     <span className="formatInfoStep">7</span>
                     <div>
                       <h3>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h3>
-                      <p>As campeãs da Principal e das disputas paralelas que realmente forem formadas se encontram nesta etapa final.</p>
-                      <p>Com quatro campeãs, haverá semifinais e final. Com três, a campeã da Principal recebe BYE para a final. Com duas, a decisão é direta.</p>
+                      <p>A campeã da Principal enfrenta a campeã da 1ª disputa paralela. Na outra semifinal, a campeã da 2ª disputa paralela enfrenta a campeã da 3ª disputa paralela.</p>
+                      <p>Quando a 2ª disputa paralela usar a classificação automática descrita acima, o vice da Principal ocupa essa vaga. As vencedoras das duas semifinais disputam a final geral.</p>
                     </div>
                   </article>
                 </>

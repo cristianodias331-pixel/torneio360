@@ -21497,6 +21497,104 @@ html[data-theme="dark"] .participantImportGenderName small span { background: #3
 html[data-theme="dark"] .participantImportGenderStep .participantGenderPanelChoices button.selected.masculine { background: #17356b !important; color: #bfdbfe !important; }
 html[data-theme="dark"] .participantImportGenderStep .participantGenderPanelChoices button.selected.feminine { background: #40205f !important; color: #e9d5ff !important; }
 
+/* Categoria e gênero são informações independentes do torneio. */
+.tournamentGenderSelector {
+  display: grid;
+  gap: 9px;
+  width: 100%;
+}
+
+.tournamentGenderChoices {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tournamentGenderChoices button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px;
+  background: #f8fafc !important;
+  color: #172033 !important;
+  box-shadow: none !important;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.tournamentGenderChoices button:hover:not(:disabled) {
+  border-color: #8b5cf6 !important;
+  background: #f5f3ff !important;
+}
+
+.tournamentGenderChoices button.selected {
+  border-color: #7c3aed !important;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.2) !important;
+}
+
+.tournamentGenderChoices button:disabled:not(.selected) {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.tournamentGenderHint {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.tournamentGenderOtherInput {
+  width: 100%;
+}
+
+.tournamentGenderSelector.compact .tournamentGenderChoices button {
+  min-height: 38px;
+  padding: 7px 8px;
+  font-size: 0.75rem;
+}
+
+html[data-theme="dark"] .tournamentGenderChoices button,
+.proDashboard.theme-dark .tournamentGenderChoices button {
+  border-color: #40536c !important;
+  background: #132131 !important;
+  color: #e7edf7 !important;
+}
+
+html[data-theme="dark"] .tournamentGenderChoices button:hover:not(:disabled),
+.proDashboard.theme-dark .tournamentGenderChoices button:hover:not(:disabled) {
+  border-color: #a78bfa !important;
+  background: #241b43 !important;
+}
+
+html[data-theme="dark"] .tournamentGenderChoices button.selected,
+.proDashboard.theme-dark .tournamentGenderChoices button.selected {
+  border-color: #c4b5fd !important;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .tournamentGenderHint,
+.proDashboard.theme-dark .tournamentGenderHint {
+  color: #aebed2;
+}
+
+@media (max-width: 720px) {
+  .tournamentGenderChoices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tournamentGenderChoices button:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* O aviso de empate fica antes das tabelas e preserva contraste nos dois temas. */
 .proDashboard.playAppShell .groupsPreviewBox > .tieBreakPanel {
   display: grid !important;
