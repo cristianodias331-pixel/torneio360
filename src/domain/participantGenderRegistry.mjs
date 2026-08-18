@@ -255,29 +255,76 @@ export function collectTournamentGenderCandidates(tournament, config) {
   return candidates;
 }
 
-export function mergeTournamentGenderCandidates(tournaments = [], modalityConfigs = {}) {
+export function mergeTournamentGenderCandidates(
+  tournaments = [],
+  modalityConfigs = {},
+  { rankingRecords = [] } = {}
+) {
   const byKey = new Map();
+
+  function mergeCandidate(candidate) {
+    if (!candidate?.key) return;
+    const current = byKey.get(candidate.key);
+    if (!current) {
+      byKey.set(candidate.key, {
+        ...candidate,
+        tournaments: candidate.tournamentName ? [candidate.tournamentName] : [],
+      });
+      return;
+    }
+    const suggestions = new Set(
+      [current.suggestion, candidate.suggestion]
+        .filter((value) => value && value !== participantGenderValues.unknown)
+    );
+    byKey.set(candidate.key, {
+      ...current,
+      name: current.name || candidate.name,
+      gender: current.confirmed ? current.gender : candidate.confirmed ? candidate.gender : current.gender,
+      confirmed: current.confirmed || candidate.confirmed,
+      suggestion: suggestions.size === 1 ? [...suggestions][0] : participantGenderValues.unknown,
+      source: current.confirmed
+        ? current.source
+        : candidate.confirmed
+          ? candidate.source
+          : suggestions.size === 1
+            ? (current.source !== "unknown" ? current.source : candidate.source)
+            : "conflict",
+      tournaments: [...new Set([
+        ...(current.tournaments || []),
+        ...(candidate.tournamentName ? [candidate.tournamentName] : []),
+      ])],
+    });
+  }
+
+  const tournamentsById = new Map(
+    tournaments.map((tournament) => [String(tournament?.id || ""), tournament])
+  );
+
   tournaments.forEach((tournament) => {
     const config = modalityConfigs[tournament?.type];
     if (!config || tournament?.data?.deletedAt) return;
-    collectTournamentGenderCandidates(tournament, config).forEach((candidate) => {
-      const current = byKey.get(candidate.key);
-      if (!current) {
-        byKey.set(candidate.key, { ...candidate, tournaments: [candidate.tournamentName] });
-        return;
-      }
-      const suggestions = new Set([current.suggestion, candidate.suggestion].filter((value) => value && value !== participantGenderValues.unknown));
-      byKey.set(candidate.key, {
-        ...current,
-        name: current.name || candidate.name,
-        gender: current.confirmed ? current.gender : candidate.confirmed ? candidate.gender : current.gender,
-        confirmed: current.confirmed || candidate.confirmed,
-        suggestion: suggestions.size === 1 ? [...suggestions][0] : participantGenderValues.unknown,
-        source: current.confirmed ? current.source : candidate.confirmed ? candidate.source : suggestions.size === 1 ? current.source : "conflict",
-        tournaments: [...new Set([...(current.tournaments || []), candidate.tournamentName])],
-      });
+    collectTournamentGenderCandidates(tournament, config).forEach(mergeCandidate);
+  });
+
+  Object.values(rankingRecords || {}).forEach((record) => {
+    if (isAutomaticParticipantName(record?.name)) return;
+    const name = formatParticipantName(record?.name);
+    const key = getParticipantGenderKey(name);
+    if (!key || key === "sem nome") return;
+    const tournament = tournamentsById.get(String(record?.tournamentId || ""));
+    const suggestion = normalizeParticipantGender(record?.groupKey);
+    mergeCandidate({
+      key,
+      name,
+      gender: participantGenderValues.unknown,
+      confirmed: false,
+      suggestion,
+      source: suggestion === participantGenderValues.unknown ? "history" : "history-group",
+      tournamentId: record?.tournamentId,
+      tournamentName: tournament?.name || tournament?.data?.eventName || "Histórico do circuito",
     });
   });
+
   return [...byKey.values()].sort((first, second) => first.name.localeCompare(second.name, "pt-BR"));
 }
 

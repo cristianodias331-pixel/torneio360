@@ -137,6 +137,7 @@ import {
   getTournamentGenderLabel,
   getParticipantGender,
   inferTournamentGenderMode,
+  mergeTournamentGenderCandidates,
   orderConfirmedMixedTeams,
   participantGenderValues,
   setParticipantGender,
@@ -2866,6 +2867,36 @@ assert.deepEqual(
   setParticipantGender(confirmedGenderRegistry, "Barbara Souza", participantGenderValues.unknown),
   {},
   "Não informar o gênero não deve persistir uma classificação definitiva."
+);
+const circuitHistoryGenderCandidates = mergeTournamentGenderCandidates(
+  [{
+    id: "tournament-1",
+    name: "Etapa atual",
+    type: "super8",
+    data: { players: ["Ana Souza"] },
+  }],
+  { super8: { type: "super8" } },
+  {
+    rankingRecords: {
+      first: { tournamentId: "tournament-1", name: "Ana Souza", groupKey: "feminino" },
+      second: { tournamentId: "old-tournament", name: "Raul Soares", groupKey: "geral" },
+    },
+  }
+);
+assert.deepEqual(
+  circuitHistoryGenderCandidates.map((candidate) => candidate.name),
+  ["Ana Souza", "Raul Soares"],
+  "A confirmação de gênero deve incluir atletas preservados somente no histórico do circuito."
+);
+assert.equal(
+  circuitHistoryGenderCandidates.find((candidate) => candidate.name === "Ana Souza")?.suggestion,
+  participantGenderValues.feminine,
+  "O histórico não pode duplicar um atleta e deve preservar uma sugestão de gênero conhecida."
+);
+assert.equal(
+  circuitHistoryGenderCandidates.find((candidate) => candidate.name === "Raul Soares")?.tournaments?.[0],
+  "Histórico do circuito",
+  "Atletas de etapas antigas precisam continuar disponíveis para edição do gênero."
 );
 
 assert.equal(super20MixedTemplate.length, 10, "O Super 20 mista deve possuir 10 rodadas.");
