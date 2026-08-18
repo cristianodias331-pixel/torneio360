@@ -17606,6 +17606,29 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .circuitGenderCounter { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; }
 .circuitGenderCounter.pending { border: 1px solid #f97316; background: #fff7ed; color: #c2410c; }
 .circuitGenderCounter.complete { border: 1px solid #22c55e; background: #f0fdf4; color: #15803d; }
+.circuitGenderTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.proDashboard.playAppShell .circuitGenderTabs button,
+.circuitGenderTabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: 12px;
+  background-image: none !important;
+  box-shadow: none !important;
+  font-size: .78rem;
+  font-weight: 900;
+}
+.proDashboard.playAppShell .circuitGenderTabs button.pending,
+.circuitGenderTabs button.pending { border: 1px solid #f97316 !important; background: #fff7ed !important; color: #c2410c !important; }
+.proDashboard.playAppShell .circuitGenderTabs button.confirmed,
+.circuitGenderTabs button.confirmed { border: 1px solid #22c55e !important; background: #f0fdf4 !important; color: #15803d !important; }
+.proDashboard.playAppShell .circuitGenderTabs button.selected.pending,
+.circuitGenderTabs button.selected.pending { background: #f97316 !important; color: #fff !important; box-shadow: 0 8px 18px rgba(249,115,22,.2) !important; }
+.proDashboard.playAppShell .circuitGenderTabs button.selected.confirmed,
+.circuitGenderTabs button.selected.confirmed { background: #16a34a !important; color: #fff !important; box-shadow: 0 8px 18px rgba(22,163,74,.2) !important; }
+.circuitGenderTabs button span { min-width: 23px; padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.72); color: inherit; line-height: 1; }
 .circuitGenderRegistryTools label { flex: 1 1 240px; }
 .circuitGenderRegistryTools input {
   width: 100%;
@@ -17618,10 +17641,10 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .circuitGenderSuggestionButton {
   min-height: 42px;
   border: 1px solid #16a34a !important;
-  background: #dcfce7 !important;
+  background: #16a34a !important;
   background-image: none !important;
-  color: #166534 !important;
-  box-shadow: none !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgba(22,163,74,.2) !important;
 }
 .circuitGenderCandidateList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .circuitGenderCandidateList article {
@@ -17633,9 +17656,15 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 }
 .circuitGenderCandidateList article.pending { border-color: color-mix(in srgb, #f97316 35%, var(--ui-border, #d7e0ec)); }
 .circuitGenderSuggestionLabel { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-.circuitGenderSuggestionLabel span { padding: 2px 6px; border-radius: 999px; background: #ede9fe; color: #6d28d9; font-size: .64rem; font-weight: 950; letter-spacing: .04em; text-transform: uppercase; }
+.circuitGenderSuggestionLabel span { padding: 2px 6px; border-radius: 999px; font-size: .64rem; font-weight: 950; letter-spacing: .04em; text-transform: uppercase; }
+.circuitGenderSuggestionLabel.masculine span { background: #dbeafe; color: #1d4ed8; }
+.circuitGenderSuggestionLabel.masculine b { color: #1d4ed8; }
+.circuitGenderSuggestionLabel.feminine span { background: #f3e8ff; color: #7e22ce; }
+.circuitGenderSuggestionLabel.feminine b { color: #7e22ce; }
+.circuitGenderSuggestionLabel.unknown span { background: #e2e8f0; color: #475569; }
 .circuitGenderSuggestionLabel b { color: var(--ui-text-strong, #0d1b36); font-size: .72rem; text-transform: capitalize; }
 .circuitGenderSuggestionLabel em { color: var(--ui-muted, #687992); font-style: normal; font-weight: 700; }
+.circuitGenderTabEmpty { grid-column: 1 / -1; margin: 0; padding: 18px; border: 1px dashed var(--ui-border, #d7e0ec); border-radius: 13px; text-align: center; }
 .circuitGenderChoices { display: flex; flex: 0 0 auto; gap: 5px; }
 .proDashboard.playAppShell .circuitGenderChoices button,
 .circuitGenderChoices button {
@@ -17706,12 +17735,26 @@ html[data-theme="dark"] .circuitGenderCounter.pending,
 .proDashboard.theme-dark .circuitGenderCounter.pending { background: #452514; color: #fed7aa; }
 html[data-theme="dark"] .circuitGenderCounter.complete,
 .proDashboard.theme-dark .circuitGenderCounter.complete { background: #123b2a; color: #bbf7d0; }
+html[data-theme="dark"] .circuitGenderTabs button.pending,
+.proDashboard.theme-dark .circuitGenderTabs button.pending { background: #3b2518 !important; color: #fed7aa !important; }
+html[data-theme="dark"] .circuitGenderTabs button.confirmed,
+.proDashboard.theme-dark .circuitGenderTabs button.confirmed { background: #123b2a !important; color: #bbf7d0 !important; }
+html[data-theme="dark"] .circuitGenderTabs button.selected.pending,
+.proDashboard.theme-dark .circuitGenderTabs button.selected.pending { background: #c2410c !important; color: #fff !important; }
+html[data-theme="dark"] .circuitGenderTabs button.selected.confirmed,
+.proDashboard.theme-dark .circuitGenderTabs button.selected.confirmed { background: #15803d !important; color: #fff !important; }
 html[data-theme="dark"] .circuitGenderSuggestionButton,
-.proDashboard.theme-dark .circuitGenderSuggestionButton { border-color: #22c55e !important; background: #123b2a !important; color: #bbf7d0 !important; }
-html[data-theme="dark"] .circuitGenderSuggestionLabel span,
-.proDashboard.theme-dark .circuitGenderSuggestionLabel span { background: #38205f; color: #ddd6fe; }
-html[data-theme="dark"] .circuitGenderSuggestionLabel b,
-.proDashboard.theme-dark .circuitGenderSuggestionLabel b { color: #f5f8fc; }
+.proDashboard.theme-dark .circuitGenderSuggestionButton { border-color: #22c55e !important; background: #15803d !important; color: #fff !important; }
+html[data-theme="dark"] .circuitGenderSuggestionLabel.masculine span,
+.proDashboard.theme-dark .circuitGenderSuggestionLabel.masculine span { background: #17356b; color: #bfdbfe; }
+html[data-theme="dark"] .circuitGenderSuggestionLabel.masculine b,
+.proDashboard.theme-dark .circuitGenderSuggestionLabel.masculine b { color: #93c5fd; }
+html[data-theme="dark"] .circuitGenderSuggestionLabel.feminine span,
+.proDashboard.theme-dark .circuitGenderSuggestionLabel.feminine span { background: #40205f; color: #e9d5ff; }
+html[data-theme="dark"] .circuitGenderSuggestionLabel.feminine b,
+.proDashboard.theme-dark .circuitGenderSuggestionLabel.feminine b { color: #d8b4fe; }
+html[data-theme="dark"] .circuitGenderSuggestionLabel.unknown span,
+.proDashboard.theme-dark .circuitGenderSuggestionLabel.unknown span { background: #26364b; color: #cbd5e1; }
 html[data-theme="dark"] .circuitGenderChoices button,
 .proDashboard.theme-dark .circuitGenderChoices button { background: #172436 !important; color: #dbe7f5 !important; border-color: #40516a !important; }
 html[data-theme="dark"] .circuitGenderChoices button.selected.masculine,
@@ -17742,8 +17785,13 @@ html[data-theme="dark"] .circuitGenderChoices button.selected.feminine,
 
 @media (max-width: 430px) {
   .circuitManagerToolbarActions, .circuitExtraPointsForm { grid-template-columns: 1fr; }
+  .circuitGenderTabs { grid-template-columns: 1fr; }
   .circuitExtraPointsForm label, .circuitExtraPointsForm label:first-child, .circuitExtraPointsForm label:nth-child(2), .circuitExtraPointsForm label:nth-child(3), .circuitExtraNote { grid-column: 1; }
 }
+
+/* Ações do circuito sem divisórias horizontais redundantes. */
+.circuitItemActions.circuitItemActionsTop { border-top: 0 !important; border-bottom: 0 !important; }
+.circuitItemActions.circuitItemActionsTop + .circuitStagesSummary { border-top: 0 !important; }
 
 .circuitTournamentFormatSelector {
   display: grid;
@@ -21473,6 +21521,22 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   min-width: 158px;
 }
 
+.participantImportOverlay .participantImportCancelButton {
+  border: 1px solid #dc2626 !important;
+  background: #dc2626 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, .18) !important;
+}
+
+.participantImportOverlay .participantImportApplyButton {
+  border: 1px solid #16a34a !important;
+  background: #16a34a !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, .2) !important;
+}
+
 .participantImportFooter button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -21496,6 +21560,8 @@ html[data-theme="dark"] .participantImportOverlay .genderSuggestionConfirmButton
 html[data-theme="dark"] .participantImportGenderName small span { background: #38205f; color: #ddd6fe; }
 html[data-theme="dark"] .participantImportGenderStep .participantGenderPanelChoices button.selected.masculine { background: #17356b !important; color: #bfdbfe !important; }
 html[data-theme="dark"] .participantImportGenderStep .participantGenderPanelChoices button.selected.feminine { background: #40205f !important; color: #e9d5ff !important; }
+html[data-theme="dark"] .participantImportOverlay .participantImportCancelButton { border-color: #ef4444 !important; background: #991b1b !important; color: #fee2e2 !important; }
+html[data-theme="dark"] .participantImportOverlay .participantImportApplyButton { border-color: #22c55e !important; background: #166534 !important; color: #dcfce7 !important; }
 
 /* Categoria e gênero são informações independentes do torneio. */
 .tournamentGenderSelector {

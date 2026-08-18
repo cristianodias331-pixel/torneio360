@@ -16,13 +16,19 @@ import {
 
 function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("pending");
   const normalizedRegistry = useMemo(() => mergeParticipantGenderRegistries(registry), [registry]);
   const visibleCandidates = useMemo(() => {
     const query = search.trim().normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
-    return candidates.filter((candidate) => !query || `${candidate.name} ${(candidate.tournaments || []).join(" ")}`
-      .normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").includes(query));
-  }, [candidates, search]);
+    return candidates.filter((candidate) => {
+      const isConfirmed = Boolean(normalizedRegistry[candidate.key]?.confirmed);
+      if ((activeTab === "pending" && isConfirmed) || (activeTab === "confirmed" && !isConfirmed)) return false;
+      return !query || `${candidate.name} ${(candidate.tournaments || []).join(" ")}`
+        .normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").includes(query);
+    });
+  }, [activeTab, candidates, normalizedRegistry, search]);
   const pendingCount = candidates.filter((candidate) => !normalizedRegistry[candidate.key]?.confirmed).length;
+  const confirmedCount = candidates.length - pendingCount;
 
   function chooseGender(candidate, gender) {
     onChange(setParticipantGender(normalizedRegistry, candidate.name, gender));
@@ -30,7 +36,9 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
 
   function applySuggestions() {
     const next = candidates.reduce((current, candidate) => (
-      candidate.suggestion && candidate.suggestion !== participantGenderValues.unknown
+      !normalizedRegistry[candidate.key]?.confirmed
+        && candidate.suggestion
+        && candidate.suggestion !== participantGenderValues.unknown
         ? setParticipantGender(current, candidate.name, candidate.suggestion)
         : current
     ), normalizedRegistry);
@@ -51,19 +59,46 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
 
       {candidates.length ? (
         <>
+          <div className="circuitGenderTabs" role="tablist" aria-label="Situação dos gêneros dos atletas">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "pending"}
+              className={`pending ${activeTab === "pending" ? "selected" : ""}`}
+              onClick={() => setActiveTab("pending")}
+            >
+              Gêneros a confirmar <span>{pendingCount}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "confirmed"}
+              className={`confirmed ${activeTab === "confirmed" ? "selected" : ""}`}
+              onClick={() => setActiveTab("confirmed")}
+            >
+              Gêneros confirmados <span>{confirmedCount}</span>
+            </button>
+          </div>
           <div className="circuitGenderRegistryTools">
             <label>
               <span className="srOnly">Pesquisar atleta</span>
               <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar atleta..." />
             </label>
-            <button type="button" className="circuitGenderSuggestionButton" onClick={applySuggestions}>
-              Confirmar sugestões conhecidas
-            </button>
+            {activeTab === "pending" ? (
+              <button type="button" className="circuitGenderSuggestionButton" onClick={applySuggestions}>
+                Confirmar sugestões conhecidas
+              </button>
+            ) : null}
           </div>
           <div className="circuitGenderCandidateList">
             {visibleCandidates.map((candidate) => {
               const entry = normalizedRegistry[candidate.key];
               const selectedGender = entry?.confirmed ? entry.gender : participantGenderValues.unknown;
+              const suggestionClass = candidate.suggestion === participantGenderValues.masculine
+                ? "masculine"
+                : candidate.suggestion === participantGenderValues.feminine
+                  ? "feminine"
+                  : "unknown";
               const suggestionLabel = candidate.suggestion === participantGenderValues.masculine
                 ? "Sugestão: masculino"
                 : candidate.suggestion === participantGenderValues.feminine
@@ -73,7 +108,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
                 <article key={candidate.key} className={!entry?.confirmed ? "pending" : "confirmed"}>
                   <div>
                     <strong>{candidate.name}</strong>
-                    <small className="circuitGenderSuggestionLabel"><span>Sugestão</span><b>{suggestionLabel.replace("Sugestão: ", "")}</b>{candidate.tournaments?.length ? <em>· {candidate.tournaments.slice(0, 2).join(", ")}</em> : null}</small>
+                    <small className={`circuitGenderSuggestionLabel ${suggestionClass}`}><span>Sugestão</span><b>{suggestionLabel.replace("Sugestão: ", "")}</b>{candidate.tournaments?.length ? <em>· {candidate.tournaments.slice(0, 2).join(", ")}</em> : null}</small>
                   </div>
                   <div className="circuitGenderChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
                     <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.masculine} className={selectedGender === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.masculine)}>Masculino</button>
@@ -82,6 +117,13 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
                 </article>
               );
             })}
+            {!visibleCandidates.length ? (
+              <p className="circuitGenderEmpty circuitGenderTabEmpty">
+                {activeTab === "pending"
+                  ? "Nenhum gênero pendente nesta pesquisa."
+                  : "Nenhum gênero confirmado nesta pesquisa."}
+              </p>
+            ) : null}
           </div>
         </>
       ) : <p className="circuitGenderEmpty">Selecione os torneios do circuito para identificar os atletas.</p>}
