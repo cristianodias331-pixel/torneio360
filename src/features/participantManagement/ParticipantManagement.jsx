@@ -505,23 +505,6 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
           </div>
         )}
 
-        <div className="participantImportPreview">
-          <div className="participantImportPreviewTitle">
-            <strong>Prévia antes de aplicar</strong>
-            <small>É assim que os participantes ficarão.</small>
-          </div>
-          <div className={`participantImportPreviewGroups ${previewGroups.length > 1 ? "multiple" : ""}`}>
-            {previewGroups.map((group) => (
-              <section key={group.label}>
-                <h3>{group.label}</h3>
-                <ol>
-                  {group.values.map((value, index) => <li key={`${group.label}-${index}`}>{value}</li>)}
-                </ol>
-              </section>
-            ))}
-          </div>
-        </div>
-
         {shouldConfirmIndividualGenders && genderCandidates.length ? (
           <section className="participantImportGenderStep" aria-labelledby="participant-import-gender-title">
             <div className="participantImportGenderHeader">
@@ -563,9 +546,26 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
           </section>
         ) : null}
 
+        <div className="participantImportPreview">
+          <div className="participantImportPreviewTitle">
+            <strong>Prévia antes de aplicar</strong>
+            <small>É assim que os participantes ficarão.</small>
+          </div>
+          <div className={`participantImportPreviewGroups ${previewGroups.length > 1 ? "multiple" : ""}`}>
+            {previewGroups.map((group) => (
+              <section key={group.label}>
+                <h3>{group.label}</h3>
+                <ol>
+                  {group.values.map((value, index) => <li key={`${group.label}-${index}`}>{value}</li>)}
+                </ol>
+              </section>
+            ))}
+          </div>
+        </div>
+
         <div className="participantImportFooter">
-          <button type="button" className="secondaryBtn" onClick={onClose}>Cancelar</button>
-          <button type="button" onClick={handleApply} disabled={!preview.imported}>
+          <button type="button" className="participantImportCancelButton" onClick={onClose}>Cancelar</button>
+          <button type="button" className="participantImportApplyButton" onClick={handleApply} disabled={!preview.imported}>
             {mode === "replace" && replaceConfirmed ? "Sim, substituir todos" : mode === "replace" ? "Revisar substituição" : "Aplicar lista"}
           </button>
         </div>
