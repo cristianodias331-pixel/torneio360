@@ -15012,8 +15012,29 @@ function PublicArenaTournamentCards(props) {
     />
   );
 }
+const PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000;
+
+function PublicArenaLoadingScreen() {
+  return (
+    <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da arena">
+      <video
+        className="publicArenaLoadingVideo"
+        src="/arena-profile-loading.mp4"
+        autoPlay
+        muted
+        playsInline
+        loop
+        preload="auto"
+        aria-hidden="true"
+      />
+      <div className="publicArenaLoadingCaption">Carregando perfil da arena...</div>
+    </div>
+  );
+}
+
 function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [loading, setLoading] = useState(true);
+  const [minimumLoadingElapsed, setMinimumLoadingElapsed] = useState(false);
   const [bundle, setBundle] = useState(null);
   const [error, setError] = useState("");
   const [activeArenaTab, setActiveArenaTab] = useState("tournaments");
@@ -15031,8 +15052,10 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
 
     if (result.error || !result.data?.profile) {
       console.error(result.error);
-      setError("Não foi possível abrir o perfil desta arena.");
-      setBundle(null);
+      if (!silent) {
+        setError("Não foi possível abrir o perfil desta arena.");
+        setBundle(null);
+      }
     } else {
       const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
         const criteria = getRankingCriteria(circuit.ranking_criteria || defaultRankingCriteria);
@@ -15083,17 +15106,25 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   }
 
   useEffect(() => {
+    setMinimumLoadingElapsed(false);
+    const minimumLoadingTimer = window.setTimeout(
+      () => setMinimumLoadingElapsed(true),
+      PUBLIC_ARENA_LOADING_MIN_DURATION_MS
+    );
     void loadBundle();
     const interval = window.setInterval(() => void loadBundle({ silent: true }), 20000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(minimumLoadingTimer);
+      window.clearInterval(interval);
+    };
   }, [arenaId, publicId]);
 
   useEffect(() => {
     setActiveStatusTab("active");
   }, [activeArenaTab]);
 
-  if (loading) {
-    return <div className="publicPage"><div className="center"><h1>Carregando perfil da arena...</h1></div></div>;
+  if (loading || !minimumLoadingElapsed) {
+    return <PublicArenaLoadingScreen />;
   }
 
   if (error || !bundle?.profile) {
