@@ -198,6 +198,7 @@ import {
   mergeTournamentGenderCandidates,
   normalizeParticipantGenderRegistry,
   normalizeTournamentGenderMode,
+  orderConfirmedMixedTeams,
   participantGenderValues,
   setParticipantGender,
   tournamentGenderModes,
@@ -13459,6 +13460,21 @@ function TournamentScreen({
   function importParticipants(nextPlayers, summary) {
     const copy = structuredClone(data);
 
+    const importedGenderRegistry = mergeParticipantGenderRegistries(
+      copy.participantGenders,
+      summary.participantGenders
+    );
+    const shouldOrderFixedMixedTeams = inferTournamentGenderMode(copy) === tournamentGenderModes.mixed
+      && !isMixedType(config)
+      && !isIndividualCupType(config)
+      && Array.isArray(nextPlayers?.teams);
+    const orderedPlayers = shouldOrderFixedMixedTeams
+      ? {
+          ...nextPlayers,
+          teams: orderConfirmedMixedTeams(nextPlayers.teams, importedGenderRegistry),
+        }
+      : nextPlayers;
+
     setParticipantImportBackup({
       players: structuredClone(data.players),
       participantAttendance: structuredClone(data.participantAttendance),
@@ -13467,14 +13483,11 @@ function TournamentScreen({
     copy.participantAttendance = reconcileParticipantAttendance(
       config,
       copy.players,
-      nextPlayers,
+      orderedPlayers,
       copy.participantAttendance
     );
-    copy.players = structuredClone(nextPlayers);
-    copy.participantGenders = mergeParticipantGenderRegistries(
-      copy.participantGenders,
-      summary.participantGenders
-    );
+    copy.players = structuredClone(orderedPlayers);
+    copy.participantGenders = importedGenderRegistry;
     delete copy.lastShuffleVideo;
     setData(refreshGameParticipantNames(copy));
     setParticipantImportOpen(false);
