@@ -9,6 +9,17 @@ export const participantGenderValues = {
   unknown: "nao_informado",
 };
 
+export const tournamentGenderModes = {
+  masculine: "masculino",
+  feminine: "feminino",
+  mixed: "mista",
+  open: "livre",
+  other: "outro",
+  unknown: "",
+};
+
+const validTournamentGenderModes = new Set(Object.values(tournamentGenderModes));
+
 const validGenders = new Set(Object.values(participantGenderValues));
 
 export function getParticipantGenderKey(name) {
@@ -23,6 +34,68 @@ export function normalizeParticipantGender(value) {
   if (["f", "fem", "feminino", "mulher", "female", "feminine"].includes(normalized)) {
     return participantGenderValues.feminine;
   }
+  return participantGenderValues.unknown;
+}
+
+export function normalizeTournamentGenderMode(value) {
+  const normalized = String(value || "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
+
+  if (["m", "masc", "masculino", "homem", "homens"].includes(normalized)) {
+    return tournamentGenderModes.masculine;
+  }
+  if (["f", "fem", "feminino", "mulher", "mulheres"].includes(normalized)) {
+    return tournamentGenderModes.feminine;
+  }
+  if (["misto", "mista", "mixed"].includes(normalized)) {
+    return tournamentGenderModes.mixed;
+  }
+  if (["livre", "open", "aberto", "aberta"].includes(normalized)) {
+    return tournamentGenderModes.open;
+  }
+  if (["outro", "outra"].includes(normalized)) {
+    return tournamentGenderModes.other;
+  }
+  return tournamentGenderModes.unknown;
+}
+
+export function inferTournamentGenderMode(data = {}) {
+  const explicit = normalizeTournamentGenderMode(data.participantGenderMode || data.genderMode);
+  if (validTournamentGenderModes.has(explicit) && explicit) return explicit;
+
+  const legacyGender = String(data.gender || "");
+  const normalizedLegacy = legacyGender
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase("pt-BR");
+  if (/mista|misto/u.test(normalizedLegacy)) return tournamentGenderModes.mixed;
+  if (/masculin|\bmasc\b/u.test(normalizedLegacy) && !/feminin/u.test(normalizedLegacy)) {
+    return tournamentGenderModes.masculine;
+  }
+  if (/feminin|\bfem\b/u.test(normalizedLegacy) && !/masculin/u.test(normalizedLegacy)) {
+    return tournamentGenderModes.feminine;
+  }
+  if (/\blivre\b|\bopen\b|\babert[oa]\b/u.test(normalizedLegacy)) return tournamentGenderModes.open;
+  return tournamentGenderModes.unknown;
+}
+
+export function getTournamentGenderLabel(mode, customLabel = "") {
+  const normalizedMode = normalizeTournamentGenderMode(mode);
+  if (normalizedMode === tournamentGenderModes.masculine) return "Masculino";
+  if (normalizedMode === tournamentGenderModes.feminine) return "Feminino";
+  if (normalizedMode === tournamentGenderModes.mixed) return "Mista";
+  if (normalizedMode === tournamentGenderModes.open) return "Livre";
+  if (normalizedMode === tournamentGenderModes.other) return String(customLabel || "").trim();
+  return "";
+}
+
+export function getOppositeParticipantGender(gender) {
+  const normalizedGender = normalizeParticipantGender(gender);
+  if (normalizedGender === participantGenderValues.masculine) return participantGenderValues.feminine;
+  if (normalizedGender === participantGenderValues.feminine) return participantGenderValues.masculine;
   return participantGenderValues.unknown;
 }
 
@@ -113,7 +186,12 @@ function suggestedNameGender(name) {
 export function collectTournamentGenderCandidates(tournament, config) {
   const data = tournament?.data || {};
   const explicitRegistry = normalizeParticipantGenderRegistry(data.participantGenders);
-  const category = categoryGender(data.gender);
+  const tournamentGenderMode = inferTournamentGenderMode(data);
+  const category = tournamentGenderMode === tournamentGenderModes.masculine
+    ? participantGenderValues.masculine
+    : tournamentGenderMode === tournamentGenderModes.feminine
+      ? participantGenderValues.feminine
+      : categoryGender(data.gender);
   const candidates = [];
 
   function add(name, suggestion = participantGenderValues.unknown, source = "unknown") {
@@ -196,7 +274,12 @@ export function resolveTournamentParticipantGender({ tournament, settings, name,
   );
   if (explicit !== participantGenderValues.unknown) return explicit;
 
-  const category = categoryGender(tournament?.data?.gender);
+  const tournamentGenderMode = inferTournamentGenderMode(tournament?.data);
+  const category = tournamentGenderMode === tournamentGenderModes.masculine
+    ? participantGenderValues.masculine
+    : tournamentGenderMode === tournamentGenderModes.feminine
+      ? participantGenderValues.feminine
+      : categoryGender(tournament?.data?.gender);
   if (category !== participantGenderValues.unknown) return category;
   return normalizeParticipantGender(fallbackGender);
 }

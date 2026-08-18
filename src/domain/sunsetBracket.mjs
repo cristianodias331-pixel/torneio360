@@ -42,6 +42,38 @@ export function getBracketChampionSource(rounds) {
     : null;
 }
 
+export function getBracketRunnerUpSource(rounds) {
+  const finalRound = (rounds || []).find((round) => (
+    String(round?.title || "").trim().toLocaleLowerCase("pt-BR") === "final"
+  ));
+  const finalGame = finalRound?.games?.[0];
+  return finalGame
+    ? { sourceMatchKey: finalGame.matchKey, sourceMode: "loser" }
+    : null;
+}
+
+export function buildSunsetMainRunnerUpFallback(mainRounds, bracketTitle) {
+  const runnerUp = getBracketRunnerUpSource(mainRounds);
+  if (!runnerUp) return [];
+
+  return [{
+    title: "Final",
+    bracketTitle,
+    games: [{
+      ...createCopinhaBracketGame({
+        bracketType: "secondParallel",
+        roundName: "Final",
+        matchKey: "secondParallel_final_1",
+        entry1: runnerUp,
+        entry2: null,
+        court: 1,
+      }),
+      isBye: true,
+      automaticQualification: "mainRunnerUp",
+    }],
+  }];
+}
+
 export function buildSunsetChampionsRounds(brackets, bracketTitle) {
   const principal = getBracketChampionSource(brackets.main);
   const firstParallel = getBracketChampionSource(brackets.repechage);

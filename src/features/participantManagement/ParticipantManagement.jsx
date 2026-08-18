@@ -3,10 +3,13 @@ import { formatParticipantName } from "../../domain/participantNames.mjs";
 import { normalizeParticipantAttendance } from "../../domain/participantAttendance.mjs";
 import {
   collectTournamentGenderCandidates,
+  getOppositeParticipantGender,
   getParticipantGender,
+  inferTournamentGenderMode,
   mergeParticipantGenderRegistries,
   participantGenderValues,
   setParticipantGender,
+  tournamentGenderModes,
 } from "../../domain/participantGenderRegistry.mjs";
 import {
   isCupType,
@@ -20,10 +23,6 @@ function isMixedParticipantConfig(config) {
 
 function isTeamParticipantConfig(config) {
   return config.type === "fixed12" || config.type === "fixed16" || (isCupType(config) && !isIndividualCupType(config));
-}
-
-function isFixedMixedTeamConfig(config) {
-  return config.type === "fixed12" || config.type === "fixed16";
 }
 
 function stripParticipantEmojis(value) {
@@ -273,7 +272,13 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
   const config = modalityConfig[type];
   const isMixed = isMixedParticipantConfig(config);
   const isTeams = isTeamParticipantConfig(config);
-  const isFixedMixedTeams = isFixedMixedTeamConfig(config);
+  const tournamentGenderMode = inferTournamentGenderMode(data);
+  const isFixedMixedTeams = isTeams
+    && !isMixed
+    && tournamentGenderMode === tournamentGenderModes.mixed;
+  const hasSingleTournamentGender = tournamentGenderMode === tournamentGenderModes.masculine
+    || tournamentGenderMode === tournamentGenderModes.feminine;
+  const shouldConfirmIndividualGenders = tournamentGenderMode === tournamentGenderModes.mixed && !isMixed;
   const [drafts, setDrafts] = useState({ general: "", men: "", women: "" });
   const [mode, setMode] = useState("available");
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
@@ -285,14 +290,14 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
     [config, data, drafts, mode]
   );
   const genderCandidates = useMemo(() => {
-    if (!isTeams) return [];
+    if (!hasSingleTournamentGender && !shouldConfirmIndividualGenders && !isMixed) return [];
     const collected = collectTournamentGenderCandidates({
       type,
       name: data.eventName,
       data: { ...data, players: preview.nextPlayers },
     }, config);
     return [...new Map(collected.map((candidate) => [candidate.key, candidate])).values()];
-  }, [config, data, isTeams, preview.nextPlayers, type]);
+  }, [config, data, hasSingleTournamentGender, isMixed, preview.nextPlayers, shouldConfirmIndividualGenders, type]);
   const effectiveGenderRegistry = useMemo(
     () => mergeParticipantGenderRegistries(knownRegistry, genderRegistryDraft),
     [genderRegistryDraft, knownRegistry]
@@ -300,6 +305,18 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
   const confirmedGenderCount = genderCandidates.filter((candidate) => (
     getParticipantGender(effectiveGenderRegistry, candidate.name, { confirmedOnly: true }) !== participantGenderValues.unknown
   )).length;
+  const mixedTeamPartners = useMemo(() => {
+    const partners = new Map();
+    if (!isFixedMixedTeams || !Array.isArray(preview.nextPlayers?.teams)) return partners;
+    preview.nextPlayers.teams.forEach((team) => {
+      const first = genderCandidates.find((candidate) => candidate.name === team?.a);
+      const second = genderCandidates.find((candidate) => candidate.name === team?.b);
+      if (!first?.key || !second?.key) return;
+      partners.set(first.key, second);
+      partners.set(second.key, first);
+    });
+    return partners;
+  }, [genderCandidates, isFixedMixedTeams, preview.nextPlayers]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -335,23 +352,76 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
       return;
     }
 
-    onApply(preview.nextPlayers, {
+    let resolvedRegistry = genderRegistryDraft;
+    genderCandidates.forEach((candidate) => {
+      let gender = getParticipantGender(effectiveGenderRegistry, candidate.name, { confirmedOnly: true });
+      if (hasSingleTournamentGender) {
+        gender = tournamentGenderMode === tournamentGenderModes.masculine
+          ? participantGenderValues.masculine
+          : participantGenderValues.feminine;
+      } else if (isMixed && candidate.suggestion !== participantGenderValues.unknown) {
+        gender = candidate.suggestion;
+      }
+      if (gender !== participantGenderValues.unknown) {
+        resolvedRegistry = setParticipantGender(resolvedRegistry, candidate.name, gender);
+      }
+    });
+
+    let nextPlayers = preview.nextPlayers;
+    if (isFixedMixedTeams && Array.isArray(preview.nextPlayers?.teams)) {
+      nextPlayers = {
+        ...preview.nextPlayers,
+        teams: preview.nextPlayers.teams.map((team) => {
+          const firstGender = getParticipantGender(resolvedRegistry, team?.a, { confirmedOnly: true });
+          const secondGender = getParticipantGender(resolvedRegistry, team?.b, { confirmedOnly: true });
+          return firstGender === participantGenderValues.feminine && secondGender === participantGenderValues.masculine
+            ? { ...team, a: team.b, b: team.a }
+            : team;
+        }),
+      };
+    }
+
+    onApply(nextPlayers, {
       ...preview,
-      participantGenders: genderRegistryDraft,
+      participantGenders: resolvedRegistry,
     });
   }
 
+  function assignParticipantGender(registry, candidate, gender) {
+    let nextRegistry = setParticipantGender(registry, candidate.name, gender);
+    const partner = mixedTeamPartners.get(candidate.key);
+    const oppositeGender = getOppositeParticipantGender(gender);
+    if (partner && oppositeGender !== participantGenderValues.unknown) {
+      nextRegistry = setParticipantGender(nextRegistry, partner.name, oppositeGender);
+    }
+    return nextRegistry;
+  }
+
   function chooseParticipantGender(candidate, gender) {
-    setGenderRegistryDraft((current) => setParticipantGender(current, candidate.name, gender));
+    setGenderRegistryDraft((current) => assignParticipantGender(current, candidate, gender));
   }
 
   function confirmGenderSuggestions() {
     setGenderRegistryDraft((current) => genderCandidates.reduce((registry, candidate) => (
       candidate.suggestion && candidate.suggestion !== participantGenderValues.unknown
-        ? setParticipantGender(registry, candidate.name, candidate.suggestion)
+        ? assignParticipantGender(registry, candidate, candidate.suggestion)
         : registry
     ), current));
   }
+
+  const previewGroups = useMemo(() => {
+    if (!isFixedMixedTeams || !Array.isArray(preview.nextPlayers?.teams)) return preview.groups;
+    return [{
+      label: "Duplas",
+      values: preview.nextPlayers.teams.map((team) => {
+        const firstGender = getParticipantGender(effectiveGenderRegistry, team?.a, { confirmedOnly: true });
+        const secondGender = getParticipantGender(effectiveGenderRegistry, team?.b, { confirmedOnly: true });
+        return firstGender === participantGenderValues.feminine && secondGender === participantGenderValues.masculine
+          ? `${team.b} + ${team.a}`
+          : `${team.a} + ${team.b}`;
+      }),
+    }];
+  }, [effectiveGenderRegistry, isFixedMixedTeams, preview.groups, preview.nextPlayers]);
 
   return (
     <div className="participantImportOverlay" role="dialog" aria-modal="true" aria-labelledby="participant-import-title">
@@ -362,7 +432,7 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
             <h2 id="participant-import-title">Colar lista de nomes</h2>
             <p>
               {isFixedMixedTeams
-                ? "Uma dupla por linha. A ordem colada será preservada; o gênero poderá ser confirmado separadamente para o ranking. Separe os nomes por +, /, -, e ou &. Símbolos e emojis em qualquer posição serão ignorados. Use nome e sobrenome."
+                ? "Uma dupla por linha. Ao confirmar o gênero de uma pessoa, o parceiro receberá automaticamente o gênero oposto. O homem ficará na primeira posição e a mulher na segunda. Separe os nomes por +, /, -, e ou &. Símbolos e emojis serão ignorados. Use nome e sobrenome."
                 : isTeams
                 ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis em qualquer posição serão ignorados. Use nome e sobrenome."
                 : "Numeração, marcadores e emojis em qualquer posição serão retirados automaticamente. Use nome e sobrenome."}
@@ -440,8 +510,8 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
             <strong>Prévia antes de aplicar</strong>
             <small>É assim que os participantes ficarão.</small>
           </div>
-          <div className={`participantImportPreviewGroups ${preview.groups.length > 1 ? "multiple" : ""}`}>
-            {preview.groups.map((group) => (
+          <div className={`participantImportPreviewGroups ${previewGroups.length > 1 ? "multiple" : ""}`}>
+            {previewGroups.map((group) => (
               <section key={group.label}>
                 <h3>{group.label}</h3>
                 <ol>
@@ -452,13 +522,13 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
           </div>
         </div>
 
-        {isTeams && genderCandidates.length ? (
+        {shouldConfirmIndividualGenders && genderCandidates.length ? (
           <section className="participantImportGenderStep" aria-labelledby="participant-import-gender-title">
             <div className="participantImportGenderHeader">
               <div>
                 <span>Etapa opcional</span>
                 <strong id="participant-import-gender-title">Confirmar gênero para os rankings</strong>
-                <small>Organize aqui os mesmos nomes da lista. Isso não interfere no torneio e nunca impede continuar.</small>
+                <small>{isFixedMixedTeams ? "Confirme uma pessoa da dupla; o parceiro recebe o gênero oposto e a ordem homem + mulher é ajustada automaticamente." : "Confirme os gêneros dos nomes desta lista. Isso não interfere nos jogos e nunca impede continuar."}</small>
               </div>
               <b>{confirmedGenderCount} de {genderCandidates.length} confirmados</b>
             </div>
