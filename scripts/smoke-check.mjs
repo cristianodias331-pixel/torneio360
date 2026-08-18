@@ -367,6 +367,12 @@ const serverRevisionMigration = readFileSync(serverRevisionMigrationUrl, "utf8")
 const circuitScoringMigrationUrl = new URL("supabase/migrations/202608120001_circuit_scoring_models.sql", root);
 assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração dos modelos de pontuação dos circuitos está ausente.");
 const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
+const publicArenaReliabilityMigrationUrl = new URL("supabase/migrations/202608180001_public_arena_reliability.sql", root);
+assert.ok(existsSync(fileURLToPath(publicArenaReliabilityMigrationUrl)), "A migração de confiabilidade dos perfis públicos está ausente.");
+const publicArenaReliabilityMigration = readFileSync(publicArenaReliabilityMigrationUrl, "utf8");
+const publicArenaPayloadMigrationUrl = new URL("supabase/migrations/202608180002_public_arena_payload_optimization.sql", root);
+assert.ok(existsSync(fileURLToPath(publicArenaPayloadMigrationUrl)), "A migração de otimização dos perfis públicos está ausente.");
+const publicArenaPayloadMigration = readFileSync(publicArenaPayloadMigrationUrl, "utf8");
 const offlineStoreSource = readFileSync(new URL("src/offlineDataStore.mjs", root), "utf8");
 const serviceWorkerSource = readFileSync(new URL("public/sw.js", root), "utf8");
 const groupRankingRulesSource = readFileSync(new URL("src/domain/groupRankingRules.mjs", root), "utf8");
@@ -1845,6 +1851,9 @@ assert.ok(
 assert.ok(
   mainSource.includes("fetchPublicArenaDirectory")
     && mainSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
+    && mainSource.includes("ARENA_DIRECTORY_CACHE_KEY")
+    && mainSource.includes("readPublicArenaDirectoryCache")
+    && mainSource.includes("publicArenaDirectoryRequestInFlight")
     && mainSource.includes("hasSuccessfulLoad")
     && mainSource.includes("publicArenaProfilesInFlightRef")
     && mainSource.includes("refreshVisibleArenas")
@@ -1854,6 +1863,36 @@ assert.ok(
     && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"')
     && mainSource.includes('className="arenaFeedOrganizer"'),
   "O diretório de arenas não atualiza automaticamente ou não identifica o organizador nos cartões."
+);
+assert.ok(
+  mainSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
+    && mainSource.includes("fetchPublicArenaBundle")
+    && mainSource.includes("PUBLIC_ARENA_REQUEST_TIMEOUT_MS")
+    && mainSource.includes("publicArenaBundleMemoryCache")
+    && mainSource.includes("readPublicArenaBundleCache")
+    && mainSource.includes("onPlaying"),
+  "O perfil público perdeu os cinco segundos da propaganda ou a recuperação contra falhas temporárias."
+);
+assert.ok(
+  publicArenaPresentationSource.includes("initialVisibleItems = 8")
+    && publicArenaPresentationSource.includes("publicArenaLoadMore")
+    && publicArenaPresentationSource.includes('loading="lazy"')
+    && styleSource.includes(".publicArenaLoadMore"),
+  "O perfil público voltou a renderizar todos os eventos e imagens pesadas de uma vez."
+);
+assert.ok(
+  publicArenaReliabilityMigration.includes("create or replace function public.get_public_arena_bundle_base")
+    && publicArenaReliabilityMigration.includes("'athlete', 'visitor', 'spectator'")
+    && !publicArenaReliabilityMigration.includes("'athlete', 'visitor', 'spectator', 'organizer_pending'"),
+  "A listagem e a abertura do perfil público voltaram a usar regras incompatíveis."
+);
+assert.ok(
+  publicArenaPayloadMigration.includes("t360_public_tournament_summary_data")
+    && publicArenaPayloadMigration.includes("'directoryEntry', true")
+    && mainSource.includes("fetchPublicTournamentDetail")
+    && mainSource.includes("publicTournamentDetailMemoryCache")
+    && mainSource.includes("onOpenTournament={openPublicTournament}"),
+  "O perfil público voltou a baixar todos os jogos e placares antes de o visitante abrir um torneio."
 );
 
 const expectedModalityLabels = [

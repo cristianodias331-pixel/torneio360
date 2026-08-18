@@ -467,30 +467,195 @@ ${url}`;
 
 const ARENA_DIRECTORY_REFRESH_INTERVAL_MS = 60_000;
 const ARENA_DIRECTORY_RETRY_DELAY_MS = 450;
+const ARENA_DIRECTORY_CACHE_KEY = "t360.public-arena-directory.v1";
+const ARENA_DIRECTORY_CACHE_MAX_AGE_MS = 5 * 60_000;
+const PUBLIC_ARENA_BUNDLE_CACHE_PREFIX = "t360.public-arena-bundle.v1";
+const PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS = 30 * 60_000;
+const PUBLIC_ARENA_REQUEST_TIMEOUT_MS = 12_000;
+let publicArenaDirectoryRequestInFlight = null;
+const publicArenaBundleMemoryCache = new Map();
+const publicTournamentDetailMemoryCache = new Map();
+
+function readPublicArenaCache(key, maxAge) {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const cached = JSON.parse(window.sessionStorage.getItem(key) || "null");
+    if (!cached || (!Array.isArray(cached.data) && typeof cached.data !== "object")) return null;
+    if (!Number.isFinite(Number(cached.savedAt))) return null;
+    if (Date.now() - Number(cached.savedAt) > maxAge) return null;
+    return cached.data;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writePublicArenaCache(key, data) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify({ data, savedAt: Date.now() }));
+  } catch (error) {
+    // O cache é apenas uma aceleração. Falhas de armazenamento não interrompem a navegação.
+  }
+}
+
+function readPublicArenaDirectoryCache() {
+  const cached = readPublicArenaCache(ARENA_DIRECTORY_CACHE_KEY, ARENA_DIRECTORY_CACHE_MAX_AGE_MS);
+  return Array.isArray(cached) ? cached.filter((arena) => arena?.id) : null;
+}
+
+function getPublicArenaBundleCacheKey({ arenaId = null, publicId = null } = {}) {
+  const identifier = arenaId || publicId;
+  return identifier ? `${PUBLIC_ARENA_BUNDLE_CACHE_PREFIX}:${identifier}` : "";
+}
+
+function readPublicArenaBundleCache(params) {
+  const key = getPublicArenaBundleCacheKey(params);
+  if (!key) return null;
+
+  const cached = publicArenaBundleMemoryCache.get(key);
+  if (!cached || Date.now() - cached.savedAt > PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS) {
+    publicArenaBundleMemoryCache.delete(key);
+    return null;
+  }
+
+  return cached.data;
+}
+
+function writePublicArenaBundleCache(params, data) {
+  const key = getPublicArenaBundleCacheKey(params);
+  if (key) publicArenaBundleMemoryCache.set(key, { data, savedAt: Date.now() });
+}
 
 async function fetchPublicArenaDirectory({ search = null, limit = 250 } = {}) {
-  let lastError = null;
+  const normalizedSearch = String(search || "").trim() || null;
+  const canShareRequest = !normalizedSearch && Number(limit) >= 250;
+  if (canShareRequest && publicArenaDirectoryRequestInFlight) {
+    return publicArenaDirectoryRequestInFlight;
+  }
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const result = await supabase.rpc("list_public_arenas", {
-      p_search: search,
-      p_limit: limit,
-    });
+  const request = (async () => {
+    let lastError = null;
 
-    if (!result.error) {
-      return {
-        data: Array.isArray(result.data) ? result.data : [],
-        error: null,
-      };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const result = await supabase.rpc("list_public_arenas", {
+          p_search: normalizedSearch,
+          p_limit: limit,
+        });
+
+        if (!result.error) {
+          const data = Array.isArray(result.data) ? result.data.filter((arena) => arena?.id) : [];
+          if (canShareRequest) writePublicArenaCache(ARENA_DIRECTORY_CACHE_KEY, data);
+          return { data, error: null };
+        }
+
+        lastError = result.error;
+      } catch (error) {
+        lastError = error;
+      }
+
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
+      }
     }
 
-    lastError = result.error;
+    return { data: [], error: lastError };
+  })();
+
+  if (canShareRequest) publicArenaDirectoryRequestInFlight = request;
+
+  try {
+    return await request;
+  } finally {
+    if (canShareRequest && publicArenaDirectoryRequestInFlight === request) {
+      publicArenaDirectoryRequestInFlight = null;
+    }
+  }
+}
+
+async function fetchPublicArenaBundle({ arenaId = null, publicId = null } = {}) {
+  let lastError = null;
+  let lastData = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
+
+    try {
+      const result = await supabase.rpc("get_public_arena_bundle", {
+        p_organizer_id: arenaId || null,
+        p_public_id: publicId || null,
+      }).abortSignal(controller.signal);
+
+      lastData = result.data;
+      if (!result.error && result.data?.profile) {
+        writePublicArenaBundleCache({ arenaId, publicId }, result.data);
+        return { data: result.data, error: null, fromCache: false };
+      }
+
+      lastError = result.error || new Error("Perfil público da arena não encontrado.");
+    } catch (error) {
+      lastError = error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+
     if (attempt === 0) {
       await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
     }
   }
 
-  return { data: [], error: lastError };
+  const cached = readPublicArenaBundleCache({ arenaId, publicId });
+  if (cached?.profile) return { data: cached, error: null, fromCache: true };
+
+  return { data: lastData, error: lastError, fromCache: false };
+}
+
+async function fetchPublicTournamentDetail(publicId) {
+  const normalizedPublicId = String(publicId || "").trim();
+  if (!normalizedPublicId) {
+    return { data: null, error: new Error("Identificador público do torneio não informado.") };
+  }
+
+  const cached = publicTournamentDetailMemoryCache.get(normalizedPublicId);
+  if (cached?.data && Date.now() - cached.savedAt <= PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS) {
+    return { data: cached.data, error: null, fromCache: true };
+  }
+
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
+
+    try {
+      const result = await supabase
+        .rpc("get_public_tournament", { p_public_id: normalizedPublicId })
+        .maybeSingle()
+        .abortSignal(controller.signal);
+
+      if (!result.error && result.data) {
+        publicTournamentDetailMemoryCache.set(normalizedPublicId, {
+          data: result.data,
+          savedAt: Date.now(),
+        });
+        return { data: result.data, error: null, fromCache: false };
+      }
+
+      lastError = result.error || new Error("Torneio público não encontrado.");
+    } catch (error) {
+      lastError = error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+
+    if (attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
+    }
+  }
+
+  return { data: null, error: lastError, fromCache: false };
 }
 
 function getAutomaticEventStatus(endDate) {
@@ -3346,15 +3511,16 @@ function openOrganizerPanel() {
 }
 
 function PublicArenaDirectorySection({ title = "Encontre uma arena", description = "Acompanhe torneios, circuitos, jogos e rankings sem precisar fazer login." }) {
-  const [arenas, setArenas] = useState([]);
+  const [initialDirectoryCache] = useState(() => readPublicArenaDirectoryCache());
+  const [arenas, setArenas] = useState(() => initialDirectoryCache || []);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialDirectoryCache);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
     let requestInFlight = false;
-    let hasSuccessfulLoad = false;
+    let hasSuccessfulLoad = Boolean(initialDirectoryCache);
 
     async function loadArenas({ silent = false } = {}) {
       if (requestInFlight) return;
@@ -3378,7 +3544,7 @@ function PublicArenaDirectorySection({ title = "Encontre uma arena", description
       }
     }
 
-    void loadArenas();
+    void loadArenas({ silent: Boolean(initialDirectoryCache) });
 
     const refreshArenas = () => void loadArenas({ silent: true });
     const refreshVisibleArenas = () => {
@@ -7068,6 +7234,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         whatsapp_group_link: organizerProfile.whatsappGroupLink || profile.whatsapp_group_link || "",
         is_public: true,
       };
+
+      const cachedProfiles = readPublicArenaDirectoryCache();
+      if (cachedProfiles && publicArenaProfilesMountedRef.current) {
+        const cachedWithoutCurrent = cachedProfiles
+          .filter((item) => item?.id && item.id !== user.id)
+          .map((item) => ({ ...item, is_public: true }));
+        setPublicArenaProfiles([currentArenaProfile, ...cachedWithoutCurrent]);
+      }
 
       const { data, error } = await fetchPublicArenaDirectory({ limit: 250 });
       if (!publicArenaProfilesMountedRef.current || requestId !== publicArenaProfilesRequestRef.current) return;
@@ -15057,14 +15231,12 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [activeStatusTab, setActiveStatusTab] = useState("active");
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [selectedCircuit, setSelectedCircuit] = useState(null);
+  const [openingPublicId, setOpeningPublicId] = useState(null);
 
   async function loadBundle({ silent = false } = {}) {
     if (!silent) setLoading(true);
 
-    const result = await supabase.rpc("get_public_arena_bundle", {
-      p_organizer_id: arenaId || null,
-      p_public_id: publicId || null,
-    });
+    const result = await fetchPublicArenaBundle({ arenaId, publicId });
 
     if (result.error || !result.data?.profile) {
       console.error(result.error);
@@ -15109,7 +15281,12 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       setBundle(normalizedBundle);
       setSelectedTournament((current) => {
         if (!current) return null;
-        return (normalizedBundle.tournaments || []).find((item) => item.id === current.id) || null;
+        const directoryItem = (normalizedBundle.tournaments || []).find((item) => item.id === current.id);
+        if (!directoryItem) return null;
+        if (current.directoryEntry !== true) {
+          return { ...directoryItem, ...current, data: current.data };
+        }
+        return directoryItem;
       });
       setSelectedCircuit((current) => {
         if (!current) return null;
@@ -15127,7 +15304,15 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       () => setMinimumLoadingElapsed(true),
       PUBLIC_ARENA_LOADING_MIN_DURATION_MS
     );
-    void loadBundle();
+    const cachedBundle = readPublicArenaBundleCache({ arenaId, publicId });
+    if (cachedBundle?.profile) {
+      setBundle(cachedBundle);
+      setError("");
+      setLoading(false);
+      void loadBundle({ silent: true });
+    } else {
+      void loadBundle();
+    }
     const interval = window.setInterval(() => void loadBundle({ silent: true }), 20000);
     return () => {
       window.clearTimeout(minimumLoadingTimer);
@@ -15138,6 +15323,24 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   useEffect(() => {
     setActiveStatusTab("active");
   }, [activeArenaTab]);
+
+  async function openPublicTournament(item) {
+    if (!item?.directoryEntry) {
+      setSelectedTournament(item);
+      return;
+    }
+
+    setOpeningPublicId(item.public_id);
+    const result = await fetchPublicTournamentDetail(item.public_id);
+    setOpeningPublicId(null);
+
+    if (result.error || !result.data) {
+      console.error(result.error);
+      return;
+    }
+
+    setSelectedTournament({ ...result.data, directoryEntry: false });
+  }
 
   if (loading || !minimumLoadingElapsed) {
     return <PublicArenaLoadingScreen />;
@@ -15214,8 +15417,9 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       visibleItems={visibleItems}
       onArenaTabChange={setActiveArenaTab}
       onStatusTabChange={setActiveStatusTab}
-      onOpenTournament={setSelectedTournament}
+      onOpenTournament={openPublicTournament}
       onOpenCircuit={setSelectedCircuit}
+      openingPublicId={openingPublicId}
       getWhatsAppUrl={getBrazilianWhatsAppUrl}
       getCircuitStatus={(item) => normalizeCircuitStatus(getAutomaticEventStatus(item.end_date || item.endDate))}
       getCircuitDateLabel={(item) => item.start_date ? `${formatDateBR(item.start_date)} até ${formatDateBR(item.end_date)}` : ""}
