@@ -3032,7 +3032,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return request;
   }
 
-  async function saveCircuitHistoryToSupabase(circuitId, history, sourceTournaments = []) {
+  async function saveCircuitHistoryToSupabase(
+    circuitId,
+    history,
+    sourceTournaments = [],
+    { affectedTournamentId = null } = {}
+  ) {
     const rows = Object.entries(history || {}).map(([recordKey, record]) => ({
       user_id: user.id,
       circuit_id: circuitId,
@@ -3058,6 +3063,83 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         tournament_id: tournament.id,
         updated_at: tournament.updated_at,
       }));
+
+    const normalizedAffectedTournamentId = affectedTournamentId === null
+      ? null
+      : String(affectedTournamentId);
+
+    if (normalizedAffectedTournamentId !== null) {
+      const tournamentRows = rows.filter((row) => (
+        String(row.tournament_id) === normalizedAffectedTournamentId
+      ));
+      const tournamentVersions = sourceVersions.filter((item) => (
+        String(item.tournament_id) === normalizedAffectedTournamentId
+      ));
+
+      if (tournamentVersions.length) {
+        const { data: currentVersions, error: versionsError } = await supabase
+          .from("tournaments")
+          .select("id, updated_at")
+          .eq("user_id", user.id)
+          .in("id", tournamentVersions.map((item) => item.tournament_id));
+        const currentVersionById = new Map(
+          (currentVersions || []).map((item) => [String(item.id), item.updated_at])
+        );
+        const sourceStillCurrent = !versionsError && tournamentVersions.every((item) => (
+          currentVersionById.get(String(item.tournament_id)) === item.updated_at
+        ));
+        if (!sourceStillCurrent) {
+          console.warn("O ranking incremental aguardará a versão mais recente do torneio.", versionsError);
+          return false;
+        }
+      }
+
+      if (tournamentRows.length) {
+        const { error: upsertError } = await supabase
+          .from("circuit_ranking_history")
+          .upsert(tournamentRows, { onConflict: "user_id,circuit_id,tournament_id,group_key,player_key" });
+        if (upsertError) {
+          console.error("Erro ao atualizar o histórico do torneio no circuito:", upsertError);
+          return false;
+        }
+      }
+
+      const { data: savedRows, error: savedRowsError } = await supabase
+        .from("circuit_ranking_history")
+        .select("tournament_id, group_key, player_key")
+        .eq("user_id", user.id)
+        .eq("circuit_id", circuitId)
+        .eq("tournament_id", normalizedAffectedTournamentId);
+      if (savedRowsError) {
+        console.error("Erro ao conferir o histórico incremental do circuito:", savedRowsError);
+        return false;
+      }
+
+      const currentKeys = new Set(
+        tournamentRows.map((row) => `${row.tournament_id}::${row.group_key}::${row.player_key}`)
+      );
+      const staleRows = (savedRows || []).filter((row) => {
+        const key = `${row.tournament_id}::${row.group_key || "geral"}::${row.player_key}`;
+        return !currentKeys.has(key);
+      });
+      const removalResults = await Promise.all(staleRows.map(async (row) => {
+        const { error } = await supabase
+          .from("circuit_ranking_history")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("circuit_id", circuitId)
+          .eq("tournament_id", row.tournament_id)
+          .eq("group_key", row.group_key || "geral")
+          .eq("player_key", row.player_key);
+        if (error) {
+          console.error("Erro ao remover linha antiga do torneio no circuito:", error);
+          return false;
+        }
+        return true;
+      }));
+
+      return removalResults.every((result) => result !== false);
+    }
 
     const { error: atomicReplaceError } = await supabase.rpc("replace_circuit_ranking_history", {
       p_circuit_id: circuitId,
@@ -4037,10 +4119,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       (circuit.tournamentIds || []).map(String)
     )))];
     const hydratedRows = await loadFullTournamentRows(requiredTournamentIds, { silentError: true });
-    const hydratedById = new Map(hydratedRows.map((row) => [String(row.id), row]));
-    const effectiveTournamentSource = (tournamentSource || []).map((tournament) => (
-      hydratedById.get(String(tournament.id)) || tournament
-    ));
+    const effectiveTournamentById = new Map(
+      (tournamentSource || []).map((tournament) => [String(tournament.id), tournament])
+    );
+    hydratedRows.forEach((row) => effectiveTournamentById.set(String(row.id), row));
+    const effectiveTournamentSource = [...effectiveTournamentById.values()];
     const missingDetails = requiredTournamentIds.some((id) => {
       const tournament = effectiveTournamentSource.find((item) => String(item.id) === id);
       return !tournament || isTournamentSummary(tournament);
@@ -4070,7 +4153,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       circuitsToPersist.map((circuit) => saveCircuitHistoryToSupabase(
         circuit.id,
         circuit.rankingHistory || {},
-        getCircuitSelectedTournaments(circuit, effectiveTournamentSource)
+        getCircuitSelectedTournaments(circuit, effectiveTournamentSource),
+        { affectedTournamentId: affectedId }
       ))
     );
     const queuedPersistence = circuitPersistenceQueueRef.current.then(
@@ -5957,17 +6041,21 @@ setNewPublicInfo({
     });
     void (async () => {
       const criteriaCircuits = await syncAutomaticCircuitCriteria(nextTournaments, circuitsRef.current);
-      const circuitPersistence = await persistCircuitRankings(
+      let circuitPersistence = await persistCircuitRankings(
         nextTournaments,
         criteriaCircuits || circuitsRef.current,
         persistedTournament.id
       );
       if (!circuitPersistence.success) {
-        showNotice(
-          "warning",
-          "Placar salvo; ranking pendente",
-          "O torneio foi salvo, mas o ranking do circuito não pôde ser sincronizado agora. Mantenha esta tela aberta e tente novamente."
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        circuitPersistence = await persistCircuitRankings(
+          tournamentsRef.current,
+          circuitsRef.current,
+          persistedTournament.id
         );
+      }
+      if (!circuitPersistence.success) {
+        console.warn("O placar foi salvo e o ranking do circuito será atualizado na próxima sincronização.");
       }
       await saveDashboardCache(user.id, {
         tournaments: tournamentsRef.current,
