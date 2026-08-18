@@ -20910,12 +20910,29 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   z-index: 1;
   width: min(88vw, 540px, 70dvh);
   height: min(88vw, 540px, 70dvh);
+  display: block;
   object-fit: cover;
   object-position: center;
   background: transparent;
-  -webkit-mask-image: radial-gradient(circle at center, #000 0%, #000 58%, rgba(0, 0, 0, 0.88) 66%, rgba(0, 0, 0, 0.38) 76%, transparent 88%);
-  mask-image: radial-gradient(circle at center, #000 0%, #000 58%, rgba(0, 0, 0, 0.88) 66%, rgba(0, 0, 0, 0.38) 76%, transparent 88%);
+  -webkit-mask-image: radial-gradient(circle at center, #000 0%, #000 44%, rgba(0, 0, 0, 0.9) 46%, rgba(0, 0, 0, 0.48) 48%, transparent 50%);
+  mask-image: radial-gradient(circle at center, #000 0%, #000 44%, rgba(0, 0, 0, 0.9) 46%, rgba(0, 0, 0, 0.48) 48%, transparent 50%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-position: center;
+  mask-position: center;
+  clip-path: circle(50% at 50% 50%);
+  opacity: 0;
+  transform: scale(0.985);
+  transition: opacity 320ms ease, transform 420ms ease;
+  will-change: opacity, transform;
   pointer-events: none;
+}
+
+.publicArenaLoadingVideo.isReady {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .publicArenaLoadingCaption {
