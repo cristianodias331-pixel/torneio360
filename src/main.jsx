@@ -4070,6 +4070,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       records,
       settings: rankingSettings,
       criteriaValue,
+      tournaments: tournamentSource,
+      modalityConfigs: modalityConfig,
     });
   }
 
@@ -4092,6 +4094,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       records: Object.values(rankingHistory),
       settings: getEffectiveCircuitRankingSettings(rankingSettingsSource),
       criteriaValue,
+      tournaments: tournamentsRef.current,
+      modalityConfigs: modalityConfig,
     });
     circuitRankingViewCacheRef.current.set(circuitId, {
       rankingHistory,
@@ -8344,7 +8348,9 @@ setNewPublicInfo({
               const toolsExpanded = String(expandedCircuitToolsId || "") === normalizedCircuitId;
               const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings, { includeManual: true }) : null;
-              const sharedPlacementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
+              const sharedPlacementColumns = placementMode
+                ? getCircuitPlacementColumns(rankingSettings, { totalsOnly: true })
+                : null;
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
               const unresolvedTieGroups = placementMode
                 ? getUnresolvedCircuitTieGroups(circuitRankingGroups, rankingSettings)
@@ -8352,6 +8358,21 @@ setNewPublicInfo({
               const circuitCriteriaLabel = placementMode
                 ? getCircuitTieBreakLabel(rankingSettings, { compact: true })
                 : getRankingCriteria(effectiveCircuitCriteria).label;
+              const getCircuitGroupShareConfig = (group) => ({
+                title: circuit.name,
+                subtitle: group.title,
+                arenaName: organizerProfile.arenaName || organizerProfile.organizerName || "Arena Torneio360",
+                arenaPhotoUrl: organizerProfile.photoUrl || "",
+                rankingCriteria: effectiveCircuitCriteria,
+                columns: sharedPlacementColumns,
+                criteriaLabel: circuitCriteriaLabel,
+                groups: [group],
+                buttonLabel: group.key === "masculino"
+                  ? "Compartilhar masculino"
+                  : group.key === "feminino"
+                    ? "Compartilhar feminino"
+                    : "Compartilhar ranking",
+              });
               return circuitRankingGroups.length ? (
                 <div className="circuitRankingBox">
                   <div className="circuitRankingHeader">
@@ -8359,18 +8380,6 @@ setNewPublicInfo({
                       <span>{circuit.name}</span>
                       <strong>{circuitRankingTitle}</strong>
                     </div>
-                    <RankingShareButton
-                      config={{
-                        title: circuit.name,
-                        subtitle: circuitRankingTitle,
-                        arenaName: organizerProfile.arenaName || organizerProfile.organizerName || "Arena Torneio360",
-                        arenaPhotoUrl: organizerProfile.photoUrl || "",
-                        rankingCriteria: effectiveCircuitCriteria,
-                        columns: sharedPlacementColumns,
-                        criteriaLabel: circuitCriteriaLabel,
-                        groups: circuitRankingGroups,
-                      }}
-                    />
                     {!placementMode ? <label>
                       <span>Critério de desempate</span>
                       <select
@@ -8426,6 +8435,9 @@ setNewPublicInfo({
                       rankingCriteria={effectiveCircuitCriteria}
                       columns={placementColumns}
                       showGames={!placementMode}
+                      shareConfig={rankingSettings.rankingDivision === "gender" && circuitRankingGroups[0].key === "geral"
+                        ? null
+                        : getCircuitGroupShareConfig(circuitRankingGroups[0])}
                       progressive
                       initialRowCount={30}
                     />
@@ -8439,6 +8451,9 @@ setNewPublicInfo({
                           rankingCriteria={effectiveCircuitCriteria}
                           columns={placementColumns}
                           showGames={!placementMode}
+                          shareConfig={rankingSettings.rankingDivision === "gender" && group.key === "geral"
+                            ? null
+                            : getCircuitGroupShareConfig(group)}
                           progressive
                           initialRowCount={30}
                         />
@@ -12346,15 +12361,24 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [circuit?.id]);
+  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
   const storedRankingGroups = Array.isArray(circuit?.ranking_groups)
     ? circuit.ranking_groups.filter((group) => Array.isArray(group?.rows) && group.rows.length > 0)
     : [];
-  const rankingGroups = storedRankingGroups.length > 0
-    ? storedRankingGroups
-    : buildPublicCircuitRankingGroups(circuit, tournaments);
-  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
+  const storedRankingNeedsGenderRepair = rankingSettings.rankingDivision === "gender"
+    && storedRankingGroups.some((group) => (group.key || "geral") === "geral");
+  const rebuiltRankingGroups = storedRankingGroups.length === 0 || storedRankingNeedsGenderRepair
+    ? buildPublicCircuitRankingGroups(circuit, tournaments)
+    : [];
+  const allRankingGroups = rebuiltRankingGroups.length > 0 ? rebuiltRankingGroups : storedRankingGroups;
+  const rankingGroups = rankingSettings.rankingDivision === "gender"
+    ? allRankingGroups.filter((group) => group.key === "masculino" || group.key === "feminino")
+    : allRankingGroups;
   const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
+  const sharedPlacementColumns = placementMode
+    ? getCircuitPlacementColumns(rankingSettings, { totalsOnly: true })
+    : null;
   const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
   const circuitCriteriaLabel = placementMode
     ? getCircuitTieBreakLabel(rankingSettings, { compact: true })
@@ -12364,16 +12388,21 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
   const circuitTournaments = sortTournamentsChronologically(
     tournaments.filter((tournament) => selectedTournamentIds.has(String(tournament.id)))
   );
-  const shareConfig = {
+  const getPublicCircuitGroupShareConfig = (group) => ({
     title: circuit?.name || "Ranking do circuito",
-    subtitle: rankingTitle,
+    subtitle: group.title,
     arenaName,
     arenaPhotoUrl: organizer.photoUrl || "",
     rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria,
-    columns: placementColumns,
+    columns: sharedPlacementColumns,
     criteriaLabel: circuitCriteriaLabel,
-    groups: rankingGroups,
-  };
+    groups: [group],
+    buttonLabel: group.key === "masculino"
+      ? "Compartilhar masculino"
+      : group.key === "feminino"
+        ? "Compartilhar feminino"
+        : "Compartilhar ranking",
+  });
 
   return (
     <div className="publicPage publicCircuitPage">
@@ -12410,7 +12439,6 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
             <h2>{arenaName}</h2>
             <p>{(circuit?.tournament_ids || circuit?.tournamentIds || []).length} torneio(s) neste circuito</p>
           </div>
-          <RankingShareButton config={shareConfig} />
         </section>
 
         <section className="card publicCircuitStagesCard">
@@ -12456,6 +12484,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
               rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
               columns={placementColumns}
               showGames={!placementMode}
+              shareConfig={getPublicCircuitGroupShareConfig(rankingGroups[0])}
               progressive
               initialRowCount={30}
             />
@@ -12469,6 +12498,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
                   rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
                   columns={placementColumns}
                   showGames={!placementMode}
+                  shareConfig={getPublicCircuitGroupShareConfig(group)}
                   progressive
                   initialRowCount={30}
                 />

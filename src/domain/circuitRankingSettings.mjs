@@ -228,12 +228,12 @@ export function getUnresolvedCircuitTieGroups(groups, settings) {
   });
 }
 
-export function getCircuitPlacementColumns(settings, { includeManual = false } = {}) {
+export function getCircuitPlacementColumns(settings, { includeManual = false, totalsOnly = false } = {}) {
   const keys = getCircuitTieBreakOrder(settings);
   const columns = [
     { key: "circuitPoints", label: "Total de pontos" },
-    { key: "extraPoints", label: "Extras" },
   ];
+  if (totalsOnly) return columns;
   keys.forEach((criterion) => {
     const option = circuitTieBreakOptions.find((item) => item.value === criterion);
     if (option && !columns.some((column) => column.key === option.key)) {
