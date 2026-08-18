@@ -23723,7 +23723,11 @@ html[data-theme="dark"] .tournamentTabCloseActions button {
 
   .tournamentTabsModalHeader { padding: 19px 17px 14px; }
   .tournamentTabsModalHeader p { font-size: 10.5px; }
-  .tournamentTabsSearch { margin: 13px 16px 9px; }
+  .tournamentTabsModal .tournamentTabsSearch {
+    width: calc(100% - 32px) !important;
+    max-width: calc(100% - 32px) !important;
+    margin: 13px 16px 9px !important;
+  }
   .tournamentTabsModalList {
     max-height: calc(86vh - 205px);
     padding: 4px 16px calc(20px + env(safe-area-inset-bottom));
