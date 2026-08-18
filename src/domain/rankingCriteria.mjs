@@ -1,4 +1,4 @@
-import { formatMatchDuration } from "./matchTimer.mjs";
+import { formatMatchTotalDuration } from "./matchTimer.mjs";
 
 export const rankingCriteriaOptions = [
   {
@@ -49,6 +49,6 @@ export function getRankingColumnLabel(key) {
 }
 
 export function formatRankingMetricValue(key, value) {
-  if (key === "playTimeSeconds") return formatMatchDuration(value);
+  if (key === "playTimeSeconds") return formatMatchTotalDuration(value);
   return String(Number(value || 0));
 }

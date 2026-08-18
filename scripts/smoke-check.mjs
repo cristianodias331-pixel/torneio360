@@ -15,6 +15,7 @@ import {
 } from "../src/offlineDataStore.mjs";
 import {
   formatMatchDuration,
+  formatMatchTotalDuration,
   getMatchElapsedSeconds,
   resetMatchTimer,
   startMatchTimer,
@@ -1613,7 +1614,9 @@ assert.equal(rankingCriteriaOptions.length, 6, "Alguma ordem válida dos critér
 assert.deepEqual(getRankingCriteria("points_balance_wins").order, ["pts", "bal", "w"], "A ordem escolhida do ranking não é respeitada.");
 assert.equal(getRankingCriteria("inexistente").value, defaultRankingCriteria, "Um critério inválido não retorna ao padrão seguro.");
 assert.equal(getRankingColumnLabel("pts"), "Total de Games", "A nomenclatura de Total de Games foi alterada.");
-assert.equal(formatRankingMetricValue("playTimeSeconds", 125), "02:05", "O tempo em jogo não é formatado no ranking.");
+assert.equal(formatRankingMetricValue("playTimeSeconds", 125), "00:02:05", "O tempo total em jogo não usa horas, minutos e segundos no ranking.");
+assert.equal(formatMatchDuration(125), "02:05", "O cronômetro da partida deixou de usar minutos e segundos.");
+assert.equal(formatMatchTotalDuration(77264), "21:27:44", "O total acumulado não usa horas, minutos e segundos.");
 
 const scheduleRanking = calculateScheduleRanking({
   names: ["Ana", "Bia", "Carla", "Dani"],

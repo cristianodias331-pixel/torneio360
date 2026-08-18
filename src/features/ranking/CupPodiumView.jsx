@@ -1,5 +1,5 @@
 import React from "react";
-import { formatMatchDuration } from "../../domain/matchTimer.mjs";
+import { formatMatchTotalDuration } from "../../domain/matchTimer.mjs";
 import { getPodiumInitials } from "../media/canvasTools.mjs";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { TournamentCircuitButton } from "../circuitManagement/TournamentCircuitManager.jsx";
@@ -45,7 +45,7 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
             <strong>{item.position}</strong>
             <span className="cupPodiumName">{item.name}</span>
             {Number(item.playTimeSeconds || 0) > 0 ? (
-              <span className="cupPodiumTime">Tempo em jogo: {formatMatchDuration(item.playTimeSeconds)}</span>
+              <span className="cupPodiumTime">Tempo em jogo: {formatMatchTotalDuration(item.playTimeSeconds)}</span>
             ) : null}
             <span className="cupPodiumStep" aria-hidden="true">{item.place}</span>
           </div>

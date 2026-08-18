@@ -1,4 +1,4 @@
-import { formatMatchDuration } from "../../domain/matchTimer.mjs";
+import { formatMatchTotalDuration } from "../../domain/matchTimer.mjs";
 import {
   normalizeRankingExportGroups,
   paginateRankingGroups,
@@ -173,7 +173,7 @@ async function createCupPodiumShareFile({
       context.fillStyle = "#a5f3fc";
       context.font = `800 ${singleChampion ? 22 : 17}px Arial`;
       context.fillText(
-        `Tempo em jogo: ${formatMatchDuration(item.playTimeSeconds)}`,
+        `Tempo em jogo: ${formatMatchTotalDuration(item.playTimeSeconds)}`,
         layout.x,
         labelY + (singleChampion ? 166 : layout.place === 1 ? 142 : 138)
       );
@@ -208,7 +208,7 @@ async function createCupPodiumShareFile({
   context.textAlign = "center";
   context.fillText(
     Number(tournamentDurationSeconds || 0) > 0
-      ? `Tempo geral do torneio: ${formatMatchDuration(tournamentDurationSeconds)} • Torneio360`
+      ? `Tempo geral do torneio: ${formatMatchTotalDuration(tournamentDurationSeconds)} • Torneio360`
       : "Gerado pelo Torneio360 • torneio360.com",
     canvas.width / 2,
     canvas.height - 38
@@ -385,7 +385,7 @@ async function createRankingShareFile({
   context.font = "700 17px Arial";
   context.textAlign = "center";
   const rankingFooter = Number(tournamentDurationSeconds || 0) > 0
-    ? `Tempo geral do torneio: ${formatMatchDuration(tournamentDurationSeconds)} • Torneio360 • Página ${pageNumber} de ${totalPages}`
+    ? `Tempo geral do torneio: ${formatMatchTotalDuration(tournamentDurationSeconds)} • Torneio360 • Página ${pageNumber} de ${totalPages}`
     : `Gerado pelo Torneio360 • torneio360.com • Página ${pageNumber} de ${totalPages}`;
   context.fillText(rankingFooter, canvas.width / 2, canvas.height - 38);
 
@@ -546,7 +546,7 @@ function printRankingDocument(config) {
         printDocument,
         "p",
         "",
-        `Tempo geral do torneio: ${formatMatchDuration(config.tournamentDurationSeconds)}`
+        `Tempo geral do torneio: ${formatMatchTotalDuration(config.tournamentDurationSeconds)}`
       ));
     }
     page.appendChild(heading);
