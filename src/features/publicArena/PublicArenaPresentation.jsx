@@ -160,6 +160,7 @@ export function PublicArenaPageView({
   onOpenTournament,
   onOpenCircuit,
   openingPublicId = null,
+  openingCircuitId = null,
   getWhatsAppUrl,
   getCircuitStatus,
   getCircuitDateLabel,
@@ -217,7 +218,9 @@ export function PublicArenaPageView({
                   <span className={`publicCircuitStatus ${circuitStatus}`}>{circuitStatus === "closed" ? "Encerrado" : "Em andamento"}</span>
                   <p>{getCircuitDateLabel(item) ? <span><CalendarDays aria-hidden="true" /> {getCircuitDateLabel(item)}</span> : null}<span>{getCircuitTournamentCount(item)} torneio(s)</span></p>
                 </div>
-                <button type="button" onClick={() => onOpenCircuit(item)}>Ver circuito</button>
+                <button type="button" onClick={() => onOpenCircuit(item)} disabled={openingCircuitId === item.id}>
+                  {openingCircuitId === item.id ? "Abrindo..." : "Ver circuito"}
+                </button>
               </article>
             );
           })}
@@ -245,7 +248,18 @@ export function PublicArenaDirectoryView({
   error,
   arenas,
   onOpenArena,
+  ArenaPhoto,
 }) {
+  const initialVisibleArenas = 18;
+  const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleArenas);
+
+  React.useEffect(() => {
+    setVisibleLimit(initialVisibleArenas);
+  }, [search]);
+
+  const displayedArenas = arenas.slice(0, visibleLimit);
+  const remainingArenas = Math.max(0, arenas.length - displayedArenas.length);
+
   return (
     <section id="arenas" className="publicArenaDirectorySection">
       <div className="publicDirectoryHeading">
@@ -272,16 +286,12 @@ export function PublicArenaDirectoryView({
         <div className="publicDirectoryState">Nenhuma arena encontrada.</div>
       ) : (
         <div className="publicArenaDirectoryGrid">
-          {arenas.map((arena) => {
+          {displayedArenas.map((arena) => {
             const arenaName = arena.arena_name || arena.name || "Arena Torneio360";
             return (
               <article className="publicArenaDirectoryCard" key={arena.id}>
                 <div className="publicArenaDirectoryPhoto">
-                  {arena.photo_url ? (
-                    <img src={arena.photo_url} alt={`Foto de ${arenaName}`} loading="lazy" decoding="async" />
-                  ) : (
-                    <span>{arenaName.slice(0, 2).toUpperCase()}</span>
-                  )}
+                  <ArenaPhoto arena={arena} alt={`Foto de ${arenaName}`} />
                 </div>
                 <div className="publicArenaDirectoryInfo">
                   <small>Perfil da arena</small>
@@ -295,6 +305,15 @@ export function PublicArenaDirectoryView({
               </article>
             );
           })}
+          {remainingArenas > 0 ? (
+            <button
+              type="button"
+              className="publicArenaLoadMore"
+              onClick={() => setVisibleLimit((current) => Math.min(current + initialVisibleArenas, arenas.length))}
+            >
+              Mostrar mais arenas <span>{remainingArenas}</span>
+            </button>
+          ) : null}
         </div>
       )}
     </section>
