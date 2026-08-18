@@ -114,7 +114,7 @@ export function PublicArenaTournamentCardsView({
     return (
       <article className={`card publicArenaEventCard publicArenaEventCardWithCover ${isGroup ? "publicArenaGroupedEvent" : ""}`} key={group.key}>
         <div className="publicArenaEventCover">
-          {coverImage ? <img src={coverImage} alt={`Capa de ${title}`} /> : <span><Trophy aria-hidden="true" /></span>}
+          {coverImage ? <img src={coverImage} alt={`Capa de ${title}`} loading="lazy" decoding="async" /> : <span><Trophy aria-hidden="true" /></span>}
         </div>
         <div className="publicArenaEventBody">
           <small>{isGroup ? `${group.items.length} ${group.items.length === 1 ? "categoria" : "categorias"}` : getModalityName(first.type)}</small>
@@ -167,6 +167,16 @@ export function PublicArenaPageView({
   HeroHeader,
   TournamentCards,
 }) {
+  const initialVisibleItems = 8;
+  const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
+
+  React.useEffect(() => {
+    setVisibleLimit(initialVisibleItems);
+  }, [activeArenaTab, activeStatusTab]);
+
+  const displayedItems = visibleItems.slice(0, visibleLimit);
+  const remainingItems = Math.max(0, visibleItems.length - displayedItems.length);
+
   return (
     <div className={`publicPage publicArenaPage ${pageClassName}`.trim()}>
       <HeroHeader arenaName={arenaName} organizer={organizer} label={heroLabel} />
@@ -196,8 +206,8 @@ export function PublicArenaPageView({
           {visibleItems.length === 0 ? (
             <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
           ) : activeArenaTab === "tournaments" ? (
-            <TournamentCards items={visibleItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} />
-          ) : visibleItems.map((item) => {
+            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} />
+          ) : displayedItems.map((item) => {
             const circuitStatus = getCircuitStatus(item);
             return (
               <article className="card publicArenaEventCard publicArenaCircuitCard" key={item.id}>
@@ -211,6 +221,15 @@ export function PublicArenaPageView({
               </article>
             );
           })}
+          {remainingItems > 0 ? (
+            <button
+              type="button"
+              className="publicArenaLoadMore"
+              onClick={() => setVisibleLimit((current) => Math.min(current + initialVisibleItems, visibleItems.length))}
+            >
+              Mostrar mais eventos <span>{remainingItems}</span>
+            </button>
+          ) : null}
         </section>
       </main>
     </div>
@@ -259,7 +278,7 @@ export function PublicArenaDirectoryView({
               <article className="publicArenaDirectoryCard" key={arena.id}>
                 <div className="publicArenaDirectoryPhoto">
                   {arena.photo_url ? (
-                    <img src={arena.photo_url} alt={`Foto de ${arenaName}`} />
+                    <img src={arena.photo_url} alt={`Foto de ${arenaName}`} loading="lazy" decoding="async" />
                   ) : (
                     <span>{arenaName.slice(0, 2).toUpperCase()}</span>
                   )}
