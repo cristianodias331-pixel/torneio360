@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
-import { buildReizinhoGames } from "./reizinhoSchedule.mjs";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   AtSign,
@@ -80,6 +79,12 @@ import {
 } from "./features/matchOperations/MatchControls.jsx";
 import ScheduleViewView from "./features/matchOperations/MatchSchedule.jsx";
 import {
+  speakBracketRound,
+  speakGame,
+  speakRound,
+  stopSpeech,
+} from "./features/matchOperations/speechAnnouncements.mjs";
+import {
   TournamentMatchStatusSummaryView,
   TournamentTimingSummaryView,
 } from "./features/matchOperations/TournamentSummaryViews.jsx";
@@ -116,6 +121,20 @@ import TournamentFormatInfoButtonView, {
 import FormatExplanationButton, {
   SimpleFormatInfoButton,
 } from "./features/tournamentConfig/FormatExplanationButton.jsx";
+import TournamentGenderSelector from "./features/tournamentConfig/TournamentGenderSelector.jsx";
+import {
+  getCompatibleTournamentType,
+  getEditableTournamentGenderFields,
+  getEffectiveTournamentGenderMode,
+  getGenderCompatibleTournamentTypes,
+  getStoredTournamentGenderFields,
+  getTournamentClassificationLabels,
+} from "./domain/tournamentGenderConfig.mjs";
+import {
+  isTournamentSummary,
+  normalizeTournamentSummaryRow,
+  tournamentSummarySelect,
+} from "./domain/tournamentSummary.mjs";
 import CircuitExtraPointsPanel from "./features/circuitManagement/CircuitExtraPointsPanel.jsx";
 import {
   CircuitGenderRegistryPanel,
@@ -137,27 +156,29 @@ import {
   ConfirmTrashPermanentDeleteModal,
   NoticeModal,
 } from "./features/dialogs/ConfirmationDialogs.jsx";
-import {
-  TORNEIO360_LOGO,
-  drawCenteredCanvasLines,
-  drawRoundedRect,
-  loadShareImage,
-  truncateCanvasText,
-  wrapCanvasItems,
-} from "./features/media/canvasTools.mjs";
 import ShuffleVideoModal from "./features/media/ShuffleVideoModal.jsx";
+import { resizeImageFile } from "./features/media/imageResize.mjs";
+import {
+  createShuffleVideoFile,
+  createShuffleVideoSnapshot,
+  downloadShuffleVideo,
+} from "./features/media/shuffleVideoExport.mjs";
+import {
+  SHUFFLE_DURATION_SECONDS,
+  SHUFFLE_MOVEMENT_INTERVAL_MS,
+  createShuffleAnimationItems,
+  getShuffleNames,
+  moveShuffleAnimationItems,
+} from "./features/media/shuffleAnimation.mjs";
 import {
   listPendingTournaments,
   mergeConcurrentTournamentData,
   preservesTournamentCriticalData,
   readDashboardCache,
-  removePendingTournament,
   requestDurableOfflineStorage,
   saveDashboardCache,
-  savePendingTournament,
 } from "./offlineDataStore.mjs";
-import { super12IndividualTemplate } from "./super12Schedule.mjs";
-import { super20MixedTemplate } from "./super20MixedSchedule.mjs";
+import { generateSchedule } from "./domain/tournamentScheduleFactory.mjs";
 import {
   applyCourtNumberToGame,
   createDefaultCourtNumbers,
@@ -166,6 +187,108 @@ import {
   normalizeCourtNumberValue,
   normalizeCourtNumbers,
 } from "./domain/courtNumbers.mjs";
+import {
+  formatDateBR,
+  getBrazilDateISO,
+  getBrazilDateTimeKey,
+  getBrazilTodayISO,
+  getCalendarDayDifference,
+  getFreeTrialDetails,
+  getWeekdayBR,
+  isoDateToUtcDay,
+} from "./domain/dateTime.mjs";
+import {
+  getAuthErrorMessage,
+  isEmailNotConfirmedError,
+  isProfilePendingEmailConfirmation,
+  isUserAlreadyRegisteredError,
+  isValidEmail,
+  normalizeEmail,
+} from "./domain/authValidation.mjs";
+import {
+  clearAuthCallbackUrl,
+  getAuthCallbackError,
+  getAuthFlowFromLocation,
+  getAuthRedirectUrl,
+} from "./domain/authNavigation.mjs";
+import {
+  getBrazilianWhatsAppUrl,
+  getPlanRegularizationWhatsAppUrl,
+  getPlatformWhatsAppUrl,
+} from "./domain/contactLinks.mjs";
+import { formatStatusBR, normalizeCircuitStatus } from "./domain/statusFormatting.mjs";
+import {
+  createInitialData,
+  formatParticipantNameWhileTyping,
+  needsTournamentDataRepair,
+  normalizeTournamentData,
+} from "./domain/tournamentDataNormalization.mjs";
+import {
+  compareTournamentsByEventSchedule,
+  getAutomaticEventStatus,
+  getCircuitLifecycleStatus,
+  getTournamentCompletionState,
+  getTournamentEventSortKey,
+  getTournamentLifecycleStatus,
+  getTournamentRegistrationDeadline,
+  insertTournamentsByEventSchedule,
+  isPublicItemFinished,
+  isRegistrationDeadlineOpen,
+  sortTournamentsByDisplayOrder,
+  sortTournamentsByEventSchedule,
+  sortTournamentsChronologically,
+  sortTournamentsForDisplay,
+} from "./domain/tournamentLifecycle.mjs";
+import { createTournamentOperations } from "./domain/tournamentOperations.mjs";
+import {
+  getCearenseFormatSummary,
+  resetCopinhaTieBreaks,
+} from "./domain/cupFormatSummary.mjs";
+import {
+  generateCollaborationChangeId,
+  generatePublicId,
+  getArenaPublicShareMessage,
+  getArenaPublicUrl,
+  getPublicUrl,
+} from "./domain/publicIdentifiers.mjs";
+import {
+  getPublicCircuitDirectoryItem,
+  getPublicTournamentDirectoryItem,
+  getRegisteredAthletesForPublic,
+  normalizePublicCircuitForDisplay,
+  sortCircuitsForDisplay,
+} from "./domain/publicArenaData.mjs";
+import {
+  ARENA_DIRECTORY_REFRESH_INTERVAL_MS,
+  readPublicArenaBundleCache,
+  readPublicArenaDirectoryCache,
+} from "./domain/publicArenaCache.mjs";
+import { createPublicArenaApi } from "./services/publicArenaApi.mjs";
+import {
+  DEFAULT_TOURNAMENT_NAVIGATION,
+  TOURNAMENT_DRAFT_CHANGED_EVENT,
+  clearTournamentDraft,
+  isBrowserOffline,
+  isRetryableConnectionError,
+  listLocalTournamentDrafts,
+  normalizeCourtCenterEntry,
+  readCachedProfile,
+  readCourtCenters,
+  readLocalUserAppState,
+  readOpenTournamentIds,
+  readOpenTournamentNavigation,
+  readPublicViewStorage,
+  readTournamentDraft,
+  saveCachedProfile,
+  saveCourtCenters,
+  saveLocalUserAppState,
+  saveOpenTournamentIds,
+  saveOpenTournamentNavigation,
+  savePublicViewStorage,
+  saveTournamentDraft,
+  getTournamentVenueKey,
+  getTournamentVenueLabel,
+} from "./domain/localAppStorage.mjs";
 import {
   formatMatchTotalDuration,
   getMatchElapsedSeconds,
@@ -196,25 +319,20 @@ import {
   mergeParticipantGenderRegistries,
   mergeTournamentGenderCandidates,
   normalizeParticipantGenderRegistry,
-  normalizeTournamentGenderMode,
   orderConfirmedMixedTeams,
   participantGenderValues,
   setParticipantGender,
   tournamentGenderModes,
 } from "./domain/participantGenderRegistry.mjs";
 import {
-  applyCircuitDrawOrder,
   circuitRankingModes,
-  circuitTieBreakOptions,
   circuitTournamentFormats,
-  compareCircuitStageScores,
   defaultCircuitCupPoints,
   defaultCircuitOtherPositionPoints,
   defaultCircuitPositionPoints,
   getCircuitManualParticipantKey,
   getCircuitPlacementColumns,
   getCircuitTieBreakLabel,
-  getCircuitTieBreakOrder,
   getCircuitTieSignature,
   getUnresolvedCircuitTieGroups,
   normalizeCircuitPointValue,
@@ -225,6 +343,13 @@ import {
   normalizeRankingExportGroups,
   paginateRankingGroups,
 } from "./domain/rankingPagination.mjs";
+import {
+  compareCollaborationVersions,
+  getCollaborationRevision,
+  mergeRealtimeTournamentRow,
+  tournamentDataEquals,
+  tournamentMutationDataEquals,
+} from "./domain/realtimeTournamentMerge.mjs";
 import {
   getGameParticipantIdentityEntries,
   getSharedGameParticipants,
@@ -252,6 +377,7 @@ import {
   modalityPickerGroups,
   normalizeModalitySearch,
 } from "./domain/modalityCatalog.mjs";
+import { allowedByPlan, modalityConfig } from "./domain/modalityConfig.mjs";
 import {
   isCupType,
   isFlexibleSimpleType,
@@ -264,23 +390,10 @@ import {
   getSimplePlayerCount,
   getTournamentCourtCount,
 } from "./domain/modalitySettings.mjs";
+import { shuffleArray } from "./domain/scheduleGeneration.mjs";
 import {
-  fixed12Template,
-  super10MixedTemplate,
-  super12MixedTemplate,
-  super16MixedTemplate,
-  super8Template,
-} from "./domain/scheduleTemplates.mjs";
-import {
-  berger,
-  optimizeCourts,
-  shuffleArray,
-} from "./domain/scheduleGeneration.mjs";
-import {
-  createCearenseGroups,
   createCupGroups,
   createRoundRobinPairings,
-  describeCearenseGroupSizes,
   getCupTeamName,
   getCupTeams,
   getGroupLetter,
@@ -298,65 +411,23 @@ import {
   isSunsetData,
 } from "./domain/cupFormat.mjs";
 import {
-  generateCearenseGroupSchedule,
   generateCupGroupSchedule,
 } from "./domain/cupGroupSchedule.mjs";
 import {
-  generateParallelRoundRobin,
-  getEliminationRoundName,
-  getNextPowerOfTwo,
-  seedBracket,
-} from "./domain/bracketBasics.mjs";
-import {
-  buildNextRound,
-  buildThirdPlaceGame,
-  getGameLoserId,
-  getGameWinnerId,
   resolveBracketGame,
 } from "./domain/bracketProgression.mjs";
 import {
-  buildCearenseEliminationRounds,
-  createCopinhaBracketGame,
-} from "./domain/bracketConstruction.mjs";
-import {
-  buildCopinhaBracketFromPlan,
-  buildCopinhaEliminationRounds,
-  expandBracketPlanWithVisualByes,
-} from "./domain/cupBracketConstruction.mjs";
-import {
-  buildPlayRankingParallelRounds,
-  getPlayRankingOpeningLosses,
-} from "./domain/playRankingBracket.mjs";
-import {
-  buildCearenseThirdParallelRounds,
-  getCearenseThirdParallelSources,
-} from "./domain/cearenseThirdParallel.mjs";
-import {
-  buildSunsetChampionsRounds,
-  buildSunsetMainRunnerUpFallback,
-  buildSunsetParallelFromMainRound,
-} from "./domain/sunsetBracket.mjs";
+  rebuildCupBracketGames,
+  syncCupBracketScores,
+} from "./domain/cupBracketOrchestration.mjs";
+import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { calculateCupGroupRankings } from "./domain/cupGroupRanking.mjs";
 import { getCearenseQualified } from "./domain/cearenseQualification.mjs";
-import {
-  getCopinhaQualified,
-  getCopinhaSeededGroups,
-  getCupQualified,
-} from "./domain/cupQualification.mjs";
-import {
-  getOfficialCearenseAdjustedBalance,
-} from "./domain/campaignRanking.mjs";
+import { getCopinhaSeededGroups } from "./domain/cupQualification.mjs";
 import "./style.css";
 
 const SUPABASE_URL = "https://dttutybojealkvuywszt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_Tr5qiUea-p42UknVoWwPKg_6K_b1EX_";
-const PLATFORM_WHATSAPP_NUMBER = "5585988739056";
-const PLATFORM_WHATSAPP_DEFAULT_MESSAGE = "Olá! Preciso de ajuda com o Torneio360.";
-
-function getPlatformWhatsAppUrl(message = PLATFORM_WHATSAPP_DEFAULT_MESSAGE) {
-  return `https://wa.me/${PLATFORM_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-
 const supabase = globalThis.__torneio360Supabase || createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
@@ -366,48 +437,31 @@ const supabase = globalThis.__torneio360Supabase || createClient(SUPABASE_URL, S
 });
 if (import.meta.env.DEV) globalThis.__torneio360Supabase = supabase;
 
-function resizeImageFile(file, {
-  maxWidth = 1400,
-  maxHeight = 900,
-  quality = 0.84,
-  outputType = "image/jpeg",
-} = {}) {
-  return new Promise((resolve, reject) => {
-    if (!file?.type?.startsWith("image/")) {
-      reject(new Error("Escolha um arquivo de imagem."));
-      return;
-    }
+const {
+  fetchPublicArenaBundle,
+  fetchPublicArenaDirectory,
+  fetchPublicArenaPhoto,
+  fetchPublicCircuitDetail,
+  fetchPublicTournamentDetail,
+} = createPublicArenaApi({ supabase });
 
-    if (file.size > 8 * 1024 * 1024) {
-      reject(new Error("Escolha uma imagem com até 8 MB."));
-      return;
-    }
+const {
+  getCupPlayTimeById,
+  getInProgressParticipantConflicts,
+  getTournamentActiveCourtUsages,
+  getTournamentMatchStatusSummary,
+  getTournamentOperationalGames,
+  getTournamentTimingSummary,
+} = createTournamentOperations({ syncCupBracketScores });
 
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
-    reader.onload = () => {
-      const image = new Image();
-      image.onerror = () => reject(new Error("A imagem escolhida não pôde ser aberta."));
-      image.onload = () => {
-        const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const context = canvas.getContext("2d");
-
-        if (!context) {
-          reject(new Error("Não foi possível preparar a imagem."));
-          return;
-        }
-
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL(outputType, quality));
-      };
-      image.src = String(reader.result || "");
-    };
-    reader.readAsDataURL(file);
-  });
-}
+const {
+  calculateParallelRanking,
+  calculateMainCupPodium,
+  calculateCupBracketPodium,
+  calculateCopinhaConsolationPodium,
+  groupStoredBracketGames,
+  getSafeCupPresentation,
+} = createCupPresentation({ getCupPlayTimeById });
 
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
 
@@ -434,353 +488,6 @@ async function logout() {
 }
 
 
-function generatePublicId() {
-  return `tfbt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function generateCollaborationChangeId() {
-  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0"));
-  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
-}
-
-function getPublicUrl(publicId) {
-  return `${window.location.origin}${window.location.pathname}?public=${publicId}`;
-}
-
-function getArenaPublicUrl(arenaId) {
-  const url = new URL(window.location.origin);
-  url.searchParams.set("arena", arenaId);
-  return url.toString();
-}
-
-function getArenaPublicShareMessage(arenaId) {
-  const url = getArenaPublicUrl(arenaId);
-  return `Acompanhe os torneios e circuitos desta arena no Torneio360:
-${url}`;
-}
-
-const ARENA_DIRECTORY_REFRESH_INTERVAL_MS = 60_000;
-const ARENA_DIRECTORY_RETRY_DELAY_MS = 450;
-const ARENA_DIRECTORY_CACHE_KEY = "t360.public-arena-directory.v2";
-const ARENA_DIRECTORY_CACHE_MAX_AGE_MS = 5 * 60_000;
-const PUBLIC_ARENA_BUNDLE_CACHE_PREFIX = "t360.public-arena-bundle.v2";
-const PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS = 30 * 60_000;
-const PUBLIC_ARENA_REQUEST_TIMEOUT_MS = 12_000;
-let publicArenaDirectoryRequestInFlight = null;
-const publicArenaBundleMemoryCache = new Map();
-const publicTournamentDetailMemoryCache = new Map();
-const publicCircuitDetailMemoryCache = new Map();
-const publicArenaPhotoMemoryCache = new Map();
-
-function readPublicArenaCache(key, maxAge) {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const cached = JSON.parse(window.sessionStorage.getItem(key) || "null");
-    if (!cached || (!Array.isArray(cached.data) && typeof cached.data !== "object")) return null;
-    if (!Number.isFinite(Number(cached.savedAt))) return null;
-    if (Date.now() - Number(cached.savedAt) > maxAge) return null;
-    return cached.data;
-  } catch (error) {
-    return null;
-  }
-}
-
-function writePublicArenaCache(key, data) {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.sessionStorage.setItem(key, JSON.stringify({ data, savedAt: Date.now() }));
-  } catch (error) {
-    // O cache é apenas uma aceleração. Falhas de armazenamento não interrompem a navegação.
-  }
-}
-
-function readPublicArenaDirectoryCache() {
-  const cached = readPublicArenaCache(ARENA_DIRECTORY_CACHE_KEY, ARENA_DIRECTORY_CACHE_MAX_AGE_MS);
-  return Array.isArray(cached) ? cached.filter((arena) => arena?.id) : null;
-}
-
-function getPublicArenaBundleCacheKey({ arenaId = null, publicId = null } = {}) {
-  const identifier = arenaId || publicId;
-  return identifier ? `${PUBLIC_ARENA_BUNDLE_CACHE_PREFIX}:${identifier}` : "";
-}
-
-function readPublicArenaBundleCache(params) {
-  const key = getPublicArenaBundleCacheKey(params);
-  if (!key) return null;
-
-  const cached = publicArenaBundleMemoryCache.get(key);
-  if (!cached || Date.now() - cached.savedAt > PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS) {
-    publicArenaBundleMemoryCache.delete(key);
-    return null;
-  }
-
-  return cached.data;
-}
-
-function writePublicArenaBundleCache(params, data) {
-  const key = getPublicArenaBundleCacheKey(params);
-  if (key) publicArenaBundleMemoryCache.set(key, { data, savedAt: Date.now() });
-}
-
-async function fetchPublicArenaDirectory({ search = null, limit = 250 } = {}) {
-  const normalizedSearch = String(search || "").trim() || null;
-  const canShareRequest = !normalizedSearch && Number(limit) >= 250;
-  if (canShareRequest && publicArenaDirectoryRequestInFlight) {
-    return publicArenaDirectoryRequestInFlight;
-  }
-
-  const request = (async () => {
-    let lastError = null;
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const result = await supabase.rpc("list_public_arenas", {
-          p_search: normalizedSearch,
-          p_limit: limit,
-        });
-
-        if (!result.error) {
-          const data = Array.isArray(result.data) ? result.data.filter((arena) => arena?.id) : [];
-          if (canShareRequest) writePublicArenaCache(ARENA_DIRECTORY_CACHE_KEY, data);
-          return { data, error: null };
-        }
-
-        lastError = result.error;
-      } catch (error) {
-        lastError = error;
-      }
-
-      if (attempt === 0) {
-        await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
-      }
-    }
-
-    return { data: [], error: lastError };
-  })();
-
-  if (canShareRequest) publicArenaDirectoryRequestInFlight = request;
-
-  try {
-    return await request;
-  } finally {
-    if (canShareRequest && publicArenaDirectoryRequestInFlight === request) {
-      publicArenaDirectoryRequestInFlight = null;
-    }
-  }
-}
-
-async function fetchPublicArenaBundle({ arenaId = null, publicId = null } = {}) {
-  let lastError = null;
-  let lastData = null;
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
-
-    try {
-      const result = await supabase.rpc("get_public_arena_bundle", {
-        p_organizer_id: arenaId || null,
-        p_public_id: publicId || null,
-      }).abortSignal(controller.signal);
-
-      lastData = result.data;
-      if (!result.error && result.data?.profile) {
-        writePublicArenaBundleCache({ arenaId, publicId }, result.data);
-        return { data: result.data, error: null, fromCache: false };
-      }
-
-      lastError = result.error || new Error("Perfil público da arena não encontrado.");
-    } catch (error) {
-      lastError = error;
-    } finally {
-      window.clearTimeout(timeout);
-    }
-
-    if (attempt === 0) {
-      await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
-    }
-  }
-
-  const cached = readPublicArenaBundleCache({ arenaId, publicId });
-  if (cached?.profile) return { data: cached, error: null, fromCache: true };
-
-  return { data: lastData, error: lastError, fromCache: false };
-}
-
-async function fetchPublicTournamentDetail(publicId) {
-  const normalizedPublicId = String(publicId || "").trim();
-  if (!normalizedPublicId) {
-    return { data: null, error: new Error("Identificador público do torneio não informado.") };
-  }
-
-  const cached = publicTournamentDetailMemoryCache.get(normalizedPublicId);
-  if (cached?.data && Date.now() - cached.savedAt <= PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS) {
-    return { data: cached.data, error: null, fromCache: true };
-  }
-
-  let lastError = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
-
-    try {
-      const result = await supabase
-        .rpc("get_public_tournament", { p_public_id: normalizedPublicId })
-        .maybeSingle()
-        .abortSignal(controller.signal);
-
-      if (!result.error && result.data) {
-        publicTournamentDetailMemoryCache.set(normalizedPublicId, {
-          data: result.data,
-          savedAt: Date.now(),
-        });
-        return { data: result.data, error: null, fromCache: false };
-      }
-
-      lastError = result.error || new Error("Torneio público não encontrado.");
-    } catch (error) {
-      lastError = error;
-    } finally {
-      window.clearTimeout(timeout);
-    }
-
-    if (attempt === 0) {
-      await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
-    }
-  }
-
-  return { data: null, error: lastError, fromCache: false };
-}
-
-async function fetchPublicCircuitDetail(circuitId) {
-  const normalizedCircuitId = String(circuitId || "").trim();
-  if (!normalizedCircuitId) {
-    return { data: null, error: new Error("Identificador público do circuito não informado.") };
-  }
-
-  const cached = publicCircuitDetailMemoryCache.get(normalizedCircuitId);
-  if (cached?.data && Date.now() - cached.savedAt <= PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS) {
-    return { data: cached.data, error: null, fromCache: true };
-  }
-
-  let lastError = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
-
-    try {
-      const result = await supabase
-        .rpc("get_public_circuit", { p_circuit_id: normalizedCircuitId })
-        .abortSignal(controller.signal);
-
-      if (!result.error && result.data?.id) {
-        publicCircuitDetailMemoryCache.set(normalizedCircuitId, {
-          data: result.data,
-          savedAt: Date.now(),
-        });
-        return { data: result.data, error: null, fromCache: false };
-      }
-
-      lastError = result.error || new Error("Circuito público não encontrado.");
-    } catch (error) {
-      lastError = error;
-    } finally {
-      window.clearTimeout(timeout);
-    }
-
-    if (attempt === 0) {
-      await new Promise((resolve) => setTimeout(resolve, ARENA_DIRECTORY_RETRY_DELAY_MS));
-    }
-  }
-
-  return { data: null, error: lastError, fromCache: false };
-}
-
-async function fetchPublicArenaPhoto(arenaId) {
-  const normalizedArenaId = String(arenaId || "").trim();
-  if (!normalizedArenaId) return "";
-  if (publicArenaPhotoMemoryCache.has(normalizedArenaId)) {
-    return publicArenaPhotoMemoryCache.get(normalizedArenaId) || "";
-  }
-
-  try {
-    const result = await supabase.rpc("get_public_arena_photo", {
-      p_organizer_id: normalizedArenaId,
-    });
-    const photoUrl = result.error ? "" : String(result.data || "");
-    publicArenaPhotoMemoryCache.set(normalizedArenaId, photoUrl);
-    return photoUrl;
-  } catch (error) {
-    return "";
-  }
-}
-
-function getAutomaticEventStatus(endDate) {
-  if (!endDate) return "active";
-  return String(endDate) < getBrazilTodayISO() ? "finished" : "active";
-}
-
-function hasTournamentGameSide(game, side) {
-  const ids = Array.isArray(game?.[`ids${side}`]) ? game[`ids${side}`] : [];
-  const names = Array.isArray(game?.[`team${side}`]) ? game[`team${side}`].filter(Boolean) : [];
-  const entry = game?.[`entry${side}`];
-  return ids.length > 0 || names.length > 0 || Boolean(entry && !entry.isBye && !entry.bye);
-}
-
-function isTournamentByeGame(game) {
-  if (game?.isBye || game?.bye) return true;
-  const firstSide = hasTournamentGameSide(game, 1);
-  const secondSide = hasTournamentGameSide(game, 2);
-  return firstSide !== secondSide;
-}
-
-function isTournamentGameFinished(game, winningScore) {
-  if (!game || game.s1 === "" || game.s2 === "" || game.s1 === null || game.s2 === null) return false;
-  return Boolean(getScoreWinnerSide(game, winningScore));
-}
-
-function getTournamentCompletionState(tournament) {
-  const config = modalityConfig[tournament?.type];
-  const data = normalizeTournamentData(tournament?.type, tournament?.data);
-  const winningScore = getWinningScore(data);
-  const scheduleGames = (data.schedule || []).flat().filter((game) => (
-    hasTournamentGameSide(game, 1) && hasTournamentGameSide(game, 2)
-  ));
-  const bracketGames = (data.brackets || [])
-    .filter((game) => game.phase === "main")
-    .map((game) => resolveBracketGame(game, data.brackets || [], data));
-  const requiredBracketGames = bracketGames.filter((game) => {
-    if (isTournamentByeGame(game)) return false;
-    if (!isCampeonatoCearenseData(data)) return true;
-    const matchKey = String(game.matchKey || "");
-    const phase = game.phase
-      || (matchKey.startsWith("thirdParallel_") ? "thirdParallel" : "")
-      || (matchKey.startsWith("repechage_") ? "repechage" : "");
-    if (phase === "repechage" && !isCearenseSecondParallelEnabled(data)) return false;
-    if (phase === "thirdParallel" && !isCearenseThirdParallelEnabled(data)) return false;
-    return true;
-  });
-  const requiredGames = [...scheduleGames, ...requiredBracketGames];
-  const needsEliminationBracket = isCupType(config);
-  const bracketReady = !needsEliminationBracket || requiredBracketGames.length > 0;
-
-  return {
-    hasRequiredGames: requiredGames.length > 0 && bracketReady,
-    completed: requiredGames.length > 0
-      && bracketReady
-      && requiredGames.every((game) => isTournamentGameFinished(game, winningScore)),
-    requiredGames: requiredGames.length,
-    completedGames: requiredGames.filter((game) => isTournamentGameFinished(game, winningScore)).length,
-  };
-}
-
 function calculateCircuitPlacementRows(tournament, settings) {
   const config = modalityConfig[tournament?.type];
   return calculateCircuitPlacementRowsByConfig({
@@ -791,593 +498,9 @@ function calculateCircuitPlacementRows(tournament, settings) {
   });
 }
 
-function getTournamentLifecycleStatus(tournament, now = new Date()) {
-  const details = tournament?.data || {};
-  const eventKey = getTournamentEventSortKey(tournament);
-  const nowKey = getBrazilDateTimeKey(now);
-  const today = getBrazilTodayISO(now);
-  const eventStartDate = String(details.eventStartDate || details.eventDate || "").slice(0, 10);
-  const eventStartTime = String(details.eventStartTime || "").trim();
-  const eventEndDate = String(details.eventEndDate || details.eventDate || "").slice(0, 10);
-
-  if (details.lifecycleStatus === "finished" && tournament?.directoryEntry) return "finished";
-  if (getTournamentCompletionState(tournament).completed) return "finished";
-  if (eventEndDate && eventEndDate < today) return "finished";
-  if (eventStartDate && eventStartDate > today) return "upcoming";
-  if (eventStartDate === today && eventStartTime && eventKey > nowKey) return "upcoming";
-
-  return "active";
-}
-
-function getCollaborationRevision(row) {
-  if (row?.revision === null || row?.revision === undefined || row?.revision === "") return null;
-  const revision = Number(row?.revision);
-  return Number.isSafeInteger(revision) && revision >= 0 ? revision : null;
-}
-
-function compareCollaborationVersions(first, second) {
-  const firstRevision = getCollaborationRevision(first);
-  const secondRevision = getCollaborationRevision(second);
-
-  if (firstRevision !== null || secondRevision !== null) {
-    if (firstRevision === null) return -1;
-    if (secondRevision === null) return 1;
-    return firstRevision - secondRevision;
-  }
-
-  const firstUpdatedAt = Date.parse(first?.updated_at || first?.updatedAt || "") || 0;
-  const secondUpdatedAt = Date.parse(second?.updated_at || second?.updatedAt || "") || 0;
-  return firstUpdatedAt - secondUpdatedAt;
-}
-
-function tournamentDataEquals(first, second) {
-  if (Object.is(first, second)) return true;
-  try {
-    return JSON.stringify(first || {}) === JSON.stringify(second || {});
-  } catch {
-    return false;
-  }
-}
-
-function tournamentMutationDataEquals(first, second) {
-  const firstData = { ...(first || {}) };
-  const secondData = { ...(second || {}) };
-  delete firstData.lifecycleStatus;
-  delete secondData.lifecycleStatus;
-  return tournamentDataEquals(firstData, secondData);
-}
-
-function mergeRealtimeTournamentRow(existing, incoming) {
-  if (!existing) return incoming;
-  if (!incoming) return existing;
-  if (compareCollaborationVersions(incoming, existing) < 0) return existing;
-
-  const incomingHasCompleteData = incoming.data
-    && typeof incoming.data === "object"
-    && !Array.isArray(incoming.data)
-    && Object.keys(incoming.data).length > 0;
-
-  return {
-    ...existing,
-    ...incoming,
-    data: incomingHasCompleteData ? incoming.data : existing.data,
-  };
-}
-
-function isPublicItemFinished(item, kind = "tournament") {
-  if (kind === "tournament") return getTournamentLifecycleStatus(item) === "finished";
-
-  const endDate = item?.end_date || item?.endDate;
-  if (!endDate) return normalizeCircuitStatus(item?.status) === "closed";
-  return getAutomaticEventStatus(endDate) === "finished";
-}
-
-function getCircuitLifecycleStatus(circuit) {
-  const today = getBrazilTodayISO();
-  const startDate = String(circuit?.start_date || circuit?.startDate || "").slice(0, 10);
-
-  if (isPublicItemFinished(circuit, "circuit")) return "finished";
-  if (startDate && startDate > today) return "upcoming";
-  return "active";
-}
-
-function getTournamentEventSortKey(tournament) {
-  const details = tournament?.data || {};
-  const eventDate = String(details.eventDate || details.eventStartDate || "").slice(0, 10);
-  const rawTime = String(details.eventStartTime || "").trim();
-  const eventTime = /^\d{2}:\d{2}/.test(rawTime) ? rawTime.slice(0, 5) : "23:59";
-  return eventDate ? `${eventDate}T${eventTime}` : "9999-12-31T23:59";
-}
-
-function compareTournamentsByEventSchedule(first, second) {
-  const statusOrder = { active: 0, upcoming: 1, finished: 2 };
-  const firstStatus = getTournamentLifecycleStatus(first);
-  const secondStatus = getTournamentLifecycleStatus(second);
-  const statusComparison = (statusOrder[firstStatus] ?? 1) - (statusOrder[secondStatus] ?? 1);
-  if (statusComparison !== 0) return statusComparison;
-
-  const scheduleComparison = getTournamentEventSortKey(first).localeCompare(getTournamentEventSortKey(second));
-  if (scheduleComparison !== 0) return firstStatus === "finished" ? -scheduleComparison : scheduleComparison;
-
-  const createdComparison = String(first?.created_at || "").localeCompare(String(second?.created_at || ""));
-  if (createdComparison !== 0) return createdComparison;
-
-  return String(first?.name || "").localeCompare(String(second?.name || ""), "pt-BR");
-}
-
-function sortTournamentsByEventSchedule(items) {
-  return [...(items || [])].sort(compareTournamentsByEventSchedule);
-}
-
-function sortTournamentsChronologically(items) {
-  return [...(items || [])].sort((first, second) => (
-    getTournamentEventSortKey(first).localeCompare(getTournamentEventSortKey(second))
-  ));
-}
-
-function sortTournamentsByDisplayOrder(items) {
-  return (items || [])
-    .map((item, originalIndex) => ({ item, originalIndex }))
-    .sort((first, second) => {
-      const firstOrder = Number(first.item.data?.displayOrder);
-      const secondOrder = Number(second.item.data?.displayOrder);
-      const firstHasOrder = Number.isFinite(firstOrder);
-      const secondHasOrder = Number.isFinite(secondOrder);
-
-      if (firstHasOrder && secondHasOrder && firstOrder !== secondOrder) return firstOrder - secondOrder;
-      if (firstHasOrder !== secondHasOrder) return firstHasOrder ? -1 : 1;
-      return first.originalIndex - second.originalIndex;
-    })
-    .map(({ item }) => item);
-}
-
-function hasSavedManualTournamentOrder(items) {
-  if (!items?.length) return false;
-  if (!items.every((item) => item.data?.displayOrderMode === "manual")) return false;
-  const orders = items
-    .map((item) => Number(item.data?.displayOrder))
-    .filter((order) => Number.isInteger(order))
-    .sort((first, second) => first - second);
-
-  return orders.length === items.length && orders.every((order, index) => order === index);
-}
-
-function sortTournamentsForDisplay(items) {
-  return hasSavedManualTournamentOrder(items)
-    ? sortTournamentsByDisplayOrder(items)
-    : sortTournamentsByEventSchedule(items);
-}
-
-function insertTournamentsByEventSchedule(currentItems, incomingItems) {
-  const incomingIds = new Set((incomingItems || []).map((item) => item.id));
-  const ordered = (currentItems || []).filter((item) => !incomingIds.has(item.id));
-
-  sortTournamentsByEventSchedule(incomingItems).forEach((incoming) => {
-    const insertionIndex = ordered.findIndex((item) => compareTournamentsByEventSchedule(incoming, item) < 0);
-    if (insertionIndex < 0) ordered.push(incoming);
-    else ordered.splice(insertionIndex, 0, incoming);
-  });
-
-  return ordered;
-}
-
-function getTournamentRegistrationDeadline(tournament) {
-  return tournament?.data?.registrationDeadline
-    || tournament?.registrationDeadline
-    || tournament?.registration_deadline
-    || "";
-}
-
-function isRegistrationDeadlineOpen(deadline) {
-  return Boolean(deadline) && String(deadline) >= getBrazilTodayISO();
-}
-
 function PublicRegistrationStatus(props) {
   return <PublicRegistrationStatusView {...props} getWhatsAppUrl={getBrazilianWhatsAppUrl} />;
 }
-function getPublicTournamentDirectoryItem(tournament) {
-  const details = tournament?.data || {};
-
-  return {
-    id: tournament?.id || tournament?.public_id,
-    public_id: tournament?.public_id || null,
-    name: tournament?.name || "Torneio",
-    type: tournament?.type || "",
-    data: {
-      eventDate: details.eventDate || "",
-      eventEndDate: details.eventEndDate || details.eventDate || "",
-      eventStartTime: details.eventStartTime || "",
-      location: details.location || "",
-      category: details.category || "",
-      gender: details.gender || "",
-      participantGenderMode: details.participantGenderMode || "",
-      genderOther: details.genderOther || "",
-      coverImageUrl: details.coverImageUrl || "",
-      registrationDeadline: details.registrationDeadline || "",
-      eventName: details.eventName || "",
-      eventGroupKey: details.eventGroupKey || "",
-      multiCategoryEvent: details.multiCategoryEvent === true,
-      displayOrder: details.displayOrder,
-      displayOrderMode: details.displayOrderMode || "automatic",
-      lifecycleStatus: getTournamentLifecycleStatus(tournament),
-    },
-    directoryEntry: true,
-  };
-}
-
-function getPublicCircuitDirectoryItem(circuit, rankingGroups = [], rankingCriteria = defaultRankingCriteria) {
-  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
-  return {
-    id: circuit?.id,
-    name: circuit?.name || "Circuito",
-    start_date: circuit?.start_date || circuit?.startDate || "",
-    end_date: circuit?.end_date || circuit?.endDate || "",
-    status: normalizeCircuitStatus(circuit?.status),
-    tournament_ids: circuit?.tournament_ids || circuit?.tournamentIds || [],
-    ranking_criteria: rankingCriteria,
-    ranking_settings: rankingSettings,
-    ranking_groups: rankingGroups.map((group) => ({
-      key: group.key,
-      title: group.title,
-      rows: (group.rows || []).map((row) => ({
-        id: row.id,
-        name: row.name,
-        pts: Number(row.pts || 0),
-        w: Number(row.w || 0),
-        bal: Number(row.bal || 0),
-        played: Number(row.played || 0),
-        tournaments: Number(row.tournaments || 0),
-        circuitPoints: Number(row.circuitPoints || 0),
-        titles: Number(row.titles || 0),
-        runnerUps: Number(row.runnerUps || 0),
-        thirdPlaces: Number(row.thirdPlaces || 0),
-        extraPoints: Number(row.extraPoints || 0),
-        bestStagePoints: Number(row.stageScores?.[0] || row.bestStagePoints || 0),
-        stageScores: Array.isArray(row.stageScores) ? row.stageScores.map((score) => Number(score || 0)) : [],
-      })),
-    })),
-  };
-}
-
-function readPublicViewStorage(key, fallbackValue) {
-  try {
-    return sessionStorage.getItem(key) || fallbackValue;
-  } catch (error) {
-    // Links públicos também precisam funcionar quando o navegador bloqueia
-    // o armazenamento da sessão, como em algumas visualizações dentro de apps.
-    return fallbackValue;
-  }
-}
-
-function savePublicViewStorage(key, value) {
-  try {
-    sessionStorage.setItem(key, value);
-  } catch (error) {
-    // A aba continua navegável mesmo sem persistir a última subaba aberta.
-  }
-}
-
-const USER_APP_STATE_STORAGE_PREFIX = "torneio360:user-app-state:v2:";
-const OPEN_TOURNAMENTS_STORAGE_PREFIX = "torneio360:open-tournaments:v1:";
-const OPEN_TOURNAMENT_NAV_STORAGE_PREFIX = "torneio360:open-tournament-navigation:v1:";
-const COURT_CENTERS_STORAGE_PREFIX = "torneio360:court-centers:v1:";
-const PROFILE_CACHE_STORAGE_PREFIX = "torneio360:profile-cache:v1:";
-const TOURNAMENT_DRAFT_STORAGE_PREFIX = "torneio360:tournament-draft:";
-const TOURNAMENT_DRAFT_CHANGED_EVENT = "torneio360:tournament-draft-changed";
-const DEFAULT_TOURNAMENT_NAVIGATION = Object.freeze({
-  tournamentTab: "participantes",
-  matchesTab: "grupos",
-  scrollY: 0,
-});
-
-function isBrowserOffline() {
-  return typeof navigator !== "undefined" && navigator.onLine === false;
-}
-
-function isRetryableConnectionError(error) {
-  if (isBrowserOffline()) return true;
-  const text = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
-  return /failed to fetch|fetch failed|network|offline|connection|timeout|timed out|load failed|gateway|temporarily unavailable/.test(text);
-}
-
-function getProfileCacheKey(userId) {
-  return `${PROFILE_CACHE_STORAGE_PREFIX}${userId}`;
-}
-
-function readCachedProfile(userId) {
-  if (!userId) return null;
-  try {
-    const cached = JSON.parse(localStorage.getItem(getProfileCacheKey(userId)) || "null");
-    return cached?.profile && typeof cached.profile === "object" ? cached.profile : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveCachedProfile(userId, profile) {
-  if (!userId || !profile) return;
-  try {
-    localStorage.setItem(getProfileCacheKey(userId), JSON.stringify({
-      profile,
-      savedAt: new Date().toISOString(),
-    }));
-  } catch (error) {
-    console.warn("Não foi possível atualizar a cópia offline do perfil.", error);
-  }
-}
-function getOpenTournamentsStorageKey(userId) {
-  return `${OPEN_TOURNAMENTS_STORAGE_PREFIX}${userId || "anonymous"}`;
-}
-
-function getOpenTournamentNavigationStorageKey(userId) {
-  return `${OPEN_TOURNAMENT_NAV_STORAGE_PREFIX}${userId || "anonymous"}`;
-}
-
-function getCourtCentersStorageKey(userId) {
-  return `${COURT_CENTERS_STORAGE_PREFIX}${userId || "anonymous"}`;
-}
-
-function getTournamentVenueLabel(tournament) {
-  return String(tournament?.data?.location || "Local não informado").trim() || "Local não informado";
-}
-
-function getTournamentVenueKey(tournament) {
-  return getTournamentVenueLabel(tournament)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "local-nao-informado";
-}
-
-function normalizeCourtCenterEntry(entry, fallbackLabel = "Local não informado") {
-  const numbers = Array.from(new Set(
-    (Array.isArray(entry?.numbers) ? entry.numbers : [])
-      .map(normalizeCourtNumberValue)
-      .filter(Boolean)
-  )).sort((left, right) => Number(left) - Number(right));
-  const unavailableNumbers = Array.from(new Set(
-    (Array.isArray(entry?.unavailableNumbers) ? entry.unavailableNumbers : [])
-      .map(normalizeCourtNumberValue)
-      .filter((number) => number && numbers.includes(number))
-  ));
-  const tournamentPreferences = Object.fromEntries(
-    Object.entries(entry?.tournamentPreferences || {}).map(([tournamentId, preferredNumbers]) => [
-      tournamentId,
-      Array.from(new Set(
-        (Array.isArray(preferredNumbers) ? preferredNumbers : [])
-          .map(normalizeCourtNumberValue)
-          .filter((number) => number && numbers.includes(number))
-      )),
-    ])
-  );
-  return {
-    label: String(entry?.label || fallbackLabel).trim() || fallbackLabel,
-    numbers,
-    unavailableNumbers,
-    tournamentPreferences,
-    configured: entry?.configured === true,
-  };
-}
-
-function readCourtCenters(userId) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(getCourtCentersStorageKey(userId)) || "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.fromEntries(
-      Object.entries(parsed).map(([key, entry]) => [key, normalizeCourtCenterEntry(entry)])
-    );
-  } catch {
-    return {};
-  }
-}
-
-function saveCourtCenters(userId, centers) {
-  try {
-    localStorage.setItem(getCourtCentersStorageKey(userId), JSON.stringify(centers || {}));
-  } catch {
-    // A central continua disponível durante a sessão mesmo sem armazenamento local.
-  }
-}
-
-function readOpenTournamentIds(userId) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(getOpenTournamentsStorageKey(userId)) || "[]");
-    return Array.isArray(parsed)
-      ? [...new Set(parsed.filter((id) => typeof id === "string" && id.trim()))].slice(0, 50)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveOpenTournamentIds(userId, ids) {
-  try {
-    const normalized = [...new Set((ids || []).filter(Boolean))].slice(0, 50);
-    localStorage.setItem(getOpenTournamentsStorageKey(userId), JSON.stringify(normalized));
-  } catch {
-    // A central continua funcionando durante a sessao mesmo sem armazenamento local.
-  }
-}
-
-function readOpenTournamentNavigation(userId) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(getOpenTournamentNavigationStorageKey(userId)) || "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveOpenTournamentNavigation(userId, navigation) {
-  try {
-    localStorage.setItem(
-      getOpenTournamentNavigationStorageKey(userId),
-      JSON.stringify(navigation && typeof navigation === "object" ? navigation : {})
-    );
-  } catch {
-    // A troca de torneios continua disponivel mesmo sem armazenamento local.
-  }
-}
-
-function getUserAppStateStorageKey(userId) {
-  return `${USER_APP_STATE_STORAGE_PREFIX}${userId}`;
-}
-
-function getAppStateTimestamp(state) {
-  const time = Date.parse(state?.updated_at || "");
-  return Number.isFinite(time) ? time : 0;
-}
-
-function readLocalUserAppState(userId) {
-  if (!userId) return null;
-
-  const key = getUserAppStateStorageKey(userId);
-  const states = [];
-
-  try {
-    const sessionValue = sessionStorage.getItem(key);
-    if (sessionValue) states.push(JSON.parse(sessionValue));
-  } catch (error) {
-    console.warn("Não foi possível ler a posição salva nesta aba", error);
-  }
-
-  try {
-    const localValue = localStorage.getItem(key);
-    if (localValue) states.push(JSON.parse(localValue));
-  } catch (error) {
-    console.warn("Não foi possível ler a posição salva neste dispositivo", error);
-  }
-
-  return states
-    .filter((state) => state && typeof state === "object")
-    .sort((first, second) => getAppStateTimestamp(second) - getAppStateTimestamp(first))[0] || null;
-}
-
-function saveLocalUserAppState(userId, state) {
-  if (!userId || !state) return;
-
-  const serialized = JSON.stringify(state);
-  const key = getUserAppStateStorageKey(userId);
-
-  try {
-    // sessionStorage recupera a posição imediatamente ao voltar para esta aba.
-    sessionStorage.setItem(key, serialized);
-  } catch (error) {
-    console.warn("Não foi possível salvar a posição nesta aba", error);
-  }
-
-  try {
-    // localStorage é o backup caso o navegador descarregue a aba antes do upsert.
-    localStorage.setItem(key, serialized);
-  } catch (error) {
-    console.warn("Não foi possível salvar a posição neste dispositivo", error);
-  }
-}
-
-function getTournamentDraftStorageKey(userId, tournamentId) {
-  return `${TOURNAMENT_DRAFT_STORAGE_PREFIX}${userId || "anonymous"}:${tournamentId}`;
-}
-
-function notifyTournamentDraftChanged(userId, tournamentId) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(TOURNAMENT_DRAFT_CHANGED_EVENT, {
-    detail: { userId, tournamentId },
-  }));
-}
-
-function listLocalTournamentDrafts(userId) {
-  if (!userId) return [];
-  const prefix = `${TOURNAMENT_DRAFT_STORAGE_PREFIX}${userId}:`;
-
-  try {
-    return Object.keys(localStorage)
-      .filter((key) => key.startsWith(prefix))
-      .map((key) => {
-        try {
-          const draft = JSON.parse(localStorage.getItem(key) || "null");
-          const tournamentId = key.slice(prefix.length);
-          return draft?.data && tournamentId ? { ...draft, userId, tournamentId } : null;
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-function readTournamentDraft(userId, tournament) {
-  if (!tournament?.id) return null;
-
-  try {
-    const rawDraft = localStorage.getItem(getTournamentDraftStorageKey(userId, tournament.id));
-    if (!rawDraft) return null;
-    const draft = JSON.parse(rawDraft);
-    if (draft?.pending === true && draft?.data) return draft;
-
-    const draftUpdatedAt = Number(draft?.updatedAt || 0);
-    const serverUpdatedAt = Date.parse(tournament.updated_at || tournament.created_at || "") || 0;
-
-    if (!draft?.data || draftUpdatedAt <= serverUpdatedAt) return null;
-    return draft;
-  } catch (error) {
-    console.warn("Não foi possível recuperar o rascunho local do torneio", error);
-    return null;
-  }
-}
-
-function saveTournamentDraft(userId, tournament, data, baseUpdatedAt = null, baseData = null, baseRevision = null) {
-  const tournamentId = typeof tournament === "string" ? tournament : tournament?.id;
-  if (!userId || !tournamentId || !data) return Promise.resolve(false);
-  const draft = {
-    data,
-    name: typeof tournament === "object" ? tournament.name : "",
-    type: typeof tournament === "object" ? tournament.type : "",
-    status: typeof tournament === "object" ? tournament.status : "active",
-    public_id: typeof tournament === "object" ? tournament.public_id : null,
-    is_public: typeof tournament === "object" ? tournament.is_public : true,
-    created_at: typeof tournament === "object" ? tournament.created_at : null,
-    baseUpdatedAt: baseUpdatedAt || (typeof tournament === "object" ? tournament.updated_at : null),
-    baseRevision: baseRevision ?? (typeof tournament === "object" ? getCollaborationRevision(tournament) : null),
-    baseData: baseData || (typeof tournament === "object" ? tournament.data : null),
-    updatedAt: Date.now(),
-    pending: true,
-  };
-
-  let localStorageSaved = false;
-  try {
-    localStorage.setItem(
-      getTournamentDraftStorageKey(userId, tournamentId),
-      JSON.stringify(draft)
-    );
-    localStorageSaved = true;
-  } catch (error) {
-    console.warn("Não foi possível criar o backup local do torneio", error);
-  }
-
-  notifyTournamentDraftChanged(userId, tournamentId);
-  return savePendingTournament(userId, tournamentId, draft).then((indexedDbSaved) => {
-    const saved = localStorageSaved || indexedDbSaved;
-    if (!saved) console.error("Nenhum armazenamento local aceitou o backup do torneio.");
-    return saved;
-  }).finally(() => {
-    notifyTournamentDraftChanged(userId, tournamentId);
-  });
-}
-
-function clearTournamentDraft(userId, tournamentId) {
-  try {
-    localStorage.removeItem(getTournamentDraftStorageKey(userId, tournamentId));
-  } catch (error) {
-    console.warn("Não foi possível remover o rascunho local já salvo", error);
-  }
-  void removePendingTournament(userId, tournamentId).finally(() => {
-    notifyTournamentDraftChanged(userId, tournamentId);
-  });
-}
-
 async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
@@ -1403,231 +526,6 @@ async function copyToClipboard(text) {
   }
 }
 
-function formatDateBR(value) {
-  if (!value) return "";
-
-  const [year, month, day] = String(value).split("-");
-
-  if (!year || !month || !day) return value;
-
-  return `${day}/${month}/${year}`;
-}
-
-function formatStatusBR(value) {
-  const normalized = String(value || "").toLowerCase();
-  if (normalized === "active") return "ATIVO";
-  if (normalized === "inactive") return "INATIVO";
-  if (normalized === "blocked") return "BLOQUEADO";
-  if (normalized === "pending") return "PENDENTE";
-  if (normalized === "expired") return "VENCIDO";
-  return String(value || "").toUpperCase();
-}
-
-const TRIAL_DAYS = 7;
-const MILLISECONDS_PER_DAY = 86_400_000;
-const AUTH_FLOW_QUERY_KEY = "auth";
-
-function getBrazilTodayISO(date = new Date()) {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(date);
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${values.year}-${values.month}-${values.day}`;
-  } catch (error) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-}
-
-function getBrazilDateISO(value) {
-  if (!value) return "";
-
-  const rawValue = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) return rawValue;
-
-  const date = new Date(rawValue);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return getBrazilTodayISO(date);
-}
-
-function isoDateToUtcDay(value) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const utcTime = Date.UTC(year, month - 1, day);
-  const parsed = new Date(utcTime);
-
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return Math.floor(utcTime / MILLISECONDS_PER_DAY);
-}
-
-function getCalendarDayDifference(startValue, endValue) {
-  const startDay = isoDateToUtcDay(getBrazilDateISO(startValue));
-  const endDay = isoDateToUtcDay(getBrazilDateISO(endValue));
-
-  if (startDay === null || endDay === null) return null;
-  return endDay - startDay;
-}
-
-function getFreeTrialDetails(profile, user) {
-  if (String(profile?.status || "").toLowerCase() !== "active") return null;
-
-  const trialEndValue = profile?.trial_ends_at || profile?.trial_end_at;
-  const accessEndValue = trialEndValue || profile?.expires_at;
-  const accessEndDate = getBrazilDateISO(accessEndValue);
-  if (!accessEndDate) return null;
-
-  const accessType = String(
-    profile?.access_type || profile?.access_kind || profile?.subscription_status || ""
-  ).toLowerCase();
-  const hasExplicitTrial =
-    profile?.is_trial === true ||
-    Boolean(trialEndValue) ||
-    ["trial", "free_trial", "free-trial", "gratuito", "teste"].includes(accessType);
-  const hasExplicitPaidAccess =
-    profile?.is_trial === false ||
-    ["paid", "active_paid", "subscribed", "assinante", "pago"].includes(accessType);
-
-  const trialStartValue =
-    profile?.trial_started_at ||
-    profile?.trial_start_at ||
-    user?.email_confirmed_at ||
-    user?.confirmed_at ||
-    profile?.created_at ||
-    user?.created_at;
-  const inferredTrialLength = getCalendarDayDifference(trialStartValue, accessEndDate);
-  const isInitialPremiumTrial =
-    !hasExplicitPaidAccess &&
-    String(profile?.plan || "").toLowerCase() === "premium" &&
-    inferredTrialLength !== null &&
-    inferredTrialLength >= 0 &&
-    inferredTrialLength <= TRIAL_DAYS;
-
-  if (!hasExplicitTrial && !isInitialPremiumTrial) return null;
-
-  const remainingDifference = getCalendarDayDifference(getBrazilTodayISO(), accessEndDate);
-  if (remainingDifference === null || remainingDifference < 0) return null;
-
-  return {
-    daysRemaining: remainingDifference + 1,
-    expiresAt: accessEndDate,
-  };
-}
-
-function getAuthRedirectUrl(flow) {
-  const url = new URL(window.location.origin + window.location.pathname);
-  url.searchParams.set(AUTH_FLOW_QUERY_KEY, flow);
-  return url.toString();
-}
-
-function getAuthFlowFromLocation() {
-  const url = new URL(window.location.href);
-  const queryFlow = url.searchParams.get(AUTH_FLOW_QUERY_KEY);
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const hashType = hashParams.get("type");
-
-  if (queryFlow === "recovery" || hashType === "recovery") return "recovery";
-  if (queryFlow === "confirm" || hashType === "signup" || hashType === "email") return "confirm";
-  return null;
-}
-
-function getAuthCallbackError() {
-  const url = new URL(window.location.href);
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const rawMessage = hashParams.get("error_description") || url.searchParams.get("error_description") || "";
-
-  if (!rawMessage) return null;
-
-  if (/expired|invalid|otp/i.test(rawMessage)) {
-    return "Este link expirou ou já foi usado. Solicite um novo link para continuar.";
-  }
-
-  return "Não foi possível concluir este link de acesso. Solicite um novo link e tente novamente.";
-}
-
-function clearAuthCallbackUrl() {
-  const url = new URL(window.location.href);
-  url.searchParams.delete(AUTH_FLOW_QUERY_KEY);
-  url.searchParams.delete("code");
-  url.searchParams.delete("error");
-  url.searchParams.delete("error_code");
-  url.searchParams.delete("error_description");
-  url.hash = "";
-  window.history.replaceState(null, "", `${url.pathname}${url.search}`);
-}
-
-function normalizeEmail(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function getBrazilianWhatsAppUrl(value, message = "") {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (!digits) return "";
-
-  const numberWithCountryCode = digits.startsWith("55") && digits.length >= 12
-    ? digits
-    : `55${digits}`;
-
-  const url = `https://wa.me/${numberWithCountryCode}`;
-  return message ? `${url}?text=${encodeURIComponent(message)}` : url;
-}
-
-function getPlanRegularizationWhatsAppUrl(profile, user) {
-  const plan = profile?.plan ? ` Plano atual: ${profile.plan}.` : "";
-  const email = user?.email ? ` E-mail da conta: ${user.email}.` : "";
-  return getPlatformWhatsAppUrl(`Olá! Meu período de acesso ao Torneio360 terminou e quero regularizar o pagamento do meu plano.${plan}${email}`);
-}
-
-function isEmailNotConfirmedError(error) {
-  return /email[^\n]*not[^\n]*confirm|not[^\n]*confirm[^\n]*email|email_not_confirmed/i.test(`${error?.message || ""} ${error?.code || ""}`);
-}
-
-function isUserAlreadyRegisteredError(error) {
-  const code = String(error?.code || "").toLowerCase();
-  if (code === "user_already_exists" || code === "email_exists") return true;
-
-  return /user\s+already\s+registered|user[^\n]*already[^\n]*exists|email[^\n]*already[^\n]*exists/i.test(String(error?.message || ""));
-}
-
-function getAuthErrorMessage(error, fallback) {
-  const message = `${error?.message || ""} ${error?.code || ""}`.toLowerCase();
-
-  if (/rate limit|too many requests|over_email_send_rate_limit/.test(message)) {
-    return "Aguarde alguns minutos antes de pedir outro e-mail.";
-  }
-
-  if (/redirect|redirect_to|not allowed/.test(message)) {
-    return "O retorno por e-mail ainda não está autorizado no Supabase. Confira as URLs permitidas.";
-  }
-
-  if (/not authorized|not allowed to send|email address not authorized/.test(message)) {
-    return "O serviço de e-mail ainda não está configurado para este endereço. Configure o SMTP do Supabase.";
-  }
-
-  return fallback;
-}
-
 async function resendEmailConfirmation(email) {
   return supabase.auth.resend({
     type: "signup",
@@ -1636,277 +534,6 @@ async function resendEmailConfirmation(email) {
       emailRedirectTo: getAuthRedirectUrl("confirm"),
     },
   });
-}
-
-function isProfilePendingEmailConfirmation(profile) {
-  return profile?.status === "pending" && !profile?.expires_at;
-}
-
-function getWeekdayBR(value) {
-  if (!value) return "";
-
-  const [year, month, day] = String(value).split("-").map(Number);
-  if (!year || !month || !day) return "";
-
-  const date = new Date(year, month - 1, day);
-
-  return [
-    "Domingo",
-    "Segunda-feira",
-    "Terça-feira",
-    "Quarta-feira",
-    "Quinta-feira",
-    "Sexta-feira",
-    "Sábado",
-  ][date.getDay()];
-}
-
-function normalizeCircuitStatus(status) {
-  return status === "finished" || status === "closed" || status === "archived" ? "closed" : "active";
-}
-
-function sortCircuitsForDisplay(items) {
-  return [...(items || [])].sort((first, second) => {
-    const firstFinished = isPublicItemFinished(first, "circuit");
-    const secondFinished = isPublicItemFinished(second, "circuit");
-    if (firstFinished !== secondFinished) return firstFinished ? 1 : -1;
-
-    const firstDate = String(first?.end_date || first?.endDate || first?.start_date || first?.startDate || "9999-12-31");
-    const secondDate = String(second?.end_date || second?.endDate || second?.start_date || second?.startDate || "9999-12-31");
-    return firstFinished ? secondDate.localeCompare(firstDate) : firstDate.localeCompare(secondDate);
-  });
-}
-
-const allowedByPlan = {
-  basic: [
-    "Reizinho",
-    "Super 08",
-    "Super 12",
-    "Super 10 Mista (Dupla Aleatória)",
-    "Super 12 Mista (Dupla Aleatória)",
-    "Super 16 Mista (Dupla Aleatória)",
-    "Super 20 Mista (Dupla Aleatória)",
-  ],
-  pro: [
-    "Super 12 Mista (Dupla Fixa)",
-    "Reizinho",
-    "Super 08",
-    "Super 16 Mista (Dupla Fixa)",
-    "Super 12",
-    "Super 10 Mista (Dupla Aleatória)",
-    "Super 12 Mista (Dupla Aleatória)",
-    "Super 16 Mista (Dupla Aleatória)",
-    "Super 20 Mista (Dupla Aleatória)",
-  ],
-  premium: [
-    "Super 12 Mista (Dupla Fixa)",
-    "Reizinho",
-    "Super 08",
-    "Super 16 Mista (Dupla Fixa)",
-    "Super 12",
-    "Super 10 Mista (Dupla Aleatória)",
-    "Super 12 Mista (Dupla Aleatória)",
-    "Super 16 Mista (Dupla Aleatória)",
-    "Super 20 Mista (Dupla Aleatória)",
-    "Simples 8",
-    "Copa - 18 duplas",
-    "Campeonato Cearense",
-    "Campeonato Cearense Individual",
-    "Modelo Play Ranking",
-    "Copa Sunset",
-  ],
-};
-
-const modalityConfig = {
-  "Reizinho": {
-    type: "reizinho",
-    allowedPlayerCounts: [4, 6],
-    defaultPlayers: 4,
-    total: 4,
-    label: "Atleta",
-    courts: 1,
-  },
-
-  "Super 08": {
-    type: "super8",
-    total: 8,
-    label: "Participante",
-    courts: 2,
-  },
-
-  "Super 12": {
-    type: "super12",
-    total: 12,
-    label: "Participante",
-    courts: 3,
-  },
-
-  "Super 10 Mista (Dupla Aleatória)": {
-    type: "mixed10",
-    men: 5,
-    women: 5,
-    courts: 2,
-  },
-
-  "Super 12 Mista (Dupla Aleatória)": {
-    type: "mixed12",
-    men: 6,
-    women: 6,
-    courts: 3,
-  },
-
-  "Super 16 Mista (Dupla Aleatória)": {
-    type: "mixed16",
-    men: 8,
-    women: 8,
-    courts: 4,
-  },
-
-  "Super 20 Mista (Dupla Aleatória)": {
-    type: "mixed20",
-    men: 10,
-    women: 10,
-    courts: 5,
-  },
-
-  "Super 12 Mista (Dupla Fixa)": {
-    type: "fixed12",
-    teams: 6,
-    courts: 3,
-  },
-
-  "Super 16 Mista (Dupla Fixa)": {
-    type: "fixed16",
-    teams: 8,
-    courts: 4,
-  },
-
-  "Simples 8": {
-    type: "simple8",
-    allowedPlayerCounts: [4, 6, 8, 10, 12, 14],
-    defaultPlayers: 8,
-    total: 8,
-    label: "Jogador",
-    courts: 4,
-  },
-
-  "Copa - 12 ou 24 duplas": {
-    type: "cup",
-    cupMode: "standard",
-    allowedTeamCounts: [12, 24],
-    defaultTeams: 12,
-    groupSize: 3,
-    defaultMainBracketName: "Principal",
-    defaultRepechageName: "Repescagem",
-    courts: 4,
-  },
-
-  "Copa - 18 duplas": {
-    type: "cup18",
-    cupMode: "cup18",
-    allowedTeamCounts: [18],
-    defaultTeams: 18,
-    groupSize: 3,
-    defaultMainBracketName: "Principal",
-    defaultRepechageName: "Disputa Paralela",
-    courts: 6,
-  },
-
-  "Copa - 21 duplas": {
-    type: "cup21",
-    cupMode: "cup21",
-    allowedTeamCounts: [21],
-    defaultTeams: 21,
-    groupSize: 3,
-    defaultMainBracketName: "Chave Principal",
-    defaultRepechageName: "Disputa Paralela",
-    courts: 7,
-  },
-
-  "Copinha - grupos de 3": {
-    type: "copinha",
-    cupMode: "copinha",
-    allowedTeamCounts: [6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
-    defaultTeams: 6,
-    groupSize: 3,
-    defaultMainBracketName: "Chave Principal",
-    defaultRepechageName: "Consolação",
-    courts: 4,
-  },
-
-  "Campeonato Cearense": {
-    type: "cearense",
-    cupMode: "cearense",
-    allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
-    defaultTeams: 4,
-    defaultMainBracketName: "Eliminatória Principal",
-    defaultRepechageName: "2ª Disputa Paralela",
-    defaultThirdRepechageName: "3ª Disputa Paralela",
-    courts: 6,
-  },
-
-  "Campeonato Cearense Individual": {
-    type: "cearenseIndividual",
-    cupMode: "cearense-individual",
-    individualCup: true,
-    allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
-    defaultTeams: 4,
-    defaultMainBracketName: "Eliminatória Principal",
-    defaultRepechageName: "2ª Disputa Paralela",
-    defaultThirdRepechageName: "3ª Disputa Paralela",
-    courts: 6,
-  },
-
-  "Modelo Play Ranking": {
-    type: "playranking",
-    cupMode: "playranking",
-    allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
-    defaultTeams: 4,
-    defaultMainBracketName: "Eliminatória Principal",
-    defaultRepechageName: "Disputa Paralela",
-    courts: 6,
-  },
-
-  "Copa Sunset": {
-    type: "sunset",
-    cupMode: "sunset",
-    allowedTeamCounts: Array.from({ length: 29 }, (_, index) => index + 4),
-    defaultTeams: 4,
-    defaultMainBracketName: "Eliminatória Principal",
-    defaultRepechageName: "1ª Disputa Paralela",
-    defaultSecondParallelName: "2ª Disputa Paralela",
-    defaultThirdRepechageName: "3ª Disputa Paralela",
-    defaultSunsetBracketName: "Etapa Sunset",
-    courts: 6,
-  },
-};
-
-function getTournamentTimingSummary(data = {}, now = Date.now()) {
-  const operationalGames = getTournamentOperationalGames(data);
-  const winningScore = getWinningScore(data);
-  const timedGames = operationalGames
-    .map((item) => item.storedGame || item.game)
-    .filter((game) => (
-      Boolean(game?.matchTimerFirstStartedAt)
-      || Boolean(game?.matchTimerStartedAt)
-      || Number(game?.matchTimerElapsedSeconds || 0) > 0
-    ));
-
-  return {
-    timedGames: timedGames.length,
-    // O tempo geral representa trabalho efetivo de quadra. Intervalos entre
-    // partidas (inclusive de um dia para o outro) nunca entram na soma.
-    durationSeconds: timedGames.reduce(
-      (total, game) => total + getMatchElapsedSeconds(game, now),
-      0
-    ),
-    complete: operationalGames.length > 0 && operationalGames.every((item) => {
-      const storedGame = item.storedGame || item.game;
-      return isGameFinished(item.game, winningScore)
-        && Boolean(storedGame?.matchTimerFirstStartedAt)
-        && Boolean(storedGame?.matchTimerFinishedAt);
-    }),
-  };
 }
 
 function TournamentTimingSummary({ data, compact = false }) {
@@ -1937,142 +564,6 @@ function TournamentTimingSummary({ data, compact = false }) {
   );
 }
 
-function getCupPlayTimeById(data = {}) {
-  const playTimeById = new Map();
-  if (!getTournamentTimingSummary(data).complete) return playTimeById;
-  const winningScore = getWinningScore(data);
-  getTournamentOperationalGames(data).forEach((item) => {
-    if (!isGameFinished(item.game, winningScore)) return;
-    const seconds = getMatchElapsedSeconds(item.storedGame || item.game);
-    if (seconds <= 0) return;
-    [...(item.game.ids1 || []), ...(item.game.ids2 || [])].forEach((id) => {
-      playTimeById.set(id, Number(playTimeById.get(id) || 0) + seconds);
-    });
-  });
-  return playTimeById;
-}
-
-function hasPlayableGameSides(game) {
-  if (!game || game.isBye) return false;
-
-  const hasFirstSide = Array.isArray(game.ids1)
-    ? game.ids1.length > 0
-    : Array.isArray(game.team1)
-      ? game.team1.some((name) => name && name !== "Aguardando" && name !== "BYE")
-      : Boolean(game.team1);
-  const hasSecondSide = Array.isArray(game.ids2)
-    ? game.ids2.length > 0
-    : Array.isArray(game.team2)
-      ? game.team2.some((name) => name && name !== "Aguardando" && name !== "BYE")
-      : Boolean(game.team2);
-
-  return hasFirstSide && hasSecondSide;
-}
-
-function getTournamentOperationalGames(data = {}) {
-  let operationalData = data;
-  try {
-    if (isCampeonatoCearenseData(data) && data.cupConfig?.cearenseBracketVersion === 2) {
-      operationalData = syncCupBracketScores(data);
-    }
-  } catch {
-    // Mantém compatibilidade com chaves antigas enquanto elas são reparadas.
-  }
-  const games = [];
-
-  (Array.isArray(operationalData.schedule) ? operationalData.schedule : []).forEach((round, roundIndex) => {
-    (Array.isArray(round) ? round : []).forEach((game, gameIndex) => {
-      if (!hasPlayableGameSides(game)) return;
-      games.push({
-        game,
-        scope: "schedule",
-        key: `schedule:${roundIndex}:${gameIndex}`,
-        label: game.groupName
-          ? `${game.groupName} · Rodada ${roundIndex + 1}`
-          : `Rodada ${roundIndex + 1}`,
-      });
-    });
-  });
-
-  const storedBrackets = Array.isArray(operationalData.brackets) ? operationalData.brackets : [];
-  storedBrackets.forEach((storedGame) => {
-    let game = storedGame;
-    try {
-      game = resolveBracketGame(storedGame, storedBrackets, operationalData);
-    } catch {
-      // Se uma chave antiga estiver incompleta, preservamos os jogos válidos já salvos.
-    }
-    if (!hasPlayableGameSides(game)) return;
-    games.push({
-      game,
-      storedGame,
-      scope: "bracket",
-      key: `bracket:${storedGame.matchKey || games.length}`,
-      label: storedGame.roundName || storedGame.phase || "Chave eliminatória",
-    });
-  });
-
-  return games;
-}
-
-function getInProgressParticipantConflicts(data = {}, targetGame = {}, targetKey = "") {
-  const winningScore = getWinningScore(data);
-  const courtNumbers = Array.isArray(data.courtNumbers) ? data.courtNumbers : [];
-
-  return getTournamentOperationalGames(data)
-    .filter((item) => (
-      item.key !== targetKey
-      && !isGameFinished(item.game, winningScore)
-      && (item.storedGame?.inProgress === true || item.game?.inProgress === true)
-    ))
-    .map((item) => ({
-      participants: getSharedGameParticipants(targetGame, item.game),
-      gameLabel: item.label,
-      courtLabel: getGameCourtLabel(item.storedGame || item.game, courtNumbers),
-    }))
-    .filter((conflict) => conflict.participants.length > 0);
-}
-
-function getTournamentMatchStatusSummary(data = {}, { scope = "all", bracketMatchKeys = null } = {}) {
-  const winningScore = getWinningScore(data);
-  const allowedBracketMatchKeys = Array.isArray(bracketMatchKeys)
-    ? new Set(bracketMatchKeys.filter(Boolean))
-    : null;
-  const operationalGames = getTournamentOperationalGames(data).filter((item) => {
-    if (scope !== "all" && item.scope !== scope) return false;
-    if (item.scope === "bracket" && allowedBracketMatchKeys) {
-      return allowedBracketMatchKeys.has(item.storedGame?.matchKey);
-    }
-    return true;
-  });
-
-  return operationalGames.reduce((summary, item) => {
-    if (isGameFinished(item.game, winningScore)) summary.finished += 1;
-    else if (item.storedGame?.inProgress === true || item.game?.inProgress === true) summary.inProgress += 1;
-    else summary.waiting += 1;
-    summary.total += 1;
-    return summary;
-  }, { waiting: 0, inProgress: 0, finished: 0, total: 0 });
-}
-
-function getTournamentActiveCourtUsages(tournament, data = tournament?.data || {}) {
-  const courtNumbers = Array.isArray(data.courtNumbers) ? data.courtNumbers : [];
-  const winningScore = getWinningScore(data);
-
-  return getTournamentOperationalGames(data)
-    .filter((item) => (
-      !isGameFinished(item.game, winningScore)
-      && (item.storedGame?.inProgress === true || item.game?.inProgress === true)
-    ))
-    .map((item) => ({
-      tournamentId: tournament?.id,
-      tournamentName: tournament?.name || "Torneio",
-      gameKey: item.key,
-      gameLabel: item.label,
-      courtNumber: getGameCourtNumber(item.storedGame || item.game, courtNumbers),
-    }));
-}
-
 function TournamentMatchStatusSummary({
   data,
   compact = false,
@@ -2093,1048 +584,14 @@ function TournamentMatchStatusSummary({
   );
 }
 
-function getCearenseFormatSummary(teamCount, playRanking = false, individual = false, groupFormation = "automatic") {
-  const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
-  const groups = createCearenseGroups(safeTeamCount, groupFormation);
-  const groupSizes = groups.map((group) => group.teamIds.length);
-  const gamesPerTeam = [...new Set(groupSizes.map((size) => size - 1))].sort((a, b) => a - b);
-  const groupMatches = groupSizes.reduce((total, size) => total + (size * (size - 1)) / 2, 0);
-  const mainCount = groups.length * 2;
-  const initialParallelCount = safeTeamCount - mainCount;
-  const mainBracketSize = getNextPowerOfTwo(mainCount);
-  const mainByes = mainBracketSize - mainCount;
-  const openingMainGames = mainCount - mainBracketSize / 2;
-  const transferredCount = playRanking ? openingMainGames : 0;
-  const finalParallelCount = initialParallelCount + transferredCount;
-  const parallelBracketSize = finalParallelCount >= 2 ? getNextPowerOfTwo(finalParallelCount) : finalParallelCount;
-  const parallelByes = Math.max(0, parallelBracketSize - finalParallelCount);
-  const thirdParallelPlan = cearenseMainBracketPlans[groups.length];
-  const thirdParallelSources = thirdParallelPlan
-    ? getCearenseThirdParallelSources(expandBracketPlanWithVisualByes(thirdParallelPlan))
-    : { sections: [], games: [] };
-  const thirdParallelEligibleCount = thirdParallelSources.games.length;
-  const thirdParallelBracketSize = thirdParallelEligibleCount >= 2
-    ? getNextPowerOfTwo(thirdParallelEligibleCount)
-    : thirdParallelEligibleCount;
-  const thirdParallelSourceRounds = thirdParallelSources.sections.map((section) => section.round.title);
-  const thirdParallel = {
-    eligibleCount: thirdParallelEligibleCount,
-    sourceRound: thirdParallelSourceRounds.join(" e "),
-    sourceRounds: thirdParallelSourceRounds,
-    openingRound: thirdParallelEligibleCount >= 2
-      ? getEliminationRoundName(thirdParallelBracketSize)
-      : "Não formada",
-    bracketSize: thirdParallelBracketSize,
-    byeCount: Math.max(0, thirdParallelBracketSize - thirdParallelEligibleCount),
-    matchCount: Math.max(0, thirdParallelEligibleCount - 1),
-  };
-
-  return {
-    teamCount: safeTeamCount,
-    groupCount: groups.length,
-    groupDescription: describeCearenseGroupSizes(groups, individual ? "jogadores" : "duplas"),
-    gamesPerTeamDescription: gamesPerTeam.join(" ou "),
-    groupMatches,
-    mainCount,
-    initialParallelCount,
-    mainBracketSize,
-    mainOpeningRound: getEliminationRoundName(mainBracketSize),
-    mainByes,
-    openingMainGames,
-    transferredCount,
-    finalParallelCount,
-    parallelBracketSize,
-    parallelByes,
-    parallelOpeningRound: getEliminationRoundName(parallelBracketSize),
-    thirdParallel,
-  };
-}
-
-function resetCopinhaTieBreaks(data) {
-  if (!isCopinhaData(data) && !isCearenseData(data)) return data;
-
-  data.cupConfig = {
-    ...(data.cupConfig || {}),
-    tieBreakOverrides: {},
-    groupTieBreakOverrides: {},
-    campaignTieBreakOverrides: {},
-  };
-
-  return data;
-}
-
 // Mapas de chaveamento da Copinha. C = campeão do grupo, R = segundo e T =
 // terceiro; o número é a posição da campanha do grupo. As abas de 2 a 9
 // grupos foram transcritas da planilha. Em 10 grupos, a planilha repete o
 // 2º MG4 no Jogo 8 e deixa o 1º MG4 de fora; usamos 1º MG4 para que as 20
 // duplas classificadas apareçam uma única vez. Os formatos 11 e 12 seguem a
 // mesma distribuição, corrigindo as cópias incompletas dessas abas.
-const copinhaBracketPlans = {
-  2: {
-    main: [
-      { title: "Semifinal", games: [["m1", "c1", "r2"], ["m2", "c2", "r1"]] },
-      { title: "3º lugar", games: [["m3", "l:m1", "l:m2"]] },
-      { title: "Final", games: [["m4", "w:m1", "w:m2"]] },
-    ],
-    repechage: [],
-  },
-  3: {
-    main: [
-      { title: "Quartas de final", games: [["m1", "r2", "r3"], ["m2", "r1", "c3"]] },
-      { title: "Semifinal", games: [["m3", "c1", "w:m1"], ["m4", "c2", "w:m2"]] },
-      { title: "3º lugar", games: [["m5", "l:m3", "l:m4"]] },
-      { title: "Final", games: [["m6", "w:m3", "w:m4"]] },
-    ],
-    repechage: [
-      { title: "Semifinal", games: [["r1", "t2", "t3"]] },
-      { title: "Final", games: [["r2", "t1", "w:r1"]] },
-    ],
-  },
-  4: {
-    main: [
-      { title: "Quartas de final", games: [["m1", "c1", "r3"], ["m2", "c4", "r2"], ["m3", "c3", "r1"], ["m4", "c2", "r4"]] },
-      { title: "Semifinal", games: [["m5", "w:m1", "w:m2"], ["m6", "w:m3", "w:m4"]] },
-      { title: "3º lugar", games: [["m7", "l:m5", "l:m6"]] },
-      { title: "Final", games: [["m8", "w:m5", "w:m6"]] },
-    ],
-    repechage: [
-      { title: "Semifinal", games: [["r1", "t1", "t4"], ["r2", "t2", "t3"]] },
-      { title: "Final", games: [["r3", "w:r1", "w:r2"]] },
-    ],
-  },
-  5: {
-    main: [
-      { title: "Oitavas de final", games: [["m1", "r3", "r2"], ["m2", "r4", "r5"]] },
-      { title: "Quartas de final", games: [["m3", "c1", "w:m1"], ["m4", "c4", "c5"], ["m5", "c3", "r1"], ["m6", "c2", "w:m2"]] },
-      { title: "Semifinal", games: [["m7", "w:m3", "w:m4"], ["m8", "w:m5", "w:m6"]] },
-      { title: "3º lugar", games: [["m9", "l:m7", "l:m8"]] },
-      { title: "Final", games: [["m10", "w:m7", "w:m8"]] },
-    ],
-    repechage: [
-      { title: "Quartas de final", games: [["r1", "t5", "t4"]] },
-      { title: "Semifinal", games: [["r2", "t1", "w:r1"], ["r3", "t2", "t3"]] },
-      { title: "Final", games: [["r4", "w:r2", "w:r3"]] },
-    ],
-  },
-  6: {
-    main: [
-      { title: "Oitavas de final", games: [["m1", "r2", "r6"], ["m2", "r3", "c5"], ["m3", "r1", "c6"], ["m4", "r4", "r5"]] },
-      { title: "Quartas de final", games: [["m5", "c1", "w:m1"], ["m6", "c4", "w:m2"], ["m7", "c3", "w:m3"], ["m8", "c2", "w:m4"]] },
-      { title: "Semifinal", games: [["m9", "w:m5", "w:m6"], ["m10", "w:m7", "w:m8"]] },
-      { title: "3º lugar", games: [["m11", "l:m9", "l:m10"]] },
-      { title: "Final", games: [["m12", "w:m9", "w:m10"]] },
-    ],
-    repechage: [
-      { title: "Quartas de final", games: [["r1", "t4", "t6"], ["r2", "t3", "t5"]] },
-      { title: "Semifinal", games: [["r3", "t1", "w:r1"], ["r4", "t2", "w:r2"]] },
-      { title: "Final", games: [["r5", "w:r3", "w:r4"]] },
-    ],
-  },
-  7: {
-    main: [
-      { title: "Oitavas de final", games: [["m1", "c7", "r6"], ["m2", "r3", "c5"], ["m3", "c4", "r2"], ["m4", "r5", "r4"], ["m5", "c6", "r7"], ["m6", "c3", "r1"]] },
-      { title: "Quartas de final", games: [["m7", "c1", "w:m1"], ["m8", "w:m2", "w:m3"], ["m9", "w:m5", "w:m6"], ["m10", "c2", "w:m4"]] },
-      { title: "Semifinal", games: [["m11", "w:m7", "w:m8"], ["m12", "w:m9", "w:m10"]] },
-      { title: "3º lugar", games: [["m13", "l:m11", "l:m12"]] },
-      { title: "Final", games: [["m14", "w:m11", "w:m12"]] },
-    ],
-    repechage: [
-      { title: "Quartas de final", games: [["r1", "t2", "t7"], ["r2", "t3", "t6"], ["r3", "t4", "t5"]] },
-      { title: "Semifinal", games: [["r4", "t1", "w:r3"], ["r5", "w:r1", "w:r2"]] },
-      { title: "Final", games: [["r6", "w:r4", "w:r5"]] },
-    ],
-  },
-  8: {
-    main: [
-      { title: "Oitavas de final", games: [["m1", "c1", "r8"], ["m2", "c5", "r3"], ["m3", "c7", "r2"], ["m4", "c4", "r6"], ["m5", "c3", "r5"], ["m6", "c6", "r4"], ["m7", "c8", "r1"], ["m8", "c2", "r7"]] },
-      { title: "Quartas de final", games: [["m9", "w:m1", "w:m2"], ["m10", "w:m3", "w:m4"], ["m11", "w:m5", "w:m6"], ["m12", "w:m7", "w:m8"]] },
-      { title: "Semifinal", games: [["m13", "w:m9", "w:m10"], ["m14", "w:m11", "w:m12"]] },
-      { title: "3º lugar", games: [["m15", "l:m13", "l:m14"]] },
-      { title: "Final", games: [["m16", "w:m13", "w:m14"]] },
-    ],
-    repechage: [
-      { title: "Quartas de final", games: [["r1", "t1", "t8"], ["r2", "t2", "t7"], ["r3", "t3", "t6"], ["r4", "t4", "t5"]] },
-      { title: "Semifinal", games: [["r5", "w:r1", "w:r2"], ["r6", "w:r3", "w:r4"]] },
-      { title: "Final", games: [["r7", "w:r5", "w:r6"]] },
-    ],
-  },
-  9: {
-    main: [
-      { title: "1ª Rodada", games: [["m1", "r8", "r6"], ["m2", "r9", "r7"]] },
-      { title: "Oitavas de final", games: [["m3", "c1", "w:m1"], ["m4", "c5", "r3"], ["m5", "c7", "c9"], ["m6", "c4", "r2"], ["m7", "c2", "w:m2"], ["m8", "c8", "r4"], ["m9", "c6", "r5"], ["m10", "c3", "r1"]] },
-      { title: "Quartas de final", games: [["m11", "w:m3", "w:m4"], ["m12", "w:m5", "w:m6"], ["m13", "w:m7", "w:m8"], ["m14", "w:m9", "w:m10"]] },
-      { title: "Semifinal", games: [["m15", "w:m11", "w:m12"], ["m16", "w:m13", "w:m14"]] },
-      { title: "3º lugar", games: [["m17", "l:m15", "l:m16"]] },
-      { title: "Final", games: [["m18", "w:m15", "w:m16"]] },
-    ],
-    repechage: [
-      { title: "1ª Rodada", games: [["r1", "t8", "t9"]] },
-      { title: "Quartas de final", games: [["r2", "t1", "w:r1"], ["r3", "t2", "t7"], ["r4", "t3", "t6"], ["r5", "t4", "t5"]] },
-      { title: "Semifinal", games: [["r6", "w:r2", "w:r3"], ["r7", "w:r4", "w:r5"]] },
-      { title: "Final", games: [["r8", "w:r6", "w:r7"]] },
-    ],
-  },
-  10: {
-    main: [
-      { title: "1ª Rodada", games: [["m1", "r3", "r6"], ["m2", "r8", "r10"], ["m3", "r4", "r5"], ["m4", "r7", "r9"]] },
-      { title: "Oitavas de final", games: [["m5", "c1", "w:m1"], ["m6", "c5", "r2"], ["m7", "c7", "c9"], ["m8", "c4", "w:m2"], ["m9", "c3", "w:m3"], ["m10", "r1", "c6"], ["m11", "c8", "c10"], ["m12", "c2", "w:m4"]] },
-      { title: "Quartas de final", games: [["m13", "w:m5", "w:m6"], ["m14", "w:m7", "w:m8"], ["m15", "w:m9", "w:m10"], ["m16", "w:m11", "w:m12"]] },
-      { title: "Semifinal", games: [["m17", "w:m13", "w:m14"], ["m18", "w:m15", "w:m16"]] },
-      { title: "3º lugar", games: [["m19", "l:m17", "l:m18"]] },
-      { title: "Final", games: [["m20", "w:m17", "w:m18"]] },
-    ],
-    repechage: [
-      { title: "1ª Rodada", games: [["r1", "t9", "t10"], ["r2", "t7", "t8"]] },
-      { title: "Quartas de final", games: [["r3", "t1", "w:r1"], ["r4", "t2", "w:r2"], ["r5", "t3", "t4"], ["r6", "t5", "t6"]] },
-      { title: "Semifinal", games: [["r7", "w:r3", "w:r4"], ["r8", "w:r5", "w:r6"]] },
-      { title: "Final", games: [["r9", "w:r7", "w:r8"]] },
-    ],
-  },
-  11: {
-    main: [
-      { title: "1ª Rodada", games: [["m1", "c11", "r10"], ["m2", "r1", "r11"], ["m3", "r2", "r9"], ["m4", "r3", "r8"], ["m5", "r4", "r7"], ["m6", "r5", "r6"]] },
-      { title: "Oitavas de final", games: [["m7", "c1", "w:m1"], ["m8", "c8", "w:m2"], ["m9", "c4", "w:m3"], ["m10", "c5", "w:m4"], ["m11", "c2", "w:m5"], ["m12", "c7", "w:m6"], ["m13", "c3", "c10"], ["m14", "c6", "c9"]] },
-      { title: "Quartas de final", games: [["m15", "w:m7", "w:m8"], ["m16", "w:m9", "w:m10"], ["m17", "w:m11", "w:m12"], ["m18", "w:m13", "w:m14"]] },
-      { title: "Semifinal", games: [["m19", "w:m15", "w:m16"], ["m20", "w:m17", "w:m18"]] },
-      { title: "3º lugar", games: [["m21", "l:m19", "l:m20"]] },
-      { title: "Final", games: [["m22", "w:m19", "w:m20"]] },
-    ],
-    repechage: [
-      { title: "1ª Rodada", games: [["r1", "t6", "t11"], ["r2", "t7", "t10"], ["r3", "t8", "t9"]] },
-      { title: "Quartas de final", games: [["r4", "t1", "w:r1"], ["r5", "t4", "w:r2"], ["r6", "t2", "w:r3"], ["r7", "t3", "t5"]] },
-      { title: "Semifinal", games: [["r8", "w:r4", "w:r5"], ["r9", "w:r6", "w:r7"]] },
-      { title: "Final", games: [["r10", "w:r8", "w:r9"]] },
-    ],
-  },
-  12: {
-    main: [
-      { title: "1ª Rodada", games: [["m1", "c9", "r12"], ["m2", "c10", "r11"], ["m3", "c11", "r10"], ["m4", "c12", "r9"], ["m5", "r1", "r8"], ["m6", "r2", "r7"], ["m7", "r3", "r6"], ["m8", "r4", "r5"]] },
-      { title: "Oitavas de final", games: [["m9", "c1", "w:m1"], ["m10", "c8", "w:m2"], ["m11", "c4", "w:m3"], ["m12", "c5", "w:m4"], ["m13", "c2", "w:m5"], ["m14", "c3", "w:m6"], ["m15", "c7", "w:m7"], ["m16", "c6", "w:m8"]] },
-      { title: "Quartas de final", games: [["m17", "w:m9", "w:m10"], ["m18", "w:m11", "w:m12"], ["m19", "w:m13", "w:m14"], ["m20", "w:m15", "w:m16"]] },
-      { title: "Semifinal", games: [["m21", "w:m17", "w:m18"], ["m22", "w:m19", "w:m20"]] },
-      { title: "3º lugar", games: [["m23", "l:m21", "l:m22"]] },
-      { title: "Final", games: [["m24", "w:m21", "w:m22"]] },
-    ],
-    repechage: [
-      { title: "1ª Rodada", games: [["r1", "t5", "t12"], ["r2", "t6", "t11"], ["r3", "t7", "t10"], ["r4", "t8", "t9"]] },
-      { title: "Quartas de final", games: [["r5", "t1", "w:r1"], ["r6", "t4", "w:r2"], ["r7", "t2", "w:r3"], ["r8", "t3", "w:r4"]] },
-      { title: "Semifinal", games: [["r9", "w:r5", "w:r6"], ["r10", "w:r7", "w:r8"]] },
-      { title: "Final", games: [["r11", "w:r9", "w:r10"]] },
-    ],
-  },
-};
 
-const cearenseMainBracketPlans = {
-  2: copinhaBracketPlans[2].main,
-  3: copinhaBracketPlans[3].main,
-  4: copinhaBracketPlans[4].main,
-  5: copinhaBracketPlans[5].main,
-  6: copinhaBracketPlans[6].main,
-  7: copinhaBracketPlans[7].main,
-  8: copinhaBracketPlans[8].main,
-  9: copinhaBracketPlans[9].main,
-  10: [
-    { title: "1ª Rodada", games: [["m1", "r8", "r10"], ["m2", "r3", "r6"], ["m3", "r4", "r5"], ["m4", "r7", "r9"]] },
-    { title: "Oitavas de final", games: [["m5", "c1", "w:m1"], ["m6", "r2", "c5"], ["m7", "c7", "c9"], ["m8", "w:m2", "c4"], ["m9", "c3", "w:m3"], ["m10", "r1", "c6"], ["m11", "c8", "c10"], ["m12", "w:m4", "c2"]] },
-    { title: "Quartas de final", games: [["m13", "w:m5", "w:m6"], ["m14", "w:m7", "w:m8"], ["m15", "w:m9", "w:m10"], ["m16", "w:m11", "w:m12"]] },
-    { title: "Semifinal", games: [["m17", "w:m13", "w:m14"], ["m18", "w:m15", "w:m16"]] },
-    { title: "3º lugar", games: [["m19", "l:m17", "l:m18"]] },
-    { title: "Final", games: [["m20", "w:m17", "w:m18"]] },
-  ],
-};
 
-function generatePlayRankingBrackets(data) {
-  const qualified = getCearenseQualified(data);
-  const cupConfig = data.cupConfig || {};
-  const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
-  const repechageName = cupConfig.repechageName || "Disputa Paralela";
-  const mainRounds = buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
-  const openingLosses = getPlayRankingOpeningLosses(data, mainRounds, qualified.main);
-  const repechageRounds = openingLosses.ready
-    ? buildPlayRankingParallelRounds(openingLosses.losses, qualified.repechage, repechageName)
-    : [];
-  const allGames = [...mainRounds, ...repechageRounds].flatMap((round) => round.games);
-
-  return {
-    main: mainRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-    repechage: repechageRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-  };
-}
-
-function generateCearenseBrackets(data) {
-  const qualified = getCearenseQualified(data);
-  const cupConfig = data.cupConfig || {};
-  const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
-  const repechageName = cupConfig.repechageName || "2ª Disputa Paralela";
-  const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
-  const groupCount = createCearenseGroups(cupConfig.teamCount || 4).length;
-  const mainPlan = cearenseMainBracketPlans[groupCount];
-  const mainRounds = mainPlan
-    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
-    : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
-  const repechageRounds = buildCearenseEliminationRounds(qualified.repechage, "repechage", repechageName);
-  const thirdParallelRounds = buildCearenseThirdParallelRounds(mainRounds, thirdRepechageName);
-  const allGames = [...mainRounds, ...repechageRounds, ...thirdParallelRounds].flatMap((round) => round.games);
-
-  return {
-    main: mainRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-    repechage: repechageRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-    thirdParallel: thirdParallelRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-  };
-}
-
-function generateSunsetBrackets(data) {
-  const qualified = getCearenseQualified(data);
-  const cupConfig = data.cupConfig || {};
-  const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
-  const firstParallelName = cupConfig.repechageName || "1ª Disputa Paralela";
-  const secondParallelName = cupConfig.secondParallelName || "2ª Disputa Paralela";
-  const thirdParallelName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
-  const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
-  const groupCount = createCearenseGroups(
-    cupConfig.teamCount || 4,
-    cupConfig.groupFormation
-  ).length;
-  const mainPlan = cearenseMainBracketPlans[groupCount];
-  const mainRounds = mainPlan
-    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
-    : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
-  const repechageRounds = buildCearenseEliminationRounds(
-    qualified.repechage,
-    "repechage",
-    firstParallelName
-  );
-  const secondParallelFromRoundOf16 = buildSunsetParallelFromMainRound(
-    mainRounds,
-    8,
-    "secondParallel",
-    secondParallelName
-  );
-  const secondParallelRounds = secondParallelFromRoundOf16.length > 0
-    ? secondParallelFromRoundOf16
-    : buildSunsetMainRunnerUpFallback(mainRounds, secondParallelName);
-  const thirdParallelRounds = buildSunsetParallelFromMainRound(
-    mainRounds,
-    4,
-    "thirdParallel",
-    thirdParallelName
-  );
-  const sunsetFinalRounds = buildSunsetChampionsRounds({
-    main: mainRounds,
-    repechage: repechageRounds,
-    secondParallel: secondParallelRounds,
-    thirdParallel: thirdParallelRounds,
-  }, sunsetBracketName);
-  const allGames = [
-    ...mainRounds,
-    ...repechageRounds,
-    ...secondParallelRounds,
-    ...thirdParallelRounds,
-    ...sunsetFinalRounds,
-  ].flatMap((round) => round.games);
-  const resolveRounds = (rounds) => rounds.map((round) => ({
-    ...round,
-    games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-  }));
-
-  return {
-    main: resolveRounds(mainRounds),
-    repechage: resolveRounds(repechageRounds),
-    secondParallel: resolveRounds(secondParallelRounds),
-    thirdParallel: resolveRounds(thirdParallelRounds),
-    sunsetFinal: resolveRounds(sunsetFinalRounds),
-  };
-}
-
-function generateCopinhaBrackets(data) {
-  const qualified = getCopinhaQualified(data);
-  const cupConfig = data.cupConfig || {};
-  const mainName = cupConfig.mainBracketName || "Chave Principal";
-  const repechageName = cupConfig.repechageName || "Consolação";
-  const groupCount = Math.floor((cupConfig.teamCount || 0) / 3);
-  const plan = copinhaBracketPlans[groupCount];
-  const mainRounds = plan
-    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, plan.main)
-    : buildCopinhaEliminationRounds(qualified.main, "main", mainName, true);
-  const repechageRounds = plan
-    ? buildCopinhaBracketFromPlan(qualified.repechage, "repechage", repechageName, plan.repechage)
-    : buildCopinhaEliminationRounds(qualified.repechage, "repechage", repechageName, false);
-  const allGames = [...mainRounds, ...repechageRounds].flatMap((round) => round.games);
-
-  return {
-    main: mainRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-    repechage: repechageRounds.map((round) => ({
-      ...round,
-      games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-    })),
-  };
-}
-
-function generateCupBrackets(data) {
-  if (isSunsetData(data)) {
-    return generateSunsetBrackets(data);
-  }
-
-  if (isPlayRankingData(data)) {
-    return generatePlayRankingBrackets(data);
-  }
-
-  if (isCampeonatoCearenseData(data)) {
-    return generateCearenseBrackets(data);
-  }
-
-  if (isCopinhaData(data)) {
-    return generateCopinhaBrackets(data);
-  }
-
-  const qualified = getCupQualified(data);
-  const cupConfig = data.cupConfig || {};
-  const teamCount = cupConfig.teamCount || 12;
-  const mainName = cupConfig.mainBracketName || "Principal";
-  const repechageName = cupConfig.repechageName || "Repescagem";
-
-  const mainIds = qualified.main.map((item) => item.id);
-  const repechageIds = qualified.repechage.map((item) => item.id);
-
-  const mainRounds = [];
-  const repechageRounds = [];
-
-  if ((teamCount === 18 || teamCount === 21) && mainIds.length === 14) {
-    const preliminary = seedBracket(mainIds, "main");
-
-    const quarterfinals = [
-      {
-        phase: "main",
-        roundName: "Quartas de final",
-        matchKey: "main_qf_1",
-        source1: null,
-        source2: preliminary[0].matchKey,
-        ids1: [mainIds[0]],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 1,
-      },
-      {
-        phase: "main",
-        roundName: "Quartas de final",
-        matchKey: "main_qf_2",
-        source1: null,
-        source2: preliminary[1].matchKey,
-        ids1: [mainIds[1]],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 2,
-      },
-      {
-        phase: "main",
-        roundName: "Quartas de final",
-        matchKey: "main_qf_3",
-        source1: preliminary[2].matchKey,
-        source2: preliminary[3].matchKey,
-        ids1: [],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 3,
-      },
-      {
-        phase: "main",
-        roundName: "Quartas de final",
-        matchKey: "main_qf_4",
-        source1: preliminary[4].matchKey,
-        source2: preliminary[5].matchKey,
-        ids1: [],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 4,
-      },
-    ];
-
-    const semifinals = [
-      {
-        phase: "main",
-        roundName: "Semifinal",
-        matchKey: "main_sf_1",
-        source1: "main_qf_1",
-        source2: "main_qf_4",
-        ids1: [],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 1,
-      },
-      {
-        phase: "main",
-        roundName: "Semifinal",
-        matchKey: "main_sf_2",
-        source1: "main_qf_2",
-        source2: "main_qf_3",
-        ids1: [],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 2,
-      },
-    ];
-
-    const final = [
-      {
-        phase: "main",
-        roundName: "Final",
-        matchKey: "main_final_1",
-        source1: "main_sf_1",
-        source2: "main_sf_2",
-        ids1: [],
-        ids2: [],
-        team1: null,
-        team2: null,
-        s1: "",
-        s2: "",
-        court: 1,
-      },
-    ];
-
-    mainRounds.push({
-      title: "Preliminar",
-      bracketTitle: mainName,
-      games: preliminary,
-    });
-
-    mainRounds.push({
-      title: "Quartas de final",
-      bracketTitle: mainName,
-      games: quarterfinals,
-    });
-
-    mainRounds.push({
-      title: "Semifinal",
-      bracketTitle: mainName,
-      games: semifinals,
-    });
-
-    mainRounds.push({
-      title: "3º lugar",
-      bracketTitle: mainName,
-      games: buildThirdPlaceGame(semifinals),
-    });
-
-    mainRounds.push({
-      title: "Final",
-      bracketTitle: mainName,
-      games: final,
-    });
-  } else {
-    const mainFirstRound = seedBracket(mainIds, "main");
-
-    if (mainFirstRound.length) {
-      mainRounds.push({
-        title: mainFirstRound[0].roundName,
-        bracketTitle: mainName,
-        games: mainFirstRound,
-      });
-
-      if (mainIds.length === 8) {
-        const semifinals = buildNextRound(mainFirstRound, "main", "Semifinal", "sf");
-        const thirdPlace = buildThirdPlaceGame(semifinals);
-        const final = buildNextRound(semifinals, "main", "Final", "final");
-
-        mainRounds.push({ title: "Semifinal", bracketTitle: mainName, games: semifinals });
-        mainRounds.push({ title: "3º lugar", bracketTitle: mainName, games: thirdPlace });
-        mainRounds.push({ title: "Final", bracketTitle: mainName, games: final });
-      }
-
-      if (mainIds.length === 16) {
-        const quarterfinals = buildNextRound(mainFirstRound, "main", "Quartas de final", "qf");
-        const semifinals = buildNextRound(quarterfinals, "main", "Semifinal", "sf");
-        const thirdPlace = buildThirdPlaceGame(semifinals);
-        const final = buildNextRound(semifinals, "main", "Final", "final");
-
-        mainRounds.push({ title: "Quartas de final", bracketTitle: mainName, games: quarterfinals });
-        mainRounds.push({ title: "Semifinal", bracketTitle: mainName, games: semifinals });
-        mainRounds.push({ title: "3º lugar", bracketTitle: mainName, games: thirdPlace });
-        mainRounds.push({ title: "Final", bracketTitle: mainName, games: final });
-      }
-    }
-  }
-
-  const repechageFirstRound =
-    repechageIds.length === 4
-      ? generateParallelRoundRobin(repechageIds)
-      : seedBracket(repechageIds, "repechage");
-
-  if (repechageFirstRound.length) {
-    repechageRounds.push({
-      title: repechageFirstRound[0].roundName,
-      bracketTitle: repechageName,
-      games: repechageFirstRound,
-    });
-
-    if (repechageIds.length === 4) {
-      // Disputa Paralela: todos contra todos. Não gera final.
-    } else if (repechageIds.length === 7) {
-      const semifinals = [
-        {
-          phase: "repechage",
-          roundName: "Semifinal",
-          matchKey: "repechage_sf_1",
-          source1: null,
-          source2: repechageFirstRound[0].matchKey,
-          ids1: [repechageIds[0]],
-          ids2: [],
-          team1: null,
-          team2: null,
-          s1: "",
-          s2: "",
-          court: 1,
-        },
-        {
-          phase: "repechage",
-          roundName: "Semifinal",
-          matchKey: "repechage_sf_2",
-          source1: repechageFirstRound[1].matchKey,
-          source2: repechageFirstRound[2].matchKey,
-          ids1: [],
-          ids2: [],
-          team1: null,
-          team2: null,
-          s1: "",
-          s2: "",
-          court: 2,
-        },
-      ];
-      const final = buildNextRound(semifinals, "repechage", "Final", "final");
-
-      repechageRounds.push({ title: "Semifinal", bracketTitle: repechageName, games: semifinals });
-      repechageRounds.push({ title: "Final", bracketTitle: repechageName, games: final });
-    } else if (repechageIds.length === 8) {
-      const semifinals = buildNextRound(repechageFirstRound, "repechage", "Semifinal", "sf");
-      const final = buildNextRound(semifinals, "repechage", "Final", "final");
-
-      repechageRounds.push({ title: "Semifinal", bracketTitle: repechageName, games: semifinals });
-      repechageRounds.push({ title: "Final", bracketTitle: repechageName, games: final });
-    }
-  }
-
-  const allGames = [...mainRounds, ...repechageRounds].flatMap((round) => round.games);
-
-  const resolvedMainRounds = mainRounds.map((round) => ({
-    ...round,
-    games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-  }));
-
-  const resolvedRepechageRounds = repechageRounds.map((round) => ({
-    ...round,
-    games: round.games.map((game) => resolveBracketGame(game, allGames, data)),
-  }));
-
-  return {
-    main: resolvedMainRounds,
-    repechage: resolvedRepechageRounds,
-  };
-}
-
-function getCupAllBracketGames(data) {
-  const brackets = generateCupBrackets(data);
-  return [
-    ...brackets.main,
-    ...brackets.repechage,
-    ...(brackets.secondParallel || []),
-    ...(brackets.thirdParallel || []),
-    ...(brackets.sunsetFinal || []),
-  ].flatMap((round) => round.games);
-}
-
-function rebuildCupBracketGames(currentData, existingScores = {}) {
-  const baseGames = getCupAllBracketGames(currentData).map((game) => ({
-    ...game,
-    s1: existingScores[game.matchKey]?.s1 ?? game.s1 ?? "",
-    s2: existingScores[game.matchKey]?.s2 ?? game.s2 ?? "",
-    inProgress: existingScores[game.matchKey]?.inProgress === true,
-    ...getMatchTimerFields(existingScores[game.matchKey] || game),
-    ...(existingScores[game.matchKey]?.courtNumberOverride
-      ? { courtNumberOverride: existingScores[game.matchKey].courtNumberOverride }
-      : {}),
-  }));
-
-  // Resolve novamente depois de reaplicar os placares. Assim, o vencedor de
-  // uma fase anterior aparece imediatamente na fase seguinte.
-  const resolvedGames = baseGames.map((game) => resolveBracketGame(game, baseGames, currentData));
-  const safeGames = isPlayRankingData(currentData)
-    ? resolvedGames.map((game) => {
-        const stored = existingScores[game.matchKey];
-        const sameParticipants = stored
-          && JSON.stringify(stored.ids1 || []) === JSON.stringify(game.ids1 || [])
-          && JSON.stringify(stored.ids2 || []) === JSON.stringify(game.ids2 || []);
-
-        if (game.phase !== "repechage" || !stored || sameParticipants) return game;
-
-        return { ...game, s1: "", s2: "" };
-      })
-    : resolvedGames;
-
-  return safeGames.map((game) => resolveBracketGame(game, safeGames, currentData));
-}
-
-function syncCupBracketScores(currentData) {
-  const copy = structuredClone(currentData);
-  const existingScores = {};
-
-  (copy.brackets || []).forEach((game) => {
-    existingScores[game.matchKey] = {
-      s1: game.s1,
-      s2: game.s2,
-      ids1: game.ids1,
-      ids2: game.ids2,
-      inProgress: game.inProgress === true,
-      ...getMatchTimerFields(game),
-      courtNumberOverride: game.courtNumberOverride,
-    };
-  });
-
-  copy.brackets = rebuildCupBracketGames(copy, existingScores);
-  return copy;
-}
-
-function calculateParallelRanking(data, rankingCriteriaValue = defaultRankingCriteria) {
-  const allRepechageGames = (data.brackets || []).filter((game) => game.phase === "repechage");
-  const games = allRepechageGames.map((game) =>
-    resolveBracketGame(game, data.brackets || [], data)
-  );
-
-  const winningScore = getWinningScore(data);
-
-  const qualified = getCupQualified(data);
-  const baseIds = (qualified.repechage || []).map((item) => item.id);
-  const ids = Array.from(
-    new Set([
-      ...baseIds,
-      ...games.flatMap((game) => [
-        ...(game.ids1 || []),
-        ...(game.ids2 || []),
-      ]),
-    ])
-  );
-  const playTimeById = getCupPlayTimeById(data);
-
-  const rows = ids.map((id) => ({
-    id,
-    name: getCupTeamName(data, id),
-    pts: 0,
-    w: 0,
-    bal: 0,
-    played: 0,
-    playTimeSeconds: Number(playTimeById.get(id) || 0),
-  }));
-
-  const tableById = {};
-  rows.forEach((row) => {
-    tableById[row.id] = row;
-  });
-
-  games.forEach((game) => {
-    const s1 = Number(game.s1);
-    const s2 = Number(game.s2);
-
-    if (game.s1 === "" || game.s2 === "" || Number.isNaN(s1) || Number.isNaN(s2)) return;
-
-    const id1 = game.ids1?.[0];
-    const id2 = game.ids2?.[0];
-
-    if (id1 === undefined || id2 === undefined) return;
-
-    if (!tableById[id1]) return;
-    if (!tableById[id2]) return;
-
-    const winnerSide = getScoreWinnerSide(game, winningScore);
-    if (!winnerSide) return;
-
-    const win1 = winnerSide === "team1";
-    const win2 = winnerSide === "team2";
-
-    tableById[id1].pts += s1;
-    tableById[id1].bal += s1 - s2;
-    tableById[id1].played += 1;
-    if (win1) tableById[id1].w += 1;
-
-    tableById[id2].pts += s2;
-    tableById[id2].bal += s2 - s1;
-    tableById[id2].played += 1;
-    if (win2) tableById[id2].w += 1;
-  });
-
-  const finalGame = games.find((game) => game.roundName === "Final");
-  const finalWinnerId = finalGame ? getGameWinnerId(finalGame, data) : null;
-  const finalLoserId = finalGame ? getGameLoserId(finalGame, data) : null;
-
-  if (finalWinnerId !== null && tableById[finalWinnerId]) tableById[finalWinnerId].parallelPosition = 1;
-  if (finalLoserId !== null && tableById[finalLoserId]) tableById[finalLoserId].parallelPosition = 2;
-
-  const criteria = getRankingCriteria(rankingCriteriaValue);
-
-  return rows.sort((a, b) => {
-    if (a.parallelPosition && b.parallelPosition) return a.parallelPosition - b.parallelPosition;
-    if (a.parallelPosition) return -1;
-    if (b.parallelPosition) return 1;
-
-    for (const key of criteria.order) {
-      const diff = b[key] - a[key];
-      if (diff !== 0) return diff;
-    }
-
-    return a.name.localeCompare(b.name);
-  });
-}
-
-function calculateMainCupPodium(data) {
-  const games = data.brackets || [];
-  const playTimeById = getCupPlayTimeById(data);
-
-  const finalGame = games.find(
-    (game) => game.phase === "main" && game.roundName === "Final"
-  );
-
-  const thirdPlaceGame = games.find(
-    (game) => game.phase === "main" && game.roundName === "3º lugar"
-  );
-
-  if (!finalGame) return [];
-
-  const resolvedFinal = resolveBracketGame(finalGame, games, data);
-  const championId = getGameWinnerId(resolvedFinal, data);
-  const runnerUpId = getGameLoserId(resolvedFinal, data);
-
-  if (championId === null || runnerUpId === null) return [];
-
-  const podium = [
-    { position: "🏆 Campeão", name: getCupTeamName(data, championId), playTimeSeconds: Number(playTimeById.get(championId) || 0) },
-    { position: "🥈 Vice", name: getCupTeamName(data, runnerUpId), playTimeSeconds: Number(playTimeById.get(runnerUpId) || 0) },
-  ];
-
-  if (thirdPlaceGame) {
-    const resolvedThirdPlace = resolveBracketGame(thirdPlaceGame, games, data);
-    const thirdId = getGameWinnerId(resolvedThirdPlace, data);
-
-    if (thirdId !== null) {
-      podium.push({ position: "🥉 3º lugar", name: getCupTeamName(data, thirdId), playTimeSeconds: Number(playTimeById.get(thirdId) || 0) });
-    }
-  }
-
-  return podium;
-}
-
-function calculateCupBracketPodium(data, phase) {
-  const games = data.brackets || [];
-  const playTimeById = getCupPlayTimeById(data);
-  const finalGame = games.find(
-    (game) => game.phase === phase && game.roundName === "Final"
-  );
-  const thirdPlaceGame = games.find((game) => (
-    game.phase === phase && String(game.roundName || "").includes("3")
-  ));
-
-  if (!finalGame) return [];
-
-  const resolvedFinal = resolveBracketGame(finalGame, games, data);
-  const championId = getGameWinnerId(resolvedFinal, data);
-  const runnerUpId = getGameLoserId(resolvedFinal, data);
-
-  const isSunsetRunnerUpFallback = isSunsetData(data)
-    && phase === "secondParallel"
-    && finalGame.automaticQualification === "mainRunnerUp";
-  if (championId === null || (runnerUpId === null && !isSunsetRunnerUpFallback)) return [];
-
-  const podium = [
-    { position: "🏆 Campeão", name: getCupTeamName(data, championId), playTimeSeconds: Number(playTimeById.get(championId) || 0) },
-  ];
-
-  if (runnerUpId !== null) {
-    podium.push({ position: "🥈 Vice", name: getCupTeamName(data, runnerUpId), playTimeSeconds: Number(playTimeById.get(runnerUpId) || 0) });
-  }
-
-  if (thirdPlaceGame) {
-    const resolvedThirdPlace = resolveBracketGame(thirdPlaceGame, games, data);
-    const thirdId = getGameWinnerId(resolvedThirdPlace, data);
-
-    if (thirdId !== null) {
-      podium.push({ position: "🥉 3º lugar", name: getCupTeamName(data, thirdId), playTimeSeconds: Number(playTimeById.get(thirdId) || 0) });
-    }
-  }
-
-  return podium;
-}
-
-function calculateCopinhaConsolationPodium(data) {
-  return calculateCupBracketPodium(data, "repechage");
-}
-
-function canUseSpeech() {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
-}
-
-function stopSpeech() {
-  if (!canUseSpeech()) return;
-  window.speechSynthesis.cancel();
-}
-
-function speakText(text) {
-  if (!canUseSpeech()) {
-    alert("Seu navegador não suporta chamada por voz.");
-    return;
-  }
-
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "pt-BR";
-  utterance.rate = 1.05;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-
-  window.speechSynthesis.speak(utterance);
-}
-
-function cleanSpeechName(value) {
-  return String(value || "")
-    .replace(/\s+/g, " ")
-    .replace(/\+/g, " e ")
-    .trim();
-}
-
-function formatTeamForSpeech(team) {
-  if (!team || team.length === 0) return "equipe aguardando definição";
-
-  return team
-    .map((item) => cleanSpeechName(item))
-    .filter(Boolean)
-    .join(" e ");
-}
-
-function getGameSpeechText(game, options = {}) {
-  const {
-    roundLabel = "",
-    includeIntro = true,
-    includeGroup = true,
-    includeClosing = true,
-    courtNumbers = [],
-  } = options;
-
-  const groupText = includeGroup && game.groupName ? `${game.groupName}. ` : "";
-  const roundText = roundLabel ? `${roundLabel}. ` : "";
-  const team1 = formatTeamForSpeech(game.team1);
-  const team2 = formatTeamForSpeech(game.team2);
-  const courtLabel = getGameCourtLabel(game, courtNumbers);
-
-  return [
-    includeIntro ? "Atenção atletas." : "",
-    roundText,
-    groupText,
-    `${courtLabel}.`,
-    `${team1} contra ${team2}.`,
-    includeClosing ? `Compareçam à ${courtLabel}. Boa partida.` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
-function repeatText(text, times = 1) {
-  return Array.from({ length: Number(times) || 1 }, () => text).join(" ");
-}
-
-function speakGame(game, options = {}) {
-  const { repeat = 1 } = options;
-
-  const text = getGameSpeechText(game, {
-    ...options,
-    includeIntro: true,
-    includeClosing: true,
-  });
-
-  speakText(repeatText(text, repeat));
-}
-
-function speakRound(round, roundIndex, options = {}) {
-  const {
-    titlePrefix = "Rodada",
-    includeGroup = true,
-    repeat = 1,
-    courtNumbers = [],
-  } = options;
-
-  const roundLabel = `${titlePrefix} ${roundIndex + 1}`;
-
-  const gamesText = round
-    .map((game) => {
-      const gameText = getGameSpeechText(game, {
-        includeIntro: false,
-        includeClosing: false,
-        includeGroup,
-        courtNumbers,
-      });
-
-      return repeatText(gameText, repeat);
-    })
-    .join(" ");
-
-  speakText(
-    `Atenção atletas. ${roundLabel} iniciando. ${gamesText} Compareçam às suas quadras. Boa partida.`
-  );
-}
-
-function speakBracketRound(round, repeat = 1, courtNumbers = []) {
-  const title = round.bracketTitle
-    ? `${round.title} da chave ${round.bracketTitle}`
-    : round.title;
-
-  const gamesText = round.games
-    .map((game) => {
-      const gameText = getGameSpeechText(game, {
-        includeIntro: false,
-        includeClosing: false,
-        includeGroup: false,
-        courtNumbers,
-      });
-
-      return repeatText(gameText, repeat);
-    })
-    .join(" ");
-
-  speakText(
-    `Atenção atletas. ${title} iniciando. ${gamesText} Compareçam às suas quadras. Boa partida.`
-  );
-}
 
 function App() {
   const routeParams = new URLSearchParams(window.location.search);
@@ -4613,103 +2070,6 @@ function CourtCenterModal(props) {
   );
 }
 
-const tournamentGenderOptions = [
-  { value: tournamentGenderModes.masculine, label: "Masculino" },
-  { value: tournamentGenderModes.feminine, label: "Feminino" },
-  { value: tournamentGenderModes.mixed, label: "Mista" },
-  { value: tournamentGenderModes.open, label: "Livre" },
-  { value: tournamentGenderModes.other, label: "Outro" },
-];
-
-function getEffectiveTournamentGenderMode(type, value) {
-  if (isMixedType(modalityConfig[type])) return tournamentGenderModes.mixed;
-  return normalizeTournamentGenderMode(value);
-}
-
-function getGenderCompatibleTournamentTypes(types, genderMode) {
-  const normalizedMode = normalizeTournamentGenderMode(genderMode);
-  if (
-    normalizedMode !== tournamentGenderModes.masculine
-    && normalizedMode !== tournamentGenderModes.feminine
-  ) {
-    return types;
-  }
-
-  return (types || []).filter((type) => !isMixedType(modalityConfig[type]));
-}
-
-function getCompatibleTournamentType(currentType, genderMode, types) {
-  const compatibleTypes = getGenderCompatibleTournamentTypes(types, genderMode);
-  return compatibleTypes.includes(currentType)
-    ? currentType
-    : (compatibleTypes[0] || currentType);
-}
-
-function getStoredTournamentGenderFields(type, mode, customLabel = "") {
-  const participantGenderMode = getEffectiveTournamentGenderMode(type, mode);
-  return {
-    participantGenderMode,
-    genderOther: participantGenderMode === tournamentGenderModes.other ? String(customLabel || "").trim() : "",
-    gender: getTournamentGenderLabel(participantGenderMode, customLabel),
-  };
-}
-
-function getEditableTournamentGenderFields(details = {}, type = "") {
-  const inferredMode = inferTournamentGenderMode(details);
-  const participantGenderMode = getEffectiveTournamentGenderMode(
-    type,
-    inferredMode || tournamentGenderModes.open
-  );
-  return {
-    category: String(details.category || ""),
-    participantGenderMode,
-    genderOther: participantGenderMode === tournamentGenderModes.other
-      ? String(details.genderOther || details.gender || "")
-      : String(details.genderOther || ""),
-  };
-}
-
-function getTournamentClassificationLabels(details = {}) {
-  const category = String(details.category || "").trim();
-  const structuredGender = getTournamentGenderLabel(
-    inferTournamentGenderMode(details),
-    details.genderOther
-  );
-  const gender = String(structuredGender || details.gender || "").trim();
-  return [...new Set([category, gender].filter(Boolean))];
-}
-
-function TournamentGenderSelector({ type, value, customValue = "", onChange, onCustomChange, compact = false }) {
-  const fixedByModality = isMixedType(modalityConfig[type]);
-  const selectedValue = getEffectiveTournamentGenderMode(type, value);
-
-  return (
-    <div className={`tournamentGenderSelector ${compact ? "compact" : ""}`}>
-      <select
-        className="tournamentGenderSelect"
-        value={selectedValue}
-        disabled={fixedByModality}
-        onChange={(event) => onChange(event.target.value)}
-        aria-label="Gênero do torneio"
-      >
-        {tournamentGenderOptions.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
-      {fixedByModality ? <small className="tournamentGenderHint">Esta modalidade já separa homens e mulheres automaticamente.</small> : null}
-      {selectedValue === tournamentGenderModes.other ? (
-        <input
-          className="tournamentGenderOtherInput"
-          value={customValue}
-          onChange={(event) => onCustomChange(event.target.value)}
-          placeholder="Escreva o gênero"
-          aria-label="Outro gênero"
-        />
-      ) : null}
-    </div>
-  );
-}
-
 function Dashboard({ profile, user, onProfileChange }) {
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
@@ -4824,8 +2184,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const circuitsRef = useRef(circuits);
   const selectedRef = useRef(selected);
   const dashboardLoadInFlightRef = useRef(false);
+  const dashboardLastLoadedAtRef = useRef(0);
   const tournamentRealtimeEpochRef = useRef(0);
   const circuitRealtimeEpochRef = useRef(0);
+  const circuitHistoryLoadedIdsRef = useRef(new Set());
+  const circuitHistoryLoadPromisesRef = useRef(new Map());
+  const tournamentDetailsLoadPromisesRef = useRef(new Map());
   const [circuitForm, setCircuitForm] = useState({
     id: null,
     name: "",
@@ -5207,8 +2571,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const savedTournament = tournaments.find((item) => item.id === tournamentId);
     if (savedTournament) {
-      setSelected(savedTournament);
-      if (restoredTournamentId === savedTournament.id) setRestoredTournamentId(null);
+      void activateTournament(savedTournament, { skipSaveGuard: true }).then((opened) => {
+        if (opened && restoredTournamentId === savedTournament.id) setRestoredTournamentId(null);
+      });
     }
   }, [tournaments, selected, restoredTournamentId]);
 
@@ -5292,6 +2657,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       circuitId: expandedCircuitId,
     });
   }, [profileSubtab, expandedCircuitId]);
+
+  useEffect(() => {
+    if (!expandedCircuitId || activePanel !== "circuitos") return;
+    void loadCircuitRankingHistory(expandedCircuitId);
+  }, [activePanel, expandedCircuitId, circuits.length]);
 
   async function saveUserAppState(extra = {}) {
     if (!appStateRestoreReadyRef.current) return;
@@ -5531,45 +2901,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const baseCircuits = (data || []).map(normalizeCircuitRow);
 
-    const { data: historyRows, error: historyError } = await supabase
-      .from("circuit_ranking_history")
-      .select("*")
-      .eq("user_id", user.id);
-
-    if (historyError) console.error("Erro ao carregar histórico dos circuitos:", historyError);
-
     if (circuitRealtimeEpochRef.current !== realtimeEpoch) {
       if (retryAfterRealtime) return loadCircuits({ silentError, retryAfterRealtime: false });
       return circuitsRef.current;
     }
 
-    const historyByCircuit = {};
-    (historyRows || []).forEach((row) => {
-      const key = `${row.tournament_id}::${row.group_key || "geral"}::${row.player_key}`;
-      if (!historyByCircuit[row.circuit_id]) historyByCircuit[row.circuit_id] = {};
-      historyByCircuit[row.circuit_id][key] = {
-        tournamentId: row.tournament_id,
-        groupKey: row.group_key || "geral",
-        playerKey: row.player_key || key.split("::").pop(),
-        name: row.player_name,
-        pts: Number(row.pts || 0),
-        w: Number(row.w || 0),
-        bal: Number(row.bal || 0),
-        played: Number(row.played || 0),
-      circuitPoints: Number(row.circuit_points || 0),
-      extraPoints: 0,
-        placementKey: row.placement_key || "",
-        placementLabel: row.placement_label || "",
-        titles: Number(row.titles || 0),
-        runnerUps: Number(row.runner_ups || 0),
-        thirdPlaces: Number(row.third_places || 0),
-      };
-    });
-
-    const loadedCircuits = baseCircuits.map((circuit) => ({
-      ...circuit,
-      rankingHistory: historyByCircuit[circuit.id] || {},
-    }));
+    const loadedCircuits = baseCircuits;
 
     const expiredTrashCircuits = loadedCircuits.filter((circuit) => (
       circuit.deletedAt && circuit.deletedAt < deleteLimit
@@ -5592,14 +2929,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     );
     const reconciledCircuits = validCircuits.map((loadedCircuit) => {
       const currentCircuit = currentCircuitsById.get(String(loadedCircuit.id));
-      if (!currentCircuit || compareCollaborationVersions(loadedCircuit, currentCircuit) >= 0) {
-        return loadedCircuit;
-      }
+      const reconciledCircuit = !currentCircuit
+        || compareCollaborationVersions(loadedCircuit, currentCircuit) >= 0
+        ? loadedCircuit
+        : currentCircuit;
       return {
-        ...currentCircuit,
-        rankingHistory: historyError
-          ? (currentCircuit.rankingHistory || {})
-          : loadedCircuit.rankingHistory,
+        ...reconciledCircuit,
+        rankingHistory: currentCircuit?.rankingHistory || {},
       };
     });
     const sortedCircuits = sortCircuitsForDisplay(reconciledCircuits.filter((circuit) => !circuit.deletedAt));
@@ -5609,6 +2945,74 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuits(sortedCircuits);
     setTrashCircuits(nextTrashCircuits);
     return sortedCircuits;
+  }
+
+  function normalizeCircuitHistoryRows(historyRows = []) {
+    const rankingHistory = {};
+    historyRows.forEach((row) => {
+      const key = `${row.tournament_id}::${row.group_key || "geral"}::${row.player_key}`;
+      rankingHistory[key] = {
+        tournamentId: row.tournament_id,
+        groupKey: row.group_key || "geral",
+        playerKey: row.player_key || key.split("::").pop(),
+        name: row.player_name,
+        pts: Number(row.pts || 0),
+        w: Number(row.w || 0),
+        bal: Number(row.bal || 0),
+        played: Number(row.played || 0),
+        circuitPoints: Number(row.circuit_points || 0),
+        extraPoints: 0,
+        placementKey: row.placement_key || "",
+        placementLabel: row.placement_label || "",
+        titles: Number(row.titles || 0),
+        runnerUps: Number(row.runner_ups || 0),
+        thirdPlaces: Number(row.third_places || 0),
+      };
+    });
+    return rankingHistory;
+  }
+
+  async function loadCircuitRankingHistory(circuitId, { force = false } = {}) {
+    const normalizedCircuitId = String(circuitId || "");
+    if (!normalizedCircuitId || isBrowserOffline()) return null;
+    const existingCircuit = circuitsRef.current.find((circuit) => String(circuit.id) === normalizedCircuitId);
+    if (!existingCircuit) return null;
+    if (!force && circuitHistoryLoadedIdsRef.current.has(normalizedCircuitId)) {
+      return existingCircuit.rankingHistory || {};
+    }
+
+    const pendingRequest = circuitHistoryLoadPromisesRef.current.get(normalizedCircuitId);
+    if (pendingRequest) return pendingRequest;
+
+    const request = (async () => {
+      const { data, error } = await supabase
+        .from("circuit_ranking_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("circuit_id", circuitId);
+
+      if (error) {
+        console.error("Erro ao carregar histórico do circuito:", error);
+        showNotice("warning", "Ranking temporariamente indisponível", "O circuito foi aberto, mas o histórico do ranking não pôde ser atualizado agora.");
+        return null;
+      }
+
+      const rankingHistory = normalizeCircuitHistoryRows(data || []);
+      circuitHistoryLoadedIdsRef.current.add(normalizedCircuitId);
+      const nextCircuits = circuitsRef.current.map((circuit) => (
+        String(circuit.id) === normalizedCircuitId
+          ? { ...circuit, rankingHistory }
+          : circuit
+      ));
+      circuitsRef.current = nextCircuits;
+      setCircuits(nextCircuits);
+      return rankingHistory;
+    })().finally(() => {
+      circuitHistoryLoadPromisesRef.current.delete(normalizedCircuitId);
+    });
+
+    circuitHistoryLoadPromisesRef.current.set(normalizedCircuitId, request);
+    return request;
   }
 
   async function saveCircuitHistoryToSupabase(circuitId, history, sourceTournaments = []) {
@@ -5881,6 +3285,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   function toggleCircuitTournament(tournamentId, editing = false) {
     const updateForm = editing ? setCircuitEditForm : setCircuitForm;
+    const currentForm = editing ? circuitEditForm : circuitForm;
+    const isAddingTournament = !(currentForm?.tournamentIds || []).some((id) => String(id) === String(tournamentId));
+    if (isAddingTournament) {
+      void loadFullTournamentRows([tournamentId], { silentError: true });
+    }
     updateForm((prev) => {
       if (!prev) return prev;
       const selected = prev.tournamentIds.includes(tournamentId);
@@ -5929,6 +3338,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       showNotice("warning", "Torneios incompatíveis", "Escolha novamente o formato das etapas para retirar os torneios incompatíveis antes de salvar.");
       return;
     }
+
+    const selectedTournamentIds = [...new Set((form.tournamentIds || []).map(String))];
+    const fullTournamentRows = await loadFullTournamentRows(selectedTournamentIds, { silentError: true });
+    const fullTournamentRowsById = new Map(fullTournamentRows.map((row) => [String(row.id), row]));
+    const missingTournamentDetails = selectedTournamentIds.some((id) => !fullTournamentRowsById.has(id));
+    if (missingTournamentDetails) {
+      showNotice(
+        "warning",
+        "Torneios ainda carregando",
+        "Não foi possível obter agora todos os resultados necessários para calcular este circuito. Nenhuma informação do circuito foi alterada."
+      );
+      return false;
+    }
+    const effectiveTournamentSource = tournamentsRef.current.map((tournament) => (
+      fullTournamentRowsById.get(String(tournament.id)) || tournament
+    ));
 
     const isEditing = Boolean(form.id);
 
@@ -6051,7 +3476,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const payload = normalizeCircuitRow(data);
     const previousHistory = circuitsRef.current.find((item) => item.id === payload.id)?.rankingHistory || {};
     const payloadWithHistory = { ...payload, rankingHistory: previousHistory };
-    const updatedHistory = buildCircuitRankingHistory(payloadWithHistory);
+    const updatedHistory = buildCircuitRankingHistory(payloadWithHistory, effectiveTournamentSource);
     const finalPayload = { ...payloadWithHistory, rankingHistory: updatedHistory };
 
     const currentCircuits = circuitsRef.current;
@@ -6063,7 +3488,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const rankingHistorySaved = await saveCircuitHistoryToSupabase(
       finalPayload.id,
       finalPayload.rankingHistory,
-      getCircuitSelectedTournaments(finalPayload, tournamentsRef.current)
+      getCircuitSelectedTournaments(finalPayload, effectiveTournamentSource)
     );
     await syncPublicArenaDirectory(tournaments, nextCircuits);
     if (isEditing) {
@@ -6172,7 +3597,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return true;
   }
 
-  function editCircuit(circuit) {
+  async function editCircuit(circuit) {
+    await loadFullTournamentRows(circuit.tournamentIds || [], { silentError: true });
     setCircuitEditForm({
       _baseCircuit: circuit,
       id: circuit.id,
@@ -6554,6 +3980,24 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     affectedTournamentId = null
   ) {
     const affectedId = affectedTournamentId === null ? null : String(affectedTournamentId);
+    const affectedCircuits = (circuitSource || []).filter((circuit) => (
+      affectedId === null || (circuit.tournamentIds || []).some((id) => String(id) === affectedId)
+    ));
+    const requiredTournamentIds = [...new Set(affectedCircuits.flatMap((circuit) => (
+      (circuit.tournamentIds || []).map(String)
+    )))];
+    const hydratedRows = await loadFullTournamentRows(requiredTournamentIds, { silentError: true });
+    const hydratedById = new Map(hydratedRows.map((row) => [String(row.id), row]));
+    const effectiveTournamentSource = (tournamentSource || []).map((tournament) => (
+      hydratedById.get(String(tournament.id)) || tournament
+    ));
+    const missingDetails = requiredTournamentIds.some((id) => {
+      const tournament = effectiveTournamentSource.find((item) => String(item.id) === id);
+      return !tournament || isTournamentSummary(tournament);
+    });
+    if (missingDetails) {
+      return { circuits: circuitSource || [], success: false };
+    }
     const circuitsToPersist = [];
     let changed = false;
 
@@ -6562,7 +4006,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         || (circuit.tournamentIds || []).some((id) => String(id) === affectedId);
       if (!isAffected) return circuit;
 
-      const rankingHistory = buildCircuitRankingHistory(circuit, tournamentSource || []);
+      const rankingHistory = buildCircuitRankingHistory(circuit, effectiveTournamentSource);
       const historyChanged = JSON.stringify(circuit.rankingHistory || {}) !== JSON.stringify(rankingHistory);
       if (historyChanged) changed = true;
       const nextCircuit = historyChanged ? { ...circuit, rankingHistory } : circuit;
@@ -6576,7 +4020,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       circuitsToPersist.map((circuit) => saveCircuitHistoryToSupabase(
         circuit.id,
         circuit.rankingHistory || {},
-        getCircuitSelectedTournaments(circuit, tournamentSource || [])
+        getCircuitSelectedTournaments(circuit, effectiveTournamentSource)
       ))
     );
     const queuedPersistence = circuitPersistenceQueueRef.current.then(
@@ -7028,6 +4472,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return sortTournamentsForDisplay(items);
   }
 
+  function mergeTournamentDirectoryRow(current, incoming) {
+    if (!current) return incoming;
+    if (!incoming) return current;
+    if (isTournamentSummary(incoming) && !isTournamentSummary(current)) {
+      if (compareCollaborationVersions(incoming, current) < 0) return current;
+      return {
+        ...current,
+        ...incoming,
+        data: { ...(current.data || {}), ...(incoming.data || {}) },
+        __summary: false,
+      };
+    }
+    return mergeRealtimeTournamentRow(current, incoming);
+  }
+
   async function persistTournamentOrderSequence(items, { manual = false } = {}) {
     let orderedTournaments = (items || []).map((tournament, displayOrder) => ({
       ...tournament,
@@ -7055,6 +4514,31 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     if (!error && manual && safeFunctionMissing) {
+      const fullRows = await loadFullTournamentRows(
+        orderedTournaments.map((tournament) => tournament.id),
+        { silentError: true }
+      );
+      const fullRowsById = new Map(fullRows.map((row) => [String(row.id), row]));
+      const missingFullRow = orderedTournaments.some((tournament) => (
+        !fullRowsById.has(String(tournament.id))
+      ));
+      if (missingFullRow) {
+        return {
+          tournaments: orderedTournaments,
+          error: new Error("Os detalhes completos dos torneios não puderam ser carregados para salvar a ordem."),
+        };
+      }
+      orderedTournaments = orderedTournaments.map((tournament, displayOrder) => {
+        const fullTournament = fullRowsById.get(String(tournament.id));
+        return {
+          ...fullTournament,
+          data: {
+            ...(fullTournament.data || {}),
+            displayOrder,
+            displayOrderMode: "manual",
+          },
+        };
+      });
       const updates = await Promise.all(orderedTournaments.map((tournament) => (
         (() => {
           let markerUpdate = supabase
@@ -7100,6 +4584,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function persistTournamentSnapshot(updated, { expectedUpdatedAt = null, expectedRevision = null } = {}) {
+    if (isTournamentSummary(updated)) {
+      const error = new Error("A gravação foi interrompida porque os detalhes completos do torneio ainda não foram carregados.");
+      console.error(error);
+      return { ok: false, error, retryable: true };
+    }
     const lifecycleStatus = getTournamentLifecycleStatus(updated);
     const persistedData = { ...(updated.data || {}), lifecycleStatus };
     const nextUpdatedAt = new Date().toISOString();
@@ -7177,6 +4666,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       if (selectedRef.current?.id && String(selectedRef.current.id) === String(draft.tournamentId)) continue;
       let serverTournament = nextTournaments.find((item) => String(item.id) === String(draft.tournamentId));
       if (!serverTournament) continue;
+      if (isTournamentSummary(serverTournament)) {
+        const hydratedTournament = await hydrateTournamentDetails(serverTournament, { silentError: true });
+        if (!hydratedTournament) {
+          pendingRetryCount += 1;
+          continue;
+        }
+        serverTournament = hydratedTournament;
+        nextTournaments = nextTournaments.map((item) => (
+          String(item.id) === String(serverTournament.id) ? serverTournament : item
+        ));
+      }
 
       if (JSON.stringify(serverTournament.data || {}) === JSON.stringify(draft.data || {})) {
         clearTournamentDraft(user.id, serverTournament.id);
@@ -7244,6 +4744,69 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return { tournaments: nextTournaments, syncedCount, pendingRetryCount };
   }
 
+  function mergeFullTournamentRowsIntoState(rows = []) {
+    if (!rows.length) return;
+    const rowsById = new Map(rows.map((row) => [String(row.id), { ...row, __summary: false }]));
+    const mergeRow = (current) => {
+      const fullRow = rowsById.get(String(current.id));
+      return fullRow ? mergeRealtimeTournamentRow(current, fullRow) : current;
+    };
+    const nextTournaments = sortTournamentsByStoredOrder(tournamentsRef.current.map(mergeRow));
+    const nextTrashTournaments = trashTournamentsRef.current.map(mergeRow);
+    tournamentsRef.current = nextTournaments;
+    trashTournamentsRef.current = nextTrashTournaments;
+    setTournaments(nextTournaments);
+    setTrashTournaments(nextTrashTournaments);
+    setSelected((current) => current?.id && rowsById.has(String(current.id))
+      ? mergeRealtimeTournamentRow(current, rowsById.get(String(current.id)))
+      : current);
+  }
+
+  async function loadFullTournamentRows(tournamentIds, { silentError = false } = {}) {
+    const ids = [...new Set((tournamentIds || []).map(String).filter(Boolean))];
+    if (!ids.length) return [];
+
+    const loadedRows = [...tournamentsRef.current, ...trashTournamentsRef.current]
+      .filter((item) => ids.includes(String(item.id)) && !isTournamentSummary(item));
+    const loadedIds = new Set(loadedRows.map((item) => String(item.id)));
+    const missingIds = ids.filter((id) => !loadedIds.has(id));
+    if (!missingIds.length) return loadedRows;
+    if (isBrowserOffline()) return loadedRows;
+
+    const requestKey = missingIds.slice().sort().join(",");
+    const existingRequest = tournamentDetailsLoadPromisesRef.current.get(requestKey);
+    if (existingRequest) return existingRequest;
+
+    const request = (async () => {
+      const { data, error } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("user_id", user.id)
+        .in("id", missingIds);
+      if (error) {
+        console.error("Erro ao carregar detalhes dos torneios:", error);
+        if (!silentError) showNotice("error", "Detalhes indisponíveis", "Não foi possível carregar agora os dados completos do torneio.");
+        return loadedRows;
+      }
+      const fullRows = (data || []).map((row) => ({ ...row, __summary: false }));
+      mergeFullTournamentRowsIntoState(fullRows);
+      return [...loadedRows, ...fullRows];
+    })().finally(() => tournamentDetailsLoadPromisesRef.current.delete(requestKey));
+
+    tournamentDetailsLoadPromisesRef.current.set(requestKey, request);
+    return request;
+  }
+
+  async function hydrateTournamentDetails(tournament, { silentError = false } = {}) {
+    if (!tournament?.id) return null;
+    const currentTournament = [...tournamentsRef.current, ...trashTournamentsRef.current]
+      .find((item) => String(item.id) === String(tournament.id));
+    const candidate = currentTournament || tournament;
+    if (!isTournamentSummary(candidate)) return candidate;
+    const rows = await loadFullTournamentRows([candidate.id], { silentError });
+    return rows.find((item) => String(item.id) === String(candidate.id)) || null;
+  }
+
   async function loadTournaments({ silentError = false, retryAfterRealtime = true } = {}) {
     const realtimeEpoch = tournamentRealtimeEpochRef.current;
     const thirtyDaysAgo = new Date();
@@ -7251,11 +4814,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const deleteLimit = thirtyDaysAgo.toISOString();
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("tournaments")
-      .select("*")
+      .select(tournamentSummarySelect)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
+
+    let loadedAsSummaries = !error;
+    if (error) {
+      console.warn("A listagem leve de torneios não está disponível; usando leitura compatível.", error);
+      ({ data, error } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }));
+      loadedAsSummaries = false;
+    }
 
     if (error) {
       if (!silentError) showNotice("error", "Erro ao carregar", "Não foi possível carregar seus torneios.");
@@ -7270,9 +4844,25 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const currentRows = [...tournamentsRef.current, ...trashTournamentsRef.current];
     const currentRowsById = new Map(currentRows.map((item) => [String(item.id), item]));
-    const allTournaments = (data || []).map((item) => (
-      mergeRealtimeTournamentRow(currentRowsById.get(String(item.id)), item)
-    ));
+    const retainedFullIds = new Set([
+      ...openTournamentIds.slice(-12).map(String),
+      ...(selectedRef.current?.id ? [String(selectedRef.current.id)] : []),
+    ]);
+    const allTournaments = (data || []).map((item) => {
+      const incoming = loadedAsSummaries ? normalizeTournamentSummaryRow(item) : item;
+      const current = currentRowsById.get(String(incoming.id));
+      if (!loadedAsSummaries) return mergeTournamentDirectoryRow(current, incoming);
+      if (current && compareCollaborationVersions(incoming, current) < 0) return current;
+      if (current && !isTournamentSummary(current) && retainedFullIds.has(String(incoming.id))) {
+        return {
+          ...current,
+          ...incoming,
+          data: { ...(current.data || {}), ...(incoming.data || {}) },
+          __summary: false,
+        };
+      }
+      return incoming;
+    });
     const expiredTrash = allTournaments.filter((item) => item.data?.deletedAt && item.data.deletedAt < deleteLimit);
 
     if (expiredTrash.length) {
@@ -7302,8 +4892,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setSelected((current) => {
       if (!current?.id) return current;
       const loadedCurrent = activeTournaments.find((item) => item.id === current.id);
-      return loadedCurrent ? mergeRealtimeTournamentRow(current, loadedCurrent) : current;
+      return loadedCurrent ? mergeTournamentDirectoryRow(current, loadedCurrent) : current;
     });
+    if (loadedAsSummaries && retainedFullIds.size > 0) {
+      void loadFullTournamentRows([...retainedFullIds], { silentError: true });
+    }
     return activeTournaments;
   }
 
@@ -7422,32 +5015,26 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         const synchronizedTournaments = sortTournamentsByStoredOrder(
           tournamentsRef.current.map((current) => {
             const synchronized = synchronizedById.get(String(current.id));
-            return synchronized ? mergeRealtimeTournamentRow(current, synchronized) : current;
+            return synchronized ? mergeTournamentDirectoryRow(current, synchronized) : current;
           })
         );
         tournamentsRef.current = synchronizedTournaments;
         setTournaments(synchronizedTournaments);
 
         const criteriaCircuits = await syncAutomaticCircuitCriteria(synchronizedTournaments, loadedCircuits);
-        const { circuits: rankedCircuits } = await persistCircuitRankings(
-          synchronizedTournaments,
-          criteriaCircuits || loadedCircuits
-        );
-        circuitsRef.current = rankedCircuits;
-        setCircuits(rankedCircuits);
-
-        if (synchronizedTournaments.length) {
-          await syncPublicArenaDirectory(synchronizedTournaments, rankedCircuits);
-        }
+        const readyCircuits = criteriaCircuits || loadedCircuits;
+        circuitsRef.current = readyCircuits;
+        setCircuits(readyCircuits);
 
         await saveDashboardCache(user.id, {
           tournaments: synchronizedTournaments,
           trashTournaments: trashTournamentsRef.current,
-          circuits: rankedCircuits,
+          circuits: readyCircuits,
           trashCircuits: trashCircuitsRef.current,
         });
         setDashboardUsingOfflineCache(false);
         setNetworkOnline(true);
+        dashboardLastLoadedAtRef.current = Date.now();
 
         if (pendingSync.pendingRetryCount > 0) {
           showNotice(
@@ -7466,7 +5053,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         setDashboardUsingOfflineCache(true);
       }
 
-      await loadPublicArenaProfiles();
     } finally {
       dashboardLoadInFlightRef.current = false;
     }
@@ -7636,16 +5222,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       )
       .subscribe((status, error) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("Atualização em tempo real temporariamente indisponível; a conferência periódica continuará ativa.", error);
+          console.warn("Atualização em tempo real temporariamente indisponível; a conferência de segurança continuará ativa.", error);
         }
       });
 
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible" && !isBrowserOffline()) {
+      const refreshIsStale = Date.now() - dashboardLastLoadedAtRef.current >= 5 * 60 * 1000;
+      if (document.visibilityState === "visible" && !isBrowserOffline() && refreshIsStale) {
         void loadDashboardData();
       }
     };
-    const refreshInterval = window.setInterval(refreshWhenVisible, 30000);
+    const refreshInterval = window.setInterval(refreshWhenVisible, 5 * 60 * 1000);
     window.addEventListener("focus", refreshWhenVisible);
 
     return () => {
@@ -7656,7 +5243,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }, [user.id]);
 
   useEffect(() => {
-    publicArenaProfilesMountedRef.current = true;
+    const shouldLoadArenaDirectory = activePanel === "inicio";
+    publicArenaProfilesMountedRef.current = shouldLoadArenaDirectory;
+    if (!shouldLoadArenaDirectory) {
+      publicArenaProfilesRequestRef.current += 1;
+      return undefined;
+    }
     let refreshInFlight = false;
 
     const refreshProfiles = () => {
@@ -7674,6 +5266,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
     const refreshTimer = window.setInterval(refreshVisibleProfiles, ARENA_DIRECTORY_REFRESH_INTERVAL_MS);
 
+    refreshProfiles();
     window.addEventListener("focus", refreshProfiles);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -7684,7 +5277,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       window.removeEventListener("focus", refreshProfiles);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [activePanel, user.id]);
 
   async function createTournament() {
     if (!ensureCloudConnection("criar um novo torneio")) return;
@@ -7951,7 +5544,8 @@ setNewPublicInfo({
     if (!deleteTarget) return;
     if (!ensureCloudConnection("mover o torneio para a lixeira")) return;
 
-    const target = deleteTarget;
+    const target = await hydrateTournamentDetails(deleteTarget);
+    if (!target) return;
     const previousTournaments = tournaments;
     const previousTrashTournaments = trashTournaments;
     const previousOpenTournamentIds = openTournamentIds;
@@ -8032,6 +5626,9 @@ setNewPublicInfo({
 
   async function restoreTournament(tournament) {
     if (!ensureCloudConnection("recuperar o torneio")) return;
+    const hydratedTournament = await hydrateTournamentDetails(tournament);
+    if (!hydratedTournament) return;
+    tournament = hydratedTournament;
     const restoredData = { ...(tournament.data || {}) };
     delete restoredData.deletedAt;
 
@@ -8334,7 +5931,10 @@ setNewPublicInfo({
     return { ok: true, tournament: persistedTournament };
   }
 
-  function openEditTournament(tournament) {
+  async function openEditTournament(tournament) {
+    const hydratedTournament = await hydrateTournamentDetails(tournament);
+    if (!hydratedTournament) return;
+    tournament = hydratedTournament;
     const details = tournament.data || {};
     const genderFields = getEditableTournamentGenderFields(details, tournament.type);
     setEditTarget(tournament);
@@ -8529,8 +6129,13 @@ setNewPublicInfo({
     );
   }
 
-  function openEditEventGroup(group) {
-    const groupItems = tournaments.filter((tournament) => (
+  async function openEditEventGroup(group) {
+    const groupSummaryItems = tournaments.filter((tournament) => (
+      tournament.data?.multiCategoryEvent === true
+      && tournament.data?.eventGroupKey === group.key
+    ));
+    await loadFullTournamentRows(groupSummaryItems.map((tournament) => tournament.id));
+    const groupItems = tournamentsRef.current.filter((tournament) => (
       tournament.data?.multiCategoryEvent === true
       && tournament.data?.eventGroupKey === group.key
     ));
@@ -11176,970 +8781,6 @@ setNewPublicInfo({
   );
 }
 
-function createInitialData(type, config) {
-  const simplePlayerCount = isFlexibleSimpleType(config)
-    ? getSimplePlayerCount(config)
-    : null;
-  const reizinhoPlayerCount = isReizinhoType(config)
-    ? getReizinhoPlayerCount(config)
-    : null;
-  const base = {
-  rankingCriteria: defaultRankingCriteria,
-  winningScore: 4,
-  category: "",
-  gender: "",
-  participantGenderMode: "",
-  genderOther: "",
-  participantGenders: {},
-  eventDate: "",
-  eventDay: "",
-  location: "",
-  schedule: [],
-  courtNumbers: createDefaultCourtNumbers(
-    getTournamentCourtCount(config, simplePlayerCount
-      ? { simplePlayerCount }
-      : reizinhoPlayerCount ? { reizinhoPlayerCount } : null)
-  ),
-};
-
-  if (!config) {
-    return { ...base, players: [] };
-  }
-
-  if (isMixedType(config)) {
-    return {
-      ...base,
-      players: {
-        men: Array.from({ length: config.men }, (_, i) => `Homem ${i + 1}`),
-        women: Array.from({ length: config.women }, (_, i) => `Mulher ${i + 1}`),
-      },
-    };
-  }
-
-  if (config.type === "fixed12" || config.type === "fixed16") {
-    return {
-      ...base,
-      players: {
-        teams: Array.from({ length: config.teams }, (_, i) => ({
-          a: `Atleta 1 da dupla ${i + 1}`,
-          b: `Atleta 2 da dupla ${i + 1}`,
-        })),
-      },
-    };
-  }
-
-  if (isCupType(config)) {
-    return {
-      ...base,
-      cupConfig: {
-        format: config.cupMode || "standard",
-        teamCount: config.defaultTeams,
-        mainBracketName: config.defaultMainBracketName,
-        repechageName: config.defaultRepechageName,
-        ...(config.defaultSecondParallelName
-          ? { secondParallelName: config.defaultSecondParallelName }
-          : {}),
-        ...(config.defaultThirdRepechageName
-          ? { thirdRepechageName: config.defaultThirdRepechageName }
-          : {}),
-        ...(config.defaultSunsetBracketName
-          ? { sunsetBracketName: config.defaultSunsetBracketName }
-          : {}),
-        ...(config.type === "sunset"
-          ? { groupFormation: "automatic" }
-          : {}),
-        ...(config.type === "cearense" || config.type === "cearenseIndividual"
-          ? {
-            secondRepechageEnabled: null,
-            thirdRepechageEnabled: null,
-          }
-          : {}),
-        tieBreakOverrides: {},
-        groupTieBreakOverrides: {},
-        campaignTieBreakOverrides: {},
-      },
-      players: {
-        teams: Array.from({ length: config.defaultTeams }, (_, i) => ({
-          a: isIndividualCupType(config) ? `Jogador ${i + 1}` : `Atleta 1 da dupla ${i + 1}`,
-          b: isIndividualCupType(config) ? "" : `Atleta 2 da dupla ${i + 1}`,
-        })),
-      },
-      brackets: [],
-    };
-  }
-
-  if (isFlexibleSimpleType(config)) {
-    return {
-      ...base,
-      simplePlayerCount,
-      players: Array.from({ length: simplePlayerCount }, (_, i) => `${config.label} ${i + 1}`),
-    };
-  }
-
-  if (isReizinhoType(config)) {
-    return {
-      ...base,
-      reizinhoPlayerCount,
-      players: Array.from({ length: reizinhoPlayerCount }, (_, i) => `${config.label} ${i + 1}`),
-    };
-  }
-
-  return {
-    ...base,
-    players: Array.from({ length: config.total }, (_, i) => `${config.label} ${i + 1}`),
-  };
-}
-
-function isTournamentDataObject(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function normalizeNameList(values, count, label) {
-  const source = Array.isArray(values) ? values : [];
-
-  return Array.from({ length: count }, (_, index) => (
-    typeof source[index] === "string" ? source[index] : `${label} ${index + 1}`
-  ));
-}
-
-function normalizeTeams(values, count) {
-  const source = Array.isArray(values) ? values : [];
-
-  return Array.from({ length: count }, (_, index) => {
-    const team = isTournamentDataObject(source[index]) ? source[index] : {};
-
-    return {
-      a: typeof team.a === "string" ? team.a : `Atleta 1 da dupla ${index + 1}`,
-      b: typeof team.b === "string" ? team.b : `Atleta 2 da dupla ${index + 1}`,
-    };
-  });
-}
-
-function normalizeGameNames(value) {
-  if (Array.isArray(value)) {
-    return value
-      .filter((item) => item !== null && item !== undefined)
-      .map((item) => String(item));
-  }
-
-  return value === null || value === undefined ? [] : [String(value)];
-}
-
-function normalizeGameIds(value) {
-  const source = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value];
-
-  return source
-    .map((item) => Number(item))
-    .filter((item) => Number.isInteger(item) && item >= 0);
-}
-
-function normalizeGame(game, index) {
-  const source = isTournamentDataObject(game) ? game : {};
-  const court = Number(source.court);
-  const courtNumberOverride = normalizeCourtNumberValue(source.courtNumberOverride || source.courtLabelOverride);
-
-  const normalized = {
-    ...source,
-    court: Number.isFinite(court) && court > 0 ? court : index + 1,
-    team1: normalizeGameNames(source.team1),
-    team2: normalizeGameNames(source.team2),
-    ids1: normalizeGameIds(source.ids1),
-    ids2: normalizeGameIds(source.ids2),
-    s1: source.s1 ?? "",
-    s2: source.s2 ?? "",
-  };
-
-  delete normalized.courtLabelOverride;
-  if (courtNumberOverride) normalized.courtNumberOverride = courtNumberOverride;
-
-  return normalized;
-}
-
-function normalizeSchedule(schedule) {
-  if (!Array.isArray(schedule)) return [];
-
-  return schedule
-    .filter((round) => Array.isArray(round))
-    .map((round) => round
-      .filter((game) => isTournamentDataObject(game))
-      .map((game, index) => normalizeGame(game, index))
-    );
-}
-
-function normalizeBrackets(brackets) {
-  if (!Array.isArray(brackets)) return [];
-
-  return brackets
-    .filter((game) => isTournamentDataObject(game))
-    .map((game, index) => normalizeGame(game, index));
-}
-
-function formatParticipantNameWhileTyping(value) {
-  const rawValue = String(value || "").normalize("NFKC");
-  const hasTrailingSpace = /\s$/u.test(rawValue);
-  const formattedValue = formatParticipantName(rawValue);
-  return hasTrailingSpace && formattedValue ? `${formattedValue} ` : formattedValue;
-}
-
-function normalizeTournamentData(type, rawData) {
-  const config = modalityConfig[type];
-
-  if (!config) {
-    return isTournamentDataObject(rawData) ? rawData : createInitialData(type, config);
-  }
-
-  const defaults = createInitialData(type, config);
-  const source = isTournamentDataObject(rawData) ? rawData : {};
-  const sourcePlayers = isTournamentDataObject(source.players) ? source.players : {};
-  const simplePlayerCount = isFlexibleSimpleType(config)
-    ? getSimplePlayerCount(config, source)
-    : null;
-  const reizinhoPlayerCount = isReizinhoType(config)
-    ? getReizinhoPlayerCount(config, source)
-    : null;
-  const validWinningScore = [4, 6].includes(Number(source.winningScore));
-  const validRankingCriteria = rankingCriteriaOptions.some((item) => item.value === source.rankingCriteria);
-  const participantGenderMode = getEffectiveTournamentGenderMode(type, inferTournamentGenderMode(source));
-  const usedCourtNumbers = [
-    ...(Array.isArray(source.schedule) ? source.schedule.flat() : []),
-    ...(Array.isArray(source.brackets) ? source.brackets : []),
-  ]
-    .map((game) => Number(game?.court))
-    .filter((court) => Number.isFinite(court) && court > 0);
-  const sourceCourtNumbers = Array.isArray(source.courtNumbers) ? source.courtNumbers : source.courtLabels;
-  const courtCount = Math.max(
-    getTournamentCourtCount(config, simplePlayerCount
-      ? { ...source, simplePlayerCount }
-      : reizinhoPlayerCount ? { ...source, reizinhoPlayerCount } : source),
-    sourceCourtNumbers?.length || 0,
-    ...usedCourtNumbers,
-    1
-  );
-  const normalized = {
-    ...defaults,
-    ...source,
-    rankingCriteria: validRankingCriteria ? source.rankingCriteria : defaults.rankingCriteria,
-    winningScore: validWinningScore ? Number(source.winningScore) : defaults.winningScore,
-    namesShuffled: Boolean(source.namesShuffled),
-    schedule: normalizeSchedule(source.schedule),
-    courtNumbers: normalizeCourtNumbers(sourceCourtNumbers, courtCount),
-    category: typeof source.category === "string"
-      ? source.category
-      : (source.participantGenderMode ? "" : String(source.gender || "")),
-    participantGenderMode,
-    genderOther: typeof source.genderOther === "string" ? source.genderOther : "",
-    gender: String(
-      source.gender
-      || getTournamentGenderLabel(participantGenderMode, source.genderOther)
-      || ""
-    ),
-    participantGenders: normalizeParticipantGenderRegistry(source.participantGenders),
-  };
-  delete normalized.courtLabels;
-
-  if (isCupType(config)) {
-    const sourceCupConfig = isTournamentDataObject(source.cupConfig) ? source.cupConfig : {};
-    const requestedTeamCount = Number(sourceCupConfig.teamCount);
-    const teamCount = config.allowedTeamCounts.includes(requestedTeamCount)
-      ? requestedTeamCount
-      : config.defaultTeams;
-
-    return {
-      ...normalized,
-      cupConfig: {
-        ...defaults.cupConfig,
-        ...sourceCupConfig,
-        format: typeof sourceCupConfig.format === "string"
-          ? sourceCupConfig.format
-          : defaults.cupConfig.format,
-        teamCount,
-        mainBracketName: typeof sourceCupConfig.mainBracketName === "string"
-          ? sourceCupConfig.mainBracketName
-          : defaults.cupConfig.mainBracketName,
-        repechageName: typeof sourceCupConfig.repechageName === "string"
-          ? sourceCupConfig.repechageName
-          : defaults.cupConfig.repechageName,
-        secondParallelName: typeof sourceCupConfig.secondParallelName === "string"
-          ? sourceCupConfig.secondParallelName
-          : defaults.cupConfig.secondParallelName,
-        thirdRepechageName: typeof sourceCupConfig.thirdRepechageName === "string"
-          ? sourceCupConfig.thirdRepechageName
-          : defaults.cupConfig.thirdRepechageName,
-        sunsetBracketName: typeof sourceCupConfig.sunsetBracketName === "string"
-          ? sourceCupConfig.sunsetBracketName
-          : defaults.cupConfig.sunsetBracketName,
-        ...(config.type === "sunset"
-          ? {
-            groupFormation: sourceCupConfig.groupFormation === "all-four"
-              && teamCount % 4 === 0
-              ? "all-four"
-              : "automatic",
-          }
-          : {}),
-        ...(config.type === "cearense" || config.type === "cearenseIndividual"
-          ? {
-            secondRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")
-              ? (typeof sourceCupConfig.secondRepechageEnabled === "boolean" ? sourceCupConfig.secondRepechageEnabled : null)
-              : true,
-            thirdRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "thirdRepechageEnabled")
-              ? (typeof sourceCupConfig.thirdRepechageEnabled === "boolean" ? sourceCupConfig.thirdRepechageEnabled : null)
-              : true,
-          }
-          : {}),
-        tieBreakOverrides: isTournamentDataObject(sourceCupConfig.tieBreakOverrides)
-          ? sourceCupConfig.tieBreakOverrides
-          : {},
-        groupTieBreakOverrides: isTournamentDataObject(sourceCupConfig.groupTieBreakOverrides)
-          ? sourceCupConfig.groupTieBreakOverrides
-          : {},
-        campaignTieBreakOverrides: isTournamentDataObject(sourceCupConfig.campaignTieBreakOverrides)
-          ? sourceCupConfig.campaignTieBreakOverrides
-          : {},
-      },
-      players: {
-        teams: isIndividualCupType(config)
-          ? normalizeIndividualCupPlayers(sourcePlayers.teams, teamCount)
-          : normalizeTeams(sourcePlayers.teams, teamCount),
-      },
-      participantAttendance: normalizeParticipantAttendance(
-        config,
-        { teams: isIndividualCupType(config)
-          ? normalizeIndividualCupPlayers(sourcePlayers.teams, teamCount)
-          : normalizeTeams(sourcePlayers.teams, teamCount) },
-        source.participantAttendance
-      ),
-      brackets: normalizeBrackets(source.brackets),
-      groupsShuffled: Boolean(source.groupsShuffled),
-    };
-  }
-
-  if (isFlexibleSimpleType(config)) {
-    const players = normalizeNameList(source.players, simplePlayerCount, config.label);
-    return {
-      ...normalized,
-      simplePlayerCount,
-      players,
-      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
-    };
-  }
-
-  if (isReizinhoType(config)) {
-    const players = normalizeNameList(source.players, reizinhoPlayerCount, config.label);
-    return {
-      ...normalized,
-      reizinhoPlayerCount,
-      players,
-      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
-    };
-  }
-
-  if (isMixedType(config)) {
-    const players = {
-      men: normalizeNameList(sourcePlayers.men, config.men, "Homem"),
-      women: normalizeNameList(sourcePlayers.women, config.women, "Mulher"),
-    };
-    return {
-      ...normalized,
-      players,
-      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
-    };
-  }
-
-  if (config.type === "fixed12" || config.type === "fixed16") {
-    const players = {
-      teams: normalizeTeams(sourcePlayers.teams, config.teams),
-    };
-    return {
-      ...normalized,
-      players,
-      participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
-    };
-  }
-
-  const players = normalizeNameList(source.players, config.total, config.label);
-  return {
-    ...normalized,
-    players,
-    participantAttendance: normalizeParticipantAttendance(config, players, source.participantAttendance),
-  };
-}
-
-function needsTournamentDataRepair(type, rawData) {
-  const config = modalityConfig[type];
-  if (!config || !isTournamentDataObject(rawData) || !Array.isArray(rawData.schedule)) return true;
-
-  const players = isTournamentDataObject(rawData.players) ? rawData.players : {};
-
-  if (isCupType(config)) {
-    const cupConfig = isTournamentDataObject(rawData.cupConfig) ? rawData.cupConfig : {};
-    const teamCount = Number(cupConfig.teamCount);
-
-    return !Array.isArray(players.teams)
-      || !config.allowedTeamCounts.includes(teamCount)
-      || players.teams.length !== teamCount
-      || !Array.isArray(rawData.brackets);
-  }
-
-  if (isFlexibleSimpleType(config)) {
-    const playerCount = getSimplePlayerCount(config, rawData);
-    return !config.allowedPlayerCounts.includes(playerCount)
-      || !Array.isArray(rawData.players)
-      || rawData.players.length !== playerCount;
-  }
-
-  if (isReizinhoType(config)) {
-    const playerCount = getReizinhoPlayerCount(config, rawData);
-    return !config.allowedPlayerCounts.includes(playerCount)
-      || !Array.isArray(rawData.players)
-      || rawData.players.length !== playerCount;
-  }
-
-  if (isMixedType(config)) {
-    return !Array.isArray(players.men)
-      || !Array.isArray(players.women)
-      || players.men.length !== config.men
-      || players.women.length !== config.women;
-  }
-
-  if (config.type === "fixed12" || config.type === "fixed16") {
-    return !Array.isArray(players.teams) || players.teams.length !== config.teams;
-  }
-
-  return !Array.isArray(rawData.players) || rawData.players.length !== config.total;
-}
-
-function getShuffleNames(data, config) {
-  if (!data?.players) return [];
-
-  if (isMixedType(config)) {
-    return [...data.players.men, ...data.players.women];
-  }
-
-  if (isIndividualCupType(config)) {
-    return data.players.teams.map((participant) => participant.a);
-  }
-
-  if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
-    return data.players.teams.map((team, index) => `Dupla ${index + 1}: ${getTeamName(team)}`);
-  }
-
-  return data.players || [];
-}
-
-const SHUFFLE_DURATION_SECONDS = 5;
-const SHUFFLE_MOVEMENT_INTERVAL_MS = 620;
-
-function createShuffleSlots(count, compact = false) {
-  const maxColumns = compact ? 3 : 5;
-  const columns = Math.min(count, Math.max(2, Math.min(maxColumns, Math.ceil(Math.sqrt(count * 1.35)))));
-  const rows = Math.max(1, Math.ceil(count / columns));
-
-  return Array.from({ length: count }, (_, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    const rowItems = Math.min(columns, count - row * columns);
-    const rowOffset = (columns - rowItems) / 2;
-
-    return {
-      left: 7 + ((column + rowOffset + 0.5) / columns) * 86,
-      top: 8 + ((row + 0.5) / rows) * 84,
-    };
-  });
-}
-
-function createShuffleAnimationItems(names) {
-  const compact = typeof window !== "undefined" && window.innerWidth <= 760;
-  const slots = shuffleArray(createShuffleSlots(names.length, compact));
-
-  return names.map((name, index) => ({
-    id: `shuffle-name-${index}`,
-    name,
-    ...slots[index],
-    rotation: (index % 2 === 0 ? -1 : 1) * (1 + (index % 3)),
-  }));
-}
-
-function moveShuffleAnimationItems(items) {
-  if (items.length < 2) return items;
-
-  const offset = 1 + Math.floor(Math.random() * (items.length - 1));
-  const positions = items.map(({ left, top }) => ({ left, top }));
-
-  return items.map((item, index) => ({
-    ...item,
-    ...positions[(index + offset) % positions.length],
-    rotation: -item.rotation + (index % 2 === 0 ? 1 : -1),
-  }));
-}
-
-const SHUFFLE_VIDEO_WIDTH = 720;
-const SHUFFLE_VIDEO_HEIGHT = 1280;
-const SHUFFLE_VIDEO_FPS = 24;
-
-function createShuffleReceiptId() {
-  const timePart = Date.now().toString(36).toUpperCase();
-  const randomPart = globalThis.crypto?.getRandomValues
-    ? Array.from(globalThis.crypto.getRandomValues(new Uint8Array(3)), (value) => value.toString(16).padStart(2, "0")).join("").toUpperCase()
-    : Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `T360-${timePart}-${randomPart}`;
-}
-
-function createShuffleVideoSnapshot(data, config, tournament) {
-  const createdAt = new Date().toISOString();
-  let kind = "names";
-  let sections = [];
-
-  if (isCupType(config)) {
-    kind = "groups";
-    const teamCount = Number(data?.cupConfig?.teamCount || data?.players?.teams?.length || 0);
-    const format = data?.cupConfig?.format || data?.cupConfig?.cupMode || "";
-    const groups = createCupGroups(teamCount, format, data?.cupConfig || {});
-    sections = groups.map((group) => ({
-      title: group.name,
-      entries: group.teamIds.map((teamId) => getTeamName(data.players.teams[teamId])).filter(Boolean),
-    }));
-  } else if (isMixedType(config)) {
-    kind = "mixed";
-    sections = [
-      { title: "Masculino", entries: [...(data?.players?.men || [])] },
-      { title: "Feminino", entries: [...(data?.players?.women || [])] },
-    ];
-  } else if (config.type === "fixed12" || config.type === "fixed16") {
-    kind = "teams";
-    sections = [{
-      title: "Duplas sorteadas",
-      entries: (data?.players?.teams || []).map((team) => getTeamName(team)),
-    }];
-  } else {
-    sections = [{
-      title: "Ordem sorteada",
-      entries: Array.isArray(data?.players) ? [...data.players] : [],
-    }];
-  }
-
-  return {
-    version: 1,
-    id: createShuffleReceiptId(),
-    createdAt,
-    kind,
-    tournamentName: tournament?.name || "Torneio",
-    modalityName: getModalityDisplayName(tournament?.type) || config?.name || "Torneio360",
-    sections: sections.map((section) => ({
-      title: section.title,
-      entries: section.entries.map((entry) => String(entry || "Participante").trim()).filter(Boolean),
-    })),
-  };
-}
-
-function getShuffleVideoResultPages(snapshot) {
-  const sections = Array.isArray(snapshot?.sections) ? snapshot.sections : [];
-  if (snapshot?.kind === "groups") {
-    const pages = [];
-    for (let index = 0; index < sections.length; index += 4) pages.push(sections.slice(index, index + 4));
-    return pages.length ? pages : [[]];
-  }
-
-  if (sections.length === 2 && sections.every((section) => section.entries.length <= 10)) return [sections];
-
-  const pages = [];
-  sections.forEach((section) => {
-    for (let index = 0; index < section.entries.length; index += 14) {
-      pages.push([{
-        title: index > 0 ? `${section.title} — continuação` : section.title,
-        entries: section.entries.slice(index, index + 14),
-        startIndex: index,
-      }]);
-    }
-  });
-  return pages.length ? pages : [[]];
-}
-
-function drawShuffleVideoImageCover(context, image, x, y, width, height) {
-  const scale = Math.max(width / image.width, height / image.height);
-  const drawWidth = image.width * scale;
-  const drawHeight = image.height * scale;
-  context.drawImage(image, x - (drawWidth - width) / 2, y - (drawHeight - height) / 2, drawWidth, drawHeight);
-}
-
-function drawShuffleVideoBackground(context) {
-  const gradient = context.createLinearGradient(0, 0, SHUFFLE_VIDEO_WIDTH, SHUFFLE_VIDEO_HEIGHT);
-  gradient.addColorStop(0, "#06143d");
-  gradient.addColorStop(0.54, "#12338d");
-  gradient.addColorStop(1, "#0899c2");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, SHUFFLE_VIDEO_WIDTH, SHUFFLE_VIDEO_HEIGHT);
-
-  context.save();
-  context.globalAlpha = 0.18;
-  context.fillStyle = "#22d3ee";
-  context.beginPath();
-  context.arc(650, 160, 260, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = "#f97316";
-  context.beginPath();
-  context.arc(40, 1140, 250, 0, Math.PI * 2);
-  context.fill();
-  context.restore();
-}
-
-function drawShuffleVideoHeader(context, snapshot, assets, arenaName) {
-  drawRoundedRect(context, 28, 24, 664, 214, 28, "rgba(4, 15, 48, 0.78)", "rgba(255, 255, 255, 0.16)");
-
-  if (assets.logo) {
-    const logoWidth = 230;
-    const logoHeight = Math.min(112, logoWidth * (assets.logo.height / assets.logo.width));
-    context.drawImage(assets.logo, 48, 47, logoWidth, logoHeight);
-  } else {
-    context.fillStyle = "#ffffff";
-    context.font = "900 35px Arial";
-    context.fillText("TORNEIO360", 48, 100);
-  }
-
-  const photoX = 610;
-  const photoY = 91;
-  const photoRadius = 47;
-  context.save();
-  context.beginPath();
-  context.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
-  context.clip();
-  if (assets.arenaPhoto) {
-    drawShuffleVideoImageCover(context, assets.arenaPhoto, photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
-  } else {
-    const avatar = context.createLinearGradient(photoX - photoRadius, photoY - photoRadius, photoX + photoRadius, photoY + photoRadius);
-    avatar.addColorStop(0, "#2563eb");
-    avatar.addColorStop(1, "#06b6d4");
-    context.fillStyle = avatar;
-    context.fillRect(photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
-    context.fillStyle = "#ffffff";
-    context.font = "900 30px Arial";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(String(arenaName || "A").slice(0, 2).toUpperCase(), photoX, photoY + 1);
-  }
-  context.restore();
-  context.strokeStyle = "#fbbf24";
-  context.lineWidth = 5;
-  context.beginPath();
-  context.arc(photoX, photoY, photoRadius + 2, 0, Math.PI * 2);
-  context.stroke();
-
-  context.textAlign = "right";
-  context.textBaseline = "alphabetic";
-  context.fillStyle = "#bae6fd";
-  context.font = "800 13px Arial";
-  context.fillText("ORGANIZAÇÃO", 548, 71);
-  context.fillStyle = "#ffffff";
-  context.font = "900 22px Arial";
-  context.fillText(truncateCanvasText(context, arenaName || "Arena Torneio360", 244), 548, 103);
-
-  context.textAlign = "left";
-  context.fillStyle = "#fbbf24";
-  context.font = "900 14px Arial";
-  context.fillText("SORTEIO OFICIAL", 48, 166);
-  context.fillStyle = "#ffffff";
-  context.font = "900 27px Arial";
-  context.fillText(truncateCanvasText(context, snapshot.tournamentName, 610), 48, 198);
-  context.fillStyle = "#bfdbfe";
-  context.font = "700 15px Arial";
-  context.fillText(truncateCanvasText(context, snapshot.modalityName, 610), 48, 222);
-}
-
-function drawShuffleVideoFooter(context, snapshot, pageLabel = "") {
-  context.fillStyle = "rgba(255, 255, 255, 0.8)";
-  context.font = "700 13px Arial";
-  context.textAlign = "left";
-  context.fillText(`Código ${snapshot.id}`, 34, 1242);
-  context.textAlign = "right";
-  context.fillText(pageLabel || "Gerado pelo Torneio360", 686, 1242);
-}
-
-function drawShuffleVideoIntro(context, snapshot) {
-  drawRoundedRect(context, 44, 294, 632, 802, 34, "rgba(4, 15, 48, 0.72)", "rgba(255, 255, 255, 0.16)");
-  context.textAlign = "center";
-  context.fillStyle = "#67e8f9";
-  context.font = "900 18px Arial";
-  context.fillText("TRANSPARÊNCIA E ORGANIZAÇÃO", 360, 470);
-  context.fillStyle = "#ffffff";
-  context.font = "900 58px Arial";
-  context.fillText("SORTEIO", 360, 562);
-  context.fillText("OFICIAL", 360, 628);
-  context.fillStyle = "#fbbf24";
-  context.font = "900 23px Arial";
-  context.fillText(snapshot.kind === "groups" ? "FORMAÇÃO DOS GRUPOS" : "ORDEM DOS PARTICIPANTES", 360, 698);
-  context.fillStyle = "#dbeafe";
-  context.font = "700 19px Arial";
-  context.fillText(new Date(snapshot.createdAt).toLocaleString("pt-BR"), 360, 784);
-  drawRoundedRect(context, 178, 842, 364, 64, 20, "rgba(249, 115, 22, 0.95)");
-  context.fillStyle = "#ffffff";
-  context.font = "900 20px Arial";
-  context.fillText("RESULTADO REGISTRADO", 360, 883);
-}
-
-function getShuffleVideoEntries(snapshot) {
-  return (snapshot?.sections || []).flatMap((section) => section.entries || []);
-}
-
-function getShuffleVideoMotionSeed(value) {
-  return String(value || "Torneio360").split("").reduce(
-    (seed, character) => ((seed * 31) + character.charCodeAt(0)) >>> 0,
-    2166136261
-  );
-}
-
-function getShuffleVideoMotionOrder(length, seed) {
-  const order = Array.from({ length }, (_, index) => index);
-  let state = seed >>> 0;
-
-  for (let index = order.length - 1; index > 0; index -= 1) {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    const targetIndex = state % (index + 1);
-    [order[index], order[targetIndex]] = [order[targetIndex], order[index]];
-  }
-
-  return order;
-}
-
-function getShuffleVideoMotionSlots(length, cardWidth) {
-  const columns = length <= 8 ? 2 : length <= 15 ? 3 : 4;
-  const rows = Math.ceil(length / columns);
-  const left = 48 + cardWidth / 2;
-  const right = 672 - cardWidth / 2;
-  const top = 430;
-  const bottom = 1010;
-  const columnGap = columns > 1 ? (right - left) / (columns - 1) : 0;
-  const rowGap = rows > 1 ? (bottom - top) / (rows - 1) : 0;
-
-  return Array.from({ length }, (_, index) => ({
-    x: left + (index % columns) * columnGap,
-    y: top + Math.floor(index / columns) * rowGap,
-  }));
-}
-
-function drawShuffleVideoMotion(context, snapshot, elapsedMs) {
-  drawRoundedRect(context, 36, 278, 648, 870, 32, "rgba(4, 15, 48, 0.7)", "rgba(255, 255, 255, 0.16)");
-  const secondsLeft = Math.max(0, Math.ceil((5000 - elapsedMs) / 1000));
-  context.textAlign = "left";
-  context.fillStyle = "#67e8f9";
-  context.font = "900 16px Arial";
-  context.fillText(snapshot.kind === "groups" ? "SORTEANDO OS GRUPOS" : "SORTEANDO OS NOMES", 64, 327);
-  context.fillStyle = "#ffffff";
-  context.font = "900 30px Arial";
-  context.fillText("Participantes em movimento", 64, 366);
-
-  drawRoundedRect(context, 566, 303, 82, 66, 20, "rgba(34, 211, 238, 0.95)");
-  context.textAlign = "center";
-  context.fillStyle = "#06143d";
-  context.font = "900 27px Arial";
-  context.fillText(`${secondsLeft}s`, 607, 346);
-
-  const entries = getShuffleVideoEntries(snapshot).slice(0, 20);
-  const cardWidth = entries.length <= 8 ? 252 : entries.length <= 15 ? 184 : 138;
-  const cardHeight = entries.length <= 8 ? 62 : 54;
-  const slots = getShuffleVideoMotionSlots(entries.length, cardWidth);
-  const movementDuration = 520;
-  const movementStep = Math.floor(elapsedMs / movementDuration);
-  const movementProgress = (elapsedMs % movementDuration) / movementDuration;
-  const easedProgress = movementProgress * movementProgress * (3 - 2 * movementProgress);
-  const baseSeed = getShuffleVideoMotionSeed(snapshot.id);
-  const previousOrder = getShuffleVideoMotionOrder(entries.length, baseSeed + movementStep * 7919);
-  const nextOrder = getShuffleVideoMotionOrder(entries.length, baseSeed + (movementStep + 1) * 7919);
-
-  entries.forEach((entry, index) => {
-    const previousSlot = slots[previousOrder[index]] || slots[index];
-    const nextSlot = slots[nextOrder[index]] || slots[index];
-    const arc = Math.sin(movementProgress * Math.PI) * (index % 2 === 0 ? -24 : 24);
-    const centerX = previousSlot.x + (nextSlot.x - previousSlot.x) * easedProgress;
-    const centerY = previousSlot.y + (nextSlot.y - previousSlot.y) * easedProgress + arc;
-    const x = centerX - cardWidth / 2;
-    const y = centerY - cardHeight / 2;
-    const activeColor = (index + movementStep) % 3 === 0 ? "rgba(221,214,254,0.98)" : (index + movementStep) % 2 === 0 ? "rgba(255,255,255,0.98)" : "rgba(207,250,254,0.98)";
-
-    context.save();
-    context.translate(centerX, centerY);
-    context.rotate(Math.sin(movementProgress * Math.PI) * (index % 2 === 0 ? -0.045 : 0.045));
-    context.translate(-centerX, -centerY);
-    context.shadowColor = "rgba(2, 6, 23, 0.28)";
-    context.shadowBlur = 18;
-    context.shadowOffsetY = 8;
-    drawRoundedRect(context, x, y, cardWidth, cardHeight, 18, activeColor, "rgba(103,232,249,0.72)");
-    context.restore();
-    context.fillStyle = "#111b3f";
-    context.font = entries.length <= 8 ? "900 18px Arial" : "800 15px Arial";
-    context.textAlign = "center";
-    context.fillText(truncateCanvasText(context, entry, cardWidth - 22), centerX, centerY + 5);
-  });
-
-  drawRoundedRect(context, 64, 1082, 592, 12, 6, "rgba(255,255,255,0.18)");
-  const progress = Math.max(0, Math.min(1, elapsedMs / 5000));
-  drawRoundedRect(context, 64, 1082, 592 * progress, 12, 6, "#22d3ee");
-}
-
-function drawShuffleVideoResultPage(context, snapshot, sections, pageIndex, totalPages) {
-  drawRoundedRect(context, 28, 268, 664, 890, 32, "rgba(248, 250, 252, 0.97)", "rgba(255, 255, 255, 0.4)");
-  context.textAlign = "left";
-  context.fillStyle = "#ea580c";
-  context.font = "900 15px Arial";
-  context.fillText("RESULTADO DO SORTEIO", 54, 312);
-  context.fillStyle = "#111b3f";
-  context.font = "900 31px Arial";
-  context.fillText(snapshot.kind === "groups" ? "Grupos definidos" : "Ordem definida", 54, 350);
-  context.fillStyle = "#64748b";
-  context.font = "700 14px Arial";
-  context.textAlign = "right";
-  context.fillText(`Página ${pageIndex + 1} de ${totalPages}`, 666, 340);
-
-  const twoColumns = sections.length > 1;
-  const columns = twoColumns ? 2 : 1;
-  const cardWidth = twoColumns ? 294 : 610;
-  const gapX = 18;
-  const top = 382;
-  const availableHeight = 728;
-  const rows = Math.ceil(sections.length / columns);
-  const cardHeight = Math.min(availableHeight / Math.max(1, rows) - 12, snapshot.kind === "groups" ? 340 : 710);
-
-  sections.forEach((section, sectionIndex) => {
-    const column = sectionIndex % columns;
-    const row = Math.floor(sectionIndex / columns);
-    const x = 54 + column * (cardWidth + gapX);
-    const y = top + row * (cardHeight + 16);
-    drawRoundedRect(context, x, y, cardWidth, cardHeight, 22, sectionIndex % 2 === 0 ? "#eef4ff" : "#f5f3ff", "#c7d7ee");
-    context.fillStyle = sectionIndex % 2 === 0 ? "#1d4ed8" : "#6d28d9";
-    context.font = "900 20px Arial";
-    context.textAlign = "left";
-    context.fillText(truncateCanvasText(context, section.title, cardWidth - 34), x + 18, y + 38);
-
-    const entries = section.entries || [];
-    const startIndex = Number(section.startIndex || 0);
-    const rowGap = Math.min(54, Math.max(40, (cardHeight - 74) / Math.max(1, entries.length)));
-    entries.forEach((entry, entryIndex) => {
-      const entryY = y + 68 + entryIndex * rowGap;
-      if (entryY + 31 > y + cardHeight) return;
-      drawRoundedRect(context, x + 14, entryY - 24, cardWidth - 28, 38, 12, "rgba(255,255,255,0.92)", "#d9e3f2");
-      context.fillStyle = "#f97316";
-      context.font = "900 14px Arial";
-      context.textAlign = "center";
-      context.fillText(`${startIndex + entryIndex + 1}`, x + 35, entryY + 2);
-      context.fillStyle = "#111827";
-      context.font = "800 15px Arial";
-      context.textAlign = "left";
-      context.fillText(truncateCanvasText(context, entry, cardWidth - 76), x + 57, entryY + 2);
-    });
-  });
-
-  context.textAlign = "center";
-  context.fillStyle = "#0f766e";
-  context.font = "900 16px Arial";
-  context.fillText("Sorteio concluído e registrado no Torneio360", 360, 1132);
-}
-
-function getShuffleVideoMimeType() {
-  if (typeof MediaRecorder === "undefined") return "";
-  const candidates = [
-    "video/mp4;codecs=avc1.42E01E",
-    "video/mp4",
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
-    "video/webm",
-  ];
-  return candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) || "";
-}
-
-async function createShuffleVideoFile({ snapshot, arenaName, arenaPhotoUrl, onProgress }) {
-  if (!snapshot || !Array.isArray(snapshot.sections)) throw new Error("O resultado deste sorteio não está disponível.");
-  if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) {
-    throw new Error("Este navegador não consegue montar o vídeo. Tente pelo Chrome ou Edge atualizado.");
-  }
-
-  await document.fonts?.ready;
-  const canvas = document.createElement("canvas");
-  canvas.width = SHUFFLE_VIDEO_WIDTH;
-  canvas.height = SHUFFLE_VIDEO_HEIGHT;
-  const context = canvas.getContext("2d", { alpha: false });
-  if (!context) throw new Error("Não foi possível preparar o vídeo.");
-
-  const [logo, arenaPhoto] = await Promise.all([
-    loadShareImage(TORNEIO360_LOGO),
-    loadShareImage(arenaPhotoUrl),
-  ]);
-  const assets = { logo, arenaPhoto };
-  const pages = getShuffleVideoResultPages(snapshot);
-  const introDuration = 1400;
-  const shuffleDuration = 5000;
-  const resultPageDuration = 2200;
-  const closingDuration = 900;
-  const totalDuration = introDuration + shuffleDuration + pages.length * resultPageDuration + closingDuration;
-  const stream = canvas.captureStream(SHUFFLE_VIDEO_FPS);
-  const mimeType = getShuffleVideoMimeType();
-  const recorderOptions = { videoBitsPerSecond: 4_200_000 };
-  if (mimeType) recorderOptions.mimeType = mimeType;
-  const recorder = new MediaRecorder(stream, recorderOptions);
-  const chunks = [];
-  recorder.ondataavailable = (event) => {
-    if (event.data?.size) chunks.push(event.data);
-  };
-  const recorded = new Promise((resolve, reject) => {
-    recorder.onerror = () => reject(new Error("O navegador interrompeu a gravação do vídeo."));
-    recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || "video/webm" }));
-  });
-
-  recorder.start(500);
-  const startedAt = performance.now();
-
-  await new Promise((resolve) => {
-    function renderFrame(now) {
-      const elapsed = Math.min(totalDuration, now - startedAt);
-      drawShuffleVideoBackground(context);
-      drawShuffleVideoHeader(context, snapshot, assets, arenaName);
-
-      if (elapsed < introDuration) {
-        drawShuffleVideoIntro(context, snapshot);
-        drawShuffleVideoFooter(context, snapshot);
-      } else if (elapsed < introDuration + shuffleDuration) {
-        drawShuffleVideoMotion(context, snapshot, elapsed - introDuration);
-        drawShuffleVideoFooter(context, snapshot, "Sorteio em andamento");
-      } else {
-        const resultElapsed = elapsed - introDuration - shuffleDuration;
-        const pageIndex = Math.min(pages.length - 1, Math.floor(resultElapsed / resultPageDuration));
-        drawShuffleVideoResultPage(context, snapshot, pages[pageIndex], pageIndex, pages.length);
-        drawShuffleVideoFooter(context, snapshot, "Gerado pelo Torneio360");
-      }
-
-      onProgress?.(Math.round((elapsed / totalDuration) * 100));
-      if (elapsed >= totalDuration) {
-        resolve();
-        return;
-      }
-      requestAnimationFrame(renderFrame);
-    }
-    requestAnimationFrame(renderFrame);
-  });
-
-  recorder.stop();
-  const blob = await recorded;
-  stream.getTracks().forEach((track) => track.stop());
-  if (!blob.size) throw new Error("O vídeo foi gerado sem conteúdo. Tente novamente.");
-
-  const resolvedType = blob.type || recorder.mimeType || mimeType || "video/webm";
-  const extension = resolvedType.includes("mp4") ? "mp4" : "webm";
-  const safeTournamentName = String(snapshot.tournamentName || "sorteio")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/gi, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
-  return new File([blob], `${safeTournamentName || "sorteio"}-sorteio-torneio360.${extension}`, { type: resolvedType });
-}
-
-function downloadShuffleVideo(file) {
-  const url = URL.createObjectURL(file);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function TournamentScreen({
   tournament,
@@ -14935,17 +11576,6 @@ return (
   );
 }
 
-function normalizeIndividualCupPlayers(values, count) {
-  const source = Array.isArray(values) ? values : [];
-  return Array.from({ length: count }, (_, index) => {
-    const participant = isTournamentDataObject(source[index]) ? source[index] : {};
-    return {
-      a: typeof participant.a === "string" ? participant.a : `Jogador ${index + 1}`,
-      b: "",
-    };
-  });
-}
-
 function ParallelDisputeChoice(props) {
   return (
     <ParallelDisputeChoiceView
@@ -14986,154 +11616,6 @@ function PlayerInputs(props) {
   return <PlayerInputsView {...props} modalityConfig={modalityConfig} />;
 }
 
-function buildFromPairTemplate(template, players) {
-  return template.map((round) =>
-    round.map((game, index) => {
-      const [a, b] = game[0];
-      const [c, d] = game[1];
-
-      return {
-        court: index + 1,
-        team1: [players[a - 1], players[b - 1]],
-        ids1: [a - 1, b - 1],
-        team2: [players[c - 1], players[d - 1]],
-        ids2: [c - 1, d - 1],
-        s1: "",
-        s2: "",
-      };
-    })
-  );
-}
-
-function buildFromMixedTemplate(template, players) {
-  const men = players.men;
-  const women = players.women;
-  const menCount = men.length;
-
-  function getName(num) {
-    if (num <= menCount) return men[num - 1];
-    return women[num - menCount - 1];
-  }
-
-  function getId(num) {
-    return num - 1;
-  }
-
-  return template.map((round) =>
-    round.map((game, index) => {
-      const [a, b, c, d] = game;
-
-      return {
-        court: index + 1,
-        team1: [getName(a), getName(b)],
-        ids1: [getId(a), getId(b)],
-        team2: [getName(c), getName(d)],
-        ids2: [getId(c), getId(d)],
-        s1: "",
-        s2: "",
-      };
-    })
-  );
-}
-
-function generateSchedule(type, players) {
-  const config = modalityConfig[type];
-
-  if (config.type === "reizinho") {
-    return buildReizinhoGames(players.length).map((round) => (
-      round.map((game) => {
-        const [firstPair, secondPair] = game;
-        return {
-          court: 1,
-          team1: firstPair.map((playerNumber) => players[playerNumber - 1]),
-          ids1: firstPair.map((playerNumber) => playerNumber - 1),
-          team2: secondPair.map((playerNumber) => players[playerNumber - 1]),
-          ids2: secondPair.map((playerNumber) => playerNumber - 1),
-          s1: "",
-          s2: "",
-        };
-      })
-    ));
-  }
-
-  if (config.type === "super8") {
-    return optimizeCourts(buildFromPairTemplate(super8Template, players));
-  }
-
-  if (config.type === "super12") {
-    return optimizeCourts(buildFromPairTemplate(super12IndividualTemplate, players));
-  }
-
-  if (config.type === "mixed10") {
-    return optimizeCourts(buildFromMixedTemplate(super10MixedTemplate, players));
-  }
-
-  if (config.type === "mixed12") {
-    return optimizeCourts(buildFromMixedTemplate(super12MixedTemplate, players));
-  }
-
-  if (config.type === "mixed16") {
-    return optimizeCourts(buildFromMixedTemplate(super16MixedTemplate, players));
-  }
-
-  if (config.type === "mixed20") {
-    return optimizeCourts(buildFromMixedTemplate(super20MixedTemplate, players));
-  }
-
-  if (config.type === "fixed12") {
-    const teamNames = players.teams.map((t) => `${t.a} + ${t.b}`);
-
-    const schedule = fixed12Template.map((round) =>
-      round.map((game, index) => ({
-        court: index + 1,
-        team1: [teamNames[game[0] - 1]],
-        ids1: [game[0] - 1],
-        team2: [teamNames[game[1] - 1]],
-        ids2: [game[1] - 1],
-        s1: "",
-        s2: "",
-      }))
-    );
-
-    return optimizeCourts(schedule);
-  }
-
-  if (config.type === "fixed16") {
-    const teamNames = players.teams.map((t) => `${t.a} + ${t.b}`);
-
-    const schedule = berger(8).map((round) =>
-      round.map((game, index) => ({
-        court: index + 1,
-        team1: [teamNames[game[0]]],
-        ids1: [game[0]],
-        team2: [teamNames[game[1]]],
-        ids2: [game[1]],
-        s1: "",
-        s2: "",
-      }))
-    );
-
-    return optimizeCourts(schedule);
-  }
-
-  if (config.type === "simple8") {
-    const schedule = berger(players.length).map((round) =>
-      round.map((game, index) => ({
-        court: index + 1,
-        team1: [players[game[0]]],
-        ids1: [game[0]],
-        team2: [players[game[1]]],
-        ids2: [game[1]],
-        s1: "",
-        s2: "",
-      }))
-    );
-
-    return optimizeCourts(schedule);
-  }
-
-  return [];
-}
 
 function ScheduleView(props) {
   return (
@@ -15182,71 +11664,6 @@ function RankingView(props) {
 function RankingTable(props) {
   return <RankingTableView {...props} CircuitButton={TournamentCircuitButton} />;
 }
-function groupStoredBracketGames(data) {
-  const cupConfig = data.cupConfig || {};
-  const mainName = cupConfig.mainBracketName || "Principal";
-  const repechageName = cupConfig.repechageName || "Repescagem";
-  const secondParallelName = cupConfig.secondParallelName || "2ª Disputa Paralela";
-  const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
-  const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
-
-  const mainGames = (data.brackets || []).filter((game) => game.phase === "main");
-  const repechageGames = (data.brackets || []).filter((game) => game.phase === "repechage");
-  const secondParallelGames = (data.brackets || []).filter((game) => game.phase === "secondParallel");
-  const thirdParallelGames = (data.brackets || []).filter((game) => game.phase === "thirdParallel");
-  const sunsetFinalGames = (data.brackets || []).filter((game) => game.phase === "sunsetFinal");
-
-  function groupByRound(games, bracketTitle) {
-    const map = {};
-
-    games.forEach((game) => {
-      if (!map[game.roundName]) {
-        map[game.roundName] = [];
-      }
-
-      map[game.roundName].push(resolveBracketGame(game, data.brackets || [], data));
-    });
-
-    return Object.entries(map).map(([title, gamesList]) => ({
-      title,
-      bracketTitle,
-      games: gamesList,
-    }));
-  }
-
-  return {
-    main: groupByRound(mainGames, mainName),
-    repechage: groupByRound(repechageGames, repechageName),
-    secondParallel: groupByRound(secondParallelGames, secondParallelName),
-    thirdParallel: groupByRound(thirdParallelGames, thirdRepechageName),
-    sunsetFinal: groupByRound(sunsetFinalGames, sunsetBracketName),
-  };
-}
-
-function getSafeCupPresentation(data, config) {
-  if (!isCupType(config) || !data?.brackets?.length) {
-    return { currentBrackets: null, parallelRanking: [], mainCupPodium: [], consolationCupPodium: [], secondParallelPodium: [], thirdParallelPodium: [], sunsetPodium: [] };
-  }
-
-  try {
-    const presentationData = isSunsetData(data)
-      || (isCampeonatoCearenseData(data) && data.cupConfig?.cearenseBracketVersion === 2)
-      ? syncCupBracketScores(data)
-      : data;
-    return {
-      currentBrackets: groupStoredBracketGames(presentationData),
-      parallelRanking: calculateParallelRanking(presentationData, data.rankingCriteria || defaultRankingCriteria),
-      mainCupPodium: calculateMainCupPodium(presentationData),
-      consolationCupPodium: isCopinhaData(data) ? calculateCopinhaConsolationPodium(presentationData) : [],
-      secondParallelPodium: isSunsetData(data) ? calculateCupBracketPodium(presentationData, "secondParallel") : [],
-      thirdParallelPodium: isOfficialCearenseData(data) ? calculateCupBracketPodium(presentationData, "thirdParallel") : [],
-      sunsetPodium: isSunsetData(data) ? calculateCupBracketPodium(presentationData, "sunsetFinal") : [],
-    };
-  } catch (error) {
-    console.error("Chaves salvas inválidas; exibindo a Copa sem as chaves", error);
-    return { currentBrackets: null, parallelRanking: [], mainCupPodium: [], consolationCupPodium: [], secondParallelPodium: [], thirdParallelPodium: [], sunsetPodium: [] };
-  }
-}
 
 function CupBracketView(props) {
   return (
@@ -15269,27 +11686,6 @@ function PublicArenaHeroHeader(props) {
     />
   );
 }
-function getBrazilDateTimeKey(date = new Date()) {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(date);
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
-  } catch (error) {
-    const datePart = getBrazilTodayISO(date);
-    const hour = String(date.getHours()).padStart(2, "0");
-    const minute = String(date.getMinutes()).padStart(2, "0");
-    return `${datePart}T${hour}:${minute}`;
-  }
-}
-
 function PublicArenaTournamentCards(props) {
   return (
     <PublicArenaTournamentCardsView
@@ -15324,44 +11720,6 @@ function PublicArenaLoadingScreen() {
       <div className="publicArenaLoadingCaption">Carregando perfil da arena...</div>
     </div>
   );
-}
-
-function normalizePublicCircuitForDisplay(circuit, { directoryEntry = true } = {}) {
-  const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
-  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
-  const rankingGroups = (circuit?.ranking_groups || []).map((group) => ({
-    ...group,
-    rows: [...(group.rows || [])].sort((first, second) => {
-      if (placementMode) {
-        const pointDifference = Number(second.circuitPoints || second.circuit_points || 0) - Number(first.circuitPoints || first.circuit_points || 0);
-        if (pointDifference !== 0) return pointDifference;
-        for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
-          if (criterion === "bestStage") {
-            const difference = compareCircuitStageScores(first, second);
-            if (difference !== 0) return difference;
-            continue;
-          }
-          const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-          const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
-          if (difference !== 0) return difference;
-        }
-        const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
-        if (drawDifference !== 0) return drawDifference;
-      }
-      for (const key of criteria.order) {
-        const difference = Number(second[key] || 0) - Number(first[key] || 0);
-        if (difference !== 0) return difference;
-      }
-      return String(first.name || "").localeCompare(String(second.name || ""), "pt-BR");
-    }),
-  }));
-
-  return {
-    ...circuit,
-    directoryEntry,
-    ranking_groups: rankingGroups,
-  };
 }
 
 function PublicArenaPage({ arenaId = null, publicId = null }) {
@@ -15925,52 +12283,6 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
       </main>
     </div>
   );
-}
-
-function getRegisteredAthletesForPublic(data, config) {
-  if (!data?.players) return [];
-
-  if (isMixedType(config)) {
-    return [
-      {
-        title: "Masculino",
-        names: (data.players.men || []).filter(Boolean),
-      },
-      {
-        title: "Feminino",
-        names: (data.players.women || []).filter(Boolean),
-      },
-    ];
-  }
-
-  if (isIndividualCupType(config)) {
-    return [
-      {
-        title: "Jogadores cadastrados",
-        names: (data.players.teams || [])
-          .map((player, index) => `${index + 1}. ${player.a || `Jogador ${index + 1}`}`)
-          .filter(Boolean),
-      },
-    ];
-  }
-
-  if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
-    return [
-      {
-        title: "Duplas cadastradas",
-        names: (data.players.teams || [])
-          .map((team, index) => `${index + 1}. ${team.a || "Atleta 1"} + ${team.b || "Atleta 2"}`)
-          .filter(Boolean),
-      },
-    ];
-  }
-
-  return [
-    {
-      title: "Atletas cadastrados",
-      names: (data.players || []).filter(Boolean),
-    },
-  ];
 }
 
 function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, onBackToArena = null }) {
