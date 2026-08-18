@@ -2189,7 +2189,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const circuitRealtimeEpochRef = useRef(0);
   const circuitHistoryLoadedIdsRef = useRef(new Set());
   const circuitHistoryLoadPromisesRef = useRef(new Map());
+  const circuitRankingViewCacheRef = useRef(new Map());
   const tournamentDetailsLoadPromisesRef = useRef(new Map());
+  const [circuitHistoryLoadState, setCircuitHistoryLoadState] = useState({});
   const [circuitForm, setCircuitForm] = useState({
     id: null,
     name: "",
@@ -2210,6 +2212,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [trashPermanentAction, setTrashPermanentAction] = useState(null);
   const [trashActionBusy, setTrashActionBusy] = useState(false);
   const [expandedCircuitId, setExpandedCircuitId] = useState(null);
+  const [expandedCircuitToolsId, setExpandedCircuitToolsId] = useState(null);
   const [restoredTournamentId, setRestoredTournamentId] = useState(null);
   const circuitPersistenceQueueRef = useRef(Promise.resolve());
   const appStateSaveTimerRef = useRef(null);
@@ -2974,15 +2977,26 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function loadCircuitRankingHistory(circuitId, { force = false } = {}) {
     const normalizedCircuitId = String(circuitId || "");
-    if (!normalizedCircuitId || isBrowserOffline()) return null;
+    if (!normalizedCircuitId) return null;
+    if (isBrowserOffline()) {
+      setCircuitHistoryLoadState((current) => ({ ...current, [normalizedCircuitId]: "error" }));
+      return null;
+    }
     const existingCircuit = circuitsRef.current.find((circuit) => String(circuit.id) === normalizedCircuitId);
     if (!existingCircuit) return null;
     if (!force && circuitHistoryLoadedIdsRef.current.has(normalizedCircuitId)) {
+      setCircuitHistoryLoadState((current) => (
+        current[normalizedCircuitId] === "loaded"
+          ? current
+          : { ...current, [normalizedCircuitId]: "loaded" }
+      ));
       return existingCircuit.rankingHistory || {};
     }
 
     const pendingRequest = circuitHistoryLoadPromisesRef.current.get(normalizedCircuitId);
     if (pendingRequest) return pendingRequest;
+
+    setCircuitHistoryLoadState((current) => ({ ...current, [normalizedCircuitId]: "loading" }));
 
     const request = (async () => {
       const { data, error } = await supabase
@@ -2993,12 +3007,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
       if (error) {
         console.error("Erro ao carregar histórico do circuito:", error);
+        setCircuitHistoryLoadState((current) => ({ ...current, [normalizedCircuitId]: "error" }));
         showNotice("warning", "Ranking temporariamente indisponível", "O circuito foi aberto, mas o histórico do ranking não pôde ser atualizado agora.");
         return null;
       }
 
       const rankingHistory = normalizeCircuitHistoryRows(data || []);
       circuitHistoryLoadedIdsRef.current.add(normalizedCircuitId);
+      circuitRankingViewCacheRef.current.delete(normalizedCircuitId);
       const nextCircuits = circuitsRef.current.map((circuit) => (
         String(circuit.id) === normalizedCircuitId
           ? { ...circuit, rankingHistory }
@@ -3006,6 +3022,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       ));
       circuitsRef.current = nextCircuits;
       setCircuits(nextCircuits);
+      setCircuitHistoryLoadState((current) => ({ ...current, [normalizedCircuitId]: "loaded" }));
       return rankingHistory;
     })().finally(() => {
       circuitHistoryLoadPromisesRef.current.delete(normalizedCircuitId);
@@ -3972,6 +3989,39 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       settings: rankingSettings,
       criteriaValue,
     });
+  }
+
+  function getPersistedCircuitRanking(circuit, criteriaValue = getCircuitEffectiveCriteria(circuit)) {
+    const circuitId = String(circuit?.id || "");
+    const rankingHistory = circuit?.rankingHistory || {};
+    const rankingSettingsSource = circuit?.rankingSettings || {};
+    const cached = circuitRankingViewCacheRef.current.get(circuitId);
+
+    if (
+      cached
+      && cached.rankingHistory === rankingHistory
+      && cached.rankingSettingsSource === rankingSettingsSource
+      && cached.criteriaValue === criteriaValue
+    ) {
+      return cached.groups;
+    }
+
+    const groups = buildCircuitRankingGroupsFromRecords({
+      records: Object.values(rankingHistory),
+      settings: getEffectiveCircuitRankingSettings(rankingSettingsSource),
+      criteriaValue,
+    });
+    circuitRankingViewCacheRef.current.set(circuitId, {
+      rankingHistory,
+      rankingSettingsSource,
+      criteriaValue,
+      groups,
+    });
+    if (circuitRankingViewCacheRef.current.size > 40) {
+      const oldestKey = circuitRankingViewCacheRef.current.keys().next().value;
+      circuitRankingViewCacheRef.current.delete(oldestKey);
+    }
+    return groups;
   }
 
   async function persistCircuitRankings(
@@ -8180,9 +8230,30 @@ setNewPublicInfo({
             ) : null}
 
             {isExpanded ? (() => {
+              const normalizedCircuitId = String(circuit.id);
+              const historyLoadStatus = circuitHistoryLoadState[normalizedCircuitId]
+                || (circuitHistoryLoadedIdsRef.current.has(normalizedCircuitId) ? "loaded" : "loading");
+              if (historyLoadStatus !== "loaded") {
+                return (
+                  <div className={`circuitRankingLoadingState ${historyLoadStatus === "error" ? "hasError" : ""}`}>
+                    <strong>{historyLoadStatus === "error" ? "Ranking indisponível no momento" : "Carregando ranking do circuito…"}</strong>
+                    <span>
+                      {historyLoadStatus === "error"
+                        ? "Os demais dados do circuito continuam disponíveis. Tente carregar o ranking novamente."
+                        : "O circuito já está aberto. Somente o ranking consolidado está sendo buscado."}
+                    </span>
+                    {historyLoadStatus === "error" ? (
+                      <button type="button" onClick={() => void loadCircuitRankingHistory(circuit.id, { force: true })}>
+                        Tentar novamente
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              }
               const effectiveCircuitCriteria = getCircuitEffectiveCriteria(circuit);
-              const circuitRankingGroups = getCircuitRanking(circuit, effectiveCircuitCriteria);
+              const circuitRankingGroups = getPersistedCircuitRanking(circuit, effectiveCircuitCriteria);
               const rankingSettings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+              const toolsExpanded = String(expandedCircuitToolsId || "") === normalizedCircuitId;
               const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings, { includeManual: true }) : null;
               const sharedPlacementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
@@ -8267,6 +8338,8 @@ setNewPublicInfo({
                       rankingCriteria={effectiveCircuitCriteria}
                       columns={placementColumns}
                       showGames={!placementMode}
+                      progressive
+                      initialRowCount={30}
                     />
                   ) : (
                     <div className="twoCols circuitRankingTables">
@@ -8278,16 +8351,46 @@ setNewPublicInfo({
                           rankingCriteria={effectiveCircuitCriteria}
                           columns={placementColumns}
                           showGames={!placementMode}
+                          progressive
+                          initialRowCount={30}
                         />
                       ))}
                     </div>
                   )}
-                  <CircuitExtraPointsPanel circuit={circuit} rankingGroups={circuitRankingGroups} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} />
+                  <div className="circuitDeferredTools">
+                    <button
+                      type="button"
+                      className="circuitDeferredToolsButton"
+                      aria-expanded={toolsExpanded}
+                      onClick={() => setExpandedCircuitToolsId((current) => (
+                        String(current || "") === normalizedCircuitId ? null : circuit.id
+                      ))}
+                    >
+                      {toolsExpanded ? "Fechar atletas e pontuações" : "Gerenciar atletas e pontuações"}
+                    </button>
+                    {toolsExpanded ? (
+                      <CircuitExtraPointsPanel circuit={circuit} rankingGroups={circuitRankingGroups} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} />
+                    ) : null}
+                  </div>
                 </div>
               ) : selectedNames.length ? (
                 <div className="circuitRankingEmptyState">
                   <div className="circuitRankingEmpty">Ranking aparece quando houver placares lançados nos torneios selecionados.</div>
-                  <CircuitExtraPointsPanel circuit={circuit} rankingGroups={[]} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} />
+                  <div className="circuitDeferredTools">
+                    <button
+                      type="button"
+                      className="circuitDeferredToolsButton"
+                      aria-expanded={toolsExpanded}
+                      onClick={() => setExpandedCircuitToolsId((current) => (
+                        String(current || "") === normalizedCircuitId ? null : circuit.id
+                      ))}
+                    >
+                      {toolsExpanded ? "Fechar atletas e pontuações" : "Gerenciar atletas e pontuações"}
+                    </button>
+                    {toolsExpanded ? (
+                      <CircuitExtraPointsPanel circuit={circuit} rankingGroups={[]} onSave={(rankingSettings) => updateCircuitRankingSettings(circuit, rankingSettings)} />
+                    ) : null}
+                  </div>
                 </div>
               ) : null;
             })() : null}
@@ -12155,11 +12258,12 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [circuit?.id]);
-  const liveRankingGroups = buildPublicCircuitRankingGroups(circuit, tournaments);
   const storedRankingGroups = Array.isArray(circuit?.ranking_groups)
     ? circuit.ranking_groups.filter((group) => Array.isArray(group?.rows) && group.rows.length > 0)
     : [];
-  const rankingGroups = liveRankingGroups.length > 0 ? liveRankingGroups : storedRankingGroups;
+  const rankingGroups = storedRankingGroups.length > 0
+    ? storedRankingGroups
+    : buildPublicCircuitRankingGroups(circuit, tournaments);
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
   const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
@@ -12264,6 +12368,8 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
               rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
               columns={placementColumns}
               showGames={!placementMode}
+              progressive
+              initialRowCount={30}
             />
           ) : (
             <div className="twoCols publicCircuitRankingTables">
@@ -12275,6 +12381,8 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
                   rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
                   columns={placementColumns}
                   showGames={!placementMode}
+                  progressive
+                  initialRowCount={30}
                 />
               ))}
             </div>

@@ -20975,6 +20975,157 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   }
 }
 
+/* Circuitos extensos: o painel abre primeiro e revela apenas os dados solicitados. */
+.circuitRankingLoadingState {
+  display: grid;
+  gap: 6px;
+  margin: 0 18px 18px;
+  padding: 18px;
+  border: 1px solid var(--ui-border, #d7e0ec);
+  border-radius: 16px;
+  background: var(--ui-surface-muted, #f4f7fb);
+  color: var(--ui-text, #334155);
+}
+
+.circuitRankingLoadingState strong {
+  color: var(--ui-text-strong, #0d1b36);
+  font-size: .96rem;
+}
+
+.circuitRankingLoadingState span {
+  color: var(--ui-muted, #64748b);
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.circuitRankingLoadingState.hasError {
+  border-color: color-mix(in srgb, #f97316 48%, var(--ui-border, #d7e0ec));
+}
+
+html body .proDashboard.playAppShell .circuitRankingLoadingState button {
+  justify-self: start;
+  margin-top: 7px;
+  border: 1px solid #2563eb !important;
+  background: #2563eb !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .18) !important;
+}
+
+.rankingProgressiveToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+.rankingProgressiveSearch {
+  flex: 1 1 280px;
+  max-width: 430px;
+}
+
+.rankingProgressiveSearch input {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--ui-border, #cbd5e1);
+  border-radius: 12px;
+  outline: none;
+  background: var(--ui-surface-raised, #fff);
+  color: var(--ui-text-strong, #0d1b36);
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.rankingProgressiveSearch input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .13);
+}
+
+.rankingProgressiveSearch input::placeholder {
+  color: var(--ui-muted, #7b8799);
+  opacity: .9;
+}
+
+.rankingProgressiveToolbar small {
+  flex: 0 0 auto;
+  color: var(--ui-muted, #64748b);
+  font-size: .76rem;
+  font-weight: 800;
+}
+
+html body button.rankingLoadMoreButton,
+html body .proDashboard.playAppShell button.rankingLoadMoreButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 360px);
+  min-height: 42px;
+  margin: 12px auto 0;
+  border: 1px solid #7c3aed !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, #7c3aed 9%, var(--ui-surface-raised, #fff)) !important;
+  color: #6d28d9 !important;
+  -webkit-text-fill-color: #6d28d9 !important;
+  box-shadow: none !important;
+  font-weight: 850 !important;
+}
+
+.circuitDeferredTools {
+  display: grid;
+  gap: 12px;
+  margin-top: 13px;
+}
+
+html body .proDashboard.playAppShell button.circuitDeferredToolsButton {
+  justify-self: start;
+  min-height: 42px;
+  border: 1px solid #7c3aed !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, #7c3aed 10%, var(--ui-surface-raised, #fff)) !important;
+  color: #6d28d9 !important;
+  -webkit-text-fill-color: #6d28d9 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] body button.rankingLoadMoreButton,
+html[data-theme="dark"] body .proDashboard.playAppShell button.rankingLoadMoreButton,
+.proDashboard.theme-dark button.rankingLoadMoreButton,
+html[data-theme="dark"] body .proDashboard.playAppShell button.circuitDeferredToolsButton,
+.proDashboard.theme-dark button.circuitDeferredToolsButton {
+  border-color: #a78bfa !important;
+  background: rgba(124, 58, 237, .17) !important;
+  color: #ddd6fe !important;
+  -webkit-text-fill-color: #ddd6fe !important;
+}
+
+@media (max-width: 640px) {
+  .circuitRankingLoadingState {
+    margin: 0 10px 12px;
+    padding: 14px;
+  }
+
+  .rankingProgressiveToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rankingProgressiveSearch {
+    flex-basis: auto;
+    max-width: none;
+  }
+
+  .rankingProgressiveToolbar small {
+    padding-inline: 2px;
+  }
+
+  html body .proDashboard.playAppShell button.circuitDeferredToolsButton {
+    width: 100%;
+  }
+}
+
 .publicArenaHeader {
   display: grid;
   gap: 24px;
