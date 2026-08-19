@@ -1,9 +1,6 @@
 import {
   applyCircuitDrawOrder,
   circuitRankingModes,
-  circuitTieBreakOptions,
-  compareCircuitStageScores,
-  getCircuitTieBreakOrder,
   normalizeCircuitRankingSettings,
 } from "./circuitRankingSettings.mjs";
 import {
@@ -11,10 +8,7 @@ import {
   isIndividualCupType,
   isMixedType,
 } from "./modalityClassification.mjs";
-import {
-  defaultRankingCriteria,
-  getRankingCriteria,
-} from "./rankingCriteria.mjs";
+import { defaultRankingCriteria } from "./rankingCriteria.mjs";
 import { normalizeCircuitStatus } from "./statusFormatting.mjs";
 import {
   getTournamentLifecycleStatus,
@@ -109,7 +103,6 @@ export function sortCircuitsForDisplay(items) {
 }
 
 export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = true } = {}) {
-  const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings);
   const placementMode = rankingSettings.mode === circuitRankingModes.placement
     || rankingSettings.sourceCircuitIds.length > 0;
@@ -121,26 +114,15 @@ export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = tru
           - Number(first.circuitPoints || first.circuit_points || 0);
         if (pointDifference !== 0) return pointDifference;
 
-        for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
-          if (criterion === "bestStage") {
-            const difference = compareCircuitStageScores(first, second);
-            if (difference !== 0) return difference;
-            continue;
-          }
-
-          const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-          const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
-          if (difference !== 0) return difference;
-        }
-
-        const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
-        if (drawDifference !== 0) return drawDifference;
       }
 
-      for (const key of criteria.order) {
+      for (const key of ["w", "pts", "bal"]) {
         const difference = Number(second[key] || 0) - Number(first[key] || 0);
         if (difference !== 0) return difference;
       }
+
+      const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
+      if (drawDifference !== 0) return drawDifference;
 
       return String(first.name || "").localeCompare(String(second.name || ""), "pt-BR");
     }),

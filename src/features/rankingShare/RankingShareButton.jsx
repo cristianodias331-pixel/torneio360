@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, Printer, Share2, X } from "lucide-react";
+import { Download, FileSpreadsheet, Printer, Share2, X } from "lucide-react";
 import {
   canNativeShareRankingFiles,
   downloadRankingFiles,
@@ -8,11 +8,13 @@ import {
   printRankingDocument,
   shareRankingImages,
 } from "./rankingShareExport.mjs";
+import { downloadRankingWorkbook } from "./rankingWorkbookExport.mjs";
 
 export default function RankingShareButton({ config }) {
   const [status, setStatus] = useState("idle");
   const [exportFiles, setExportFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [workbookStatus, setWorkbookStatus] = useState("idle");
 
   useEffect(() => {
     if (exportFiles.length === 0) {
@@ -30,6 +32,7 @@ export default function RankingShareButton({ config }) {
   function closeExportDialog() {
     setExportFiles([]);
     setStatus("idle");
+    setWorkbookStatus("idle");
   }
 
   async function handleShare() {
@@ -155,6 +158,31 @@ export default function RankingShareButton({ config }) {
               >
                 <Download aria-hidden="true" /> Baixar {exportFiles.length > 1 ? `${exportFiles.length} PNGs` : "PNG"}
               </button>
+              {config.editableWorkbook ? (
+                <button
+                  type="button"
+                  className="workbook"
+                  disabled={workbookStatus === "loading"}
+                  onClick={async () => {
+                    setWorkbookStatus("loading");
+                    try {
+                      await downloadRankingWorkbook(config);
+                      setWorkbookStatus("downloaded");
+                    } catch (error) {
+                      console.error("Erro ao gerar planilha do ranking:", error);
+                      setWorkbookStatus("error");
+                    }
+                  }}
+                >
+                  <FileSpreadsheet aria-hidden="true" /> {workbookStatus === "loading"
+                    ? "Preparando planilha…"
+                    : workbookStatus === "downloaded"
+                      ? "Planilha baixada"
+                      : workbookStatus === "error"
+                        ? "Tentar baixar planilha"
+                        : "Baixar planilha editável (.xlsx)"}
+                </button>
+              ) : null}
             </div>
           </section>
         </div>,

@@ -1,13 +1,10 @@
 import React, { useMemo, useState } from "react";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import {
-  circuitTieBreakOptions,
-  circuitTournamentFormats,
   getCircuitTieBreakLabel,
   normalizeCircuitPointValue,
   normalizeCircuitRankingSettings,
 } from "../../domain/circuitRankingSettings.mjs";
-import { rankingCriteriaOptions } from "../../domain/rankingCriteria.mjs";
 import {
   mergeParticipantGenderRegistries,
   participantGenderValues,
@@ -185,50 +182,9 @@ export function CircuitGenderRegistryPanel({ candidates = [], value = {}, knownR
   );
 }
 
-export function CircuitTournamentFormatSelector({ value, onChange }) {
-  return (
-    <section className="circuitTournamentFormatSelector">
-      <div className="circuitSettingsTitleRow">
-        <div>
-          <strong>Formato das etapas do circuito</strong>
-          <span>Escolha primeiro para visualizar somente os torneios compatíveis.</span>
-        </div>
-        <FormatExplanationButton
-          iconOnly
-          ariaLabel="Entenda os formatos das etapas do circuito"
-          eyebrow="Formato das etapas"
-          title="Quais torneios podem fazer parte deste circuito?"
-          intro="Um circuito reúne etapas do mesmo formato. Os dois formatos não podem ser misturados no mesmo circuito."
-          sections={[
-            { title: "Classificação final — Super e Simples", content: <p>Use para modalidades sem chave eliminatória. Cada etapa termina com uma classificação do 1º ao último colocado, e a pontuação do circuito pode ser definida conforme essa posição final.</p> },
-            { title: "Fases alcançadas — Copas", content: <p>Use para torneios com fase de grupos e chave principal. A pontuação do circuito pode considerar campeão, vice, semifinal, quartas, oitavas e as demais fases alcançadas.</p> },
-            { title: "Lista de torneios", content: <p>Depois da escolha, aparecem somente os torneios compatíveis. Para reunir torneios do outro formato, crie outro circuito.</p> },
-            { title: "Disputas paralelas", content: <p>Nunca pontuam e nenhum resultado, vitória, game, saldo ou colocação das paralelas entra no ranking do circuito.</p> },
-          ]}
-        />
-      </div>
-      <div className="circuitFormatOptions" role="radiogroup" aria-label="Formato das etapas do circuito">
-        <button type="button" role="radio" aria-checked={value === circuitTournamentFormats.placement} className={value === circuitTournamentFormats.placement ? "selected" : ""} onClick={() => onChange(circuitTournamentFormats.placement)}>
-          <span className="circuitChoiceCheck circuitFormatCheck" aria-hidden="true">{value === circuitTournamentFormats.placement ? "✓" : ""}</span>
-          <span className="circuitChoiceText circuitFormatText"><strong>Classificação final</strong><em>Super e Simples</em><small>Pontos conforme 1º, 2º, 3º lugar e demais colocações.</small></span>
-        </button>
-        <button type="button" role="radio" aria-checked={value === circuitTournamentFormats.cup} className={value === circuitTournamentFormats.cup ? "selected" : ""} onClick={() => onChange(circuitTournamentFormats.cup)}>
-          <span className="circuitChoiceCheck circuitFormatCheck" aria-hidden="true">{value === circuitTournamentFormats.cup ? "✓" : ""}</span>
-          <span className="circuitChoiceText circuitFormatText"><strong>Fases alcançadas</strong><em>Copas</em><small>Pontos conforme campeão, vice, semifinal, quartas e outras fases.</small></span>
-        </button>
-      </div>
-    </section>
-  );
-}
 export function CircuitRankingSettingsEditor({
   value,
   onChange,
-  rankingCriteria,
-  rankingCriteriaMode,
-  onRankingCriteriaChange,
-  inheritedCriteria,
-  mixedCriteria = false,
-  tournamentFormat = "",
 }) {
   const settings = normalizeCircuitRankingSettings(value);
 
@@ -277,9 +233,9 @@ export function CircuitRankingSettingsEditor({
           title="Como funciona o cálculo da temporada"
           intro="A escolha altera somente o ranking do circuito. Torneios, confrontos e placares continuam preservados."
           sections={[
-            { title: "Desempenho acumulado", content: <p>Soma Vitórias, Saldo de Games e Total de Games dos jogos válidos. O organizador escolhe a ordem dos critérios. Nas copas, entram somente os jogos dos grupos e da chave principal; disputas paralelas ficam fora.</p> },
-            { title: "Pontuação por colocação", content: <p>Cada atleta ou dupla recebe os pontos definidos para a posição final ou para a fase alcançada na chave principal. O organizador pode colocar qualquer valor, inclusive zero.</p> },
-            { title: "Disputas paralelas", content: <p>A 2ª e a 3ª disputas paralelas nunca concedem pontos e seus jogos não são usados nos desempates do circuito.</p> },
+            { title: "Desempenho acumulado", content: <p>Soma os jogos válidos e ordena sempre por Vitórias, Total de Games e Saldo de Games. Nas copas, entram somente os grupos e a chave principal.</p> },
+            { title: "Pontuação por colocação", content: <p>Cada torneio usa automaticamente a tabela correspondente: posição final para Super e Simples; fase alcançada para Copas. Todas as modalidades podem participar do mesmo circuito.</p> },
+            { title: "Disputas paralelas", content: <p>Nenhuma disputa paralela concede pontos, e seus jogos não são usados nos totais nem nos desempates do circuito.</p> },
             { title: "Alterações posteriores", content: <p>Se o modelo ou os valores forem alterados, o ranking será recalculado com os resultados já salvos. Nenhum dado do torneio será apagado.</p> },
           ]}
         />
@@ -298,12 +254,11 @@ export function CircuitRankingSettingsEditor({
 
       {settings.mode === "performance" ? (
         <div className="circuitPerformanceSettings">
-          <label className="circuitAutomaticToggle">
-            <input type="checkbox" checked={rankingCriteriaMode !== "manual"} onChange={(event) => onRankingCriteriaChange(event.target.checked ? inheritedCriteria : rankingCriteria, event.target.checked ? "automatic" : "manual")} />
-            Acompanhar automaticamente o critério dos torneios
-          </label>
-          <label><span>Ordem dos critérios</span><select value={rankingCriteriaMode === "manual" ? rankingCriteria : inheritedCriteria} disabled={rankingCriteriaMode !== "manual"} onChange={(event) => onRankingCriteriaChange(event.target.value, "manual")}>{rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-          {rankingCriteriaMode !== "manual" && mixedCriteria ? <small className="circuitCriteriaWarning">Os torneios usam critérios diferentes. O primeiro selecionado será a referência.</small> : null}
+          <div className="circuitSettingsTitleRow">
+            <div><strong>Critérios do ranking</strong><span>Ordem única para todas as modalidades selecionadas.</span></div>
+            <FormatExplanationButton iconOnly ariaLabel="Entenda os critérios do circuito" eyebrow="Desempates" title="Ordem do ranking sem pontos" intro="Os critérios internos de cada torneio continuam inalterados. Esta ordem vale somente para somar e ordenar o circuito." sections={[{ title: "Ordem", content: <p>Vitórias, Total de Games, Saldo de games e, persistindo empate absoluto, sorteio.</p> }, { title: "Copas", content: <p>Somente jogos da fase de grupos e da chave principal entram nos totais. Disputas paralelas não entram.</p> }]} />
+          </div>
+          <p className="circuitRuleSummary">{getCircuitTieBreakLabel(settings)}</p>
         </div>
       ) : (
         <div className="circuitPlacementSettings">
@@ -321,22 +276,21 @@ export function CircuitRankingSettingsEditor({
             </div>
           </section>
 
-          {tournamentFormat === circuitTournamentFormats.placement ? <section>
+          <section>
             <div className="circuitSettingsTitleRow"><div><strong>Pontuação por classificação final</strong><span>Super, Simples e formatos sem eliminatória</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por classificação final" eyebrow="Classificação final" title="Pontuação conforme a posição na etapa" intro="A classificação definitiva da etapa determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Do 1º ao 10º lugar", content: <p>Cada colocação recebe o valor definido em seu próprio campo.</p> }, { title: "Outras colocações", content: <p>Do 11º lugar em diante, todos recebem o mesmo valor configurado em “Outras colocações”, sem limite de participantes. Se o valor for zero, essas posições não concedem pontos.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades Super, Simples e outras que terminem com uma classificação final, sem chave eliminatória.</p> }]} /></div>
             <div className="circuitPointsGrid positions">
               {settings.points.positions.map((point, index) => <label key={index}><span>{index + 1}º lugar</span><input type="number" min="0" step="1" value={point} onChange={(event) => updatePoint("positions", index, event.target.value)} /></label>)}
               <label className="otherPositions"><span>Outras colocações</span><input type="number" min="0" step="1" value={settings.points.otherPositions} onChange={(event) => updatePoint("otherPositions", null, event.target.value)} /></label>
             </div>
-          </section> : null}
-
-          {tournamentFormat === circuitTournamentFormats.cup ? <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por fases alcançadas</strong><span>Copas com grupos e chave principal</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por fases alcançadas" eyebrow="Fases alcançadas" title="Pontuação conforme o avanço na copa" intro="A última fase atingida na chave principal determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Chave principal", content: <p>Campeão e vice recebem seus valores. Todos os perdedores das semifinais recebem igualmente a pontuação de <strong>Eliminado na semifinal</strong>, mesmo quando houver jogo de 3º lugar.</p> }, { title: "Fase de grupos", content: <p>Quem não avançar recebe o valor definido pelo organizador para eliminação nos grupos, inclusive zero.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades de copa com fase de grupos e chave eliminatória principal.</p> }, { title: "Disputas paralelas", content: <p>Resultados e jogos das disputas paralelas são ignorados integralmente e nunca pontuam.</p> }]} /></div>
-            <div className="circuitPointsGrid">{cupPointFields.map(([key, label]) => <label key={key}><span>{label}</span><input type="number" min="0" step="1" value={settings.points.cup[key]} onChange={(event) => updatePoint("cup", key, event.target.value)} /></label>)}</div>
-          </section> : null}
+          </section>
 
           <section>
-            <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>Todas as pontuações sempre vêm primeiro</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="O total de todas as pontuações é o primeiro critério. Em caso de igualdade, o sistema aplica o 1º e depois o 2º critério escolhidos abaixo." sections={[{ title: "Vitórias", content: <p>Soma cada partida vencida nos jogos válidos dos torneios. Nas modalidades de Copa, entram apenas a fase de grupos e a chave principal.</p> }, { title: "Melhores pontuações nas etapas", content: <p>Compara a maior pontuação obtida em uma etapa; persistindo o empate, compara a segunda maior, depois a terceira e assim sucessivamente.</p> }, { title: "Títulos, vices e terceiros lugares", content: <p>Quando selecionados, comparam quantas vezes o participante alcançou cada colocação na chave principal.</p> }, { title: "Sorteio", content: <p>É sempre o último recurso e só aparece quando o empate permanecer depois dos dois critérios escolhidos.</p> }, { title: "Disputas paralelas", content: <p>Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa do ranking ou dos desempates.</p> }]} /></div>
-            <div className="circuitTieBreakOrder">{settings.tieBreakOrder.map((criterion, index) => <label key={index}><span>{index + 1}º critério</span><select value={criterion} onChange={(event) => { const next = [...settings.tieBreakOrder]; next[index] = event.target.value; updateSettings({ tieBreakOrder: next, tieBreakDrawOrder: [], tieBreakDrawSignatures: {} }); }}>{circuitTieBreakOptions.filter((option) => option.value === criterion || !settings.tieBreakOrder.includes(option.value)).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}</div>
+            <div className="circuitSettingsTitleRow"><div><strong>Pontuação por fases alcançadas</strong><span>Copas com grupos e chave principal</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda a pontuação por fases alcançadas" eyebrow="Fases alcançadas" title="Pontuação conforme o avanço na copa" intro="A última fase atingida na chave principal determina quantos pontos cada participante receberá no circuito." sections={[{ title: "Chave principal", content: <p>Campeão e vice recebem seus valores. Todos os perdedores das semifinais recebem igualmente a pontuação de <strong>Eliminado na semifinal</strong>, mesmo quando houver jogo de 3º lugar.</p> }, { title: "Fase de grupos", content: <p>Quem não avançar recebe o valor definido pelo organizador para eliminação nos grupos, inclusive zero.</p> }, { title: "Torneios compatíveis", content: <p>Este formato aceita somente modalidades de copa com fase de grupos e chave eliminatória principal.</p> }, { title: "Disputas paralelas", content: <p>Resultados e jogos das disputas paralelas são ignorados integralmente e nunca pontuam.</p> }]} /></div>
+            <div className="circuitPointsGrid">{cupPointFields.map(([key, label]) => <label key={key}><span>{label}</span><input type="number" min="0" step="1" value={settings.points.cup[key]} onChange={(event) => updatePoint("cup", key, event.target.value)} /></label>)}</div>
+          </section>
+
+          <section>
+            <div className="circuitSettingsTitleRow"><div><strong>Critérios de desempate</strong><span>O total de pontos vem sempre primeiro.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os desempates do circuito" eyebrow="Desempates" title="Como os empates serão resolvidos" intro="Depois do total de pontos, o sistema aplica uma ordem única e transparente em todo o circuito." sections={[{ title: "Ordem", content: <p>Pontos, Vitórias, Total de Games, Saldo de games e, persistindo empate absoluto, sorteio.</p> }, { title: "Copas", content: <p>Vitórias e games contam somente nos grupos e na chave principal.</p> }, { title: "Disputas paralelas", content: <p>Não concedem pontos e nenhum resultado, vitória, game ou saldo participa do ranking.</p> }]} /></div>
             <p className="circuitRuleSummary">{getCircuitTieBreakLabel(settings)}</p>
           </section>
         </div>

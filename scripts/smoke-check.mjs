@@ -425,6 +425,10 @@ const rankingShareExportSource = readFileSync(
   new URL("src/features/rankingShare/rankingShareExport.mjs", root),
   "utf8"
 );
+const rankingWorkbookExportSource = readFileSync(
+  new URL("src/features/rankingShare/rankingWorkbookExport.mjs", root),
+  "utf8"
+);
 const canvasToolsSource = readFileSync(new URL("src/features/media/canvasTools.mjs", root), "utf8");
 const tournamentWorkspaceTabsSource = readFileSync(
   new URL("src/features/tournamentWorkspace/TournamentWorkspaceTabs.jsx", root),
@@ -1087,8 +1091,8 @@ assert.equal(getCircuitPlacementLabel("champion"), "Campeão", "O rótulo do cam
 assert.equal(getCircuitPlacementLabel("", 7), "7º lugar", "O rótulo de uma colocação numérica foi alterado.");
 assert.deepEqual(
   normalizeCircuitTieBreakOrder(["titles", "titles", "inválido"]),
-  ["titles", "wins"],
-  "Os critérios de desempate devem permanecer únicos, válidos e limitados a dois."
+  ["wins", "totalGames", "balance"],
+  "O circuito deve manter a ordem universal de Vitórias, Total de Games e Saldo."
 );
 const defaultCircuitSettings = normalizeCircuitRankingSettings();
 assert.equal(defaultCircuitSettings.mode, "performance", "O modo padrão do circuito foi alterado.");
@@ -1110,7 +1114,7 @@ const customCircuitSettings = normalizeCircuitRankingSettings(customCircuitSetti
 assert.equal(JSON.stringify(customCircuitSettingsInput), customCircuitSettingsSnapshot, "A normalização não pode alterar as configurações recebidas.");
 assert.deepEqual(customCircuitSettings.sourceCircuitIds, ["1", "2"], "Os circuitos de origem duplicados não foram removidos.");
 assert.equal(customCircuitSettings.manualParticipants[0].name, "Ana Maria", "O participante manual perdeu a formatação do nome.");
-assert.deepEqual(customCircuitSettings.tieBreakOrder, ["wins", "bestStage"], "O desempate compatível com o Cearense foi alterado.");
+assert.deepEqual(customCircuitSettings.tieBreakOrder, ["wins", "totalGames", "balance"], "O circuito não aplicou seus critérios universais.");
 assert.equal(customCircuitSettings.points.positions[0], 900, "Uma pontuação personalizada foi alterada.");
 assert.equal(customCircuitSettings.points.positions[1], defaultCircuitPositionPoints[1], "Uma pontuação padrão ausente não foi restaurada.");
 assert.equal(customCircuitSettings.points.cup.champion, 1500, "A pontuação personalizada do campeão foi alterada.");
@@ -1122,7 +1126,7 @@ const tiedCircuitRows = [
 ];
 const tiedCircuitSignature = getCircuitTieSignature(tiedCircuitRows[0], customCircuitSettings);
 assert.equal(tiedCircuitSignature, getCircuitTieSignature(tiedCircuitRows[1], customCircuitSettings), "Linhas realmente empatadas receberam assinaturas diferentes.");
-assert.equal(getCircuitTieBreakLabel(customCircuitSettings), "Todas as pontuações → Vitórias → Melhores pontuações nas etapas → Sorteio", "O texto do desempate foi alterado.");
+assert.equal(getCircuitTieBreakLabel(customCircuitSettings), "Pontos → Vitórias → Total de Games → Saldo de games → Sorteio", "O texto do desempate por pontos foi alterado.");
 const circuitDrawSettings = {
   ...customCircuitSettings,
   tieBreakDrawOrder: ["bia", "ana"],
@@ -1133,7 +1137,7 @@ assert.equal(getUnresolvedCircuitTieGroups([{ rows: tiedCircuitRows }], customCi
 assert.equal(getUnresolvedCircuitTieGroups([{ rows: tiedCircuitRows }], circuitDrawSettings).length, 0, "Um empate já sorteado continua aparecendo como pendente.");
 assert.deepEqual(
   getCircuitPlacementColumns(customCircuitSettings, { includeManual: true }).map((column) => column.key),
-  ["circuitPoints", "w", "bestStagePoints", "pts", "bal", "played", "tournaments"],
+  ["circuitPoints", "w", "pts", "bal", "played", "tournaments"],
   "As colunas do ranking por pontos foram alteradas."
 );
 assert.deepEqual(
@@ -3016,12 +3020,11 @@ assert.ok(
 );
 assert.ok(mainSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
 assert.ok(
-  circuitRankingSettingsPanelSource.includes("function CircuitTournamentFormatSelector")
-    && circuitRankingSettingsPanelSource.includes("Classificação final")
-    && circuitRankingSettingsPanelSource.includes("Fases alcançadas")
-    && mainSource.includes("getCircuitCompatibleTournaments")
-    && mainSource.includes("getTournamentCircuitFormat"),
-  "O circuito não separa classificação final e fases alcançadas antes da escolha dos torneios."
+  !circuitRankingSettingsPanelSource.includes("function CircuitTournamentFormatSelector")
+    && !mainSource.includes("getCircuitCompatibleTournaments")
+    && mainSource.includes("Torneios do circuito")
+    && circuitRankingSettingsPanelSource.includes("Todas as modalidades podem participar do mesmo circuito"),
+  "O circuito ainda restringe a mistura de modalidades ou não explica o cálculo automático de cada etapa."
 );
 assert.ok(
   circuitRankingSettingsSource.includes("const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140]")
@@ -3031,22 +3034,20 @@ assert.ok(
   "A pontuação por classificação final não limita os campos individuais ao 10º lugar ou não pontua as demais colocações."
 );
 assert.ok(
-  circuitRankingSettingsSource.includes("return unique.slice(0, 2)")
-    && !mainSource.includes('{ value: "none", label: "Sem critério adicional"')
-    && styleSource.includes("grid-template-columns: repeat(2, minmax(0, 1fr))"),
-  "O ranking do circuito ainda permite um terceiro critério de desempate."
+  circuitRankingSettingsSource.includes('return ["wins", "totalGames", "balance"]')
+    && getCircuitTieBreakLabel({ mode: "placement" }) === "Pontos → Vitórias → Total de Games → Saldo de games → Sorteio"
+    && getCircuitTieBreakLabel({ mode: "performance" }) === "Vitórias → Total de Games → Saldo de games → Sorteio",
+  "O ranking do circuito não usa a ordem universal com e sem pontuação."
 );
 assert.ok(
-  circuitRankingSettingsPanelSource.includes("tournamentFormat === circuitTournamentFormats.placement ? <section>")
-    && circuitRankingSettingsPanelSource.includes("tournamentFormat === circuitTournamentFormats.cup ? <section>")
+  circuitRankingSettingsPanelSource.includes("Pontuação por classificação final")
+    && circuitRankingSettingsPanelSource.includes("Pontuação por fases alcançadas")
     && circuitRankingSettingsPanelSource.includes("Disputas paralelas")
-    && circuitRankingSettingsPanelSource.includes("nunca pontuam"),
-  "As configurações exclusivas de cada formato ou a explicação das disputas paralelas estão incompletas."
+    && circuitRankingSettingsPanelSource.includes("Nenhuma disputa paralela concede pontos"),
+  "As duas tabelas de pontos ou a exclusão das disputas paralelas estão incompletas."
 );
 assert.ok(
-  circuitRankingSettingsPanelSource.includes('className="circuitChoiceCheck circuitFormatCheck"')
-    && circuitRankingSettingsPanelSource.includes('className="circuitChoiceCheck"')
-    && styleSource.includes(".circuitFormatOptions button:is(.selected, [aria-checked=\"true\"])")
+  circuitRankingSettingsPanelSource.includes('className="circuitChoiceCheck"')
     && styleSource.includes(".circuitChoiceCheck")
     && styleSource.includes("var(--ui-surface-raised)"),
   "Os cartões de escolha não seguem a seleção com quadradinho, lilás e contraste nos dois temas."
@@ -3082,6 +3083,15 @@ assert.ok(
     && rankingShareExportSource.includes('paginateRankingGroups(normalizedGroups')
     && styleSource.includes('.rankingExportOverlay'),
   "O ranking não apresenta exportação paginada para imagem, impressão e download."
+);
+assert.ok(
+  rankingShareButtonSource.includes("Baixar planilha editável (.xlsx)")
+    && rankingShareButtonSource.includes("downloadRankingWorkbook(config)")
+    && rankingWorkbookExportSource.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    && rankingWorkbookExportSource.includes("TORNEIO360_LOGO")
+    && rankingWorkbookExportSource.includes("workbookGroups")
+    && mainSource.includes("editableWorkbook: true"),
+  "O ranking do circuito não oferece uma planilha XLSX editável, identificada e separada por tabela."
 );
 assert.ok(
   rankingShareButtonSource.includes("export default function RankingShareButton")
@@ -3373,11 +3383,10 @@ assert.ok(
     && mainSource.includes("function calculateCircuitPlacementRows")
     && circuitRankingSettingsPanelSource.includes("function CircuitRankingSettingsEditor")
     && circuitRankingSettingsPanelSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
-    && circuitRankingSettingsPanelSource.includes('className="circuitTieBreakOrder"')
     && circuitRankingSettingsPanelSource.includes("getCircuitTieBreakLabel(settings)")
     && tournamentRankingSource.includes('const mainBracketGames = (data.brackets || []).filter((game) => game.phase === "main")')
     && styleSource.includes('button:is(.selected, [aria-checked="true"])')
-    && circuitRankingSettingsPanelSource.includes("Não concedem pontos e nenhum resultado, vitória, game, saldo, título ou colocação das paralelas participa"),
+    && circuitRankingSettingsPanelSource.includes("Não concedem pontos e nenhum resultado, vitória, game ou saldo participa do ranking"),
   "O ranking configurável não exclui as paralelas ou perdeu sua configuração explicativa."
 );
 assert.ok(

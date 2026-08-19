@@ -18215,6 +18215,18 @@ html[data-theme="dark"] .circuitChoiceCheck { border-color: #475569; background:
   color: var(--ui-text-strong, #09182e);
 }
 
+.rankingExportActions > button.workbook {
+  border: 1px solid #15803d;
+  background: linear-gradient(135deg, #15803d, #16a34a);
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .rankingExportActions > button.workbook {
+  border-color: #4ade80;
+  background: linear-gradient(135deg, #14532d, #15803d);
+  color: #f0fdf4;
+}
+
 .rankingExportActions svg {
   width: 18px;
   height: 18px;
