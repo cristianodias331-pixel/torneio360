@@ -3023,7 +3023,42 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         return null;
       }
 
-      const rankingHistory = normalizeCircuitHistoryRows(data || []);
+      let rankingHistory = normalizeCircuitHistoryRows(data || []);
+
+      // Circuitos criados antes da tabela derivada de ranking podem possuir
+      // torneios e placares completos, mas nenhum registro histórico ainda.
+      // Nesse caso, reconstrói apenas o dado derivado a partir dos snapshots
+      // completos. Os torneios, rodadas, chaves e placares não são regravados.
+      if (
+        Object.keys(rankingHistory).length === 0
+        && normalizeCircuitTournamentIds(existingCircuit.tournamentIds).length > 0
+      ) {
+        const selectedTournamentIds = normalizeCircuitTournamentIds(existingCircuit.tournamentIds);
+        const hydratedRows = await loadFullTournamentRows(selectedTournamentIds, { silentError: true });
+        const hydratedById = new Map(
+          hydratedRows.map((tournament) => [String(tournament.id), tournament])
+        );
+        const completeTournamentSource = selectedTournamentIds
+          .map((id) => hydratedById.get(String(id)))
+          .filter((tournament) => tournament && !isTournamentSummary(tournament));
+        const allSelectedTournamentsLoaded = completeTournamentSource.length === selectedTournamentIds.length;
+
+        if (allSelectedTournamentsLoaded) {
+          const rebuiltHistory = buildCircuitRankingHistory(existingCircuit, completeTournamentSource);
+          if (Object.keys(rebuiltHistory).length > 0) {
+            rankingHistory = rebuiltHistory;
+            const historySaved = await saveCircuitHistoryToSupabase(
+              existingCircuit.id,
+              rebuiltHistory,
+              completeTournamentSource
+            );
+            if (!historySaved) {
+              console.warn("O ranking legado foi reconstruído para exibição, mas será persistido novamente na próxima sincronização.");
+            }
+          }
+        }
+      }
+
       circuitHistoryLoadedIdsRef.current.add(normalizedCircuitId);
       circuitRankingViewCacheRef.current.delete(normalizedCircuitId);
       const nextCircuits = circuitsRef.current.map((circuit) => (
