@@ -41,14 +41,36 @@ export function mergeRealtimeTournamentRow(existing, incoming) {
   if (!incoming) return existing;
   if (compareCollaborationVersions(incoming, existing) < 0) return existing;
 
-  const incomingHasCompleteData = incoming.data
+  const incomingIsSummary = incoming.__summary === true;
+  const existingIsSummary = existing.__summary === true;
+  const incomingHasCompleteData = !incomingIsSummary
+    && incoming.data
     && typeof incoming.data === "object"
     && !Array.isArray(incoming.data)
     && Object.keys(incoming.data).length > 0;
+  const existingHasData = existing.data
+    && typeof existing.data === "object"
+    && !Array.isArray(existing.data);
+  const incomingHasData = incoming.data
+    && typeof incoming.data === "object"
+    && !Array.isArray(incoming.data);
 
-  return {
+  const mergedData = incomingHasCompleteData
+    ? incoming.data
+    : incomingIsSummary && !existingIsSummary && existingHasData && incomingHasData
+      ? { ...existing.data, ...incoming.data }
+      : existing.data;
+
+  const merged = {
     ...existing,
     ...incoming,
-    data: incomingHasCompleteData ? incoming.data : existing.data,
+    data: mergedData,
   };
+  if (Object.prototype.hasOwnProperty.call(existing, "__summary")
+    || Object.prototype.hasOwnProperty.call(incoming, "__summary")) {
+    merged.__summary = incomingHasCompleteData
+      ? false
+      : existingIsSummary;
+  }
+  return merged;
 }

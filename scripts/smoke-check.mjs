@@ -4037,6 +4037,29 @@ assert.deepEqual(
   { id: "torneio", revision: 8, name: "Atualizado", data: { score: 6 } },
   "Uma atualização parcial apagou os dados completos já carregados."
 );
+assert.deepEqual(
+  mergeRealtimeTournamentRow(
+    {
+      id: "torneio",
+      revision: 7,
+      data: { schedule: [[{ s1: 4, s2: 2 }]], eventName: "Antes" },
+      __summary: false,
+    },
+    {
+      id: "torneio",
+      revision: 8,
+      data: { eventName: "Depois" },
+      __summary: true,
+    }
+  ),
+  {
+    id: "torneio",
+    revision: 8,
+    data: { schedule: [[{ s1: 4, s2: 2 }]], eventName: "Depois" },
+    __summary: false,
+  },
+  "Um resumo mais novo apagou jogos e placares completos já carregados."
+);
 assert.equal(tournamentDataEquals({ score: 6 }, { score: 6 }), true, "Dados idênticos deixaram de ser reconhecidos.");
 assert.equal(
   tournamentMutationDataEquals(
