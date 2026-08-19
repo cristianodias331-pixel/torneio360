@@ -24831,15 +24831,18 @@ html[data-theme="dark"] .proDashboard.playAppShell button.mobileTournamentSwitch
 .tournamentLifecycleBadge.upcoming { color: #166534 !important; background: #dcfce7 !important; border-color: #86efac !important; }
 .tournamentStatusSummary .finished,
 .tournamentLifecycleBadge.finished { color: #c2410c !important; background: #ffedd5 !important; border-color: #fdba74 !important; }
+.tournamentStatusSummary .combined { color: #1d4ed8 !important; background: #dbeafe !important; border-color: #93c5fd !important; }
 .tournamentStatusSummary button { cursor: pointer; transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
 .tournamentStatusSummary button:hover { transform: translateY(-1px); }
 .tournamentStatusSummary button.selected { color: #ffffff !important; box-shadow: 0 0 0 3px rgba(255, 255, 255, .75), 0 8px 18px rgba(15, 23, 42, .18) !important; }
 .tournamentStatusSummary button.active.selected { background: #8b5cf6 !important; border-color: #a78bfa !important; }
 .tournamentStatusSummary button.upcoming.selected { background: #22c55e !important; border-color: #4ade80 !important; }
 .tournamentStatusSummary button.finished.selected { background: #fb923c !important; border-color: #fdba74 !important; }
+.tournamentStatusSummary button.combined.selected { background: #2563eb !important; border-color: #60a5fa !important; }
 .proDashboard.playAppShell .tournamentStatusSummary > button.active:not(.selected) { color: #6d28d9 !important; background: #f3e8ff !important; border-color: #c4b5fd !important; }
 .proDashboard.playAppShell .tournamentStatusSummary > button.upcoming:not(.selected) { color: #166534 !important; background: #dcfce7 !important; border-color: #86efac !important; }
 .proDashboard.playAppShell .tournamentStatusSummary > button.finished:not(.selected) { color: #c2410c !important; background: #ffedd5 !important; border-color: #fdba74 !important; }
+.proDashboard.playAppShell .tournamentStatusSummary > button.combined:not(.selected) { color: #1d4ed8 !important; background: #dbeafe !important; border-color: #93c5fd !important; }
 .eventStatusEmpty { margin: 18px 0 4px; padding: 16px; border: 1px dashed #cbd5e1; border-radius: 14px; color: #64748b; text-align: center; }
 .proDashboard .tournamentTitleRow { align-items: center; }
 .proDashboard .tournamentLifecycleBadge { width: max-content; min-height: 25px; padding: 4px 8px; font-size: .66rem; }
@@ -24911,6 +24914,8 @@ html[data-theme="dark"] .tournamentStatusSummary button.upcoming:not(.selected),
 .proDashboard.theme-dark .tournamentStatusSummary button.upcoming:not(.selected) { color: #bbf7d0 !important; background: rgba(34, 197, 94, .16) !important; border-color: #16a34a !important; }
 html[data-theme="dark"] .tournamentStatusSummary button.finished:not(.selected),
 .proDashboard.theme-dark .tournamentStatusSummary button.finished:not(.selected) { color: #fed7aa !important; background: rgba(251, 146, 60, .17) !important; border-color: #ea580c !important; }
+html[data-theme="dark"] .tournamentStatusSummary button.combined:not(.selected),
+.proDashboard.theme-dark .tournamentStatusSummary button.combined:not(.selected) { color: #bfdbfe !important; background: rgba(37, 99, 235, .2) !important; border-color: #3b82f6 !important; }
 html[data-theme="dark"] .eventStatusEmpty,
 .proDashboard.theme-dark .eventStatusEmpty { border-color: #3b5069; color: #aebed2; }
 html[data-theme="dark"] .categoryScheduleItem.categoryTournamentCard,
@@ -24945,6 +24950,8 @@ html[data-theme="dark"] .circuitManagerPage .circuitItem.expanded .circuitItemSu
   .categoryScheduleActions button { flex: 1; }
   .tournamentStatusSummary { display: grid; grid-template-columns: 1fr 1fr; }
   .tournamentStatusSummary .finished { grid-column: 1 / -1; justify-content: center; }
+  .circuitStatusSummary .finished,
+  .circuitStatusSummary .combined { grid-column: auto; justify-content: center; }
   .publicCircuitStageGrid article { grid-template-columns: 1fr; }
   .publicCircuitStageGrid button { grid-row: auto; grid-column: auto; width: 100%; }
   .appUpdateNotice { grid-template-columns: 1fr 1fr; }
@@ -24958,11 +24965,58 @@ html[data-theme="dark"] .circuitManagerPage .circuitItem.expanded .circuitItemSu
 .circuitStageList button { display: grid; gap: 4px; text-align: left; padding: 13px 15px; border: 1px solid #cfdded; border-radius: 14px; background: #ffffff; color: #10213a; cursor: pointer; }
 .circuitStageList button span { font-weight: 950; }
 .circuitStageList button small { color: #64748b; }
+.combinedCircuitItem .circuitMonogram {
+  background: linear-gradient(145deg, #2563eb, #06b6d4) !important;
+  color: #ffffff !important;
+}
+.combinedCircuitItem > .circuitItemSummary { box-shadow: inset 4px 0 0 #2563eb; }
+.combinedCircuitSourceList { display: grid; gap: 10px; min-width: 0; }
+.combinedCircuitSourceGroup {
+  overflow: hidden;
+  border: 1px solid #cbdcf1;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+.combinedCircuitSourceGroup > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 15px;
+  color: #10213a;
+  cursor: pointer;
+  list-style: none;
+}
+.combinedCircuitSourceGroup > summary::-webkit-details-marker { display: none; }
+.combinedCircuitSourceIdentity { display: grid; gap: 3px; min-width: 0; }
+.combinedCircuitSourceIdentity strong { overflow: hidden; font-size: .94rem; text-overflow: ellipsis; white-space: nowrap; }
+.combinedCircuitSourceIdentity small { color: #64748b; font-size: .75rem; font-weight: 800; }
+.combinedCircuitSourceMeta { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.combinedCircuitSourceChevron { display: inline-flex; color: #2563eb; transition: transform .18s ease; }
+.combinedCircuitSourceChevron svg { width: 18px; height: 18px; }
+.combinedCircuitSourceGroup[open] .combinedCircuitSourceChevron { transform: rotate(180deg); }
+.combinedCircuitStageList { padding: 12px; border-top: 1px solid #d9e5f2; background: #eef5fd; }
+.combinedCircuitSourceGroup > p { margin: 0; padding: 12px 15px; border-top: 1px solid #d9e5f2; color: #64748b; }
 html[data-theme="dark"] .circuitStageList button,
 .proDashboard.theme-dark .circuitStageList button { background: #152335; border-color: #344b65; color: #f8fafc; }
 html[data-theme="dark"] .circuitStageList button small,
 .proDashboard.theme-dark .circuitStageList button small { color: #b4c2d4; }
+html[data-theme="dark"] .combinedCircuitSourceGroup,
+.proDashboard.theme-dark .combinedCircuitSourceGroup { background: #101b29; border-color: #30445c; }
+html[data-theme="dark"] .combinedCircuitSourceGroup > summary,
+.proDashboard.theme-dark .combinedCircuitSourceGroup > summary { color: #f8fafc; }
+html[data-theme="dark"] .combinedCircuitSourceIdentity small,
+.proDashboard.theme-dark .combinedCircuitSourceIdentity small { color: #aebed2; }
+html[data-theme="dark"] .combinedCircuitStageList,
+.proDashboard.theme-dark .combinedCircuitStageList { background: #0d1724; border-top-color: #30445c; }
+html[data-theme="dark"] .combinedCircuitSourceGroup > p,
+.proDashboard.theme-dark .combinedCircuitSourceGroup > p { color: #aebed2; border-top-color: #30445c; }
 @media (max-width: 620px) { .circuitStageList { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .combinedCircuitSourceGroup > summary { align-items: flex-start; }
+  .combinedCircuitSourceMeta .circuitStatus { display: none; }
+}
 
 /* Presença: não herda a ação azul global em nenhum tema. */
 .proDashboard.playAppShell:not(.theme-dark) button.confirmAllParticipantsBtn,

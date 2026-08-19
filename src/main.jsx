@@ -2834,14 +2834,24 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const isolatedTournaments = groupedTournaments.flatMap((group) => (
     group.items.length === 1 && group.items[0]?.data?.multiCategoryEvent !== true ? group.items : []
   ));
+  const isCombinedCircuitEntry = (circuit) => (
+    normalizeCircuitRankingSettings(circuit?.rankingSettings).sourceCircuitIds.length > 0
+  );
   const circuitLifecycleCounts = circuits.reduce((counts, circuit) => {
+    if (isCombinedCircuitEntry(circuit)) return counts;
     const status = getCircuitLifecycleStatus(circuit);
     counts[status] += 1;
     return counts;
   }, { active: 0, upcoming: 0, finished: 0 });
+  const combinedCircuitCount = circuits.filter(isCombinedCircuitEntry).length;
   const normalizedCircuitSearch = normalizeModalitySearch(circuitSearch);
   const visibleOrganizerCircuits = circuits.filter((circuit) => {
-    if (getCircuitLifecycleStatus(circuit) !== circuitStatusFilter) return false;
+    const combined = isCombinedCircuitEntry(circuit);
+    if (circuitStatusFilter === "combined") {
+      if (!combined) return false;
+    } else if (combined || getCircuitLifecycleStatus(circuit) !== circuitStatusFilter) {
+      return false;
+    }
     if (!normalizedCircuitSearch) return true;
 
     const selectedTournaments = getCircuitSelectedTournaments(circuit);
@@ -8344,6 +8354,9 @@ setNewPublicInfo({
         <button type="button" className={`finished ${circuitStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "finished"} onClick={() => setCircuitStatusFilter("finished")}>
           <strong>{circuitLifecycleCounts.finished}</strong> Encerrados
         </button>
+        <button type="button" className={`combined ${circuitStatusFilter === "combined" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "combined"} onClick={() => setCircuitStatusFilter("combined")}>
+          <strong>{combinedCircuitCount}</strong> <span aria-hidden="true">∑</span> Circuitos somados
+        </button>
         <label className="eventListSearch platformUnifiedSearch">
           <Search aria-hidden="true" />
           <input
@@ -8359,13 +8372,19 @@ setNewPublicInfo({
       {circuits.length === 0 ? (
         <p>Nenhum circuito criado ainda.</p>
       ) : visibleOrganizerCircuits.length === 0 ? (
-        <p className="eventStatusEmpty">{circuitSearch.trim() ? `Nenhum circuito encontrado para “${circuitSearch.trim()}”.` : `Nenhum circuito ${circuitStatusFilter === "active" ? "em andamento" : circuitStatusFilter === "upcoming" ? "próximo" : "encerrado"}.`}</p>
+        <p className="eventStatusEmpty">{circuitSearch.trim() ? `Nenhum circuito encontrado para “${circuitSearch.trim()}”.` : circuitStatusFilter === "combined" ? "Nenhum circuito somado criado ainda." : `Nenhum circuito ${circuitStatusFilter === "active" ? "em andamento" : circuitStatusFilter === "upcoming" ? "próximo" : "encerrado"}.`}</p>
       ) : visibleOrganizerCircuits.map((circuit) => {
         const selectedNames = getCircuitSelectedTournaments(circuit);
         const circuitStatus = getCircuitLifecycleStatus(circuit);
+        const circuitRankingSettings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+        const sourceCircuitIds = circuitRankingSettings.sourceCircuitIds;
+        const combinedCircuit = sourceCircuitIds.length > 0;
+        const sourceCircuits = sourceCircuitIds
+          .map((sourceId) => circuits.find((item) => String(item.id) === String(sourceId)))
+          .filter(Boolean);
         const isExpanded = expandedCircuitId === circuit.id;
         return (
-          <article className={`circuitItem ${isExpanded ? "expanded" : ""}`} key={circuit.id}>
+          <article className={`circuitItem ${combinedCircuit ? "combinedCircuitItem" : ""} ${isExpanded ? "expanded" : ""}`} key={circuit.id}>
             <button
               type="button"
               className="circuitItemSummary"
@@ -8373,7 +8392,7 @@ setNewPublicInfo({
               onClick={() => { const nextId = isExpanded ? null : circuit.id; setExpandedCircuitId(nextId); scheduleUserAppStateSave({ circuitId: nextId, activePanel: "circuitos" }); }}
             >
               <div className="circuitSummaryIdentity">
-                <span className="circuitMonogram">CIR</span>
+                <span className="circuitMonogram">{combinedCircuit ? "∑" : "CIR"}</span>
                 <div className="circuitItemMain">
                   <div className="circuitTitleLine">
                     <h3>{circuit.name}</h3>
@@ -8382,7 +8401,11 @@ setNewPublicInfo({
                     </span>
                   </div>
                   <p><CalendarDays aria-hidden="true" /> {circuit.startDate ? formatDateBR(circuit.startDate) : "Sem início"} até {circuit.endDate ? formatDateBR(circuit.endDate) : "sem fim definido"}</p>
-                  <small>{selectedNames.length} torneio(s) · {selectedNames.length ? selectedNames.map((t) => t.data?.eventName || t.name).join(", ") : "nenhum selecionado"}</small>
+                  <small>
+                    {combinedCircuit
+                      ? `${sourceCircuits.length} circuito(s) de origem · ${selectedNames.length} torneio(s) consolidados`
+                      : `${selectedNames.length} torneio(s) · ${selectedNames.length ? selectedNames.map((t) => t.data?.eventName || t.name).join(", ") : "nenhum selecionado"}`}
+                  </small>
                 </div>
               </div>
               <span className="circuitExpandIcon" aria-hidden="true"><ChevronDown /></span>
@@ -8397,8 +8420,43 @@ setNewPublicInfo({
 
             {isExpanded ? (
               <section className="circuitStagesSummary">
-                <div><span>Etapas</span><h4>Torneios do circuito</h4></div>
-                {selectedNames.length ? (
+                <div><span>{combinedCircuit ? "Consolidação" : "Etapas"}</span><h4>{combinedCircuit ? "Circuitos de origem" : "Torneios do circuito"}</h4></div>
+                {combinedCircuit ? (
+                  sourceCircuits.length ? (
+                    <div className="combinedCircuitSourceList">
+                      {sourceCircuits.map((sourceCircuit) => {
+                        const sourceTournaments = sortTournamentsChronologically(getCircuitSelectedTournaments(sourceCircuit));
+                        const sourceStatus = getCircuitLifecycleStatus(sourceCircuit);
+                        return (
+                          <details className="combinedCircuitSourceGroup" key={sourceCircuit.id}>
+                            <summary>
+                              <span className="combinedCircuitSourceIdentity">
+                                <strong>{sourceCircuit.name}</strong>
+                                <small>{sourceTournaments.length} torneio(s)</small>
+                              </span>
+                              <span className="combinedCircuitSourceMeta">
+                                <span className={`circuitStatus circuitStatus-${sourceStatus}`}>
+                                  {sourceStatus === "finished" ? "Encerrado" : sourceStatus === "upcoming" ? "Próximo" : "Em andamento"}
+                                </span>
+                                <span className="combinedCircuitSourceChevron" aria-hidden="true"><ChevronDown /></span>
+                              </span>
+                            </summary>
+                            {sourceTournaments.length ? (
+                              <div className="circuitStageList combinedCircuitStageList">
+                                {sourceTournaments.map((tournament) => (
+                                  <button type="button" key={tournament.id} onClick={() => openTournament(tournament)}>
+                                    <span>{tournament.name}</span>
+                                    <small>{getModalityDisplayName(tournament.type)} · {formatDateBR(tournament.data?.eventDate)}</small>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : <p>Nenhum torneio vinculado a este circuito.</p>}
+                          </details>
+                        );
+                      })}
+                    </div>
+                  ) : <p>Nenhum circuito de origem disponível.</p>
+                ) : selectedNames.length ? (
                   <div className="circuitStageList">
                     {sortTournamentsChronologically(selectedNames).map((tournament) => (
                       <button type="button" key={tournament.id} onClick={() => openTournament(tournament)}>
