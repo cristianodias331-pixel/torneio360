@@ -563,6 +563,9 @@ const serverRevisionMigration = readFileSync(serverRevisionMigrationUrl, "utf8")
 const tournamentHistoryMigrationUrl = new URL("supabase/migrations/202608190001_tournament_data_history.sql", root);
 assert.ok(existsSync(fileURLToPath(tournamentHistoryMigrationUrl)), "A migração do histórico de dados dos torneios está ausente.");
 const tournamentHistoryMigration = readFileSync(tournamentHistoryMigrationUrl, "utf8");
+const tournamentGuardMigrationUrl = new URL("supabase/migrations/202608190002_tournament_critical_data_guard.sql", root);
+assert.ok(existsSync(fileURLToPath(tournamentGuardMigrationUrl)), "A proteção atômica dos torneios está ausente.");
+const tournamentGuardMigration = readFileSync(tournamentGuardMigrationUrl, "utf8");
 const circuitScoringMigrationUrl = new URL("supabase/migrations/202608120001_circuit_scoring_models.sql", root);
 assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração dos modelos de pontuação dos circuitos está ausente.");
 const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
@@ -3657,7 +3660,8 @@ assert.ok(
   mainSource.includes('.channel(`torneio360-collaboration-${user.id}`)')
     && mainSource.includes('"postgres_changes"')
     && mainSource.includes("syncPendingTournamentDrafts")
-    && mainSource.includes('.eq("updated_at", expectedUpdatedAt)'),
+    && mainSource.includes("p_expected_revision: serverRevision")
+    && mainSource.includes('.eq("revision", serverRevision)'),
   "Alterações simultâneas ainda podem sobrescrever uma versão mais nova sem sincronização."
 );
 assert.ok(
@@ -3813,6 +3817,61 @@ assert.equal(
   preservesTournamentCriticalData(super20LocalData, unsafeSuper20Repair),
   false,
   "Uma reparação que apaga placar do Super 20 precisa ser bloqueada."
+);
+const missingUnscoredGame = structuredClone(super20BaseData);
+missingUnscoredGame.schedule[0].pop();
+const missingGameSafety = inspectTournamentScoreRegression(super20BaseData, missingUnscoredGame);
+assert.equal(
+  missingGameSafety.unsafe,
+  true,
+  "Uma versão parcial não pode remover nem mesmo um jogo que ainda não recebeu placar."
+);
+assert.equal(missingGameSafety.removedGames, 1);
+const missingRoundData = structuredClone(super20BaseData);
+missingRoundData.schedule = [missingRoundData.schedule.flat()];
+const missingRoundSafety = inspectTournamentScoreRegression(super20BaseData, missingRoundData);
+assert.equal(
+  missingRoundSafety.removedRounds > 0,
+  true,
+  "Uma versão nova não pode reduzir silenciosamente as rodadas já salvas."
+);
+const duplicateGameBefore = {
+  schedule: [[
+    { team1: ["Ana"], team2: ["Bia"], s1: 4, s2: 2 },
+    { team1: ["Ana"], team2: ["Bia"], s1: 4, s2: 1 },
+  ]],
+};
+const duplicateGameAfter = structuredClone(duplicateGameBefore);
+duplicateGameAfter.schedule[0][1].s1 = "";
+duplicateGameAfter.schedule[0][1].s2 = "";
+assert.equal(
+  inspectTournamentScoreRegression(duplicateGameBefore, duplicateGameAfter).removedScores,
+  1,
+  "Dois confrontos iguais devem proteger cada placar separadamente."
+);
+const editedCompletedScore = structuredClone(super20LocalData);
+editedCompletedScore.schedule[2][3].s1 = 4;
+editedCompletedScore.schedule[2][3].s2 = 6;
+assert.equal(
+  inspectTournamentScoreRegression(super20LocalData, editedCompletedScore).unsafe,
+  false,
+  "A proteção não pode impedir a correção normal de um placar preenchido."
+);
+const bracketParticipantProgression = structuredClone(bracketBase);
+bracketParticipantProgression.brackets[0].team1 = ["Eva", "Fabi"];
+assert.equal(
+  inspectTournamentScoreRegression(bracketBase, bracketParticipantProgression).unsafe,
+  false,
+  "A proteção não pode bloquear o preenchimento normal dos participantes de uma chave."
+);
+assert.ok(
+  mainSource.includes('.rpc("save_tournament_snapshot_safe"')
+    && mainSource.includes('inspectTournamentScoreRegression(serverTournament.data, persistedData)')
+    && tournamentGuardMigration.includes("create trigger tournaments_protect_critical_data")
+    && tournamentGuardMigration.includes("TOURNAMENT_CRITICAL_DATA_REGRESSION")
+    && tournamentGuardMigration.includes("count_tournament_rounds")
+    && tournamentGuardMigration.includes("p_allow_critical_reset"),
+  "A gravação ainda não está comparando a nuvem nem protegida atomicamente no banco."
 );
 assert.ok(
   serverRevisionMigration.includes("add column if not exists revision bigint not null default 0")
