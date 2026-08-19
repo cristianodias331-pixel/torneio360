@@ -184,6 +184,7 @@ import {
   defaultCircuitPositionPoints,
   getCircuitCupPlacementKey,
   getCircuitPlacementColumns,
+  getCircuitRankingExportColumns,
   getCircuitPlacementLabel,
   getCircuitTieBreakLabel,
   getCircuitTieSignature,
@@ -1141,9 +1142,15 @@ assert.deepEqual(
   "As colunas do ranking por pontos foram alteradas."
 );
 assert.deepEqual(
-  getCircuitPlacementColumns(customCircuitSettings, { totalsOnly: true }),
-  [{ key: "circuitPoints", label: "Total de pontos" }],
-  "O compartilhamento do ranking por pontos deve exibir somente a pontuação total."
+  getCircuitRankingExportColumns(customCircuitSettings).map((column) => column.key),
+  ["circuitPoints", "w", "pts", "bal", "played", "tournaments"],
+  "A imagem, o PDF e a planilha do circuito por pontos perderam dados do ranking."
+);
+assert.deepEqual(
+  getCircuitRankingExportColumns({ ...customCircuitSettings, mode: "performance", sourceCircuitIds: [] })
+    .map((column) => column.key),
+  ["w", "pts", "bal", "played", "tournaments"],
+  "O circuito sem pontuação não deve exibir uma coluna de pontos."
 );
 const circuitExtraRow = { id: "ana", name: "Ana", circuitPoints: 100, extraPoints: 0 };
 const circuitExtraGroups = { geral: { rows: new Map([["ana", circuitExtraRow]]) } };

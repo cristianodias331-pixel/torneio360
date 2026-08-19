@@ -330,6 +330,7 @@ import {
   defaultCircuitPositionPoints,
   getCircuitManualParticipantKey,
   getCircuitPlacementColumns,
+  getCircuitRankingExportColumns,
   getCircuitTieBreakLabel,
   getCircuitTieSignature,
   getUnresolvedCircuitTieGroups,
@@ -8373,9 +8374,7 @@ setNewPublicInfo({
               const toolsExpanded = String(expandedCircuitToolsId || "") === normalizedCircuitId;
               const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings, { includeManual: true }) : null;
-              const sharedPlacementColumns = placementMode
-                ? getCircuitPlacementColumns(rankingSettings, { totalsOnly: true })
-                : null;
+              const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
               const unresolvedTieGroups = getUnresolvedCircuitTieGroups(circuitRankingGroups, rankingSettings);
               const circuitCriteriaLabel = getCircuitTieBreakLabel(rankingSettings, { compact: true });
@@ -8385,13 +8384,13 @@ setNewPublicInfo({
                 arenaName: organizerProfile.arenaName || organizerProfile.organizerName || "Arena Torneio360",
                 arenaPhotoUrl: organizerProfile.photoUrl || "",
                 rankingCriteria: effectiveCircuitCriteria,
-                columns: sharedPlacementColumns,
+                columns: circuitExportColumns,
                 criteriaLabel: circuitCriteriaLabel,
                 groups: [group],
                 editableWorkbook: true,
                 workbookTitle: `${circuit.name} - ${group.title}`,
                 workbookGroups: [group],
-                workbookColumns: placementColumns,
+                workbookColumns: circuitExportColumns,
                 buttonLabel: group.key === "masculino"
                   ? "Compartilhar masculino"
                   : group.key === "feminino"
@@ -12446,9 +12445,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
     : allRankingGroups;
   const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
-  const sharedPlacementColumns = placementMode
-    ? getCircuitPlacementColumns(rankingSettings, { totalsOnly: true })
-    : null;
+  const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
   const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
   const circuitCriteriaLabel = getCircuitTieBreakLabel(rankingSettings, { compact: true });
   const arenaName = organizer.arenaName || "Arena Torneio360";
@@ -12462,13 +12459,13 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
     arenaName,
     arenaPhotoUrl: organizer.photoUrl || "",
     rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria,
-    columns: sharedPlacementColumns,
+    columns: circuitExportColumns,
     criteriaLabel: circuitCriteriaLabel,
     groups: [group],
     editableWorkbook: true,
     workbookTitle: `${circuit?.name || "Ranking do circuito"} - ${group.title}`,
     workbookGroups: [group],
-    workbookColumns: placementColumns,
+    workbookColumns: circuitExportColumns,
     buttonLabel: group.key === "masculino"
       ? "Compartilhar masculino"
       : group.key === "feminino"
