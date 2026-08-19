@@ -50,8 +50,7 @@ export function buildCircuitRankingGroups({
     feminino: { key: "feminino", title: "Ranking Feminino", rows: new Map() },
   };
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement
-    || rankingSettings.sourceCircuitIds.length > 0;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
   if (placementMode) groups.geral.title = "Ranking geral por pontos";
 
   const sourceCircuitIds = rankingSettings.sourceCircuitIds;
@@ -205,8 +204,7 @@ export function buildCircuitRankingGroupsFromRecords({
   modalityConfigs = {},
 }) {
   const rankingSettings = normalizeCircuitRankingSettings(settings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement
-    || rankingSettings.sourceCircuitIds.length > 0;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
   const tournamentById = new Map(
     (tournaments || []).map((tournament) => [String(tournament?.id || ""), tournament])
   );
@@ -320,8 +318,7 @@ export function buildCircuitTournamentRankingRecords({
 }) {
   const records = {};
   const rankingSettings = normalizeCircuitRankingSettings(settings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement
-    || rankingSettings.sourceCircuitIds.length > 0;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
 
   (tournaments || []).forEach((tournament) => {
     const config = modalityConfigs[tournament.type];

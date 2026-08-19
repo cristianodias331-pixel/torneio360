@@ -104,8 +104,7 @@ export function sortCircuitsForDisplay(items) {
 
 export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = true } = {}) {
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings);
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement
-    || rankingSettings.sourceCircuitIds.length > 0;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
   const rankingGroups = (circuit?.ranking_groups || []).map((group) => ({
     ...group,
     rows: [...(group.rows || [])].sort((first, second) => {

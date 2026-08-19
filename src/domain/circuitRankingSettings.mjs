@@ -159,8 +159,7 @@ export function compareCircuitStageScores(first, second) {
 
 export function getCircuitTieSignature(row, settings) {
   const normalized = normalizeCircuitRankingSettings(settings);
-  const placementMode = normalized.mode === circuitRankingModes.placement
-    || normalized.sourceCircuitIds.length > 0;
+  const placementMode = normalized.mode === circuitRankingModes.placement;
   const values = placementMode
     ? [Number(row?.circuitPoints || row?.circuit_points || 0)]
     : [];
@@ -174,8 +173,7 @@ export function getCircuitTieSignature(row, settings) {
 export function getCircuitTieBreakLabel(settings, { compact = false } = {}) {
   void compact;
   const normalized = normalizeCircuitRankingSettings(settings);
-  const placementMode = normalized.mode === circuitRankingModes.placement
-    || normalized.sourceCircuitIds.length > 0;
+  const placementMode = normalized.mode === circuitRankingModes.placement;
   return [
     ...(placementMode ? ["Pontos"] : []),
     "Vitórias",
@@ -237,8 +235,7 @@ export function getCircuitPlacementColumns(settings, { includeManual = false, to
 
 export function getCircuitRankingExportColumns(settings) {
   const normalized = normalizeCircuitRankingSettings(settings);
-  const placementMode = normalized.mode === circuitRankingModes.placement
-    || normalized.sourceCircuitIds.length > 0;
+  const placementMode = normalized.mode === circuitRankingModes.placement;
   return [
     ...(placementMode ? [{ key: "circuitPoints", label: "Total de pontos" }] : []),
     { key: "w", label: "Vitórias" },

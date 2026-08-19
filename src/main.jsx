@@ -2206,6 +2206,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   });
   const [circuitEditForm, setCircuitEditForm] = useState(null);
   const [combinedCircuitForm, setCombinedCircuitForm] = useState({ name: "", sourceCircuitIds: [] });
+  const [combinedCircuitSaving, setCombinedCircuitSaving] = useState(false);
   const [circuitDeleteTarget, setCircuitDeleteTarget] = useState(null);
   const [trashCategory, setTrashCategory] = useState("tournaments");
   const [trashSearch, setTrashSearch] = useState("");
@@ -3451,9 +3452,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         );
         return false;
       }
-      effectiveTournamentSource = tournamentsRef.current.map((tournament) => (
-        fullTournamentRowsById.get(String(tournament.id)) || tournament
-      ));
+      const effectiveTournamentById = new Map(
+        tournamentsRef.current.map((tournament) => [String(tournament.id), tournament])
+      );
+      fullTournamentRows.forEach((row) => effectiveTournamentById.set(String(row.id), row));
+      effectiveTournamentSource = [...effectiveTournamentById.values()];
     }
 
     if (!isEditing && !ensureArenaProfileReadyForPublication()) return;
@@ -3815,17 +3818,19 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function toggleCombinedCircuitSource(circuitId) {
+    const normalizedCircuitId = String(circuitId);
     setCombinedCircuitForm((previous) => ({
       ...previous,
-      sourceCircuitIds: previous.sourceCircuitIds.includes(circuitId)
-        ? previous.sourceCircuitIds.filter((id) => id !== circuitId)
-        : [...previous.sourceCircuitIds, circuitId],
+      sourceCircuitIds: previous.sourceCircuitIds.some((id) => String(id) === normalizedCircuitId)
+        ? previous.sourceCircuitIds.filter((id) => String(id) !== normalizedCircuitId)
+        : [...previous.sourceCircuitIds, normalizedCircuitId],
     }));
   }
 
   async function saveCombinedCircuit() {
-    const selectedSources = combinedCircuitForm.sourceCircuitIds
-      .map((id) => circuits.find((circuit) => String(circuit.id) === String(id)))
+    if (combinedCircuitSaving) return;
+    const selectedSources = normalizeCircuitTournamentIds(combinedCircuitForm.sourceCircuitIds)
+      .map((id) => circuitsRef.current.find((circuit) => String(circuit.id) === String(id)))
       .filter(Boolean);
     if (!combinedCircuitForm.name.trim()) {
       showNotice("warning", "Nome obrigatório", "Digite um nome para o circuito somado.");
@@ -3836,15 +3841,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
     const sourceSettings = selectedSources.map((source) => normalizeCircuitRankingSettings(source.rankingSettings));
-    if (sourceSettings.some((settings) => settings.mode !== circuitRankingModes.placement)) {
-      showNotice("warning", "Circuito sem pontuação", "Para somar circuitos, todos precisam usar o modelo Pontuação por colocação.");
-      return;
-    }
-    const identitySignatures = new Set(sourceSettings.map((settings) => `${settings.identity}:${settings.rankingDivision}`));
-    if (identitySignatures.size > 1) {
-      showNotice("warning", "Rankings incompatíveis", "Os circuitos precisam acumular pontos do mesmo modo: individual, dupla ou masculino/feminino.");
-      return;
-    }
     const tournamentOwners = new Map();
     for (const source of selectedSources) {
       for (const tournamentId of source.tournamentIds || []) {
@@ -3857,25 +3853,50 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       }
     }
     const dates = selectedSources.flatMap((source) => [source.startDate, source.endDate]).filter(Boolean).sort();
-    const base = sourceSettings[0];
-    const created = await saveCircuit({
-      id: null,
-      name: combinedCircuitForm.name.trim(),
-      startDate: dates[0] || getBrazilTodayISO(),
-      endDate: dates[dates.length - 1] || getBrazilTodayISO(),
-      tournamentIds: [...tournamentOwners.keys()],
-      rankingCriteria: getCircuitEffectiveCriteria(selectedSources[0]),
-      rankingCriteriaMode: "manual",
-      rankingSettings: normalizeCircuitRankingSettings({
-        ...base,
-        sourceCircuitIds: selectedSources.map((source) => source.id),
-        extraPoints: [],
-        manualParticipants: [],
-      }),
-    });
-    if (created) {
-      setCombinedCircuitForm({ name: "", sourceCircuitIds: [] });
-      setCombineCircuitsOpen(false);
+    const placementSourceIndex = sourceSettings.findIndex((settings) => settings.mode === circuitRankingModes.placement);
+    const base = sourceSettings[placementSourceIndex >= 0 ? placementSourceIndex : 0];
+    const combinedMode = placementSourceIndex >= 0
+      ? circuitRankingModes.placement
+      : circuitRankingModes.performance;
+    const combinedIdentity = sourceSettings.every((settings) => settings.identity === "team")
+      ? "team"
+      : "individual";
+    const combinedRankingDivision = combinedIdentity === "individual"
+      && sourceSettings.some((settings) => settings.rankingDivision === "gender")
+      ? "gender"
+      : "general";
+    const combinedGenderRegistry = mergeParticipantGenderRegistries(
+      getArenaParticipantGenderRegistry(),
+      ...sourceSettings.map((settings) => settings.genderRegistry)
+    );
+
+    setCombinedCircuitSaving(true);
+    try {
+      const created = await saveCircuit({
+        id: null,
+        name: combinedCircuitForm.name.trim(),
+        startDate: dates[0] || getBrazilTodayISO(),
+        endDate: dates[dates.length - 1] || getBrazilTodayISO(),
+        tournamentIds: [...tournamentOwners.keys()],
+        rankingCriteria: getCircuitEffectiveCriteria(selectedSources[0]),
+        rankingCriteriaMode: "manual",
+        rankingSettings: normalizeCircuitRankingSettings({
+          ...base,
+          mode: combinedMode,
+          identity: combinedIdentity,
+          rankingDivision: combinedRankingDivision,
+          genderRegistry: combinedGenderRegistry,
+          sourceCircuitIds: selectedSources.map((source) => String(source.id)),
+          extraPoints: [],
+          manualParticipants: [],
+        }),
+      });
+      if (created) {
+        setCombinedCircuitForm({ name: "", sourceCircuitIds: [] });
+        setCombineCircuitsOpen(false);
+      }
+    } finally {
+      setCombinedCircuitSaving(false);
     }
   }
 
@@ -8210,20 +8231,21 @@ setNewPublicInfo({
         <div className="circuitTournamentPicker">
           <div className="circuitPickerTitle"><strong>Circuitos de origem</strong><span>{combinedCircuitForm.sourceCircuitIds.length} selecionado(s)</span></div>
           <div className="circuitTournamentList combinedCircuitList">
-            {circuits.filter((circuit) => {
+            {circuits.map((circuit) => {
+              const checked = combinedCircuitForm.sourceCircuitIds.some((id) => String(id) === String(circuit.id));
               const settings = normalizeCircuitRankingSettings(circuit.rankingSettings);
-              return settings.sourceCircuitIds.length === 0 && settings.mode === circuitRankingModes.placement;
-            }).map((circuit) => {
-              const checked = combinedCircuitForm.sourceCircuitIds.includes(circuit.id);
-              const settings = normalizeCircuitRankingSettings(circuit.rankingSettings);
+              const lifecycleStatus = getCircuitLifecycleStatus(circuit);
+              const lifecycleLabel = lifecycleStatus === "finished"
+                ? "Encerrado"
+                : lifecycleStatus === "upcoming" ? "Próximo" : "Em andamento";
               return <button type="button" className={`circuitTournamentOption ${checked ? "selected" : ""}`} key={circuit.id} onClick={() => toggleCombinedCircuitSource(circuit.id)}>
                 <span className="circuitCheckVisual">{checked ? "✓" : ""}</span>
-                <span className="circuitTournamentText"><strong>{circuit.name}</strong><small>{settings.identity === "team" ? "Por dupla" : settings.rankingDivision === "gender" ? "Masculino e feminino" : "Individual"} · {(circuit.tournamentIds || []).length} etapa(s)</small></span>
+                <span className="circuitTournamentText"><strong>{circuit.name}</strong><small>{lifecycleLabel} · {settings.identity === "team" ? "Por dupla" : settings.rankingDivision === "gender" ? "Masculino e feminino" : "Individual"} · {(circuit.tournamentIds || []).length} etapa(s)</small></span>
               </button>;
             })}
           </div>
         </div>
-        <div className="circuitFormActions"><button type="button" className="combineCircuitsButton" onClick={() => void saveCombinedCircuit()}>Criar circuito somado</button></div>
+        <div className="circuitFormActions"><button type="button" className="combineCircuitsButton" disabled={combinedCircuitSaving} onClick={() => void saveCombinedCircuit()}>{combinedCircuitSaving ? "Somando circuitos..." : "Criar circuito somado"}</button></div>
       </section>
     </div>
   ) : null}
@@ -8414,7 +8436,7 @@ setNewPublicInfo({
               const circuitRankingGroups = getPersistedCircuitRanking(circuit, effectiveCircuitCriteria);
               const rankingSettings = normalizeCircuitRankingSettings(circuit.rankingSettings);
               const toolsExpanded = String(expandedCircuitToolsId || "") === normalizedCircuitId;
-              const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
+              const placementMode = rankingSettings.mode === circuitRankingModes.placement;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings, { includeManual: true }) : null;
               const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
@@ -12485,7 +12507,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
   const rankingGroups = rankingSettings.rankingDivision === "gender"
     ? allRankingGroups.filter((group) => group.key === "masculino" || group.key === "feminino")
     : allRankingGroups;
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement || rankingSettings.sourceCircuitIds.length > 0;
+  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
   const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
   const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";

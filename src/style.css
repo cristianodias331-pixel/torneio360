@@ -17570,6 +17570,35 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .combinedCircuitNotice { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #8b5cf6 45%, var(--ui-border, #d7e0ec)); border-radius: 14px; background: color-mix(in srgb, #8b5cf6 9%, var(--ui-surface-raised, #fff)); color: var(--ui-text, #334155); font-weight: 700; line-height: 1.45; }
 .combinedCircuitNotice svg { flex: 0 0 18px; width: 18px; }
 .combinedCircuitList button { font: inherit; }
+.combinedCircuitList .circuitTournamentOption {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+.combinedCircuitList .circuitTournamentText strong { color: #0f172a !important; }
+.combinedCircuitList .circuitTournamentText small { color: #64748b !important; }
+.proDashboard.theme-dark .combinedCircuitList .circuitTournamentOption,
+html[data-theme="dark"] .proDashboard .combinedCircuitList .circuitTournamentOption {
+  border-color: #334155 !important;
+  background: #142131 !important;
+  color: #f8fafc !important;
+}
+.proDashboard.theme-dark .combinedCircuitList .circuitTournamentText strong,
+html[data-theme="dark"] .proDashboard .combinedCircuitList .circuitTournamentText strong {
+  color: #f8fafc !important;
+}
+.proDashboard.theme-dark .combinedCircuitList .circuitTournamentText small,
+html[data-theme="dark"] .proDashboard .combinedCircuitList .circuitTournamentText small {
+  color: #cbd5e1 !important;
+}
+.combinedCircuitList .circuitTournamentOption.selected {
+  border-color: #7c3aed !important;
+  background: color-mix(in srgb, #8b5cf6 16%, #ffffff) !important;
+}
+.proDashboard.theme-dark .combinedCircuitList .circuitTournamentOption.selected,
+html[data-theme="dark"] .proDashboard .combinedCircuitList .circuitTournamentOption.selected {
+  background: color-mix(in srgb, #8b5cf6 22%, #142131) !important;
+}
 .circuitGenderDivision { display: grid; gap: 12px; margin-top: 14px; padding: 14px; border: 1px solid var(--ui-border, #d7e0ec); border-radius: 16px; background: var(--ui-surface-muted, #f5f8fc); }
 .circuitStandaloneGenderRegistry {
   display: grid; gap: 12px; margin-top: 16px; padding: 15px;
