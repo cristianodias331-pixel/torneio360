@@ -7,15 +7,12 @@ import {
   applyCircuitExtraPoints,
   applyCircuitManualParticipants,
   circuitRankingModes,
-  circuitTieBreakOptions,
-  compareCircuitStageScores,
-  getCircuitTieBreakOrder,
   normalizeCircuitRankingSettings,
 } from "./circuitRankingSettings.mjs";
 import { calculateCircuitPlacementRowsByConfig } from "./circuitPlacement.mjs";
 import { isCupType, isIndividualCupType, isMixedType } from "./modalityClassification.mjs";
 import { formatParticipantName } from "./participantNames.mjs";
-import { defaultRankingCriteria, getRankingCriteria } from "./rankingCriteria.mjs";
+import { defaultRankingCriteria } from "./rankingCriteria.mjs";
 import { calculateCircuitTournamentRankingRows } from "./tournamentRanking.mjs";
 import {
   getParticipantGender,
@@ -181,29 +178,17 @@ export function buildCircuitRankingGroups({
   applyCircuitManualParticipants(groups, rankingSettings);
   applyCircuitExtraPoints(groups, rankingSettings);
 
-  const criteria = getRankingCriteria(circuit?.ranking_criteria || defaultRankingCriteria);
   const sortRows = (rows) => Array.from(rows.values()).sort((first, second) => {
     if (placementMode) {
       const pointDifference = Number(second.circuitPoints || 0) - Number(first.circuitPoints || 0);
       if (pointDifference !== 0) return pointDifference;
-      for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
-        if (criterion === "bestStage") {
-          const difference = compareCircuitStageScores(first, second);
-          if (difference !== 0) return difference;
-          continue;
-        }
-        const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-        const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
-        if (difference !== 0) return difference;
-      }
-      const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
-      if (drawDifference !== 0) return drawDifference;
-      return first.name.localeCompare(second.name, "pt-BR");
     }
-    for (const key of criteria.order) {
+    for (const key of ["w", "pts", "bal"]) {
       const difference = Number(second[key] || 0) - Number(first[key] || 0);
       if (difference !== 0) return difference;
     }
+    const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
+    if (drawDifference !== 0) return drawDifference;
     return first.name.localeCompare(second.name, "pt-BR");
   });
 
@@ -304,30 +289,18 @@ export function buildCircuitRankingGroupsFromRecords({
   applyCircuitManualParticipants(groups, rankingSettings);
   applyCircuitExtraPoints(groups, rankingSettings);
 
-  const criteria = getRankingCriteria(criteriaValue);
+  void criteriaValue;
   const sortRows = (rows) => Array.from(rows.values()).sort((first, second) => {
     if (placementMode) {
       const pointDifference = Number(second.circuitPoints || 0) - Number(first.circuitPoints || 0);
       if (pointDifference !== 0) return pointDifference;
-
-      for (const criterion of getCircuitTieBreakOrder(rankingSettings)) {
-        if (criterion === "bestStage") {
-          const difference = compareCircuitStageScores(first, second);
-          if (difference !== 0) return difference;
-          continue;
-        }
-        const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-        const difference = Number(second[option?.key] || 0) - Number(first[option?.key] || 0);
-        if (difference !== 0) return difference;
-      }
-      const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
-      if (drawDifference !== 0) return drawDifference;
-      return first.name.localeCompare(second.name, "pt-BR");
     }
-    for (const key of criteria.order) {
+    for (const key of ["w", "pts", "bal"]) {
       const difference = Number(second[key] || 0) - Number(first[key] || 0);
       if (difference !== 0) return difference;
     }
+    const drawDifference = applyCircuitDrawOrder(first, second, rankingSettings);
+    if (drawDifference !== 0) return drawDifference;
     return first.name.localeCompare(second.name, "pt-BR");
   });
 

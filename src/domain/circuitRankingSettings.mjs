@@ -17,10 +17,8 @@ export const circuitTournamentFormats = {
 
 export const circuitTieBreakOptions = [
   { value: "wins", label: "Maior quantidade de vitórias", key: "w" },
-  { value: "titles", label: "Maior quantidade de títulos", key: "titles" },
-  { value: "runnerUps", label: "Maior quantidade de vice-campeonatos", key: "runnerUps" },
-  { value: "thirdPlaces", label: "Maior quantidade de terceiros lugares", key: "thirdPlaces" },
-  { value: "bestStage", label: "Melhores pontuações obtidas nas etapas", key: "bestStagePoints" },
+  { value: "totalGames", label: "Maior Total de Games", key: "pts" },
+  { value: "balance", label: "Melhor saldo de games", key: "bal" },
 ];
 
 export const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140];
@@ -66,14 +64,8 @@ export function normalizeCircuitPointValue(value) {
 }
 
 export function normalizeCircuitTieBreakOrder(value) {
-  const allowed = new Set(circuitTieBreakOptions.map((option) => option.value));
-  const source = Array.isArray(value) ? value : [];
-  const unique = source.filter((item, index) => allowed.has(item) && source.indexOf(item) === index);
-  const fallback = ["wins", "bestStage"];
-  fallback.forEach((item) => {
-    if (!unique.includes(item)) unique.push(item);
-  });
-  return unique.slice(0, 2);
+  void value;
+  return ["wins", "totalGames", "balance"];
 }
 
 export function normalizeCircuitRankingSettings(value) {
@@ -118,9 +110,7 @@ export function normalizeCircuitRankingSettings(value) {
       createdAt: String(entry?.createdAt || ""),
       updatedAt: String(entry?.updatedAt || ""),
     })).filter((entry) => entry.id && entry.name),
-    tieBreakOrder: source.tieBreakMode === "cearense"
-      ? ["wins", "bestStage"]
-      : normalizeCircuitTieBreakOrder(source.tieBreakOrder),
+    tieBreakOrder: normalizeCircuitTieBreakOrder(source.tieBreakOrder),
     tieBreakDrawOrder: Array.isArray(source.tieBreakDrawOrder)
       ? source.tieBreakDrawOrder.map((item) => String(item)).filter(Boolean)
       : [],
@@ -168,16 +158,13 @@ export function compareCircuitStageScores(first, second) {
 }
 
 export function getCircuitTieSignature(row, settings) {
-  const values = [Number(row?.circuitPoints || row?.circuit_points || 0)];
+  const normalized = normalizeCircuitRankingSettings(settings);
+  const placementMode = normalized.mode === circuitRankingModes.placement
+    || normalized.sourceCircuitIds.length > 0;
+  const values = placementMode
+    ? [Number(row?.circuitPoints || row?.circuit_points || 0)]
+    : [];
   getCircuitTieBreakOrder(settings).forEach((criterion) => {
-    if (criterion === "bestStage") {
-      const scores = Array.isArray(row?.stageScores)
-        ? row.stageScores.map((score) => Number(score || 0))
-        : [Number(row?.bestStagePoints || 0)];
-      while (scores.length > 0 && scores[scores.length - 1] === 0) scores.pop();
-      values.push(...scores);
-      return;
-    }
     const option = circuitTieBreakOptions.find((item) => item.value === criterion);
     values.push(Number(row?.[option?.key] || 0));
   });
@@ -185,13 +172,17 @@ export function getCircuitTieSignature(row, settings) {
 }
 
 export function getCircuitTieBreakLabel(settings, { compact = false } = {}) {
-  const labels = getCircuitTieBreakOrder(settings).map((criterion) => {
-    if (criterion === "wins") return "Vitórias";
-    if (criterion === "bestStage") return compact ? "Melhores etapas" : "Melhores pontuações nas etapas";
-    const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-    return option?.label?.replace(/^Maior (?:quantidade de )?/i, "") || criterion;
-  });
-  return [compact ? "Pontos" : "Todas as pontuações", ...labels, "Sorteio"].join(" → ");
+  void compact;
+  const normalized = normalizeCircuitRankingSettings(settings);
+  const placementMode = normalized.mode === circuitRankingModes.placement
+    || normalized.sourceCircuitIds.length > 0;
+  return [
+    ...(placementMode ? ["Pontos"] : []),
+    "Vitórias",
+    "Total de Games",
+    "Saldo de games",
+    "Sorteio",
+  ].join(" → ");
 }
 
 export function applyCircuitDrawOrder(first, second, settings) {
@@ -229,27 +220,17 @@ export function getUnresolvedCircuitTieGroups(groups, settings) {
 }
 
 export function getCircuitPlacementColumns(settings, { includeManual = false, totalsOnly = false } = {}) {
-  const keys = getCircuitTieBreakOrder(settings);
+  void settings;
   const columns = [
     { key: "circuitPoints", label: "Total de pontos" },
   ];
   if (totalsOnly) return columns;
-  keys.forEach((criterion) => {
-    const option = circuitTieBreakOptions.find((item) => item.value === criterion);
-    if (option && !columns.some((column) => column.key === option.key)) {
-      columns.push({ key: option.key, label: option.label.replace(/^Maior (?:quantidade de )?/i, "") });
-    }
-  });
-  if (includeManual) {
-    [
-      { key: "w", label: "Vitórias" },
-      { key: "pts", label: "Total de Games" },
-      { key: "bal", label: "Saldo" },
-      { key: "played", label: "Jogos" },
-    ].forEach((column) => {
-      if (!columns.some((item) => item.key === column.key)) columns.push(column);
-    });
-  }
+  columns.push(
+    { key: "w", label: "Vitórias" },
+    { key: "pts", label: "Total de Games" },
+    { key: "bal", label: "Saldo de games" },
+  );
+  if (includeManual) columns.push({ key: "played", label: "Jogos" });
   columns.push({ key: "tournaments", label: "Etapas" });
   return columns;
 }
