@@ -143,21 +143,30 @@ export function mergeParticipantGenderRegistries(...registries) {
 }
 
 export function setParticipantGender(registry, name, gender, { confirmed = true } = {}) {
+  return setParticipantGenders(registry, [{ name, gender, confirmed }]);
+}
+
+export function setParticipantGenders(registry, updates = []) {
   const next = normalizeParticipantGenderRegistry(registry);
-  const formattedName = formatParticipantName(name);
-  const key = getParticipantGenderKey(formattedName);
-  if (!key || key === "sem nome") return next;
-  const normalizedGender = normalizeParticipantGender(gender);
-  if (normalizedGender === participantGenderValues.unknown) {
-    delete next[key];
-    return next;
-  }
-  next[key] = {
-    name: formattedName,
-    gender: normalizedGender,
-    confirmed: normalizedGender !== participantGenderValues.unknown && Boolean(confirmed),
-    updatedAt: new Date().toISOString(),
-  };
+  const updatedAt = new Date().toISOString();
+
+  (Array.isArray(updates) ? updates : []).forEach((update) => {
+    const formattedName = formatParticipantName(update?.name);
+    const key = getParticipantGenderKey(formattedName);
+    if (!key || key === "sem nome") return;
+    const normalizedGender = normalizeParticipantGender(update?.gender);
+    if (normalizedGender === participantGenderValues.unknown) {
+      delete next[key];
+      return;
+    }
+    next[key] = {
+      name: formattedName,
+      gender: normalizedGender,
+      confirmed: normalizedGender !== participantGenderValues.unknown && update?.confirmed !== false,
+      updatedAt,
+    };
+  });
+
   return next;
 }
 
