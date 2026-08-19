@@ -12,22 +12,32 @@ import {
   mergeParticipantGenderRegistries,
   participantGenderValues,
   setParticipantGender,
+  setParticipantGenders,
 } from "../../domain/participantGenderRegistry.mjs";
+
+const genderCandidatesPageSize = 40;
 
 function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
+  const [visibleLimit, setVisibleLimit] = useState(genderCandidatesPageSize);
   const normalizedRegistry = useMemo(() => mergeParticipantGenderRegistries(registry), [registry]);
-  const visibleCandidates = useMemo(() => {
+  const candidateSummary = useMemo(() => {
     const query = search.trim().normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
-    return candidates.filter((candidate) => {
+    let pendingCount = 0;
+    const filtered = [];
+    candidates.forEach((candidate) => {
       const isConfirmed = Boolean(normalizedRegistry[candidate.key]?.confirmed);
-      if ((activeTab === "pending" && isConfirmed) || (activeTab === "confirmed" && !isConfirmed)) return false;
-      return !query || `${candidate.name} ${(candidate.tournaments || []).join(" ")}`
+      if (!isConfirmed) pendingCount += 1;
+      if ((activeTab === "pending" && isConfirmed) || (activeTab === "confirmed" && !isConfirmed)) return;
+      const matches = !query || `${candidate.name} ${(candidate.tournaments || []).join(" ")}`
         .normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").includes(query);
+      if (matches) filtered.push(candidate);
     });
+    return { filtered, pendingCount };
   }, [activeTab, candidates, normalizedRegistry, search]);
-  const pendingCount = candidates.filter((candidate) => !normalizedRegistry[candidate.key]?.confirmed).length;
+  const visibleCandidates = candidateSummary.filtered.slice(0, visibleLimit);
+  const pendingCount = candidateSummary.pendingCount;
   const confirmedCount = candidates.length - pendingCount;
 
   function chooseGender(candidate, gender) {
@@ -35,14 +45,14 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
   }
 
   function applySuggestions() {
-    const next = candidates.reduce((current, candidate) => (
+    const suggestions = candidates.flatMap((candidate) => (
       !normalizedRegistry[candidate.key]?.confirmed
         && candidate.suggestion
         && candidate.suggestion !== participantGenderValues.unknown
-        ? setParticipantGender(current, candidate.name, candidate.suggestion)
-        : current
-    ), normalizedRegistry);
-    onChange(next);
+        ? [{ name: candidate.name, gender: candidate.suggestion }]
+        : []
+    ));
+    if (suggestions.length) onChange(setParticipantGenders(normalizedRegistry, suggestions));
   }
 
   return (
@@ -65,7 +75,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
               role="tab"
               aria-selected={activeTab === "pending"}
               className={`pending ${activeTab === "pending" ? "selected" : ""}`}
-              onClick={() => setActiveTab("pending")}
+              onClick={() => { setActiveTab("pending"); setVisibleLimit(genderCandidatesPageSize); }}
             >
               Gêneros a confirmar <span>{pendingCount}</span>
             </button>
@@ -74,7 +84,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
               role="tab"
               aria-selected={activeTab === "confirmed"}
               className={`confirmed ${activeTab === "confirmed" ? "selected" : ""}`}
-              onClick={() => setActiveTab("confirmed")}
+              onClick={() => { setActiveTab("confirmed"); setVisibleLimit(genderCandidatesPageSize); }}
             >
               Gêneros confirmados <span>{confirmedCount}</span>
             </button>
@@ -82,7 +92,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
           <div className="circuitGenderRegistryTools">
             <label>
               <span className="srOnly">Pesquisar atleta</span>
-              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar atleta..." />
+              <input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setVisibleLimit(genderCandidatesPageSize); }} placeholder="Pesquisar atleta..." />
             </label>
             {activeTab === "pending" ? (
               <button type="button" className="circuitGenderSuggestionButton" onClick={applySuggestions}>
@@ -108,11 +118,18 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
                 <article key={candidate.key} className={!entry?.confirmed ? "pending" : "confirmed"}>
                   <div>
                     <strong>{candidate.name}</strong>
-                    <small className={`circuitGenderSuggestionLabel ${suggestionClass}`}><span>Sugestão</span><b>{suggestionLabel.replace("Sugestão: ", "")}</b>{candidate.tournaments?.length ? <em>· {candidate.tournaments.slice(0, 2).join(", ")}</em> : null}</small>
+                    <small className={`circuitGenderSuggestionLabel ${suggestionClass}`}><span>Sugestão do sistema</span><b>{suggestionLabel.replace("Sugestão: ", "")}</b>{candidate.tournaments?.length ? <em>· {candidate.tournaments.slice(0, 2).join(", ")}</em> : null}</small>
                   </div>
-                  <div className="circuitGenderChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
-                    <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.masculine} className={selectedGender === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.masculine)}>Masculino</button>
-                    <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.feminine} className={selectedGender === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.feminine)}>Feminino</button>
+                  <div className="circuitGenderCandidateActions">
+                    {!entry?.confirmed && candidate.suggestion !== participantGenderValues.unknown ? (
+                      <button type="button" className={`circuitGenderAcceptSuggestion ${suggestionClass}`} onClick={() => chooseGender(candidate, candidate.suggestion)}>
+                        Usar sugestão
+                      </button>
+                    ) : null}
+                    <div className="circuitGenderChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
+                      <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.masculine} className={selectedGender === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.masculine)}><span aria-hidden="true">{selectedGender === participantGenderValues.masculine ? "✓" : ""}</span>Masculino</button>
+                      <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.feminine} className={selectedGender === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.feminine)}><span aria-hidden="true">{selectedGender === participantGenderValues.feminine ? "✓" : ""}</span>Feminino</button>
+                    </div>
                   </div>
                 </article>
               );
@@ -123,6 +140,11 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
                   ? "Nenhum gênero pendente nesta pesquisa."
                   : "Nenhum gênero confirmado nesta pesquisa."}
               </p>
+            ) : null}
+            {visibleLimit < candidateSummary.filtered.length ? (
+              <button type="button" className="circuitGenderLoadMore" onClick={() => setVisibleLimit((current) => current + genderCandidatesPageSize)}>
+                Carregar mais {Math.min(genderCandidatesPageSize, candidateSummary.filtered.length - visibleLimit)} nome(s)
+              </button>
             ) : null}
           </div>
         </>

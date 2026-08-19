@@ -3441,23 +3441,39 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
-    const selectedTournamentIds = [...new Set((form.tournamentIds || []).map(String))];
-    const fullTournamentRows = await loadFullTournamentRows(selectedTournamentIds, { silentError: true });
-    const fullTournamentRowsById = new Map(fullTournamentRows.map((row) => [String(row.id), row]));
-    const missingTournamentDetails = selectedTournamentIds.some((id) => !fullTournamentRowsById.has(id));
-    if (missingTournamentDetails) {
-      showNotice(
-        "warning",
-        "Torneios ainda carregando",
-        "Não foi possível obter agora todos os resultados necessários para calcular este circuito. Nenhuma informação do circuito foi alterada."
-      );
-      return false;
-    }
-    const effectiveTournamentSource = tournamentsRef.current.map((tournament) => (
-      fullTournamentRowsById.get(String(tournament.id)) || tournament
-    ));
-
     const isEditing = Boolean(form.id);
+    const previousCircuit = isEditing
+      ? (form._baseCircuit || circuitsRef.current.find((item) => String(item.id) === String(form.id)))
+      : null;
+    const selectedTournamentIds = [...new Set((form.tournamentIds || []).map(String))];
+    const comparableRankingSettings = (value) => {
+      const normalized = normalizeCircuitRankingSettings(value);
+      return { ...normalized, genderRegistry: {}, rankingDivision: "general" };
+    };
+    const rankingCalculationChanged = !isEditing
+      || JSON.stringify(selectedTournamentIds) !== JSON.stringify((previousCircuit?.tournamentIds || []).map(String))
+      || form.rankingCriteriaMode !== (previousCircuit?.rankingCriteriaMode === "manual" ? "manual" : "automatic")
+      || (form.rankingCriteriaMode === "manual" && form.rankingCriteria !== previousCircuit?.rankingCriteria)
+      || JSON.stringify(comparableRankingSettings(form.rankingSettings))
+        !== JSON.stringify(comparableRankingSettings(previousCircuit?.rankingSettings));
+
+    let effectiveTournamentSource = tournamentsRef.current;
+    if (rankingCalculationChanged) {
+      const fullTournamentRows = await loadFullTournamentRows(selectedTournamentIds, { silentError: true });
+      const fullTournamentRowsById = new Map(fullTournamentRows.map((row) => [String(row.id), row]));
+      const missingTournamentDetails = selectedTournamentIds.some((id) => !fullTournamentRowsById.has(id));
+      if (missingTournamentDetails) {
+        showNotice(
+          "warning",
+          "Torneios ainda carregando",
+          "Não foi possível obter agora todos os resultados necessários para calcular este circuito. Nenhuma informação do circuito foi alterada."
+        );
+        return false;
+      }
+      effectiveTournamentSource = tournamentsRef.current.map((tournament) => (
+        fullTournamentRowsById.get(String(tournament.id)) || tournament
+      ));
+    }
 
     if (!isEditing && !ensureArenaProfileReadyForPublication()) return;
 
@@ -3576,9 +3592,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     const payload = normalizeCircuitRow(data);
-    const previousHistory = circuitsRef.current.find((item) => item.id === payload.id)?.rankingHistory || {};
+    const previousHistory = circuitsRef.current.find((item) => item.id === payload.id)?.rankingHistory
+      || previousCircuit?.rankingHistory
+      || {};
     const payloadWithHistory = { ...payload, rankingHistory: previousHistory };
-    const updatedHistory = buildCircuitRankingHistory(payloadWithHistory, effectiveTournamentSource);
+    const updatedHistory = rankingCalculationChanged
+      ? buildCircuitRankingHistory(payloadWithHistory, effectiveTournamentSource)
+      : previousHistory;
     const finalPayload = { ...payloadWithHistory, rankingHistory: updatedHistory };
 
     const currentCircuits = circuitsRef.current;
@@ -3587,11 +3607,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       : [finalPayload, ...currentCircuits];
 
     saveCircuits(nextCircuits);
-    const rankingHistorySaved = await saveCircuitHistoryToSupabase(
-      finalPayload.id,
-      finalPayload.rankingHistory,
-      getCircuitSelectedTournaments(finalPayload, effectiveTournamentSource)
-    );
+    let rankingHistorySaved = true;
+    if (rankingCalculationChanged) {
+      rankingHistorySaved = await saveCircuitHistoryToSupabase(
+        finalPayload.id,
+        finalPayload.rankingHistory,
+        getCircuitSelectedTournaments(finalPayload, effectiveTournamentSource)
+      );
+    }
     await syncPublicArenaDirectory(tournaments, nextCircuits);
     if (isEditing) {
       if (closeEditor) setCircuitEditForm(null);
@@ -3699,14 +3722,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return true;
   }
 
-  async function editCircuit(circuit) {
-    await loadFullTournamentRows(circuit.tournamentIds || [], { silentError: true });
-    const rankingHistory = await loadCircuitRankingHistory(circuit.id);
-    const latestCircuit = circuitsRef.current.find((item) => String(item.id) === String(circuit.id)) || circuit;
-    const editableCircuit = rankingHistory
-      ? { ...latestCircuit, rankingHistory }
-      : latestCircuit;
-    setCircuitEditForm({
+  function editCircuit(circuit) {
+    const buildEditForm = (editableCircuit) => ({
       _baseCircuit: editableCircuit,
       id: editableCircuit.id,
       name: editableCircuit.name || "",
@@ -3716,6 +3733,34 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       rankingCriteria: getCircuitEffectiveCriteria(editableCircuit),
       rankingCriteriaMode: editableCircuit.rankingCriteriaMode === "manual" ? "manual" : "automatic",
       rankingSettings: getEffectiveCircuitRankingSettings(editableCircuit.rankingSettings),
+    });
+
+    // Abre primeiro com os dados já disponíveis; o histórico completo chega em
+    // segundo plano e apenas atualiza a base de comparação do mesmo editor.
+    setCircuitEditForm(buildEditForm(circuit));
+    void Promise.all([
+      loadFullTournamentRows(circuit.tournamentIds || [], { silentError: true }),
+      loadCircuitRankingHistory(circuit.id),
+    ]).then(([, rankingHistory]) => {
+      const latestCircuit = circuitsRef.current.find((item) => String(item.id) === String(circuit.id)) || circuit;
+      const editableCircuit = rankingHistory ? { ...latestCircuit, rankingHistory } : latestCircuit;
+      setCircuitEditForm((current) => {
+        if (!current || String(current.id) !== String(circuit.id)) return current;
+        return {
+          ...current,
+          _baseCircuit: editableCircuit,
+          rankingSettings: {
+            ...getEffectiveCircuitRankingSettings(editableCircuit.rankingSettings),
+            ...current.rankingSettings,
+            genderRegistry: mergeParticipantGenderRegistries(
+              editableCircuit.rankingSettings?.genderRegistry,
+              current.rankingSettings?.genderRegistry
+            ),
+          },
+        };
+      });
+    }).catch((error) => {
+      console.warn("Não foi possível completar os dados do editor do circuito:", error);
     });
   }
 

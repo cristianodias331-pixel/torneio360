@@ -141,6 +141,7 @@ import {
   orderConfirmedMixedTeams,
   participantGenderValues,
   setParticipantGender,
+  setParticipantGenders,
   tournamentGenderModes,
 } from "../src/domain/participantGenderRegistry.mjs";
 import {
@@ -2867,6 +2868,15 @@ assert.deepEqual(
   setParticipantGender(confirmedGenderRegistry, "Barbara Souza", participantGenderValues.unknown),
   {},
   "Não informar o gênero não deve persistir uma classificação definitiva."
+);
+const bulkGenderRegistry = setParticipantGenders({}, [
+  { name: "João Lima", gender: participantGenderValues.masculine },
+  { name: "Maria Lima", gender: participantGenderValues.feminine },
+]);
+assert.equal(
+  Object.keys(bulkGenderRegistry).length,
+  2,
+  "A confirmação em lote deve salvar todos os gêneros sem reconstruir o cadastro a cada atleta."
 );
 const circuitHistoryGenderCandidates = mergeTournamentGenderCandidates(
   [{
