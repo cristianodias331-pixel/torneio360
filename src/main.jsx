@@ -4758,10 +4758,37 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     const lifecycleStatus = getTournamentLifecycleStatus(updated);
     const persistedData = { ...(updated.data || {}), lifecycleStatus };
-    const scoreSafety = inspectTournamentScoreRegression(updated.scoreSafetyBaseData, persistedData);
+    const { data: serverTournament, error: serverReadError } = await supabase
+      .from("tournaments")
+      .select("*")
+      .eq("id", updated.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (serverReadError) {
+      console.error("Erro ao conferir a cópia protegida do torneio:", serverReadError);
+      return { ok: false, error: serverReadError, retryable: isRetryableConnectionError(serverReadError) };
+    }
+
+    if (!serverTournament) {
+      const error = new Error("O torneio não foi encontrado antes da gravação protegida.");
+      return { ok: false, error, retryable: false };
+    }
+
+    const serverRevision = getCollaborationRevision(serverTournament);
+    if (Number.isSafeInteger(expectedRevision) && expectedRevision >= 0
+      && serverRevision !== null && serverRevision !== expectedRevision) {
+      return { ok: false, conflict: true, serverTournament: { ...serverTournament, __summary: false } };
+    }
+    if ((!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)
+      && expectedUpdatedAt && serverTournament.updated_at !== expectedUpdatedAt) {
+      return { ok: false, conflict: true, serverTournament: { ...serverTournament, __summary: false } };
+    }
+
+    const scoreSafety = inspectTournamentScoreRegression(serverTournament.data, persistedData);
     if (scoreSafety.unsafe && updated.allowScoreRegression !== true) {
       const error = new Error(
-        `Gravação protegida: ${scoreSafety.removedScores} placares finalizados seriam removidos.`
+        `Gravação protegida: ${scoreSafety.removedScores} placares, ${scoreSafety.removedGames} jogos e ${scoreSafety.removedRounds} rodadas seriam removidos.`
       );
       error.code = "TOURNAMENT_SCORE_REGRESSION";
       console.error(error, scoreSafety);
@@ -4769,26 +4796,41 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     const nextUpdatedAt = new Date().toISOString();
 
-    let query = supabase
-      .from("tournaments")
-      .update({
-        name: updated.name,
-        type: updated.type,
-        data: persistedData,
-        status: lifecycleStatus === "finished" ? "finished" : "active",
-        updated_at: nextUpdatedAt,
-        last_change_id: updated.changeId || null,
-      })
-      .eq("id", updated.id)
-      .eq("user_id", user.id);
+    const safeSaveArgs = {
+      p_tournament_id: updated.id,
+      p_name: updated.name,
+      p_type: updated.type,
+      p_data: persistedData,
+      p_status: lifecycleStatus === "finished" ? "finished" : "active",
+      p_last_change_id: updated.changeId || null,
+      p_expected_revision: serverRevision,
+      p_expected_updated_at: serverRevision === null ? serverTournament.updated_at : null,
+      p_allow_critical_reset: updated.allowScoreRegression === true,
+    };
+    let { data: savedTournament, error } = await supabase
+      .rpc("save_tournament_snapshot_safe", safeSaveArgs)
+      .maybeSingle();
 
-    if (Number.isSafeInteger(expectedRevision) && expectedRevision >= 0) {
-      query = query.eq("revision", expectedRevision);
-    } else if (expectedUpdatedAt) {
-      query = query.eq("updated_at", expectedUpdatedAt);
+    const safeFunctionMissing = error && /save_tournament_snapshot_safe|function.*does not exist|schema cache/i.test(
+      `${error.message || ""} ${error.details || ""} ${error.hint || ""}`
+    );
+    if (safeFunctionMissing) {
+      let query = supabase
+        .from("tournaments")
+        .update({
+          name: updated.name,
+          type: updated.type,
+          data: persistedData,
+          status: lifecycleStatus === "finished" ? "finished" : "active",
+          updated_at: nextUpdatedAt,
+          last_change_id: updated.changeId || null,
+        })
+        .eq("id", updated.id)
+        .eq("user_id", user.id);
+      if (serverRevision !== null) query = query.eq("revision", serverRevision);
+      else if (serverTournament.updated_at) query = query.eq("updated_at", serverTournament.updated_at);
+      ({ data: savedTournament, error } = await query.select("*").maybeSingle());
     }
-
-    const { data: savedTournament, error } = await query.select("*").maybeSingle();
 
     if (error) {
       console.error("Erro ao salvar torneio:", error);
@@ -4796,7 +4838,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     if (!savedTournament) {
-      const { data: serverTournament, error: reloadError } = await supabase
+      const { data: reloadedServerTournament, error: reloadError } = await supabase
         .from("tournaments")
         .select("*")
         .eq("id", updated.id)
@@ -4808,7 +4850,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         return { ok: false, error: reloadError, retryable: isRetryableConnectionError(reloadError) };
       }
 
-      return { ok: false, conflict: true, serverTournament };
+      return { ok: false, conflict: true, serverTournament: reloadedServerTournament };
     }
 
     return { ok: true, tournament: savedTournament };
