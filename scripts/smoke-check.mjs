@@ -203,6 +203,7 @@ import {
   tournamentDataEquals,
   tournamentMutationDataEquals,
 } from "../src/domain/realtimeTournamentMerge.mjs";
+import { inspectTournamentScoreRegression } from "../src/domain/tournamentScoreSafety.mjs";
 import {
   getGameParticipantIdentityEntries,
   getSharedGameParticipants,
@@ -554,6 +555,9 @@ const collaborationMigration = readFileSync(collaborationMigrationUrl, "utf8");
 const serverRevisionMigrationUrl = new URL("supabase/migrations/202608080002_server_revisions.sql", root);
 assert.ok(existsSync(fileURLToPath(serverRevisionMigrationUrl)), "A migração de revisões do servidor está ausente.");
 const serverRevisionMigration = readFileSync(serverRevisionMigrationUrl, "utf8");
+const tournamentHistoryMigrationUrl = new URL("supabase/migrations/202608190001_tournament_data_history.sql", root);
+assert.ok(existsSync(fileURLToPath(tournamentHistoryMigrationUrl)), "A migração do histórico de dados dos torneios está ausente.");
+const tournamentHistoryMigration = readFileSync(tournamentHistoryMigrationUrl, "utf8");
 const circuitScoringMigrationUrl = new URL("supabase/migrations/202608120001_circuit_scoring_models.sql", root);
 assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração dos modelos de pontuação dos circuitos está ausente.");
 const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
@@ -4088,6 +4092,52 @@ assert.equal(
   ),
   true,
   "O status automático passou a gerar uma falsa alteração dos dados do torneio."
+);
+const stableGame = (id, s1, s2) => ({
+  matchKey: id,
+  ids1: [1],
+  ids2: [2],
+  team1: ["Ana"],
+  team2: ["Bia"],
+  s1,
+  s2,
+});
+const protectedScoreRegression = inspectTournamentScoreRegression(
+  { schedule: [[stableGame("j1", 4, 2), stableGame("j2", 4, 1), stableGame("j3", 4, 3)]] },
+  { schedule: [[stableGame("j1", "", ""), stableGame("j2", "", ""), stableGame("j3", 4, 3)]] }
+);
+assert.equal(protectedScoreRegression.unsafe, true, "A remoção em massa de placares deixou de ser bloqueada.");
+assert.equal(protectedScoreRegression.removedScores, 2, "A proteção contou incorretamente os placares removidos.");
+assert.equal(
+  inspectTournamentScoreRegression(
+    { schedule: [[stableGame("j1", 4, 2), stableGame("j2", 4, 1), stableGame("j3", 4, 3)]] },
+    {}
+  ).unsafe,
+  true,
+  "A ausência completa da tabela deixou de ser tratada como perda de placares."
+);
+assert.equal(
+  inspectTournamentScoreRegression(
+    { schedule: [[stableGame("j1", 4, 2), stableGame("j2", 4, 1), stableGame("j3", 4, 3)]] },
+    { schedule: [[stableGame("j1", "", ""), stableGame("j2", 4, 1), stableGame("j3", 4, 3)]] }
+  ).unsafe,
+  true,
+  "A remoção de um único placar deixou de ser bloqueada."
+);
+const renamedScoredGame = { ...stableGame("j1", 4, 2), team1: ["Ana Maria"], team2: ["Bia Souza"] };
+assert.equal(
+  inspectTournamentScoreRegression(
+    { schedule: [[stableGame("j1", 4, 2), stableGame("j2", 4, 1)]] },
+    { schedule: [[renamedScoredGame, stableGame("j2", 4, 1)]] }
+  ).unsafe,
+  false,
+  "A correção do nome de um atleta com o mesmo identificador passou a bloquear o salvamento."
+);
+assert.ok(
+  tournamentHistoryMigration.includes("create table if not exists public.tournament_data_history")
+    && tournamentHistoryMigration.includes("before update of data on public.tournaments")
+    && tournamentHistoryMigration.includes("old.data"),
+  "O banco deixou de arquivar a versão anterior dos dados antes de uma alteração."
 );
 assert.equal(
   getSharedGameParticipants(
