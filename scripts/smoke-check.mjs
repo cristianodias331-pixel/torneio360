@@ -566,6 +566,15 @@ const tournamentHistoryMigration = readFileSync(tournamentHistoryMigrationUrl, "
 const tournamentGuardMigrationUrl = new URL("supabase/migrations/202608190002_tournament_critical_data_guard.sql", root);
 assert.ok(existsSync(fileURLToPath(tournamentGuardMigrationUrl)), "A proteção atômica dos torneios está ausente.");
 const tournamentGuardMigration = readFileSync(tournamentGuardMigrationUrl, "utf8");
+const circuitRankingSummaryMigrationUrl = new URL(
+  "supabase/migrations/202608190003_circuit_ranking_summary_read.sql",
+  root
+);
+assert.ok(
+  existsSync(fileURLToPath(circuitRankingSummaryMigrationUrl)),
+  "A leitura otimizada dos rankings de circuitos está ausente."
+);
+const circuitRankingSummaryMigration = readFileSync(circuitRankingSummaryMigrationUrl, "utf8");
 const circuitScoringMigrationUrl = new URL("supabase/migrations/202608120001_circuit_scoring_models.sql", root);
 assert.ok(existsSync(fileURLToPath(circuitScoringMigrationUrl)), "A migração dos modelos de pontuação dos circuitos está ausente.");
 const circuitScoringMigration = readFileSync(circuitScoringMigrationUrl, "utf8");
@@ -3671,6 +3680,16 @@ assert.ok(
     && collaborationMigration.includes("tournament.updated_at is not distinct from source_version.updated_at")
     && collaborationMigration.includes("alter publication supabase_realtime add table"),
   "A migração não protege operações compostas ou não habilita atualização em tempo real."
+);
+assert.ok(
+  mainSource.includes('"get_circuit_ranking_summary"')
+    && mainSource.includes("normalizeCircuitSummaryRows")
+    && mainSource.includes("usando histórico completo")
+    && circuitRankingSummaryMigration.includes("security invoker")
+    && circuitRankingSummaryMigration.includes("history.user_id = auth.uid()")
+    && !circuitRankingSummaryMigration.includes("delete from")
+    && !circuitRankingSummaryMigration.includes("update public.tournaments"),
+  "A otimização dos circuitos não possui fallback seguro ou pode modificar dados oficiais."
 );
 assert.ok(
   serviceWorkerSource.includes('const STATIC_CACHE = "torneio360-app-shell-v3"')

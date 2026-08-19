@@ -2906,6 +2906,37 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
   }
 
+  const circuitDirectorySelect = [
+    "id",
+    "name",
+    "start_date",
+    "end_date",
+    "status",
+    "tournament_ids",
+    "ranking_criteria",
+    "ranking_criteria_mode",
+    "ranking_settings",
+    "updated_at",
+    "revision",
+  ].join(",");
+
+  const circuitHistorySelect = [
+    "tournament_id",
+    "group_key",
+    "player_key",
+    "player_name",
+    "pts",
+    "w",
+    "bal",
+    "played",
+    "circuit_points",
+    "placement_key",
+    "placement_label",
+    "titles",
+    "runner_ups",
+    "third_places",
+  ].join(",");
+
   async function loadCircuits({ silentError = false, retryAfterRealtime = true } = {}) {
     const realtimeEpoch = circuitRealtimeEpochRef.current;
     const thirtyDaysAgo = new Date();
@@ -2913,7 +2944,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const deleteLimit = thirtyDaysAgo.toISOString();
     const { data, error } = await supabase
       .from("circuits")
-      .select("*")
+      .select(circuitDirectorySelect)
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
@@ -2996,6 +3027,35 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return rankingHistory;
   }
 
+  function normalizeCircuitSummaryRows(summaryRows = []) {
+    const rankingHistory = {};
+    summaryRows.forEach((row, index) => {
+      const groupKey = row.group_key || "geral";
+      const playerKey = row.player_key || `resumo-${index + 1}`;
+      const key = `resumo::${groupKey}::${playerKey}::${index}`;
+      rankingHistory[key] = {
+        tournamentId: null,
+        groupKey,
+        playerKey,
+        name: row.player_name || "Sem nome",
+        pts: Number(row.pts || 0),
+        w: Number(row.w || 0),
+        bal: Number(row.bal || 0),
+        played: Number(row.played || 0),
+        tournaments: Number(row.tournaments || 0),
+        circuitPoints: Number(row.circuit_points || 0),
+        extraPoints: 0,
+        titles: Number(row.titles || 0),
+        runnerUps: Number(row.runner_ups || 0),
+        thirdPlaces: Number(row.third_places || 0),
+        stageScores: Array.isArray(row.stage_scores)
+          ? row.stage_scores.map((score) => Number(score || 0))
+          : [],
+      };
+    });
+    return rankingHistory;
+  }
+
   async function loadCircuitRankingHistory(circuitId, { force = false } = {}) {
     const normalizedCircuitId = String(circuitId || "");
     if (!normalizedCircuitId) return null;
@@ -3020,11 +3080,30 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuitHistoryLoadState((current) => ({ ...current, [normalizedCircuitId]: "loading" }));
 
     const request = (async () => {
-      const { data, error } = await supabase
-        .from("circuit_ranking_history")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("circuit_id", circuitId);
+      // O resumo é calculado no banco apenas para leitura. O histórico completo
+      // continua sendo a fonte oficial e permanece intocado, permitindo voltar
+      // automaticamente ao fluxo anterior enquanto a função ainda não estiver
+      // disponível em algum ambiente.
+      const { data: summaryData, error: summaryError } = await supabase.rpc(
+        "get_circuit_ranking_summary",
+        { p_circuit_id: normalizedCircuitId }
+      );
+
+      let data = summaryData;
+      let error = null;
+      let summaryLoaded = !summaryError;
+
+      if (summaryError) {
+        console.warn("Resumo otimizado do circuito indisponível; usando histórico completo.", summaryError);
+        const fallbackResult = await supabase
+          .from("circuit_ranking_history")
+          .select(circuitHistorySelect)
+          .eq("user_id", user.id)
+          .eq("circuit_id", normalizedCircuitId);
+        data = fallbackResult.data;
+        error = fallbackResult.error;
+        summaryLoaded = false;
+      }
 
       if (error) {
         console.error("Erro ao carregar histórico do circuito:", error);
@@ -3033,7 +3112,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         return null;
       }
 
-      let rankingHistory = normalizeCircuitHistoryRows(data || []);
+      let rankingHistory = summaryLoaded
+        ? normalizeCircuitSummaryRows(data || [])
+        : normalizeCircuitHistoryRows(data || []);
 
       // Circuitos criados antes da tabela derivada de ranking podem possuir
       // torneios e placares completos, mas nenhum registro histórico ainda.
