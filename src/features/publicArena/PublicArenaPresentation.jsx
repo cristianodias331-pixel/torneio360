@@ -108,13 +108,16 @@ export function PublicArenaTournamentCardsView({
     const firstDetails = first.data || {};
     const isGroup = group.items.length > 1 || firstDetails.multiCategoryEvent === true;
     const title = isGroup ? firstDetails.eventName || first.name : first.name;
-    const coverImage = firstDetails.coverImageUrl || organizer.photoUrl;
+    const coverImage = firstDetails.coverImageUrl || "";
+    const profileFallbackImage = !coverImage ? organizer.photoUrl : "";
     const registrationOpen = group.items.some((item) => isRegistrationOpen(getRegistrationDeadline(item)));
 
     return (
       <article className={`card publicArenaEventCard publicArenaEventCardWithCover ${isGroup ? "publicArenaGroupedEvent" : ""}`} key={group.key}>
-        <div className="publicArenaEventCover">
-          {coverImage ? <img src={coverImage} alt={`Capa de ${title}`} loading="lazy" decoding="async" /> : <span><Trophy aria-hidden="true" /></span>}
+        <div className={`publicArenaEventCover ${profileFallbackImage ? "isProfileFallback" : ""}`}>
+          {coverImage ? <img src={coverImage} alt={`Capa de ${title}`} loading="lazy" decoding="async" /> : null}
+          {profileFallbackImage ? <img className="publicArenaProfileFallback" src={profileFallbackImage} alt={`Foto da arena ${organizer.arenaName || "organizadora"}`} loading="lazy" decoding="async" /> : null}
+          {!coverImage && !profileFallbackImage ? <span><Trophy aria-hidden="true" /></span> : null}
         </div>
         <div className="publicArenaEventBody">
           <small>{isGroup ? `${group.items.length} ${group.items.length === 1 ? "categoria" : "categorias"}` : getModalityName(first.type)}</small>
