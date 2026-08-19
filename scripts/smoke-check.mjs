@@ -14,6 +14,8 @@ import {
   preservesTournamentCriticalData,
 } from "../src/offlineDataStore.mjs";
 import {
+  MAX_MATCH_TIMER_SECONDS,
+  capExpiredMatchTimer,
   formatMatchDuration,
   formatMatchTotalDuration,
   getMatchElapsedSeconds,
@@ -3187,11 +3189,11 @@ assert.ok(
   "O status persistente de jogo em andamento está ausente."
 );
 assert.ok(
-    matchScheduleSource.includes('scope="schedule"')
-    && cupBracketViewSource.includes('scope="bracket"')
-    && cupBracketViewSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
+    matchScheduleSource.includes('<MatchStatusSummary data={statusData} />')
+    && cupBracketViewSource.includes('<MatchStatusSummary')
+    && !cupBracketViewSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
     && tournamentOperationsSource.includes('scope !== "all" && item.scope !== scope'),
-  "O resumo das partidas deve separar fase de grupos, chaves visíveis e visão geral do torneio."
+  "O resumo interno deixou de usar a mesma visão geral exibida na aba do torneio."
 );
 assert.ok(
   mainSource.includes('function prepareEditableBracketData(currentData)')
@@ -3943,6 +3945,24 @@ const timerTestGame = { inProgress: true, matchTimerElapsedSeconds: 30 };
 const timerStart = Date.parse("2026-08-16T12:00:00.000Z");
 startMatchTimer(timerTestGame, timerStart);
 assert.equal(getMatchElapsedSeconds(timerTestGame, timerStart + 15000), 45, "O cronômetro não soma o trecho ativo ao tempo salvo.");
+const expiredTimerTestGame = {
+  inProgress: true,
+  matchTimerStartedAt: new Date(timerStart).toISOString(),
+  matchTimerFirstStartedAt: new Date(timerStart).toISOString(),
+};
+assert.equal(
+  getMatchElapsedSeconds(expiredTimerTestGame, timerStart + 7200000),
+  MAX_MATCH_TIMER_SECONDS,
+  "O cronômetro ultrapassou o limite de segurança de 59 minutos."
+);
+assert.equal(
+  capExpiredMatchTimer(expiredTimerTestGame, timerStart + 7200000),
+  true,
+  "O cronômetro vencido não foi paralisado."
+);
+assert.equal(expiredTimerTestGame.inProgress, false, "O jogo vencido continuou marcado como em andamento.");
+assert.equal(expiredTimerTestGame.matchTimerElapsedSeconds, MAX_MATCH_TIMER_SECONDS, "O tempo vencido não foi fixado em 59 minutos.");
+assert.equal(expiredTimerTestGame.matchTimerStartedAt, undefined, "O início ativo permaneceu após o limite de segurança.");
 assert.equal(
   getMatchElapsedSeconds({
     matchTimerElapsedSeconds: 45,
@@ -4083,6 +4103,22 @@ assert.deepEqual(
   "A identificação interna do participante não preserva o nome exibido."
 );
 const tournamentOperationsForTest = createTournamentOperations();
+const cappedTournamentTimer = tournamentOperationsForTest.capExpiredTournamentMatchTimers({
+  schedule: [[{
+    ids1: [1],
+    team1: ["Ana"],
+    ids2: [2],
+    team2: ["Bia"],
+    s1: "",
+    s2: "",
+    inProgress: true,
+    matchTimerStartedAt: new Date(timerStart).toISOString(),
+    matchTimerFirstStartedAt: new Date(timerStart).toISOString(),
+  }]],
+}, timerStart + 7200000);
+assert.equal(cappedTournamentTimer.cappedCount, 1, "O torneio não identificou o cronômetro vencido.");
+assert.equal(cappedTournamentTimer.data.schedule[0][0].inProgress, false, "O torneio não paralisou o jogo vencido.");
+assert.equal(cappedTournamentTimer.data.schedule[0][0].matchTimerElapsedSeconds, MAX_MATCH_TIMER_SECONDS, "O torneio não preservou 59 minutos no jogo vencido.");
 assert.deepEqual(
   tournamentOperationsForTest.getTournamentMatchStatusSummary({
     schedule: [[

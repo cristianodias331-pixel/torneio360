@@ -17,12 +17,6 @@ export default function CupBracketView({
   stopSpeech,
   MatchStatusSummary,
 }) {
-  const visibleBracketMatchKeys = Object.values(groupedBrackets || {})
-    .flatMap((rounds) => Array.isArray(rounds) ? rounds : [])
-    .flatMap((round) => Array.isArray(round?.games) ? round.games : [])
-    .map((game) => game?.matchKey)
-    .filter(Boolean);
-
   return (
     <div>
       <VoiceRepeatSelector
@@ -32,8 +26,6 @@ export default function CupBracketView({
 
       <MatchStatusSummary
         data={data}
-        scope="bracket"
-        bracketMatchKeys={visibleBracketMatchKeys}
       />
 
       <div className="cupBrackets bracketTreeCollection">
