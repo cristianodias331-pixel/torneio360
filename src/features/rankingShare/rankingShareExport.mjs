@@ -502,7 +502,7 @@ function printRankingDocument(config) {
     .rankingPrintTable th { padding: 2.2mm 2.4mm; background: #101b3f; color: #fff; font-size: 7.3pt; line-height: 1.1; text-align: center; text-transform: uppercase; }
     .rankingPrintTable th:nth-child(1) { width: 11mm; }
     .rankingPrintTable th:nth-child(2) { width: auto; text-align: left; }
-    .rankingPrintTable th:not(:nth-child(-n+2)) { width: 29mm; }
+    .rankingPrintTable th:not(:nth-child(-n+2)) { width: var(--ranking-metric-width, 29mm); }
     .rankingPrintTable td { padding: 2.5mm 2.4mm; border-bottom: 1px solid #dfe6ef; background: #fff; font-size: 8.8pt; font-weight: 700; text-align: center; }
     .rankingPrintTable tr:nth-child(even) td { background: #f7f9fc; }
     .rankingPrintTable tr:first-child td { background: #fff8d9; }
@@ -555,6 +555,8 @@ function printRankingDocument(config) {
       const groupSection = createRankingPrintElement(printDocument, "section", "rankingPrintGroup");
       groupSection.appendChild(createRankingPrintElement(printDocument, "h2", "", group.title));
       const table = createRankingPrintElement(printDocument, "table", "rankingPrintTable");
+      const metricWidth = Math.min(29, Math.max(17, 129 / Math.max(1, exportColumns.length)));
+      table.style.setProperty("--ranking-metric-width", `${metricWidth.toFixed(2)}mm`);
       const tableHead = printDocument.createElement("thead");
       const headRow = printDocument.createElement("tr");
       ["#", "Nome", ...exportColumns.map(({ key, label }) => label || metricLabels[key] || key)].forEach((label) => {
