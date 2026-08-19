@@ -446,8 +446,10 @@ const {
 } = createPublicArenaApi({ supabase });
 
 const {
+  capExpiredTournamentMatchTimers,
   getCupPlayTimeById,
   getInProgressParticipantConflicts,
+  getNextMatchTimerExpiryDelay,
   getTournamentActiveCourtUsages,
   getTournamentMatchStatusSummary,
   getTournamentOperationalGames,
@@ -2866,6 +2868,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .some((value) => String(value).toLowerCase().includes(term));
   });
 
+  function normalizeCircuitTournamentIds(tournamentIds = []) {
+    return [...new Set(
+      (Array.isArray(tournamentIds) ? tournamentIds : [])
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
+    )];
+  }
+
   function normalizeCircuitRow(row) {
     const rankingSettings = normalizeCircuitRankingSettings(row.ranking_settings || row.rankingSettings);
     return {
@@ -2874,7 +2884,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       startDate: row.start_date || "",
       endDate: row.end_date || "",
       status: normalizeCircuitStatus(row.status),
-      tournamentIds: Array.isArray(row.tournament_ids) ? row.tournament_ids : [],
+      tournamentIds: normalizeCircuitTournamentIds(row.tournament_ids),
       rankingCriteria: row.ranking_criteria || defaultRankingCriteria,
       rankingCriteriaMode: row.ranking_criteria_mode === "manual" ? "manual" : "automatic",
       rankingSettings,
@@ -3251,16 +3261,28 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuits(sortedCircuits);
   }
 
-  function getCircuitSelectedTournaments(circuit, tournamentSource = tournaments) {
+  function getCircuitTournamentSelection(circuit, tournamentSource = tournaments) {
     const settings = normalizeCircuitRankingSettings(circuit?.rankingSettings);
-    const sourceTournamentIds = settings.sourceCircuitIds.flatMap((sourceId) => {
+    const directIds = normalizeCircuitTournamentIds(circuit?.tournamentIds);
+    const sourceIds = normalizeCircuitTournamentIds(settings.sourceCircuitIds.flatMap((sourceId) => {
       const source = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
       return source?.tournamentIds || [];
-    });
-    const selectedIds = [...new Set([...(circuit.tournamentIds || []), ...sourceTournamentIds].map((id) => String(id)))];
-    return selectedIds
-      .map((id) => tournamentSource.find((t) => String(t.id) === id))
-      .filter(Boolean);
+    }));
+    const effectiveIds = normalizeCircuitTournamentIds([...directIds, ...sourceIds]);
+    const tournamentsById = new Map(
+      (Array.isArray(tournamentSource) ? tournamentSource : []).map((tournament) => [String(tournament.id), tournament])
+    );
+
+    return {
+      directIds,
+      effectiveIds,
+      selectedTournaments: effectiveIds.map((id) => tournamentsById.get(id)).filter(Boolean),
+      unavailableIds: directIds.filter((id) => !tournamentsById.has(id)),
+    };
+  }
+
+  function getCircuitSelectedTournaments(circuit, tournamentSource = tournaments) {
+    return getCircuitTournamentSelection(circuit, tournamentSource).selectedTournaments;
   }
 
   function getArenaParticipantGenderRegistry() {
@@ -3394,10 +3416,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     updateForm((prev) => {
       if (!prev) return prev;
-      const selected = prev.tournamentIds.includes(tournamentId);
+      const normalizedTournamentId = String(tournamentId);
+      const currentTournamentIds = normalizeCircuitTournamentIds(prev.tournamentIds);
+      const selected = currentTournamentIds.includes(normalizedTournamentId);
       const tournamentIds = selected
-        ? prev.tournamentIds.filter((id) => id !== tournamentId)
-        : [...prev.tournamentIds, tournamentId];
+        ? currentTournamentIds.filter((id) => id !== normalizedTournamentId)
+        : [...currentTournamentIds, normalizedTournamentId];
       const inheritedCriteria = getCircuitCriteriaInfo(tournamentIds).value;
       return {
         ...prev,
@@ -3445,7 +3469,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const previousCircuit = isEditing
       ? (form._baseCircuit || circuitsRef.current.find((item) => String(item.id) === String(form.id)))
       : null;
-    const selectedTournamentIds = [...new Set((form.tournamentIds || []).map(String))];
+    const selectedTournamentIds = normalizeCircuitTournamentIds(form.tournamentIds);
     const comparableRankingSettings = (value) => {
       const normalized = normalizeCircuitRankingSettings(value);
       return { ...normalized, genderRegistry: {}, rankingDivision: "general" };
@@ -3483,7 +3507,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       start_date: form.startDate || null,
       end_date: form.endDate || null,
       status: getAutomaticEventStatus(form.endDate),
-      tournament_ids: form.tournamentIds || [],
+      tournament_ids: selectedTournamentIds,
       ranking_criteria: form.rankingCriteriaMode === "manual"
         ? form.rankingCriteria
         : getCircuitCriteriaInfo(form.tournamentIds || []).value,
@@ -3729,7 +3753,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       name: editableCircuit.name || "",
       startDate: editableCircuit.startDate || "",
       endDate: editableCircuit.endDate || "",
-      tournamentIds: Array.isArray(editableCircuit.tournamentIds) ? editableCircuit.tournamentIds : [],
+      tournamentIds: normalizeCircuitTournamentIds(editableCircuit.tournamentIds),
       rankingCriteria: getCircuitEffectiveCriteria(editableCircuit),
       rankingCriteriaMode: editableCircuit.rankingCriteriaMode === "manual" ? "manual" : "automatic",
       rankingSettings: getEffectiveCircuitRankingSettings(editableCircuit.rankingSettings),
@@ -7428,8 +7452,14 @@ setNewPublicInfo({
             <div className="circuitTournamentPicker circuitEditTournamentPicker">
               <div className="circuitPickerTitle">
                 <strong>Torneios compatíveis</strong>
-                <span>{circuitEditForm.tournamentIds.length} selecionado(s)</span>
+                <span>{getCircuitTournamentSelection(circuitEditForm).selectedTournaments.length} considerado(s) no circuito</span>
               </div>
+              <p className="circuitSelectionGuidance">Os cartões marcados com ✓ são os mesmos exibidos em “Torneios do circuito”.</p>
+              {getCircuitTournamentSelection(circuitEditForm).unavailableIds.length > 0 ? (
+                <p className="circuitSelectionNotice">
+                  {getCircuitTournamentSelection(circuitEditForm).unavailableIds.length} vínculo(s) antigo(s) não aparece(m) porque o torneio não está mais disponível na lista atual.
+                </p>
+              ) : null}
               {!getCircuitFormFormat(circuitEditForm) ? (
                 <p>Escolha primeiro o formato das etapas do circuito.</p>
               ) : getCircuitCompatibleTournaments(circuitEditForm).length === 0 ? (
@@ -7438,7 +7468,7 @@ setNewPublicInfo({
                 <div className="circuitTournamentList">
                   {getCircuitCompatibleTournaments(circuitEditForm).map((t) => {
                     const details = t.data || {};
-                    const checked = circuitEditForm.tournamentIds.includes(t.id);
+                    const checked = normalizeCircuitTournamentIds(circuitEditForm.tournamentIds).includes(String(t.id));
                     return (
                       <label className={`circuitTournamentOption ${checked ? "selected" : ""}`} key={t.id}>
                         <input type="checkbox" checked={checked} onChange={() => toggleCircuitTournament(t.id, true)} />
@@ -8240,7 +8270,7 @@ setNewPublicInfo({
     <div className="circuitTournamentPicker">
       <div className="circuitPickerTitle">
         <strong>Torneios compatíveis</strong>
-        <span>{circuitForm.tournamentIds.length} selecionado(s)</span>
+        <span>{getCircuitTournamentSelection(circuitForm).selectedTournaments.length} selecionado(s)</span>
       </div>
       {!getCircuitFormFormat(circuitForm) ? (
         <p>Escolha primeiro o formato das etapas do circuito.</p>
@@ -8250,7 +8280,7 @@ setNewPublicInfo({
         <div className="circuitTournamentList">
           {getCircuitCompatibleTournaments(circuitForm).map((t) => {
             const details = t.data || {};
-            const checked = circuitForm.tournamentIds.includes(t.id);
+            const checked = normalizeCircuitTournamentIds(circuitForm.tournamentIds).includes(String(t.id));
             return (
               <label className={`circuitTournamentOption ${checked ? "selected" : ""}`} key={t.id}>
                 <input type="checkbox" checked={checked} onChange={() => toggleCircuitTournament(t.id)} />
@@ -9311,6 +9341,26 @@ function TournamentScreen({
       void queueTournamentSave(latestDataRef.current, dataVersionRef.current);
     }, 500);
   }
+
+  useEffect(() => {
+    const remainingMilliseconds = getNextMatchTimerExpiryDelay(data);
+    if (remainingMilliseconds === null) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      const result = capExpiredTournamentMatchTimers(latestDataRef.current);
+      if (result.cappedCount === 0) return;
+      setData(result.data);
+      showNotice(
+        "warning",
+        result.cappedCount === 1 ? "Cronômetro limitado a 59 minutos" : "Cronômetros limitados a 59 minutos",
+        result.cappedCount === 1
+          ? "O jogo deixou de ficar em andamento. O placar e o confronto foram preservados."
+          : `${result.cappedCount} jogos deixaram de ficar em andamento. Placares e confrontos foram preservados.`
+      );
+    }, Math.max(0, Math.ceil(remainingMilliseconds)) + 25);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [data]);
 
   function clearShuffleTimers() {
     if (shuffleAnimationTimerRef.current) clearInterval(shuffleAnimationTimerRef.current);

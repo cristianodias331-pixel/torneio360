@@ -39,8 +39,31 @@ function collectGames(value, output = [], visited = new Set()) {
   return output;
 }
 
+function collectGamesWithPath(value, path = [], output = [], visited = new Set()) {
+  if (!value || typeof value !== "object" || visited.has(value)) return output;
+  visited.add(value);
+  if (isGame(value)) {
+    output.push({ game: value, path });
+    return output;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((child, index) => collectGamesWithPath(child, [...path, index], output, visited));
+  } else {
+    Object.entries(value).forEach(([key, child]) => collectGamesWithPath(child, [...path, key], output, visited));
+  }
+  return output;
+}
+
 function hasScore(value) {
   return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
+}
+
+function getRunningTimerSeconds(game, now = Date.now()) {
+  if (game?.inProgress !== true || !game?.matchTimerStartedAt) return null;
+  const startedAt = new Date(game.matchTimerStartedAt).getTime();
+  if (!Number.isFinite(startedAt)) return null;
+  const stored = Math.max(0, Number(game.matchTimerElapsedSeconds || 0));
+  return Math.floor(stored + Math.max(0, now - startedAt) / 1000);
 }
 
 function countParticipantSlots(players) {
@@ -108,6 +131,12 @@ const audited = await mapWithConcurrency(directoryEntries, 5, async ({ arena, to
     const bracketGames = collectGames(data?.brackets);
     const games = [...scheduleGames, ...bracketGames];
     const participantNames = listParticipantNames(data?.players);
+    const activeTimers = [
+      ...collectGamesWithPath(data?.schedule, ["schedule"]),
+      ...collectGamesWithPath(data?.brackets, ["brackets"]),
+    ]
+      .map(({ game, path }) => ({ game, path, seconds: getRunningTimerSeconds(game) }))
+      .filter((item) => item.seconds !== null);
     return {
       arena: arena.arena_name || arena.name || arena.id,
       id: tournament.id,
@@ -122,6 +151,16 @@ const audited = await mapWithConcurrency(directoryEntries, 5, async ({ arena, to
       scheduleGames: scheduleGames.length,
       bracketGames: bracketGames.length,
       scoredGames: games.filter((game) => hasScore(game.s1) && hasScore(game.s2)).length,
+      activeTimers: activeTimers.length,
+      timersAtOrAbove59Minutes: activeTimers.filter((item) => item.seconds >= 59 * 60).length,
+      expiredTimerDetails: activeTimers
+        .filter((item) => item.seconds >= 59 * 60)
+        .map((item) => ({
+          path: item.path,
+          matchKey: item.game.matchKey || null,
+          teams: [item.game.team1, item.game.team2],
+          seconds: item.seconds,
+        })),
       error: null,
     };
   } catch (error) {
@@ -139,6 +178,9 @@ const audited = await mapWithConcurrency(directoryEntries, 5, async ({ arena, to
       scheduleGames: 0,
       bracketGames: 0,
       scoredGames: 0,
+      activeTimers: 0,
+      timersAtOrAbove59Minutes: 0,
+      expiredTimerDetails: [],
       error: error.message,
     };
   }
@@ -147,6 +189,8 @@ const audited = await mapWithConcurrency(directoryEntries, 5, async ({ arena, to
 const failures = audited.filter((item) => item.error || !item.hasFullData);
 const withGames = audited.filter((item) => item.scheduleGames + item.bracketGames > 0);
 const withScores = audited.filter((item) => item.scoredGames > 0);
+const withActiveTimers = audited.filter((item) => item.activeTimers > 0);
+const withExpiredTimers = audited.filter((item) => item.timersAtOrAbove59Minutes > 0);
 const withoutGamesAfterParticipants = audited.filter((item) => (
   item.participantSlots > 0 && item.scheduleGames + item.bracketGames === 0
 ));
@@ -169,6 +213,23 @@ console.log(JSON.stringify({
   tournaments: audited.length,
   tournamentsWithGames: withGames.length,
   tournamentsWithScores: withScores.length,
+  tournamentsWithActiveTimers: withActiveTimers.map((item) => ({
+    arena: item.arena,
+    id: item.id,
+    publicId: item.publicId,
+    name: item.name,
+    activeTimers: item.activeTimers,
+    timersAtOrAbove59Minutes: item.timersAtOrAbove59Minutes,
+    expiredTimerDetails: item.expiredTimerDetails,
+  })),
+  tournamentsWithTimersAtOrAbove59Minutes: withExpiredTimers.map((item) => ({
+    arena: item.arena,
+    id: item.id,
+    publicId: item.publicId,
+    name: item.name,
+    timersAtOrAbove59Minutes: item.timersAtOrAbove59Minutes,
+    expiredTimerDetails: item.expiredTimerDetails,
+  })),
   fullReadFailures: failures,
   tournamentsWithParticipantsButNoGeneratedGames: withoutGamesAfterParticipants.map((item) => ({
     arena: item.arena,

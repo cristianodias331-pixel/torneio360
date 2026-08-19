@@ -295,7 +295,7 @@ export default function ScheduleView({
         />
       ) : null}
 
-      {!readOnly && statusData ? <MatchStatusSummary data={statusData} scope="schedule" /> : null}
+      {!readOnly && statusData ? <MatchStatusSummary data={statusData} /> : null}
 
       {showGroupName ? (
         <>

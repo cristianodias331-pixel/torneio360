@@ -1,10 +1,19 @@
+export const MAX_MATCH_TIMER_SECONDS = 59 * 60;
+
+function clampMatchTimerSeconds(value) {
+  return Math.min(
+    MAX_MATCH_TIMER_SECONDS,
+    Math.max(0, Math.floor(Number(value || 0)))
+  );
+}
+
 export function getMatchTimerTimestamp(value) {
   const timestamp = value ? new Date(value).getTime() : Number.NaN;
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 export function getMatchElapsedSeconds(game, now = Date.now()) {
-  const storedSeconds = Math.max(0, Math.floor(Number(game?.matchTimerElapsedSeconds || 0)));
+  const storedSeconds = clampMatchTimerSeconds(game?.matchTimerElapsedSeconds);
   const finishedAt = getMatchTimerTimestamp(game?.matchTimerFinishedAt);
 
   // Um término registrado sempre congela o cronômetro. Essa precedência
@@ -17,12 +26,34 @@ export function getMatchElapsedSeconds(game, now = Date.now()) {
     );
     return firstStartedAt === null
       ? 0
-      : Math.max(0, Math.floor((finishedAt - firstStartedAt) / 1000));
+      : clampMatchTimerSeconds((finishedAt - firstStartedAt) / 1000);
   }
 
   const startedAt = getMatchTimerTimestamp(game?.matchTimerStartedAt);
   if (game?.inProgress !== true || startedAt === null) return storedSeconds;
-  return storedSeconds + Math.max(0, Math.floor((now - startedAt) / 1000));
+  return clampMatchTimerSeconds(
+    storedSeconds + Math.max(0, Math.floor((now - startedAt) / 1000))
+  );
+}
+
+export function getMatchTimerRemainingMilliseconds(game, now = Date.now()) {
+  if (game?.inProgress !== true || !game?.matchTimerStartedAt) return null;
+  const elapsedSeconds = getMatchElapsedSeconds(game, now);
+  if (elapsedSeconds >= MAX_MATCH_TIMER_SECONDS) return 0;
+  const startedAt = getMatchTimerTimestamp(game.matchTimerStartedAt);
+  if (startedAt === null) return null;
+  const elapsedMilliseconds = Math.max(0, now - startedAt);
+  const storedMilliseconds = clampMatchTimerSeconds(game?.matchTimerElapsedSeconds) * 1000;
+  return Math.max(0, (MAX_MATCH_TIMER_SECONDS * 1000) - storedMilliseconds - elapsedMilliseconds);
+}
+
+export function capExpiredMatchTimer(game, now = Date.now()) {
+  if (game?.inProgress !== true || !game?.matchTimerStartedAt) return false;
+  if (getMatchElapsedSeconds(game, now) < MAX_MATCH_TIMER_SECONDS) return false;
+  game.matchTimerElapsedSeconds = MAX_MATCH_TIMER_SECONDS;
+  delete game.matchTimerStartedAt;
+  game.inProgress = false;
+  return true;
 }
 
 export function formatMatchDuration(value) {
@@ -53,7 +84,7 @@ export function startMatchTimer(game, now = Date.now()) {
 
 export function stopMatchTimer(game, { finished = false, now = Date.now() } = {}) {
   if (!game) return game;
-  game.matchTimerElapsedSeconds = getMatchElapsedSeconds(game, now);
+  game.matchTimerElapsedSeconds = clampMatchTimerSeconds(getMatchElapsedSeconds(game, now));
   delete game.matchTimerStartedAt;
   if (finished && game.matchTimerFirstStartedAt) {
     game.matchTimerFinishedAt = new Date(now).toISOString();
@@ -73,7 +104,7 @@ export function resetMatchTimer(game) {
 export function getMatchTimerFields(game) {
   if (!game) return {};
   const fields = {
-    matchTimerElapsedSeconds: Math.max(0, Math.floor(Number(game.matchTimerElapsedSeconds || 0))),
+    matchTimerElapsedSeconds: clampMatchTimerSeconds(game.matchTimerElapsedSeconds),
   };
   if (game.matchTimerStartedAt) fields.matchTimerStartedAt = game.matchTimerStartedAt;
   if (game.matchTimerFirstStartedAt) fields.matchTimerFirstStartedAt = game.matchTimerFirstStartedAt;

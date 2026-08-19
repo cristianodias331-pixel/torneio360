@@ -4,7 +4,11 @@ import {
 } from "./courtNumbers.mjs";
 import { isCampeonatoCearenseData } from "./cupFormat.mjs";
 import { getSharedGameParticipants } from "./gameParticipants.mjs";
-import { getMatchElapsedSeconds } from "./matchTimer.mjs";
+import {
+  capExpiredMatchTimer,
+  getMatchElapsedSeconds,
+  getMatchTimerRemainingMilliseconds,
+} from "./matchTimer.mjs";
 import {
   getWinningScore,
   isGameFinished,
@@ -12,6 +16,36 @@ import {
 import { resolveBracketGame } from "./bracketProgression.mjs";
 
 export function createTournamentOperations({ syncCupBracketScores = (data) => data } = {}) {
+  function getStoredTournamentGames(data = {}) {
+    return [
+      ...(Array.isArray(data.schedule) ? data.schedule.flatMap((round) => (
+        Array.isArray(round) ? round : []
+      )) : []),
+      ...(Array.isArray(data.brackets) ? data.brackets : []),
+    ];
+  }
+
+  function getNextMatchTimerExpiryDelay(data = {}, now = Date.now()) {
+    const remainingTimes = getStoredTournamentGames(data)
+      .map((game) => getMatchTimerRemainingMilliseconds(game, now))
+      .filter((remaining) => remaining !== null);
+    return remainingTimes.length ? Math.min(...remainingTimes) : null;
+  }
+
+  function capExpiredTournamentMatchTimers(data = {}, now = Date.now()) {
+    const hasExpiredTimer = getStoredTournamentGames(data).some((game) => (
+      getMatchTimerRemainingMilliseconds(game, now) === 0
+    ));
+    if (!hasExpiredTimer) return { data, cappedCount: 0 };
+
+    const nextData = structuredClone(data);
+    let cappedCount = 0;
+    getStoredTournamentGames(nextData).forEach((game) => {
+      if (capExpiredMatchTimer(game, now)) cappedCount += 1;
+    });
+    return { data: nextData, cappedCount };
+  }
+
   function hasPlayableGameSides(game) {
     if (!game || game.isBye) return false;
 
@@ -177,8 +211,10 @@ export function createTournamentOperations({ syncCupBracketScores = (data) => da
   }
 
   return {
+    capExpiredTournamentMatchTimers,
     getCupPlayTimeById,
     getInProgressParticipantConflicts,
+    getNextMatchTimerExpiryDelay,
     getTournamentActiveCourtUsages,
     getTournamentMatchStatusSummary,
     getTournamentOperationalGames,
