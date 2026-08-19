@@ -8020,27 +8020,6 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   user-select: none !important;
 }
 
-.photoEditorPreview.isSquare {
-  position: relative !important;
-  border-radius: 18px !important;
-}
-
-.photoEditorPreviewBadge {
-  position: absolute;
-  right: 9px;
-  bottom: 9px;
-  z-index: 2;
-  padding: 5px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  background: rgba(7, 20, 38, 0.76);
-  color: #ffffff;
-  font-size: 0.66rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-}
-
 .photoEditorPreview img {
   display: none !important;
 }
@@ -17434,21 +17413,10 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 .publicArenaEventCover {
   min-height: 155px;
   overflow: hidden;
-  background: radial-gradient(circle at center, #153b75 0%, #0a244a 72%, #071a34 100%);
+  background: linear-gradient(135deg, #155fc8, #05abc5);
 }
 
-.publicArenaEventCover img { width: 100%; height: 100%; object-fit: contain; }
-.publicArenaEventCover.isProfileFallback { display: grid; place-items: center; padding: 16px; }
-.publicArenaEventCover img.publicArenaProfileFallback {
-  width: 104px;
-  height: 104px;
-  max-width: 100%;
-  max-height: 100%;
-  border: 4px solid rgba(255, 255, 255, 0.88);
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 12px 28px rgba(2, 12, 31, 0.34);
-}
+.publicArenaEventCover img { width: 100%; height: 100%; object-fit: cover; }
 .publicArenaEventCover > span { display: grid; width: 100%; height: 100%; place-items: center; color: #fff; }
 .publicArenaEventCover svg { width: 42px; height: 42px; }
 .publicArenaEventBody { min-width: 0; padding: 22px; }
@@ -17456,26 +17424,14 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
 
 .publicTournamentCover {
   width: 100%;
-  min-height: 220px;
-  max-height: 520px;
+  max-height: 430px;
   margin: 0;
   overflow: hidden;
   border-radius: 22px;
-  background: radial-gradient(circle at center, #153b75 0%, #0a244a 72%, #071a34 100%);
-  display: grid;
-  place-items: center;
+  background: #0b1a2a;
 }
 
-.publicTournamentCover img { display: block; width: 100%; max-height: 520px; object-fit: contain; }
-.publicTournamentCover.isProfileFallback { min-height: 220px; padding: 26px; }
-.publicTournamentCover.isProfileFallback img {
-  width: 160px;
-  height: 160px;
-  border: 5px solid rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 14px 34px rgba(2, 12, 31, 0.36);
-}
+.publicTournamentCover img { display: block; width: 100%; max-height: 430px; object-fit: cover; }
 
 .profileAlwaysPublicBadge {
   display: inline-flex;
@@ -17521,68 +17477,10 @@ html[data-theme="dark"] .proDashboard.playAppShell .tournamentItem.dragMode .mov
   cursor: pointer;
 }
 
-.tournamentCoverDropzone input { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.tournamentCoverDropzone img { width: 100%; height: 230px; object-fit: contain; background: radial-gradient(circle at center, #153b75 0%, #0a244a 72%, #071a34 100%); }
+.tournamentCoverDropzone input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.tournamentCoverDropzone img { width: 100%; height: 230px; object-fit: cover; }
 .tournamentCoverDropzone > span { display: inline-flex; align-items: center; gap: 9px; padding: 20px; font-weight: 900; }
-.tournamentCoverDropzone > .tournamentCoverEmptyHint {
-  display: grid;
-  justify-items: center;
-  gap: 7px;
-  text-align: center;
-}
-.tournamentCoverEmptyHint svg { width: 28px; height: 28px; }
-.tournamentCoverEmptyHint small { color: var(--muted, #74849a); font-size: 0.76rem; line-height: 1.35; }
-.tournamentCoverDropzone > .tournamentCoverReplaceHint {
-  position: absolute;
-  z-index: 2;
-  right: 12px;
-  bottom: 12px;
-  padding: 8px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  background: rgba(4, 18, 42, 0.84);
-  color: #fff;
-  font-size: 0.72rem;
-  line-height: 1.2;
-  box-shadow: 0 8px 22px rgba(2, 12, 31, 0.24);
-}
-.tournamentCoverFormatHint {
-  display: block;
-  color: var(--muted, #74849a);
-  font-size: 0.76rem;
-  font-weight: 750;
-  line-height: 1.35;
-}
-.profileTournamentCover { width: 118px; min-height: 100px; align-self: stretch; border-radius: 14px; object-fit: contain; background: radial-gradient(circle at center, #153b75 0%, #0a244a 72%, #071a34 100%); }
-.profileTournamentCoverFallback {
-  width: 118px;
-  min-height: 100px;
-  align-self: stretch;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: radial-gradient(circle at center, #153b75 0%, #0a244a 72%, #071a34 100%);
-}
-.profileTournamentCoverFallback img { width: 76px; height: 76px; border: 3px solid #fff; border-radius: 50%; object-fit: cover; }
-
-@media (max-width: 760px) {
-  .publicPage.publicArenaPage .publicArenaEventCover.isProfileFallback { padding: 5px !important; }
-  .publicPage.publicArenaPage .publicArenaEventCover img.publicArenaProfileFallback {
-    width: 100% !important;
-    height: 100% !important;
-    border-width: 2px !important;
-  }
-  .publicTournamentCover { min-height: 180px; border-radius: 16px; }
-  .publicTournamentCover.isProfileFallback { min-height: 180px; padding: 20px; }
-  .publicTournamentCover.isProfileFallback img { width: 128px; height: 128px; }
-  .tournamentCoverDropzone > .tournamentCoverReplaceHint {
-    right: 8px;
-    bottom: 8px;
-    max-width: calc(100% - 16px);
-    font-size: 0.66rem;
-    text-align: center;
-  }
-}
+.profileTournamentCover { width: 118px; min-height: 100px; align-self: stretch; border-radius: 14px; object-fit: cover; }
 
 .automaticStatusField {
   display: flex;
@@ -18159,8 +18057,6 @@ html[data-theme="dark"] .circuitChoiceCheck { border-color: #475569; background:
   .tournamentCoverDropzone img { height: 190px; }
   .profileTournamentPost { align-items: stretch !important; flex-direction: column !important; }
   .profileTournamentCover { width: 100%; height: 170px; min-height: 0; }
-  .profileTournamentCoverFallback { width: 100%; height: 170px; min-height: 0; }
-  .profileTournamentCoverFallback img { width: 112px; height: 112px; }
   .circuitCriteriaCard { padding: 15px; }
 }
 
