@@ -2143,6 +2143,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [editTournamentSaving, setEditTournamentSaving] = useState(false);
   const [modalityChangeConfirmation, setModalityChangeConfirmation] = useState(null);
   const [eventGroupModalityConfirmation, setEventGroupModalityConfirmation] = useState(null);
   const [editEventGroup, setEditEventGroup] = useState(null);
@@ -4378,14 +4379,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   async function prepareTournamentCover(file, applyImage) {
     if (!file || coverImageLoading) return;
     setCoverImageLoading(true);
-
     try {
       const imageUrl = await resizeImageFile(file, {
-        maxWidth: 1400,
-        maxHeight: 900,
-        quality: 0.82,
+        maxWidth: 4096,
+        maxHeight: 4096,
+        quality: 0.94,
       });
-      applyImage(imageUrl);
+      setPhotoEditor({
+        imageUrl,
+        zoom: 1,
+        x: 0,
+        y: 0,
+        mode: "tournamentCover",
+        outputSize: 1080,
+        applyImage,
+      });
     } catch (error) {
       showNotice("warning", "Foto não adicionada", error.message || "Escolha outra imagem.");
     } finally {
@@ -4590,7 +4598,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setPhotoEditor({ imageUrl: String(reader.result || ""), zoom: 1, x: 0, y: 0 });
+      setPhotoEditor({ imageUrl: String(reader.result || ""), zoom: 1, x: 0, y: 0, mode: "profile" });
     };
     reader.readAsDataURL(file);
   }
@@ -4690,9 +4698,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
       ctx.clearRect(0, 0, outputSize, outputSize);
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
-      ctx.clip();
+      if (photoEditor.mode !== "tournamentCover") {
+        ctx.beginPath();
+        ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
+        ctx.clip();
+      }
 
       const baseScale = Math.max(outputSize / image.width, outputSize / image.height);
       const scale = baseScale * Number(photoEditor.zoom || 1);
@@ -4723,12 +4733,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     drawPhotoEditorCanvas(photoCanvasRef.current, previewSize);
   }, [photoEditor]);
 
-  function applyEditedOrganizerPhoto() {
+  function applyEditedPhoto() {
     if (!photoEditor?.imageUrl) return;
 
     const canvas = document.createElement("canvas");
-    drawPhotoEditorCanvas(canvas, 360, (finalCanvas) => {
-      const photoUrl = finalCanvas.toDataURL("image/png", 0.92);
+    const isTournamentCover = photoEditor.mode === "tournamentCover";
+    const outputSize = isTournamentCover ? Number(photoEditor.outputSize || 1080) : 360;
+    drawPhotoEditorCanvas(canvas, outputSize, (finalCanvas) => {
+      const photoUrl = finalCanvas.toDataURL(isTournamentCover ? "image/jpeg" : "image/png", isTournamentCover ? 0.82 : 0.92);
+
+      if (isTournamentCover) {
+        photoEditor.applyImage?.(photoUrl);
+        setPhotoEditor(null);
+        showNotice("success", "Foto do evento ajustada", "A imagem foi preparada no formato quadrado 1080 × 1080 px.");
+        return;
+      }
+
       setOrganizerProfile((prev) => {
         const next = { ...prev, photoUrl };
         localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(next));
@@ -6271,6 +6291,7 @@ setNewPublicInfo({
     const hydratedTournament = await hydrateTournamentDetails(tournament);
     if (!hydratedTournament) return;
     tournament = hydratedTournament;
+    setEditTournamentSaving(false);
     const details = tournament.data || {};
     const genderFields = getEditableTournamentGenderFields(details, tournament.type);
     setEditTarget(tournament);
@@ -6303,7 +6324,7 @@ setNewPublicInfo({
   }
 
   async function saveEditedTournament({ confirmModalityChange = false } = {}) {
-    if (!editTarget || !editForm) return;
+    if (!editTarget || !editForm || editTournamentSaving) return;
     if (!ensureCloudConnection("salvar as informações do torneio")) return;
 
     if (!editForm.name.trim()) {
@@ -6341,6 +6362,8 @@ setNewPublicInfo({
       showNotice("warning", "Informe o gênero", "Escreva o gênero escolhido na opção Outro.");
       return;
     }
+
+    setEditTournamentSaving(true);
 
     const isGroupedCategory = Boolean(editTarget.data?.multiCategoryEvent);
     const structuralData = modalityChanged
@@ -6394,37 +6417,45 @@ setNewPublicInfo({
     let mergeBase = editTarget;
     let saveResult = null;
 
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      saveResult = await persistTournamentSnapshot({
-        ...finalUpdated,
-        scoreSafetyBaseData: mergeBase.data,
-        allowScoreRegression: modalityChanged,
-      }, {
-        expectedUpdatedAt: mergeBase.updated_at || null,
-        expectedRevision: getCollaborationRevision(mergeBase),
-      });
-      if (saveResult.ok || !saveResult.conflict || !saveResult.serverTournament) break;
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        saveResult = await persistTournamentSnapshot({
+          ...finalUpdated,
+          scoreSafetyBaseData: mergeBase.data,
+          allowScoreRegression: modalityChanged,
+        }, {
+          expectedUpdatedAt: mergeBase.updated_at || null,
+          expectedRevision: getCollaborationRevision(mergeBase),
+        });
+        if (saveResult.ok || !saveResult.conflict || !saveResult.serverTournament) break;
 
-      const remoteTournament = saveResult.serverTournament;
-      const merged = mergeConcurrentTournamentData(
-        { name: mergeBase.name, type: mergeBase.type, data: mergeBase.data || {} },
-        { name: finalUpdated.name, type: finalUpdated.type, data: finalUpdated.data || {} },
-        {
-          name: remoteTournament.name,
-          type: remoteTournament.type,
-          data: remoteTournament.data || {},
-        }
-      );
-      finalUpdated = {
-        ...remoteTournament,
-        name: merged.data.name,
-        type: merged.data.type,
-        data: merged.data.data,
-      };
-      mergeBase = remoteTournament;
+        const remoteTournament = saveResult.serverTournament;
+        const merged = mergeConcurrentTournamentData(
+          { name: mergeBase.name, type: mergeBase.type, data: mergeBase.data || {} },
+          { name: finalUpdated.name, type: finalUpdated.type, data: finalUpdated.data || {} },
+          {
+            name: remoteTournament.name,
+            type: remoteTournament.type,
+            data: remoteTournament.data || {},
+          }
+        );
+        finalUpdated = {
+          ...remoteTournament,
+          name: merged.data.name,
+          type: merged.data.type,
+          data: merged.data.data,
+        };
+        mergeBase = remoteTournament;
+      }
+    } catch (error) {
+      setEditTournamentSaving(false);
+      console.error("Erro inesperado ao editar o torneio:", error);
+      showNotice("error", "Erro ao salvar", "A edição não foi aplicada. Os dados anteriores permanecem preservados.");
+      return;
     }
 
     if (!saveResult?.ok) {
+      setEditTournamentSaving(false);
       if (saveResult?.conflict) {
         showNotice(
           "warning",
@@ -6441,32 +6472,35 @@ setNewPublicInfo({
     finalUpdated = saveResult.tournament;
 
     const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
-    const nextTournaments = manualOrderActive
+    const orderedTournaments = manualOrderActive
       ? tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament)
       : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament));
-    const savedOrder = manualOrderActive
-      ? await persistTournamentOrderSequence(nextTournaments, { manual: true })
-      : { tournaments: nextTournaments, error: null };
-    const orderedTournaments = savedOrder.error ? nextTournaments : savedOrder.tournaments;
-    if (savedOrder.error) console.error("Erro ao preservar a ordem manual do torneio atualizado:", savedOrder.error);
     setTournaments(orderedTournaments);
-    const criteriaCircuits = await syncAutomaticCircuitCriteria(orderedTournaments);
-    const { circuits: rankedCircuits, success: circuitRankingSaved } = await persistCircuitRankings(
-      orderedTournaments,
-      criteriaCircuits || circuits,
-      finalUpdated.id
-    );
-    await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
     setEditTarget(null);
     setEditForm(null);
     setModalityChangeConfirmation(null);
-    showNotice(
-      circuitRankingSaved ? "success" : "warning",
-      circuitRankingSaved ? "Torneio atualizado" : "Torneio atualizado; ranking pendente",
-      circuitRankingSaved
-        ? "As informações foram atualizadas com sucesso."
-        : "Os dados do torneio foram salvos, mas o ranking do circuito precisa de uma nova tentativa."
-    );
+    setEditTournamentSaving(false);
+    showNotice("success", "Torneio atualizado", "A foto e as informações foram salvas com segurança.");
+
+    // Ranking de circuitos e diretório público são dados derivados. Atualizá-los depois
+    // do salvamento principal evita manter a edição bloqueada em contas com muitos eventos.
+    void (async () => {
+      const criteriaCircuits = await syncAutomaticCircuitCriteria(orderedTournaments);
+      const { circuits: rankedCircuits } = await persistCircuitRankings(
+        orderedTournaments,
+        criteriaCircuits || circuitsRef.current,
+        finalUpdated.id
+      );
+      await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
+      await saveDashboardCache(user.id, {
+        tournaments: orderedTournaments,
+        trashTournaments: trashTournamentsRef.current,
+        circuits: rankedCircuits,
+        trashCircuits: trashCircuitsRef.current,
+      });
+    })().catch((error) => {
+      console.error("Erro ao atualizar dados derivados após editar o torneio:", error);
+    });
   }
 
   async function openEditEventGroup(group) {
@@ -6752,16 +6786,21 @@ setNewPublicInfo({
     }
 
     const refreshedTournaments = await loadTournaments({ silentError: true }) || tournamentsRef.current;
-    const criteriaCircuits = await syncAutomaticCircuitCriteria(refreshedTournaments, circuitsRef.current);
-    const { circuits: rankedCircuits } = await persistCircuitRankings(
-      refreshedTournaments,
-      criteriaCircuits || circuitsRef.current
-    );
-    await syncPublicArenaDirectory(refreshedTournaments, rankedCircuits);
     setEditEventGroupSaving(false);
     setEditEventGroup(null);
     setEventGroupModalityConfirmation(null);
     showNotice("success", "Evento atualizado", "Os dados gerais e as categorias foram salvos em conjunto.");
+
+    void (async () => {
+      const criteriaCircuits = await syncAutomaticCircuitCriteria(refreshedTournaments, circuitsRef.current);
+      const { circuits: rankedCircuits } = await persistCircuitRankings(
+        refreshedTournaments,
+        criteriaCircuits || circuitsRef.current
+      );
+      await syncPublicArenaDirectory(refreshedTournaments, rankedCircuits);
+    })().catch((error) => {
+      console.error("Erro ao atualizar dados derivados após editar o evento:", error);
+    });
   }
 
   function getEventDateRange() {
@@ -7291,7 +7330,7 @@ setNewPublicInfo({
                 <h2>Editar torneio</h2>
                 <p>Atualize as informações principais deste torneio.</p>
               </div>
-              <button type="button" className="secondaryBtn" onClick={() => { setEditTarget(null); setEditForm(null); }}>Fechar</button>
+              <button type="button" className="secondaryBtn" disabled={editTournamentSaving} onClick={() => { setEditTarget(null); setEditForm(null); }}>Fechar</button>
             </div>
 
             <div className="editTournamentGrid">
@@ -7340,7 +7379,18 @@ setNewPublicInfo({
                     accept="image/*"
                     onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (imageUrl) => updateEditForm("coverImageUrl", imageUrl))}
                   />
-                  {editForm.coverImageUrl ? <img src={editForm.coverImageUrl} alt="Prévia da foto do torneio" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</span>}
+                  {editForm.coverImageUrl ? (
+                    <>
+                      <img src={editForm.coverImageUrl} alt="Prévia da foto do torneio" />
+                      <span className="tournamentCoverReplaceHint">Clique para trocar · post quadrado 1080 × 1080 px</span>
+                    </>
+                  ) : (
+                    <span className="tournamentCoverEmptyHint">
+                      <Camera aria-hidden="true" />
+                      <strong>{coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</strong>
+                      <small>Post quadrado 1080 × 1080 px · você poderá mover e ampliar</small>
+                    </span>
+                  )}
                 </label>
               </div>
 
@@ -7383,8 +7433,8 @@ setNewPublicInfo({
             </div>
 
             <div className="editTournamentActions">
-              <button type="button" className="cancelBtn" onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" onClick={() => void saveEditedTournament()}>Salvar alterações</button>
+              <button type="button" className="cancelBtn" disabled={editTournamentSaving} onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
+              <button type="button" className="actionConfirmBtn" disabled={editTournamentSaving || coverImageLoading} onClick={() => void saveEditedTournament()}>{editTournamentSaving ? "Salvando..." : "Salvar alterações"}</button>
             </div>
           </div>
         </div>
@@ -7419,8 +7469,8 @@ setNewPublicInfo({
                 <label className={`tournamentCoverDropzone ${editEventGroup.coverImageUrl ? "hasImage" : ""}`}>
                   <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupField("coverImageUrl", value))} />
                   {editEventGroup.coverImageUrl
-                    ? <img src={editEventGroup.coverImageUrl} alt="Prévia da foto geral do evento" />
-                    : <span><Camera aria-hidden="true" /> Escolher foto geral</span>}
+                    ? <><img src={editEventGroup.coverImageUrl} alt="Prévia da foto geral do evento" /><span className="tournamentCoverReplaceHint">Clique para trocar · post quadrado 1080 × 1080 px</span></>
+                    : <span className="tournamentCoverEmptyHint"><Camera aria-hidden="true" /><strong>Escolher foto geral</strong><small>Post quadrado 1080 × 1080 px · ajuste antes de aplicar</small></span>}
                 </label>
               </div>
             </section>
@@ -7516,7 +7566,7 @@ setNewPublicInfo({
                         {!category.usesEventCover ? (
                           <label className={`categoryCoverPicker ${category.coverImageUrl ? "hasImage" : ""}`}>
                             <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupCategory(category.key, "coverImageUrl", value))} />
-                            {category.coverImageUrl ? <img src={category.coverImageUrl} alt={`Foto de ${category.name || "categoria"}`} /> : <span><Camera aria-hidden="true" /> Escolher foto própria</span>}
+                            {category.coverImageUrl ? <img src={category.coverImageUrl} alt={`Foto de ${category.name || "categoria"}`} /> : <span><Camera aria-hidden="true" /> Foto própria · 1080 × 1080</span>}
                           </label>
                         ) : null}
                       </div>
@@ -7626,18 +7676,19 @@ setNewPublicInfo({
       {photoEditor ? (
         <div className="photoEditorOverlay" role="dialog" aria-modal="true">
           <div className="photoEditorModal">
-            <h2>Ajustar foto de perfil</h2>
-            <p>Arraste a imagem para alinhar. Use o movimento de pinça no celular ou a roda do mouse para aproximar.</p>
+            <h2>{photoEditor.mode === "tournamentCover" ? "Ajustar foto do evento" : "Ajustar foto de perfil"}</h2>
+            <p>{photoEditor.mode === "tournamentCover" ? "Enquadre a foto no formato quadrado do Instagram (1080 × 1080 px)." : "Arraste a imagem para alinhar. Use o movimento de pinça no celular ou a roda do mouse para aproximar."}</p>
             <div
               ref={photoPreviewRef}
-              className="photoEditorPreview"
+              className={`photoEditorPreview ${photoEditor.mode === "tournamentCover" ? "isSquare" : ""}`}
               onPointerDown={handlePhotoPointerDown}
               onPointerMove={handlePhotoPointerMove}
               onPointerUp={handlePhotoPointerEnd}
               onPointerCancel={handlePhotoPointerEnd}
               onWheel={handlePhotoWheel}
             >
-              <canvas ref={photoCanvasRef} aria-label="Prévia da foto ajustada" />
+              <canvas ref={photoCanvasRef} aria-label={photoEditor.mode === "tournamentCover" ? "Prévia quadrada da foto do evento" : "Prévia da foto de perfil ajustada"} />
+              {photoEditor.mode === "tournamentCover" ? <span className="photoEditorPreviewBadge">Prévia final · 1:1</span> : null}
             </div>
             <div className="photoEditorHint">Toque e arraste para mover • Pinça ou roda do mouse para zoom</div>
             <div className="photoZoomButtons" aria-label="Controles de zoom">
@@ -7647,7 +7698,7 @@ setNewPublicInfo({
             </div>
             <div className="photoEditorActions">
               <button type="button" className="cancelBtn" onClick={() => setPhotoEditor(null)}>Cancelar</button>
-              <button type="button" onClick={applyEditedOrganizerPhoto}>Aplicar foto</button>
+              <button type="button" onClick={applyEditedPhoto}>Aplicar foto</button>
             </div>
           </div>
         </div>
@@ -7940,7 +7991,7 @@ setNewPublicInfo({
             <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateCategorySchedule(index, "coverImageUrl", value))} />
             {item.coverImageUrl
               ? <img src={item.coverImageUrl} alt={`Foto de ${item.category || `categoria ${index + 1}`}`} />
-              : <span><Camera aria-hidden="true" /> Foto própria</span>}
+              : <span><Camera aria-hidden="true" /> Foto própria · 1080 × 1080</span>}
           </label>
 
           <div className="categoryScheduleActions">
@@ -8058,7 +8109,18 @@ setNewPublicInfo({
         accept="image/*"
         onChange={(event) => void prepareTournamentCover(event.target.files?.[0], setNewCoverImageUrl)}
       />
-      {newCoverImageUrl ? <img src={newCoverImageUrl} alt="Prévia da foto do torneio" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</span>}
+      {newCoverImageUrl ? (
+        <>
+          <img src={newCoverImageUrl} alt="Prévia da foto do torneio" />
+          <span className="tournamentCoverReplaceHint">Clique para trocar · post quadrado 1080 × 1080 px</span>
+        </>
+      ) : (
+        <span className="tournamentCoverEmptyHint">
+          <Camera aria-hidden="true" />
+          <strong>{coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</strong>
+          <small>Post quadrado 1080 × 1080 px · fotos maiores ou menores podem ser ajustadas</small>
+        </span>
+      )}
     </label>
   </div>
 
@@ -9005,6 +9067,8 @@ setNewPublicInfo({
           <article className="profileTournamentPost tournamentItem" key={t.id}>
             {details.coverImageUrl ? (
               <img className="profileTournamentCover" src={details.coverImageUrl} alt={`Foto de ${t.name}`} />
+            ) : organizerProfile.photoUrl ? (
+              <div className="profileTournamentCoverFallback"><img src={organizerProfile.photoUrl} alt={`Foto da arena ${organizerProfile.arenaName || "organizadora"}`} /></div>
             ) : null}
             <div className="tournamentInfo">
               <div className="tournamentTitleRow">
@@ -12887,9 +12951,9 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
       </header>
 
       <main className="publicContent">
-        {data.coverImageUrl ? (
-          <figure className="publicTournamentCover">
-            <img src={data.coverImageUrl} alt={`Foto do torneio ${tournament.name}`} />
+        {data.coverImageUrl || publicOrganizer.photoUrl ? (
+          <figure className={`publicTournamentCover ${!data.coverImageUrl ? "isProfileFallback" : ""}`}>
+            <img src={data.coverImageUrl || publicOrganizer.photoUrl} alt={data.coverImageUrl ? `Foto do torneio ${tournament.name}` : "Foto da arena organizadora"} />
           </figure>
         ) : null}
 
