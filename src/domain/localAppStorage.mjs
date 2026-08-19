@@ -295,7 +295,15 @@ export function readTournamentDraft(userId, tournament) {
   }
 }
 
-export function saveTournamentDraft(userId, tournament, data, baseUpdatedAt = null, baseData = null, baseRevision = null) {
+export function saveTournamentDraft(
+  userId,
+  tournament,
+  data,
+  baseUpdatedAt = null,
+  baseData = null,
+  baseRevision = null,
+  options = {}
+) {
   const tournamentId = typeof tournament === "string" ? tournament : tournament?.id;
   if (!userId || !tournamentId || !data) return Promise.resolve(false);
   const draft = {
@@ -309,6 +317,7 @@ export function saveTournamentDraft(userId, tournament, data, baseUpdatedAt = nu
     baseUpdatedAt: baseUpdatedAt || (typeof tournament === "object" ? tournament.updated_at : null),
     baseRevision: baseRevision ?? (typeof tournament === "object" ? getCollaborationRevision(tournament) : null),
     baseData: baseData || (typeof tournament === "object" ? tournament.data : null),
+    allowScoreRegression: options.allowScoreRegression === true,
     updatedAt: Date.now(),
     pending: true,
   };

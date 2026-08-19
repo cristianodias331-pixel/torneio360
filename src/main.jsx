@@ -350,6 +350,7 @@ import {
   tournamentDataEquals,
   tournamentMutationDataEquals,
 } from "./domain/realtimeTournamentMerge.mjs";
+import { inspectTournamentScoreRegression } from "./domain/tournamentScoreSafety.mjs";
 import {
   getGameParticipantIdentityEntries,
   getSharedGameParticipants,
@@ -4806,6 +4807,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     const lifecycleStatus = getTournamentLifecycleStatus(updated);
     const persistedData = { ...(updated.data || {}), lifecycleStatus };
+    const scoreSafety = inspectTournamentScoreRegression(updated.scoreSafetyBaseData, persistedData);
+    if (scoreSafety.unsafe && updated.allowScoreRegression !== true) {
+      const error = new Error(
+        `Gravação protegida: ${scoreSafety.removedScores} placares finalizados seriam removidos.`
+      );
+      error.code = "TOURNAMENT_SCORE_REGRESSION";
+      console.error(error, scoreSafety);
+      return { ok: false, error, protected: true, scoreSafety };
+    }
     const nextUpdatedAt = new Date().toISOString();
 
     let query = supabase
@@ -4924,6 +4934,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         result = await persistTournamentSnapshot({
           ...serverTournament,
           data: dataToPersist,
+          scoreSafetyBaseData: serverTournament.data,
+          allowScoreRegression: draft.allowScoreRegression === true,
         }, {
           expectedUpdatedAt: serverTournament.updated_at || null,
           expectedRevision: getCollaborationRevision(serverTournament),
@@ -6278,7 +6290,11 @@ setNewPublicInfo({
     let saveResult = null;
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      saveResult = await persistTournamentSnapshot(finalUpdated, {
+      saveResult = await persistTournamentSnapshot({
+        ...finalUpdated,
+        scoreSafetyBaseData: mergeBase.data,
+        allowScoreRegression: modalityChanged,
+      }, {
         expectedUpdatedAt: mergeBase.updated_at || null,
         expectedRevision: getCollaborationRevision(mergeBase),
       });
@@ -6552,6 +6568,8 @@ setNewPublicInfo({
         name: category.name.trim(),
         type: category.type,
         data: updatedData,
+        scoreSafetyBaseData: original.data,
+        allowScoreRegression: modalityChanged,
       }, {
         expectedUpdatedAt: original.updated_at || null,
         expectedRevision: getCollaborationRevision(original),
@@ -9121,6 +9139,7 @@ function TournamentScreen({
       baseData: draft?.baseData || tournament.data || {},
       shouldPersistRepair: repairNeeded && repairIsSafe,
       unsafeRepairDetected: repairNeeded && !repairIsSafe,
+      allowScoreRegression: draft?.allowScoreRegression === true,
     };
   }, [tournament.id, tournament.type, userId]);
   const initialDataWasRepairedRef = useRef(
@@ -9271,6 +9290,7 @@ function TournamentScreen({
   const submittedChangesRef = useRef(new Map());
   const lastConfirmedDataVersionRef = useRef(-1);
   const localBackupStateRef = useRef({ version: -1, saved: true });
+  const allowScoreRegressionRef = useRef(initialTournamentState.allowScoreRegression);
   const tournamentScreenMountedRef = useRef(true);
   const onSaveRef = useRef(onSave);
   const tournamentRef = useRef(tournament);
@@ -9298,7 +9318,7 @@ function TournamentScreen({
     return backupState.saved ? "Salvo neste aparelho" : "Falha no backup local";
   }
 
-  function setData(nextValue) {
+  function setData(nextValue, { allowScoreRegression = false } = {}) {
     if (unsafeRepairDetectedRef.current) {
       setNotice({
         type: "warning",
@@ -9317,13 +9337,15 @@ function TournamentScreen({
     const draftVersion = dataVersionRef.current;
     localBackupStateRef.current = { version: draftVersion, saved: null };
     hasUnsavedChangesRef.current = true;
+    allowScoreRegressionRef.current = allowScoreRegressionRef.current || allowScoreRegression;
     const localBackup = saveTournamentDraft(
       userId,
       tournamentRef.current,
       nextData,
       serverUpdatedAtRef.current,
       baseTournamentDataRef.current,
-      serverRevisionRef.current
+      serverRevisionRef.current,
+      { allowScoreRegression: allowScoreRegressionRef.current }
     );
     setDataState(nextData);
     setSavingStatus(isBrowserOffline() ? "Guardando neste aparelho..." : "Salvando...");
@@ -9338,7 +9360,9 @@ function TournamentScreen({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
-      void queueTournamentSave(latestDataRef.current, dataVersionRef.current);
+      void queueTournamentSave(latestDataRef.current, dataVersionRef.current, {
+        allowScoreRegression: allowScoreRegressionRef.current,
+      });
     }, 500);
   }
 
@@ -9393,11 +9417,17 @@ function TournamentScreen({
       saveRetryTimerRef.current = null;
       if (!hasUnsavedChangesRef.current) return;
       setSavingStatus("Tentando sincronizar...");
-      void queueTournamentSave(latestDataRef.current, dataVersionRef.current);
+      void queueTournamentSave(latestDataRef.current, dataVersionRef.current, {
+        allowScoreRegression: allowScoreRegressionRef.current,
+      });
     }, delay);
   }
 
-  function queueTournamentSave(snapshot, version, { updateStatus = true } = {}) {
+  function queueTournamentSave(
+    snapshot,
+    version,
+    { updateStatus = true, allowScoreRegression = allowScoreRegressionRef.current } = {}
+  ) {
     const queuedBaseData = baseTournamentDataRef.current;
     const queuedBaseRevision = serverRevisionRef.current;
     const queuedBaseUpdatedAt = serverUpdatedAtRef.current;
@@ -9441,6 +9471,8 @@ function TournamentScreen({
           let result = await onSaveRef.current({
             ...tournamentRef.current,
             data: dataToPersist,
+            scoreSafetyBaseData: attemptBaseData,
+            allowScoreRegression,
             revision: expectedRevision,
             updated_at: expectedUpdatedAt,
             changeId,
@@ -9513,6 +9545,7 @@ function TournamentScreen({
         latestDataRef.current = normalizedSavedData;
         setDataState(normalizedSavedData);
         hasUnsavedChangesRef.current = false;
+        allowScoreRegressionRef.current = false;
         clearTournamentDraft(userId, tournament.id);
         clearSaveRetryTimer();
         saveRetryAttemptRef.current = 0;
@@ -9525,9 +9558,18 @@ function TournamentScreen({
           latestDataRef.current,
           serverUpdatedAtRef.current,
           baseTournamentDataRef.current,
-          serverRevisionRef.current
+          serverRevisionRef.current,
+          { allowScoreRegression: allowScoreRegressionRef.current }
         );
         scheduleSaveRetry();
+      }
+
+      if (!ok && result.protected && isLatestVersion && tournamentScreenMountedRef.current) {
+        setNotice({
+          type: "warning",
+          title: "Placares protegidos",
+          message: `${result.scoreSafety?.removedScores || "Vários"} placares finalizados deixariam de ser salvos. A alteração foi interrompida e a cópia anterior continua preservada na nuvem.`,
+        });
       }
 
       if (updateStatus && isLatestVersion && tournamentScreenMountedRef.current) {
@@ -9593,6 +9635,7 @@ function TournamentScreen({
         latestDataRef.current = confirmedData;
         setDataState(confirmedData);
         hasUnsavedChangesRef.current = false;
+        allowScoreRegressionRef.current = false;
         clearTournamentDraft(userId, tournament.id);
         clearSaveRetryTimer();
         saveRetryAttemptRef.current = 0;
@@ -9604,7 +9647,8 @@ function TournamentScreen({
           latestDataRef.current,
           serverUpdatedAtRef.current,
           baseTournamentDataRef.current,
-          serverRevisionRef.current
+          serverRevisionRef.current,
+          { allowScoreRegression: allowScoreRegressionRef.current }
         );
       }
       return;
@@ -9634,7 +9678,8 @@ function TournamentScreen({
           latestDataRef.current,
           serverUpdatedAtRef.current,
           baseTournamentDataRef.current,
-          serverRevisionRef.current
+          serverRevisionRef.current,
+          { allowScoreRegression: allowScoreRegressionRef.current }
         );
       }
       return;
@@ -9655,7 +9700,9 @@ function TournamentScreen({
       if (!hasUnsavedChangesRef.current) return;
       clearSaveRetryTimer();
       setSavingStatus("Sincronizando...");
-      void queueTournamentSave(latestDataRef.current, dataVersionRef.current);
+      void queueTournamentSave(latestDataRef.current, dataVersionRef.current, {
+        allowScoreRegression: allowScoreRegressionRef.current,
+      });
     };
     const handleOffline = () => {
       if (hasUnsavedChangesRef.current) setSavingStatus(getOfflineBackupStatus());
@@ -9720,7 +9767,9 @@ function TournamentScreen({
           ).data;
       unsafeRepairDetectedRef.current = false;
       setSavingStatus("Recuperando backup deste aparelho...");
-      setData(normalizeTournamentData(tournament.type, recoveredData));
+      setData(normalizeTournamentData(tournament.type, recoveredData), {
+        allowScoreRegression: durableDraft.allowScoreRegression === true,
+      });
     }
 
     void hydrateDurableDraft();
@@ -9736,7 +9785,10 @@ function TournamentScreen({
     clearSaveRetryTimer();
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (hasUnsavedChangesRef.current) {
-      void queueTournamentSave(latestDataRef.current, dataVersionRef.current, { updateStatus: false });
+      void queueTournamentSave(latestDataRef.current, dataVersionRef.current, {
+        updateStatus: false,
+        allowScoreRegression: allowScoreRegressionRef.current,
+      });
     }
   }, []);
 
@@ -9761,10 +9813,14 @@ function TournamentScreen({
         latestDataRef.current,
         serverUpdatedAtRef.current,
         baseTournamentDataRef.current,
-        serverRevisionRef.current
+        serverRevisionRef.current,
+        { allowScoreRegression: allowScoreRegressionRef.current }
       );
       setSavingStatus("Recuperando dados...");
-      const ok = await queueTournamentSave(data, dataVersionRef.current, { updateStatus: false });
+      const ok = await queueTournamentSave(data, dataVersionRef.current, {
+        updateStatus: false,
+        allowScoreRegression: allowScoreRegressionRef.current,
+      });
 
       if (!cancelled) {
         setSavingStatus(ok ? "Dados recuperados" : "Erro ao recuperar dados");
@@ -9787,7 +9843,10 @@ function TournamentScreen({
       const ok = await queueTournamentSave(
         latestDataRef.current,
         dataVersionRef.current,
-        { updateStatus: false }
+        {
+          updateStatus: false,
+          allowScoreRegression: allowScoreRegressionRef.current,
+        }
       );
 
       if (!ok) {
@@ -9934,7 +9993,7 @@ function TournamentScreen({
       }
 
       return copy;
-    });
+    }, { allowScoreRegression: true });
   }
 
   function updateCupConfig(field, value) {
@@ -9984,7 +10043,7 @@ function TournamentScreen({
       }
 
       return copy;
-    });
+    }, { allowScoreRegression: true });
   }
 
   function applySimplePlayerCount(value) {
@@ -10010,7 +10069,7 @@ function TournamentScreen({
       delete copy.lastShuffleVideo;
       copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, playerCount / 2);
       return copy;
-    });
+    }, { allowScoreRegression: true });
     setCourtConfigRevision((revision) => revision + 1);
     showNotice(
       "success",
@@ -10065,7 +10124,7 @@ function TournamentScreen({
       delete copy.lastShuffleVideo;
       copy.courtNumbers = normalizeCourtNumbers(copy.courtNumbers, 1);
       return copy;
-    });
+    }, { allowScoreRegression: true });
     setCourtConfigRevision((revision) => revision + 1);
     showNotice(
       "success",
@@ -10774,7 +10833,7 @@ function TournamentScreen({
     const videoSnapshot = createShuffleVideoSnapshot(copy, config, tournament);
     copy.lastShuffleVideo = videoSnapshot;
 
-    setData(copy);
+    setData(copy, { allowScoreRegression: true });
     setShuffleOverlay(null);
     setShuffleVideoSnapshot(videoSnapshot);
   }
@@ -10839,7 +10898,7 @@ function generate() {
       schedule,
       brackets: [],
       groupsShuffled: prev.groupsShuffled || false,
-    }));
+    }), { allowScoreRegression: true });
 
     setActiveTournamentTab("partidas");
     setActiveMatchesTab("grupos");
@@ -10860,7 +10919,7 @@ function generate() {
   setData({
     ...data,
     schedule,
-  });
+  }, { allowScoreRegression: true });
 
   setActiveTournamentTab("partidas");
   showGeneratedGamesNotice("As rodadas e os jogos foram criados com sucesso.");
@@ -10929,7 +10988,7 @@ function generateBrackets() {
     }
     : data;
   const copy = syncCupBracketScores(bracketSource);
-  setData(copy);
+  setData(copy, { allowScoreRegression: true });
 
   showNotice(
     "success",
@@ -11058,7 +11117,7 @@ function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clear
     }
 
     return copy;
-  });
+  }, { allowScoreRegression: clearCupBrackets });
 }
 
 function updateScore(roundIndex, gameIndex, field, value) {
@@ -11195,7 +11254,7 @@ function clearScores() {
     resetCopinhaTieBreaks(copy);
   }
 
-  setData(copy);
+  setData(copy, { allowScoreRegression: true });
   setClearScoresOpen(false);
   showNotice("success", "Placares apagados", "Todos os placares foram removidos.");
 }
@@ -11209,7 +11268,7 @@ function clearTable() {
     resetCopinhaTieBreaks(copy);
   }
 
-  setData(copy);
+  setData(copy, { allowScoreRegression: true });
   setClearTableOpen(false);
   showNotice("success", "Jogos e placares apagados", "Todos os jogos e placares foram removidos. Os participantes foram mantidos.");
 }
