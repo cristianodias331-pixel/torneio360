@@ -3050,6 +3050,13 @@ assert.equal(getGameCourtLabel({ court: 2 }, ["4", "8"]), "Quadra 8", "A palavra
 const courtOverrideGame = { court: 1, courtLabelOverride: "Quadra 3" };
 applyCourtNumberToGame(courtOverrideGame, "Quadra 9", ["1"]);
 assert.deepEqual(courtOverrideGame, { court: 1, courtNumberOverride: "9" }, "A troca rápida não preserva somente o número escolhido.");
+const courtReturningToOriginalNumber = { court: 1, courtNumberOverride: "2" };
+applyCourtNumberToGame(courtReturningToOriginalNumber, "1", ["1"]);
+assert.deepEqual(
+  courtReturningToOriginalNumber,
+  { court: 1, courtNumberOverride: "1" },
+  "Voltar ao número estrutural da quadra apagou a escolha operacional do jogo."
+);
 assert.ok(tournamentDataNormalizationSource.includes('courtNumbers: createDefaultCourtNumbers'), "Novos torneios não recebem os números padrão das quadras.");
 assert.ok(matchControlsSource.includes("function CourtConfigPanel"), "A configuração prévia das quadras está ausente.");
 assert.ok(matchControlsSource.includes("function CourtAssignmentModal"), "A troca rápida de quadra durante os jogos está ausente.");
@@ -4339,11 +4346,26 @@ assert.equal(
   "3",
   "A Central continuou ocupando a quadra antiga depois da troca em um jogo em andamento."
 );
+applyCourtNumberToGame(activeCourtDataForTest.schedule[0][0], "1", activeCourtDataForTest.courtNumbers);
+assert.equal(
+  tournamentOperationsForTest.getTournamentActiveCourtUsages(
+    { id: "court-test", name: "Teste", data: activeCourtDataForTest },
+    activeCourtDataForTest
+  )[0]?.courtNumber,
+  "1",
+  "A Central não reconheceu a volta intencional para o número estrutural original."
+);
 assert.ok(
   mainSource.includes("venueCourtUsages={activeVenueUsages}")
     && mainSource.includes("const currentTournamentUsages = getTournamentActiveCourtUsages(")
     && mainSource.includes("getTournamentActiveCourtUsages({ ...tournament, data: nextData }, nextData)"),
   "A troca de quadra deixou de atualizar imediatamente a Central e os outros torneios abertos."
+);
+assert.ok(
+  mainSource.includes("setOperationalGameState(target, true, courtNumber)")
+    && mainSource.includes("return getAvailableCentralCourtNumbers(usages)[0] || null")
+    && matchControlsSource.includes("Usar Quadra {number} livre"),
+  "A chamada de jogo deixou de persistir a quadra visível ou voltou a inventar uma quadra fora da Central."
 );
 assert.ok(
   mainSource.includes("occupied: activeOccupiedCourtNumbers.size")

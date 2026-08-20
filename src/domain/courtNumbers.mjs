@@ -34,15 +34,17 @@ export function getGameCourtLabel(game, courtNumbers = []) {
 
 export function applyCourtNumberToGame(game, value, courtNumbers = []) {
   const normalizedNumber = normalizeCourtNumberValue(value);
-  const courtIndex = Math.max(0, Number(game?.court || 1) - 1);
-  const defaultNumber = normalizeCourtNumberValue(courtNumbers[courtIndex]) || String(courtIndex + 1);
 
   delete game.courtLabelOverride;
 
-  if (!normalizedNumber || normalizedNumber === defaultNumber) {
+  if (!normalizedNumber) {
     delete game.courtNumberOverride;
     return;
   }
 
+  // Uma escolha operacional precisa permanecer explícita no próprio jogo.
+  // A posição estrutural (`court`) e as preferências da Central podem mudar;
+  // apagar o override quando o número coincide com o padrão fazia a tela e a
+  // Central passarem a enxergar quadras diferentes.
   game.courtNumberOverride = normalizedNumber;
 }
