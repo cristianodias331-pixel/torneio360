@@ -2855,6 +2855,9 @@ assert.ok(
     && confirmationDialogsSource.includes("function ConfirmEventGroupModalityChangeModal")
     && mainSource.includes("const modalityChanged = editForm.type !== editTarget.type")
     && mainSource.includes("createInitialData(editForm.type, nextModalityConfig)")
+    && mainSource.includes("const [editTournamentSaving, setEditTournamentSaving] = useState(false)")
+    && mainSource.includes('editTournamentSaving ? "Salvando..."')
+    && confirmationDialogsSource.includes('busy ? "Trocando modalidade..."')
     && mainSource.includes("confirmModalityChanges: true")
     && confirmationDialogsSource.includes("Trocar modalidade"),
   "A edição segura da modalidade de um torneio existente está ausente."

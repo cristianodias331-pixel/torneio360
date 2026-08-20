@@ -2144,6 +2144,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [editTournamentSaving, setEditTournamentSaving] = useState(false);
   const [modalityChangeConfirmation, setModalityChangeConfirmation] = useState(null);
   const [eventGroupModalityConfirmation, setEventGroupModalityConfirmation] = useState(null);
   const [editEventGroup, setEditEventGroup] = useState(null);
@@ -6274,6 +6275,7 @@ setNewPublicInfo({
     tournament = hydratedTournament;
     const details = tournament.data || {};
     const genderFields = getEditableTournamentGenderFields(details, tournament.type);
+    setEditTournamentSaving(false);
     setEditTarget(tournament);
     setEditForm({
       name: tournament.name || "",
@@ -6304,7 +6306,7 @@ setNewPublicInfo({
   }
 
   async function saveEditedTournament({ confirmModalityChange = false } = {}) {
-    if (!editTarget || !editForm) return;
+    if (!editTarget || !editForm || editTournamentSaving) return;
     if (!ensureCloudConnection("salvar as informações do torneio")) return;
 
     if (!editForm.name.trim()) {
@@ -6394,80 +6396,100 @@ setNewPublicInfo({
     let finalUpdated = updated;
     let mergeBase = editTarget;
     let saveResult = null;
+    setEditTournamentSaving(true);
 
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      saveResult = await persistTournamentSnapshot({
-        ...finalUpdated,
-        scoreSafetyBaseData: mergeBase.data,
-        allowScoreRegression: modalityChanged,
-      }, {
-        expectedUpdatedAt: mergeBase.updated_at || null,
-        expectedRevision: getCollaborationRevision(mergeBase),
-      });
-      if (saveResult.ok || !saveResult.conflict || !saveResult.serverTournament) break;
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        saveResult = await persistTournamentSnapshot({
+          ...finalUpdated,
+          scoreSafetyBaseData: mergeBase.data,
+          allowScoreRegression: modalityChanged,
+        }, {
+          expectedUpdatedAt: mergeBase.updated_at || null,
+          expectedRevision: getCollaborationRevision(mergeBase),
+        });
+        if (saveResult.ok || !saveResult.conflict || !saveResult.serverTournament) break;
 
-      const remoteTournament = saveResult.serverTournament;
-      const merged = mergeConcurrentTournamentData(
-        { name: mergeBase.name, type: mergeBase.type, data: mergeBase.data || {} },
-        { name: finalUpdated.name, type: finalUpdated.type, data: finalUpdated.data || {} },
-        {
-          name: remoteTournament.name,
-          type: remoteTournament.type,
-          data: remoteTournament.data || {},
+        const remoteTournament = saveResult.serverTournament;
+        const merged = mergeConcurrentTournamentData(
+          { name: mergeBase.name, type: mergeBase.type, data: mergeBase.data || {} },
+          { name: finalUpdated.name, type: finalUpdated.type, data: finalUpdated.data || {} },
+          {
+            name: remoteTournament.name,
+            type: remoteTournament.type,
+            data: remoteTournament.data || {},
+          }
+        );
+        finalUpdated = {
+          ...remoteTournament,
+          name: merged.data.name,
+          type: merged.data.type,
+          data: merged.data.data,
+        };
+        mergeBase = remoteTournament;
+      }
+
+      if (!saveResult?.ok) {
+        if (saveResult?.conflict) {
+          showNotice(
+            "warning",
+            "Sincronização ainda em andamento",
+            "As informações foram preservadas. Tente salvar novamente; a alteração mais recente será aplicada automaticamente."
+          );
+        } else {
+          console.error(saveResult?.error);
+          showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
         }
-      );
-      finalUpdated = {
-        ...remoteTournament,
-        name: merged.data.name,
-        type: merged.data.type,
-        data: merged.data.data,
-      };
-      mergeBase = remoteTournament;
-    }
+        return;
+      }
 
-    if (!saveResult?.ok) {
-      if (saveResult?.conflict) {
+      finalUpdated = saveResult.tournament;
+
+      const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
+      const nextTournaments = manualOrderActive
+        ? tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament)
+        : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament));
+      const savedOrder = manualOrderActive
+        ? await persistTournamentOrderSequence(nextTournaments, { manual: true })
+        : { tournaments: nextTournaments, error: null };
+      const orderedTournaments = savedOrder.error ? nextTournaments : savedOrder.tournaments;
+      if (savedOrder.error) console.error("Erro ao preservar a ordem manual do torneio atualizado:", savedOrder.error);
+
+      setTournaments(orderedTournaments);
+      setEditTarget(null);
+      setEditForm(null);
+      setModalityChangeConfirmation(null);
+      showNotice("success", "Torneio atualizado", "As informações foram salvas com sucesso.");
+
+      void (async () => {
+        const criteriaCircuits = await syncAutomaticCircuitCriteria(orderedTournaments, circuitsRef.current);
+        const { circuits: rankedCircuits, success: circuitRankingSaved } = await persistCircuitRankings(
+          orderedTournaments,
+          criteriaCircuits || circuitsRef.current,
+          finalUpdated.id
+        );
+        await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
+        if (!circuitRankingSaved) {
+          showNotice(
+            "warning",
+            "Torneio atualizado; ranking pendente",
+            "O torneio está salvo. O ranking do circuito será atualizado na próxima sincronização."
+          );
+        }
+      })().catch((error) => {
+        console.error("Erro ao atualizar os dados derivados do torneio editado:", error);
         showNotice(
           "warning",
-          "Sincronização ainda em andamento",
-          "As informações foram preservadas. Tente salvar novamente; a alteração mais recente será aplicada automaticamente."
+          "Torneio atualizado; sincronização pendente",
+          "O torneio está salvo. Os dados derivados serão atualizados na próxima sincronização."
         );
-      } else {
-        console.error(saveResult?.error);
-        showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
-      }
-      return;
+      });
+    } catch (error) {
+      console.error("Erro inesperado ao editar o torneio:", error);
+      showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
+    } finally {
+      setEditTournamentSaving(false);
     }
-
-    finalUpdated = saveResult.tournament;
-
-    const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
-    const nextTournaments = manualOrderActive
-      ? tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament)
-      : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament));
-    const savedOrder = manualOrderActive
-      ? await persistTournamentOrderSequence(nextTournaments, { manual: true })
-      : { tournaments: nextTournaments, error: null };
-    const orderedTournaments = savedOrder.error ? nextTournaments : savedOrder.tournaments;
-    if (savedOrder.error) console.error("Erro ao preservar a ordem manual do torneio atualizado:", savedOrder.error);
-    setTournaments(orderedTournaments);
-    const criteriaCircuits = await syncAutomaticCircuitCriteria(orderedTournaments);
-    const { circuits: rankedCircuits, success: circuitRankingSaved } = await persistCircuitRankings(
-      orderedTournaments,
-      criteriaCircuits || circuits,
-      finalUpdated.id
-    );
-    await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
-    setEditTarget(null);
-    setEditForm(null);
-    setModalityChangeConfirmation(null);
-    showNotice(
-      circuitRankingSaved ? "success" : "warning",
-      circuitRankingSaved ? "Torneio atualizado" : "Torneio atualizado; ranking pendente",
-      circuitRankingSaved
-        ? "As informações foram atualizadas com sucesso."
-        : "Os dados do torneio foram salvos, mas o ranking do circuito precisa de uma nova tentativa."
-    );
   }
 
   async function openEditEventGroup(group) {
@@ -7274,7 +7296,8 @@ setNewPublicInfo({
 
       <ConfirmModalityChangeModal
         confirmation={modalityChangeConfirmation}
-        onCancel={() => setModalityChangeConfirmation(null)}
+        busy={editTournamentSaving}
+        onCancel={() => { if (!editTournamentSaving) setModalityChangeConfirmation(null); }}
         onConfirm={() => void saveEditedTournament({ confirmModalityChange: true })}
       />
 
@@ -7286,13 +7309,13 @@ setNewPublicInfo({
 
       {editTarget && editForm && !modalityChangeConfirmation ? (
         <div className="editTournamentOverlay" role="dialog" aria-modal="true">
-          <div className="editTournamentModal">
+          <div className="editTournamentModal" aria-busy={editTournamentSaving}>
             <div className="editTournamentHeader">
               <div>
                 <h2>Editar torneio</h2>
                 <p>Atualize as informações principais deste torneio.</p>
               </div>
-              <button type="button" className="secondaryBtn" onClick={() => { setEditTarget(null); setEditForm(null); }}>Fechar</button>
+              <button type="button" className="secondaryBtn" disabled={editTournamentSaving} onClick={() => { setEditTarget(null); setEditForm(null); }}>Fechar</button>
             </div>
 
             <div className="editTournamentGrid">
@@ -7384,8 +7407,10 @@ setNewPublicInfo({
             </div>
 
             <div className="editTournamentActions">
-              <button type="button" className="cancelBtn" onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" onClick={() => void saveEditedTournament()}>Salvar alterações</button>
+              <button type="button" className="cancelBtn" disabled={editTournamentSaving} onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
+              <button type="button" className="actionConfirmBtn" disabled={editTournamentSaving || coverImageLoading} onClick={() => void saveEditedTournament()}>
+                {coverImageLoading ? "Preparando foto..." : editTournamentSaving ? "Salvando..." : "Salvar alterações"}
+              </button>
             </div>
           </div>
         </div>
