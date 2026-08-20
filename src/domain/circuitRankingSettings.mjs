@@ -21,6 +21,15 @@ export const circuitTieBreakOptions = [
   { value: "balance", label: "Melhor saldo de games", key: "bal" },
 ];
 
+export const circuitTieBreakOrderOptions = [
+  { order: ["wins", "totalGames", "balance"], label: "Vitórias > Total de Games > Saldo de games" },
+  { order: ["wins", "balance", "totalGames"], label: "Vitórias > Saldo de games > Total de Games" },
+  { order: ["totalGames", "wins", "balance"], label: "Total de Games > Vitórias > Saldo de games" },
+  { order: ["totalGames", "balance", "wins"], label: "Total de Games > Saldo de games > Vitórias" },
+  { order: ["balance", "wins", "totalGames"], label: "Saldo de games > Vitórias > Total de Games" },
+  { order: ["balance", "totalGames", "wins"], label: "Saldo de games > Total de Games > Vitórias" },
+];
+
 export const defaultCircuitPositionPoints = [1000, 800, 670, 500, 400, 330, 250, 200, 170, 140];
 export const defaultCircuitOtherPositionPoints = 120;
 export const defaultCircuitCupPoints = {
@@ -64,8 +73,14 @@ export function normalizeCircuitPointValue(value) {
 }
 
 export function normalizeCircuitTieBreakOrder(value) {
-  void value;
-  return ["wins", "totalGames", "balance"];
+  const normalized = Array.isArray(value)
+    ? [...new Set(value.map((item) => String(item)).filter((item) => (
+      circuitTieBreakOptions.some((option) => option.value === item)
+    )))]
+    : [];
+  return normalized.length === circuitTieBreakOptions.length
+    ? normalized
+    : [...circuitTieBreakOrderOptions[0].order];
 }
 
 export function normalizeCircuitRankingSettings(value) {
@@ -139,7 +154,10 @@ export function normalizeCircuitRankingSettings(value) {
 }
 
 export function getCircuitTieBreakOrder(settings) {
-  return normalizeCircuitRankingSettings(settings).tieBreakOrder;
+  const normalized = normalizeCircuitRankingSettings(settings);
+  return normalized.mode === circuitRankingModes.placement
+    ? [...circuitTieBreakOrderOptions[0].order]
+    : normalized.tieBreakOrder;
 }
 
 export function compareCircuitStageScores(first, second) {
@@ -176,9 +194,12 @@ export function getCircuitTieBreakLabel(settings, { compact = false } = {}) {
   const placementMode = normalized.mode === circuitRankingModes.placement;
   return [
     ...(placementMode ? ["Pontos"] : []),
-    "Vitórias",
-    "Total de Games",
-    "Saldo de games",
+    ...getCircuitTieBreakOrder(normalized).map((criterion) => (
+      circuitTieBreakOptions.find((option) => option.value === criterion)?.label
+        .replace("Maior quantidade de vitórias", "Vitórias")
+        .replace("Maior Total de Games", "Total de Games")
+        .replace("Melhor saldo de games", "Saldo de games")
+    )),
     "Sorteio",
   ].join(" → ");
 }

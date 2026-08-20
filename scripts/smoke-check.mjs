@@ -1105,7 +1105,12 @@ assert.equal(getCircuitPlacementLabel("", 7), "7º lugar", "O rótulo de uma col
 assert.deepEqual(
   normalizeCircuitTieBreakOrder(["titles", "titles", "inválido"]),
   ["wins", "totalGames", "balance"],
-  "O circuito deve manter a ordem universal de Vitórias, Total de Games e Saldo."
+  "Uma ordem inválida deve voltar ao padrão de Vitórias, Total de Games e Saldo."
+);
+assert.deepEqual(
+  normalizeCircuitTieBreakOrder(["totalGames", "balance", "wins"]),
+  ["totalGames", "balance", "wins"],
+  "O circuito sem pontuação deve preservar a ordem escolhida pelo organizador."
 );
 const defaultCircuitSettings = normalizeCircuitRankingSettings();
 assert.equal(defaultCircuitSettings.mode, "performance", "O modo padrão do circuito foi alterado.");
@@ -1306,6 +1311,23 @@ assert.deepEqual(
     { name: "Bia", w: 2, pts: 12, bal: 3, played: 2, tournaments: 1 },
   ],
   "A soma ou a ordenação do histórico já persistido do circuito foi alterada."
+);
+const customOrderCircuitGroups = buildCircuitRankingGroupsFromRecords({
+  records: [
+    { groupKey: "geral", playerKey: "ana", name: "Ana", w: 3, pts: 10, bal: 1, played: 3, tournaments: 1 },
+    { groupKey: "geral", playerKey: "bia", name: "Bia", w: 2, pts: 14, bal: 4, played: 3, tournaments: 1 },
+  ],
+  settings: { mode: "performance", tieBreakOrder: ["totalGames", "balance", "wins"] },
+});
+assert.deepEqual(
+  customOrderCircuitGroups[0].rows.map((row) => row.name),
+  ["Bia", "Ana"],
+  "O circuito sem pontuação não respeitou a ordem de critérios escolhida pelo organizador."
+);
+assert.equal(
+  getCircuitTieBreakLabel({ mode: "performance", tieBreakOrder: ["totalGames", "balance", "wins"] }),
+  "Total de Games → Saldo de games → Vitórias → Sorteio",
+  "O resumo do circuito não refletiu a ordem escolhida pelo organizador."
 );
 const historicalGenderGroups = buildCircuitRankingGroupsFromRecords({
   records: [
@@ -3053,10 +3075,10 @@ assert.ok(
   "A pontuação por classificação final não limita os campos individuais ao 10º lugar ou não pontua as demais colocações."
 );
 assert.ok(
-  circuitRankingSettingsSource.includes('return ["wins", "totalGames", "balance"]')
+  circuitRankingSettingsSource.includes("circuitTieBreakOrderOptions")
     && getCircuitTieBreakLabel({ mode: "placement" }) === "Pontos → Vitórias → Total de Games → Saldo de games → Sorteio"
-    && getCircuitTieBreakLabel({ mode: "performance" }) === "Vitórias → Total de Games → Saldo de games → Sorteio",
-  "O ranking do circuito não usa a ordem universal com e sem pontuação."
+    && getCircuitTieBreakLabel({ mode: "performance", tieBreakOrder: ["balance", "totalGames", "wins"] }) === "Saldo de games → Total de Games → Vitórias → Sorteio",
+  "O ranking do circuito não mantém a ordem fixa com pontos ou a escolha livre sem pontuação."
 );
 assert.ok(
   circuitRankingSettingsPanelSource.includes("Pontuação por classificação final")
