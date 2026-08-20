@@ -2862,6 +2862,19 @@ assert.ok(
     && confirmationDialogsSource.includes("Trocar modalidade"),
   "A edição segura da modalidade de um torneio existente está ausente."
 );
+
+const singleTournamentEditStart = mainSource.indexOf("async function saveEditedTournament");
+const singleTournamentEditEnd = mainSource.indexOf("async function openEditEventGroup", singleTournamentEditStart);
+const singleTournamentEditSource = mainSource.slice(singleTournamentEditStart, singleTournamentEditEnd);
+assert.ok(
+  singleTournamentEditStart >= 0
+    && singleTournamentEditEnd > singleTournamentEditStart
+    && singleTournamentEditSource.includes('showNotice("success", "Torneio atualizado"')
+    && singleTournamentEditSource.includes("displayOrder: editTarget.data.displayOrder")
+    && singleTournamentEditSource.includes("displayOrderMode: editTarget.data.displayOrderMode")
+    && !singleTournamentEditSource.includes("persistTournamentOrderSequence("),
+  "A edição individual ainda pode declarar falha depois de o torneio já ter sido salvo por depender da persistência global da ordem."
+);
 assert.ok(
   styleSource.includes("z-index: 22010")
     && styleSource.includes("z-index: 22000"),

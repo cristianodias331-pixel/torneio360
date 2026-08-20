@@ -6351,6 +6351,12 @@ setNewPublicInfo({
       : (editTarget.data || {});
     const updatedData = {
       ...structuralData,
+      ...(editTarget.data?.displayOrder !== undefined && editTarget.data?.displayOrder !== null
+        ? { displayOrder: editTarget.data.displayOrder }
+        : {}),
+      ...(editTarget.data?.displayOrderMode
+        ? { displayOrderMode: editTarget.data.displayOrderMode }
+        : {}),
       publicInfo: editTarget.data?.publicInfo || structuralData.publicInfo,
       multiCategoryEvent: editTarget.data?.multiCategoryEvent,
       eventGroupKey: editTarget.data?.eventGroupKey,
@@ -6446,14 +6452,9 @@ setNewPublicInfo({
       finalUpdated = saveResult.tournament;
 
       const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
-      const nextTournaments = manualOrderActive
+      const orderedTournaments = manualOrderActive
         ? tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament)
         : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament));
-      const savedOrder = manualOrderActive
-        ? await persistTournamentOrderSequence(nextTournaments, { manual: true })
-        : { tournaments: nextTournaments, error: null };
-      const orderedTournaments = savedOrder.error ? nextTournaments : savedOrder.tournaments;
-      if (savedOrder.error) console.error("Erro ao preservar a ordem manual do torneio atualizado:", savedOrder.error);
 
       setTournaments(orderedTournaments);
       setEditTarget(null);
