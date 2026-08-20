@@ -121,7 +121,7 @@ export default function CourtCenterModal({
   }
 
   function applySystemCourtSuggestion() {
-    const quantity = Math.max(selectedVenue.recommendedCount, venueUsages.length);
+    const quantity = Math.max(selectedVenue.recommendedCount, usageByNumber.size);
     const occupiedNumbers = center.numbers.filter((number) => usageByNumber.has(number));
     const nextNumbers = [...occupiedNumbers];
     let candidate = 1;
@@ -244,7 +244,7 @@ export default function CourtCenterModal({
           </div>
           <div className="courtCenterCounters" aria-label="Resumo das quadras">
             <span className="free"><strong>{freeCount}</strong> livres</span>
-            <span className="occupied"><strong>{venueUsages.length}</strong> em uso</span>
+            <span className="occupied"><strong>{usageByNumber.size}</strong> em uso</span>
             <span className="paused"><strong>{center.unavailableNumbers.length}</strong> indisponíveis</span>
           </div>
         </div>
