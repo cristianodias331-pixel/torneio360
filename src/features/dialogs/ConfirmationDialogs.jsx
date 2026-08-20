@@ -175,7 +175,7 @@ export function ConfirmRegenerationModal({ confirmation, onCancel, onConfirm }) 
   );
 }
 
-export function ConfirmModalityChangeModal({ confirmation, onCancel, onConfirm }) {
+export function ConfirmModalityChangeModal({ confirmation, busy = false, onCancel, onConfirm }) {
   if (!confirmation) return null;
 
   return createPortal(
@@ -193,8 +193,10 @@ export function ConfirmModalityChangeModal({ confirmation, onCancel, onConfirm }
           <li>Rodadas, chaves, sorteios e placares incompatíveis serão removidos.</li>
         </ul>
         <div className="confirmActions">
-          <button type="button" className="secondaryBtn" onClick={onCancel}>Cancelar</button>
-          <button type="button" className="regenerationConfirmBtn" onClick={onConfirm}>Trocar modalidade</button>
+          <button type="button" className="secondaryBtn" disabled={busy} onClick={onCancel}>Cancelar</button>
+          <button type="button" className="regenerationConfirmBtn" disabled={busy} onClick={onConfirm}>
+            {busy ? "Trocando modalidade..." : "Trocar modalidade"}
+          </button>
         </div>
       </div>
     </div>,
