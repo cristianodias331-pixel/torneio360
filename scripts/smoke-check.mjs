@@ -4309,6 +4309,47 @@ assert.deepEqual(
   "A identificação interna do participante não preserva o nome exibido."
 );
 const tournamentOperationsForTest = createTournamentOperations();
+const activeCourtDataForTest = {
+  courtNumbers: ["1", "2", "3", "4"],
+  schedule: [[{
+    court: 1,
+    ids1: [1],
+    team1: ["Ana"],
+    ids2: [2],
+    team2: ["Bia"],
+    s1: "",
+    s2: "",
+    inProgress: true,
+  }]],
+};
+assert.equal(
+  tournamentOperationsForTest.getTournamentActiveCourtUsages(
+    { id: "court-test", name: "Teste", data: activeCourtDataForTest },
+    activeCourtDataForTest
+  )[0]?.courtNumber,
+  "1",
+  "A Central deixou de reconhecer a quadra inicial de um jogo em andamento."
+);
+applyCourtNumberToGame(activeCourtDataForTest.schedule[0][0], "3", activeCourtDataForTest.courtNumbers);
+assert.equal(
+  tournamentOperationsForTest.getTournamentActiveCourtUsages(
+    { id: "court-test", name: "Teste", data: activeCourtDataForTest },
+    activeCourtDataForTest
+  )[0]?.courtNumber,
+  "3",
+  "A Central continuou ocupando a quadra antiga depois da troca em um jogo em andamento."
+);
+assert.ok(
+  mainSource.includes("venueCourtUsages={activeVenueUsages}")
+    && mainSource.includes("const currentTournamentUsages = getTournamentActiveCourtUsages(")
+    && mainSource.includes("getTournamentActiveCourtUsages({ ...tournament, data: nextData }, nextData)"),
+  "A troca de quadra deixou de atualizar imediatamente a Central e os outros torneios abertos."
+);
+assert.ok(
+  mainSource.includes("occupied: activeOccupiedCourtNumbers.size")
+    && courtCenterModalSource.includes("<strong>{usageByNumber.size}</strong> em uso"),
+  "A Central voltou a contar jogos repetidos como se fossem quadras físicas diferentes."
+);
 const cappedTournamentTimer = tournamentOperationsForTest.capExpiredTournamentMatchTimers({
   schedule: [[{
     ids1: [1],

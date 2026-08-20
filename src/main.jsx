@@ -7154,7 +7154,7 @@ setNewPublicInfo({
   const activeOccupiedCourtNumbers = new Set(activeVenueUsages.map((usage) => normalizeCourtNumberValue(usage.courtNumber)));
   const activeUnavailableCourtNumbers = new Set(activeCourtCenter.unavailableNumbers);
   const activeCourtCenterSummary = {
-    occupied: activeVenueUsages.length,
+    occupied: activeOccupiedCourtNumbers.size,
     free: activeCourtCenter.numbers.filter((number) => (
       !activeOccupiedCourtNumbers.has(number) && !activeUnavailableCourtNumbers.has(number)
     )).length,
@@ -7259,6 +7259,7 @@ setNewPublicInfo({
                 arenaGenderRegistry={getArenaParticipantGenderRegistry()}
                 centralCourtNumbers={activeCourtCenter.numbers}
                 centralUnavailableCourtNumbers={activeCourtCenter.unavailableNumbers}
+                venueCourtUsages={activeVenueUsages}
                 preferredCourtNumbers={activeTournamentPreferredCourtNumbers}
                 onOpenCourtCenter={() => setCourtCenterOpen(true)}
                 onRegisterCentralCourtNumber={registerActiveCourtNumber}
@@ -9232,6 +9233,7 @@ function TournamentScreen({
   openTournaments = [],
   centralCourtNumbers = [],
   centralUnavailableCourtNumbers = [],
+  venueCourtUsages = [],
   preferredCourtNumbers = [],
   userId,
   onBack,
@@ -9486,6 +9488,12 @@ function TournamentScreen({
       { allowScoreRegression: allowScoreRegressionRef.current }
     );
     setDataState(nextData);
+    if (typeof onCourtUsagesChange === "function") {
+      onCourtUsagesChange(
+        tournament.id,
+        getTournamentActiveCourtUsages({ ...tournament, data: nextData }, nextData)
+      );
+    }
     setSavingStatus(isBrowserOffline() ? "Guardando neste aparelho..." : "Salvando...");
     void localBackup.then((saved) => {
       if (!tournamentScreenMountedRef.current) return;
@@ -10617,19 +10625,24 @@ function TournamentScreen({
 
   function getOpenCourtUsages(exclude = null) {
     const currentVenueKey = getTournamentVenueKey({ ...tournament, data: latestDataRef.current });
-    const tournamentSources = new Map(
-      (openTournaments || []).map((item) => [item.id, item])
+    const currentTournamentUsages = getTournamentActiveCourtUsages(
+      { ...tournament, data: latestDataRef.current },
+      latestDataRef.current
     );
-    tournamentSources.set(tournament.id, {
-      ...tournament,
-      data: latestDataRef.current,
-    });
+    const externalLiveUsages = Array.isArray(venueCourtUsages)
+      ? venueCourtUsages.filter((usage) => String(usage.tournamentId) !== String(tournament.id))
+      : [];
+    const fallbackExternalUsages = externalLiveUsages.length || !Array.isArray(openTournaments)
+      ? []
+      : openTournaments
+          .filter((item) => (
+            String(item.id) !== String(tournament.id)
+            && getTournamentVenueKey(item) === currentVenueKey
+          ))
+          .flatMap((item) => getTournamentActiveCourtUsages(item, item.data));
 
-    return [...tournamentSources.values()]
-      .filter((item) => getTournamentVenueKey(item) === currentVenueKey)
-      .flatMap((item) => (
-        getTournamentActiveCourtUsages(item, item.id === tournament.id ? latestDataRef.current : item.data)
-      )).filter((usage) => !exclude || (
+    return [...externalLiveUsages, ...fallbackExternalUsages, ...currentTournamentUsages]
+      .filter((usage) => !exclude || (
         String(usage.tournamentId) !== String(exclude.tournamentId)
         || usage.gameKey !== exclude.gameKey
       ));
