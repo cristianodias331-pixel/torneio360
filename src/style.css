@@ -22817,11 +22817,18 @@ button.courtConfigReset {
   --court-modal-text: #0b1830;
   --court-modal-muted: #607086;
   --court-modal-border: #d7e1ed;
+  --court-free-surface: #ecfdf3;
+  --court-free-border: #22c55e;
+  --court-free-text: #15803d;
+  --court-busy-surface: #fff7ed;
+  --court-busy-border: #f97316;
+  --court-busy-text: #c2410c;
 }
 
 .courtEditorSheet {
   width: min(560px, 100%) !important;
   max-height: min(720px, calc(100vh - 40px)) !important;
+  max-height: min(720px, calc(100dvh - 40px)) !important;
   overflow-y: auto !important;
   padding: 22px !important;
   border: 1px solid var(--court-modal-border) !important;
@@ -22890,16 +22897,111 @@ button.courtEditorClose {
   gap: 12px !important;
   margin: 18px 0 12px !important;
   padding: 11px 12px !important;
-  border: 1px solid var(--court-modal-border) !important;
+  border: 1px solid #60a5fa !important;
   border-radius: 15px !important;
-  background: var(--court-modal-soft) !important;
+  background: #eff6ff !important;
 }
 
 .courtEditorCurrent small {
-  color: var(--court-modal-muted) !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
   font-size: 10px !important;
   font-weight: 900 !important;
   text-transform: uppercase !important;
+}
+
+.courtEditorColumns {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+.courtEditorColumn {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--court-modal-border) !important;
+  border-radius: 18px !important;
+  background: var(--court-modal-soft) !important;
+}
+
+.courtEditorColumn.free {
+  border-color: color-mix(in srgb, var(--court-free-border) 58%, var(--court-modal-border)) !important;
+}
+
+.courtEditorColumn.occupied {
+  border-color: color-mix(in srgb, var(--court-busy-border) 58%, var(--court-modal-border)) !important;
+}
+
+.courtEditorColumnHeader {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 11px 12px !important;
+  border-bottom: 1px solid var(--court-modal-border) !important;
+  background: var(--court-modal-surface) !important;
+}
+
+.courtEditorColumnHeader > div {
+  min-width: 0 !important;
+}
+
+.courtEditorColumnHeader span {
+  display: block !important;
+  color: var(--court-modal-muted) !important;
+  font-size: 8px !important;
+  font-weight: 950 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+.courtEditorColumn.free .courtEditorColumnHeader span,
+.courtEditorColumn.free .courtEditorColumnHeader strong {
+  color: var(--court-free-text) !important;
+  -webkit-text-fill-color: var(--court-free-text) !important;
+}
+
+.courtEditorColumn.occupied .courtEditorColumnHeader span,
+.courtEditorColumn.occupied .courtEditorColumnHeader strong {
+  color: var(--court-busy-text) !important;
+  -webkit-text-fill-color: var(--court-busy-text) !important;
+}
+
+.courtEditorColumnHeader h3 {
+  margin: 2px 0 0 !important;
+  color: var(--court-modal-text) !important;
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+}
+
+.courtEditorColumnHeader strong {
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 27px !important;
+  width: 27px !important;
+  height: 27px !important;
+  border-radius: 999px !important;
+  background: var(--court-modal-soft) !important;
+  font-size: 11px !important;
+}
+
+.courtEditorColumnList {
+  display: grid !important;
+  align-content: start !important;
+  gap: 8px !important;
+  max-height: 310px !important;
+  padding: 9px !important;
+  overflow-y: auto !important;
+}
+
+.courtEditorEmpty {
+  margin: 0 !important;
+  padding: 17px 6px !important;
+  color: var(--court-modal-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
 }
 
 .courtEditorOptions {
@@ -22930,6 +23032,28 @@ button.courtEditorOption:hover:not(:disabled) {
   background: var(--court-modal-soft) !important;
 }
 
+button.courtEditorOption.free {
+  border-color: var(--court-free-border) !important;
+  background: var(--court-free-surface) !important;
+}
+
+button.courtEditorOption.free:hover:not(:disabled) {
+  border-color: var(--court-free-border) !important;
+  background: color-mix(in srgb, var(--court-free-surface) 82%, var(--court-free-border)) !important;
+}
+
+button.courtEditorOption.occupied,
+button.courtEditorOption.unavailable {
+  border-color: var(--court-busy-border) !important;
+  background: var(--court-busy-surface) !important;
+}
+
+button.courtEditorOption.occupied:hover:not(:disabled),
+button.courtEditorOption.unavailable:hover:not(:disabled) {
+  border-color: var(--court-busy-border) !important;
+  background: color-mix(in srgb, var(--court-busy-surface) 82%, var(--court-busy-border)) !important;
+}
+
 button.courtEditorOption.current {
   border-color: #60a5fa !important;
   background: rgba(59, 130, 246, .10) !important;
@@ -22948,6 +23072,108 @@ button.courtEditorOption.current {
   color: var(--court-modal-muted) !important;
   font-size: 9px !important;
   font-weight: 850 !important;
+}
+
+.courtEditorOption.free > small {
+  color: var(--court-free-text) !important;
+  -webkit-text-fill-color: var(--court-free-text) !important;
+}
+
+.courtEditorOption.occupied > small,
+.courtEditorOption.unavailable > small {
+  color: var(--court-busy-text) !important;
+  -webkit-text-fill-color: var(--court-busy-text) !important;
+}
+
+.courtEditorConfirmation {
+  display: grid !important;
+  gap: 9px !important;
+  margin-top: 12px !important;
+  padding: 18px !important;
+  border: 1px solid var(--court-modal-border) !important;
+  border-radius: 18px !important;
+  background: var(--court-modal-soft) !important;
+}
+
+.courtEditorConfirmation.free {
+  border-color: var(--court-free-border) !important;
+  background: var(--court-free-surface) !important;
+}
+
+.courtEditorConfirmation.occupied,
+.courtEditorConfirmation.unavailable {
+  border-color: var(--court-busy-border) !important;
+  background: var(--court-busy-surface) !important;
+}
+
+.courtEditorConfirmation > span {
+  color: #2563eb !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+.courtEditorConfirmation.free > span {
+  color: var(--court-free-text) !important;
+}
+
+.courtEditorConfirmation.occupied > span,
+.courtEditorConfirmation.unavailable > span {
+  color: var(--court-busy-text) !important;
+}
+
+.courtEditorConfirmation h3 {
+  margin: 0 !important;
+  color: var(--court-modal-text) !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+}
+
+.courtEditorConfirmation p {
+  margin: 0 !important;
+  color: var(--court-modal-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+.courtEditorConfirmationActions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+  margin-top: 5px !important;
+}
+
+.courtEditorConfirmationActions button {
+  min-height: 44px !important;
+  padding: 9px 12px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+}
+
+button.courtEditorConfirmationCancel {
+  border: 1px solid var(--court-modal-border) !important;
+  background: var(--court-modal-surface) !important;
+  color: var(--court-modal-text) !important;
+  box-shadow: none !important;
+}
+
+button.courtEditorConfirmationSubmit {
+  border: 1px solid #2563eb !important;
+  background: #2563eb !important;
+  color: #fff !important;
+}
+
+.courtEditorConfirmation.free button.courtEditorConfirmationSubmit {
+  border-color: var(--court-free-border) !important;
+  background: var(--court-free-text) !important;
+}
+
+.courtEditorConfirmation.occupied button.courtEditorConfirmationSubmit,
+.courtEditorConfirmation.unavailable button.courtEditorConfirmationSubmit {
+  border-color: var(--court-busy-border) !important;
+  background: var(--court-busy-text) !important;
 }
 
 .courtEditorCustom {
@@ -23004,10 +23230,26 @@ html[data-theme="dark"] .courtEditorOverlay {
   --court-modal-text: #f2f6fc;
   --court-modal-muted: #aab7c8;
   --court-modal-border: #334155;
+  --court-free-surface: #102d25;
+  --court-free-border: #22c55e;
+  --court-free-text: #86efac;
+  --court-busy-surface: #332116;
+  --court-busy-border: #fb923c;
+  --court-busy-text: #fdba74;
 }
 
 html[data-theme="dark"] .courtEditorHeader span {
   color: #7aa7ff !important;
+}
+
+html[data-theme="dark"] .courtEditorCurrent {
+  border-color: #60a5fa !important;
+  background: rgba(37, 99, 235, .16) !important;
+}
+
+html[data-theme="dark"] .courtEditorCurrent small {
+  color: #93c5fd !important;
+  -webkit-text-fill-color: #93c5fd !important;
 }
 
 @media (max-width: 640px) {
@@ -23044,6 +23286,7 @@ html[data-theme="dark"] .courtEditorHeader span {
   .courtEditorSheet {
     width: 100% !important;
     max-height: min(84vh, 720px) !important;
+    max-height: min(84dvh, 720px) !important;
     padding: 10px 14px calc(16px + env(safe-area-inset-bottom)) !important;
     border-width: 1px 0 0 !important;
     border-radius: 24px 24px 0 0 !important;
@@ -23062,8 +23305,31 @@ html[data-theme="dark"] .courtEditorHeader span {
     font-size: 20px !important;
   }
 
-  .courtEditorOptions {
-    grid-template-columns: 1fr !important;
+  .courtEditorColumns {
+    gap: 8px !important;
+  }
+
+  .courtEditorColumnHeader {
+    padding: 9px !important;
+  }
+
+  .courtEditorColumnHeader h3 {
+    font-size: 11px !important;
+  }
+
+  .courtEditorColumnList {
+    gap: 6px !important;
+    max-height: min(38dvh, 270px) !important;
+    padding: 6px !important;
+  }
+
+  button.courtEditorOption {
+    min-height: 46px !important;
+    padding: 8px !important;
+  }
+
+  .courtEditorOption > span {
+    font-size: 11px !important;
   }
 }
 
