@@ -130,6 +130,7 @@ import {
   getStoredTournamentGenderFields,
   getTournamentClassificationLabels,
 } from "./domain/tournamentGenderConfig.mjs";
+import { tournamentSnapshotMatches } from "./domain/tournamentPersistence.mjs";
 import {
   isTournamentSummary,
   normalizeTournamentSummaryRow,
@@ -4864,6 +4865,51 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return { tournaments: orderedTournaments, error };
   }
 
+  async function confirmTournamentSnapshotOnServer(updated, persistedData) {
+    const confirmationDelays = [0, 300, 900];
+    let latestTournament = null;
+    let latestError = null;
+
+    for (const delay of confirmationDelays) {
+      if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay));
+
+      const { data, error } = await executeTournamentRequest((signal) => (
+        supabase
+          .from("tournaments")
+          .select("*")
+          .eq("id", updated.id)
+          .eq("user_id", user.id)
+          .abortSignal(signal)
+          .maybeSingle()
+      ), 3500);
+
+      if (error) {
+        latestError = error;
+        continue;
+      }
+
+      latestTournament = data;
+      if (tournamentSnapshotMatches(data, updated, persistedData)) {
+        return { matched: true, tournament: data, error: null };
+      }
+    }
+
+    return { matched: false, tournament: latestTournament, error: latestError };
+  }
+
+  async function executeTournamentRequest(queryFactory, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      return await queryFactory(controller.signal);
+    } catch (error) {
+      return { data: null, error };
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
   async function persistTournamentSnapshot(updated, { expectedUpdatedAt = null, expectedRevision = null } = {}) {
     if (isTournamentSummary(updated)) {
       const error = new Error("A gravação foi interrompida porque os detalhes completos do torneio ainda não foram carregados.");
@@ -4872,12 +4918,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     const lifecycleStatus = getTournamentLifecycleStatus(updated);
     const persistedData = { ...(updated.data || {}), lifecycleStatus };
-    const { data: serverTournament, error: serverReadError } = await supabase
-      .from("tournaments")
-      .select("*")
-      .eq("id", updated.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: serverTournament, error: serverReadError } = await executeTournamentRequest((signal) => (
+      supabase
+        .from("tournaments")
+        .select("*")
+        .eq("id", updated.id)
+        .eq("user_id", user.id)
+        .abortSignal(signal)
+        .maybeSingle()
+    ), 8000);
 
     if (serverReadError) {
       console.error("Erro ao conferir a cópia protegida do torneio:", serverReadError);
@@ -4921,9 +4970,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       p_expected_updated_at: serverRevision === null ? serverTournament.updated_at : null,
       p_allow_critical_reset: updated.allowScoreRegression === true,
     };
-    let { data: savedTournament, error } = await supabase
-      .rpc("save_tournament_snapshot_safe", safeSaveArgs)
-      .maybeSingle();
+    let { data: savedTournament, error } = await executeTournamentRequest((signal) => (
+      supabase
+        .rpc("save_tournament_snapshot_safe", safeSaveArgs)
+        .abortSignal(signal)
+        .maybeSingle()
+    ));
 
     const safeFunctionMissing = error && /save_tournament_snapshot_safe|function.*does not exist|schema cache/i.test(
       `${error.message || ""} ${error.details || ""} ${error.hint || ""}`
@@ -4943,28 +4995,45 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         .eq("user_id", user.id);
       if (serverRevision !== null) query = query.eq("revision", serverRevision);
       else if (serverTournament.updated_at) query = query.eq("updated_at", serverTournament.updated_at);
-      ({ data: savedTournament, error } = await query.select("*").maybeSingle());
+      ({ data: savedTournament, error } = await executeTournamentRequest((signal) => (
+        query.select("*").abortSignal(signal).maybeSingle()
+      )));
     }
 
     if (error) {
-      console.error("Erro ao salvar torneio:", error);
+      const confirmation = await confirmTournamentSnapshotOnServer(updated, persistedData);
+      if (confirmation.matched) {
+        console.warn("A resposta da gravação falhou, mas o torneio foi confirmado no servidor.", error);
+        return {
+          ok: true,
+          tournament: confirmation.tournament,
+          confirmedAfterAmbiguousResponse: true,
+        };
+      }
+      console.error("Erro ao salvar torneio:", error, confirmation.error || "");
       return { ok: false, error, retryable: isRetryableConnectionError(error) };
     }
 
     if (!savedTournament) {
-      const { data: reloadedServerTournament, error: reloadError } = await supabase
-        .from("tournaments")
-        .select("*")
-        .eq("id", updated.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (reloadError) {
-        console.error("Erro ao conferir versão do torneio:", reloadError);
-        return { ok: false, error: reloadError, retryable: isRetryableConnectionError(reloadError) };
+      const confirmation = await confirmTournamentSnapshotOnServer(updated, persistedData);
+      if (confirmation.matched) {
+        return {
+          ok: true,
+          tournament: confirmation.tournament,
+          confirmedAfterAmbiguousResponse: true,
+        };
       }
 
-      return { ok: false, conflict: true, serverTournament: reloadedServerTournament };
+      if (confirmation.error && !confirmation.tournament) {
+        console.error("Erro ao conferir versão do torneio:", confirmation.error);
+        return {
+          ok: false,
+          error: confirmation.error,
+          retryable: isRetryableConnectionError(confirmation.error),
+        };
+      }
+
+      return { ok: false, conflict: true, serverTournament: confirmation.tournament };
     }
 
     return { ok: true, tournament: savedTournament };

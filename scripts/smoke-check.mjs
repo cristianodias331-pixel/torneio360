@@ -50,6 +50,10 @@ import {
   normalizeEmail,
 } from "../src/domain/authValidation.mjs";
 import {
+  stableJsonStringify,
+  tournamentSnapshotMatches,
+} from "../src/domain/tournamentPersistence.mjs";
+import {
   clearAuthCallbackUrl,
   getAuthCallbackError,
   getAuthFlowFromLocation,
@@ -2874,6 +2878,35 @@ assert.ok(
     && singleTournamentEditSource.includes("displayOrderMode: editTarget.data.displayOrderMode")
     && !singleTournamentEditSource.includes("persistTournamentOrderSequence("),
   "A edição individual ainda pode declarar falha depois de o torneio já ter sido salvo por depender da persistência global da ordem."
+);
+assert.equal(
+  stableJsonStringify({ rodada: 1, placares: { b: 2, a: 4 } }),
+  stableJsonStringify({ placares: { a: 4, b: 2 }, rodada: 1 }),
+  "A confirmação da gravação deve ignorar apenas a ordem das chaves do JSON retornado pelo banco."
+);
+assert.equal(
+  tournamentSnapshotMatches(
+    { id: "torneio-1", name: "Etapa", type: "Super 8", data: { placares: { b: 2, a: 4 } } },
+    { id: "torneio-1", name: "Etapa", type: "Super 8", data: { placares: { a: 4, b: 2 } } }
+  ),
+  true,
+  "A gravação já concluída no servidor deve ser reconhecida mesmo após uma resposta ambígua."
+);
+assert.equal(
+  tournamentSnapshotMatches(
+    { id: "torneio-1", name: "Etapa", type: "Super 8", data: { placares: { jogo: 4 } } },
+    { id: "torneio-1", name: "Etapa", type: "Super 8", data: { placares: { jogo: 3 } } }
+  ),
+  false,
+  "A confirmação nunca pode aceitar como salva uma versão com placares diferentes."
+);
+assert.ok(
+  mainSource.includes("async function confirmTournamentSnapshotOnServer")
+    && mainSource.includes("confirmedAfterAmbiguousResponse: true")
+    && mainSource.includes(".abortSignal(signal)")
+    && mainSource.includes("async function executeTournamentRequest")
+    && mainSource.includes("A resposta da gravação falhou, mas o torneio foi confirmado no servidor."),
+  "A edição precisa limitar a espera e confirmar no servidor antes de exibir um erro de gravação."
 );
 assert.ok(
   styleSource.includes("z-index: 22010")
