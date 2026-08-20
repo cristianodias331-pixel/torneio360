@@ -10822,7 +10822,7 @@ function TournamentScreen({
     );
   }
 
-  function requestGameCourtNumber(value) {
+  function requestGameCourtNumber(value, { confirmed = false } = {}) {
     const nextNumber = normalizeCourtNumberValue(value);
     if (!courtEditor || !nextNumber) return;
 
@@ -10842,7 +10842,7 @@ function TournamentScreen({
     const usage = usageScope.find((item) => item.courtNumber === nextNumber);
     const freeCourtNumbers = getAvailableCentralCourtNumbers(usageScope);
 
-    if (unavailableCentralCourtNumbers.has(nextNumber)) {
+    if (unavailableCentralCourtNumbers.has(nextNumber) && !confirmed) {
       setCourtOccupancyConflict({
         kind: "assign",
         editor: courtEditor,
@@ -10855,7 +10855,7 @@ function TournamentScreen({
       return;
     }
 
-    if (usage) {
+    if (usage && !confirmed) {
       setCourtOccupancyConflict({
         kind: "assign",
         editor: courtEditor,
@@ -10864,6 +10864,17 @@ function TournamentScreen({
         freeCourtNumbers,
       });
       setCourtEditor(null);
+      return;
+    }
+
+    if (confirmed && (usage || unavailableCentralCourtNumbers.has(nextNumber))) {
+      commitGameCourtNumber(courtEditor, nextNumber, {
+        type: "success",
+        title: usage ? "Uso repetido confirmado" : "Uso da quadra confirmado",
+        message: usage
+          ? `A Quadra ${nextNumber} foi aplicada mesmo já estando em uso.`
+          : `A Quadra ${nextNumber} foi aplicada mesmo estando marcada como indisponível.`,
+      });
       return;
     }
 

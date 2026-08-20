@@ -104,13 +104,71 @@ export function CourtConfigPanel({ courtNumbers, onCommit, onReset, onOpenCourtC
   );
 }
 
-export function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers = [], currentNumber, usedNumbers, onSelect, onClose }) {
+export function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers = [], currentNumber, usedNumbers = [], onSelect, onClose }) {
   const [customNumber, setCustomNumber] = useState("");
+  const [pendingSelection, setPendingSelection] = useState(null);
   const normalizedCurrent = normalizeCourtNumberValue(currentNumber);
   const unavailableSet = new Set(unavailableNumbers.map(normalizeCourtNumberValue).filter(Boolean));
+  const usedSet = new Set(usedNumbers.map(normalizeCourtNumberValue).filter(Boolean));
   const selectableNumbers = Array.from(new Set(
     courtNumbers.map((number, index) => normalizeCourtNumberValue(number) || String(index + 1))
-  ));
+  )).filter((number) => number !== normalizedCurrent);
+  const restoreNumber = normalizeCourtNumberValue(
+    courtNumbers[Math.max(0, Number(editor?.game?.court || 1) - 1)] || String(editor?.game?.court || 1)
+  );
+  const courtOptions = selectableNumbers.map((number) => ({
+    number,
+    status: unavailableSet.has(number) ? "unavailable" : usedSet.has(number) ? "occupied" : "free",
+  }));
+  const freeOptions = courtOptions.filter((option) => option.status === "free");
+  const occupiedOptions = courtOptions.filter((option) => option.status !== "free");
+  const hasUnavailableOptions = occupiedOptions.some((option) => option.status === "unavailable");
+
+  function getSelectionStatus(number) {
+    if (unavailableSet.has(number)) return "unavailable";
+    if (usedSet.has(number)) return "occupied";
+    if (!selectableNumbers.includes(number)) return "new";
+    return "free";
+  }
+
+  function requestSelection(value) {
+    const number = normalizeCourtNumberValue(value);
+    if (!number || number === normalizedCurrent) return;
+    setPendingSelection({ number, status: getSelectionStatus(number) });
+  }
+
+  function confirmSelection() {
+    if (!pendingSelection) return;
+    onSelect(pendingSelection.number, { confirmed: true });
+  }
+
+  const pendingCopy = pendingSelection?.status === "occupied"
+    ? {
+        eyebrow: "Quadra em uso",
+        title: `A Quadra ${pendingSelection.number} já está ocupada`,
+        message: "Confirme somente se deseja manter dois jogos usando esse mesmo número de quadra.",
+        action: `Usar Quadra ${pendingSelection.number}`,
+      }
+    : pendingSelection?.status === "unavailable"
+      ? {
+          eyebrow: "Quadra indisponível",
+          title: `A Quadra ${pendingSelection.number} está indisponível`,
+          message: "Essa quadra foi marcada como indisponível na Central. Confirme somente se o uso for intencional.",
+          action: `Usar Quadra ${pendingSelection.number}`,
+        }
+      : pendingSelection?.status === "new"
+        ? {
+            eyebrow: "Nova quadra",
+            title: `Adicionar a Quadra ${pendingSelection.number}?`,
+            message: "Esse número será adicionado à Central de Quadras e aplicado a este jogo.",
+            action: "Adicionar e usar",
+          }
+        : {
+            eyebrow: "Quadra livre",
+            title: `Usar a Quadra ${pendingSelection?.number}?`,
+            message: "A quadra está livre e será aplicada a este jogo.",
+            action: "OK, usar quadra",
+          };
 
   return (
     <div className="courtEditorOverlay" role="presentation" onMouseDown={(event) => {
@@ -132,51 +190,97 @@ export function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers 
           <CourtBadge label={`Quadra ${normalizedCurrent || editor?.game?.court || 1}`} />
         </div>
 
-        <div className="courtEditorOptions">
-          {selectableNumbers.map((normalized) => {
-            const isCurrent = normalized === normalizedCurrent;
-            const isUsed = usedNumbers.some((usedNumber) => normalizeCourtNumberValue(usedNumber) === normalized);
-            const isUnavailable = unavailableSet.has(normalized);
-
-            return (
-              <button
-                type="button"
-                className={`courtEditorOption ${isCurrent ? "current" : ""}`}
-                key={normalized}
-                disabled={isCurrent}
-                onClick={() => onSelect(normalized)}
-              >
-                <span>Quadra {normalized}</span>
-                <small>{isCurrent ? "Atual" : isUnavailable ? "Indisponível" : isUsed ? "Em uso" : "Livre"}</small>
+        {pendingSelection ? (
+          <div className={`courtEditorConfirmation ${pendingSelection.status}`}>
+            <span>{pendingCopy.eyebrow}</span>
+            <h3>{pendingCopy.title}</h3>
+            <p>{pendingCopy.message}</p>
+            <div className="courtEditorConfirmationActions">
+              <button type="button" className="courtEditorConfirmationCancel" onClick={() => setPendingSelection(null)}>
+                Cancelar
               </button>
-            );
-          })}
-        </div>
-
-        <div className="courtEditorCustom">
-          <label htmlFor="custom-court-number">Outro número</label>
-          <div className="courtEditorNumberInput">
-            <strong>Quadra</strong>
-            <input
-              id="custom-court-number"
-              value={customNumber}
-              maxLength={4}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="5"
-              onChange={(event) => setCustomNumber(event.target.value.replace(/\D/g, "").slice(0, 4))}
-            />
-            <button type="button" disabled={!normalizeCourtNumberValue(customNumber)} onClick={() => onSelect(customNumber)}>Aplicar</button>
+              <button type="button" className="courtEditorConfirmationSubmit" onClick={confirmSelection}>
+                {pendingCopy.action}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="courtEditorColumns">
+              <section className="courtEditorColumn free" aria-labelledby="court-free-title">
+                <div className="courtEditorColumnHeader">
+                  <div>
+                    <span>Disponíveis</span>
+                    <h3 id="court-free-title">Quadras livres</h3>
+                  </div>
+                  <strong>{freeOptions.length}</strong>
+                </div>
+                <div className="courtEditorColumnList">
+                  {freeOptions.length ? freeOptions.map(({ number }) => (
+                    <button
+                      type="button"
+                      className="courtEditorOption free"
+                      key={number}
+                      onClick={() => requestSelection(number)}
+                    >
+                      <span>Quadra {number}</span>
+                      <small>Livre</small>
+                    </button>
+                  )) : <p className="courtEditorEmpty">Nenhuma quadra livre.</p>}
+                </div>
+              </section>
 
-        <button
-          type="button"
-          className="courtEditorRestore"
-          onClick={() => onSelect(courtNumbers[Math.max(0, Number(editor?.game?.court || 1) - 1)] || String(editor?.game?.court || 1))}
-        >
-          Restaurar quadra padrão deste jogo
-        </button>
+              <section className="courtEditorColumn occupied" aria-labelledby="court-occupied-title">
+                <div className="courtEditorColumnHeader">
+                  <div>
+                    <span>Atenção</span>
+                    <h3 id="court-occupied-title">{hasUnavailableOptions ? "Ocupadas / indisponíveis" : "Quadras ocupadas"}</h3>
+                  </div>
+                  <strong>{occupiedOptions.length}</strong>
+                </div>
+                <div className="courtEditorColumnList">
+                  {occupiedOptions.length ? occupiedOptions.map(({ number, status }) => (
+                    <button
+                      type="button"
+                      className={`courtEditorOption ${status}`}
+                      key={number}
+                      onClick={() => requestSelection(number)}
+                    >
+                      <span>Quadra {number}</span>
+                      <small>{status === "unavailable" ? "Indisponível" : "Em uso"}</small>
+                    </button>
+                  )) : <p className="courtEditorEmpty">Nenhuma quadra ocupada.</p>}
+                </div>
+              </section>
+            </div>
+
+            <div className="courtEditorCustom">
+              <label htmlFor="custom-court-number">Outro número</label>
+              <div className="courtEditorNumberInput">
+                <strong>Quadra</strong>
+                <input
+                  id="custom-court-number"
+                  value={customNumber}
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="5"
+                  onChange={(event) => setCustomNumber(event.target.value.replace(/\D/g, "").slice(0, 4))}
+                />
+                <button type="button" disabled={!normalizeCourtNumberValue(customNumber)} onClick={() => requestSelection(customNumber)}>Aplicar</button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="courtEditorRestore"
+              disabled={!restoreNumber || restoreNumber === normalizedCurrent}
+              onClick={() => requestSelection(restoreNumber)}
+            >
+              Restaurar quadra padrão deste jogo
+            </button>
+          </>
+        )}
       </section>
     </div>
   );

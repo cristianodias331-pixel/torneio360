@@ -3060,7 +3060,23 @@ assert.deepEqual(
 assert.ok(tournamentDataNormalizationSource.includes('courtNumbers: createDefaultCourtNumbers'), "Novos torneios não recebem os números padrão das quadras.");
 assert.ok(matchControlsSource.includes("function CourtConfigPanel"), "A configuração prévia das quadras está ausente.");
 assert.ok(matchControlsSource.includes("function CourtAssignmentModal"), "A troca rápida de quadra durante os jogos está ausente.");
+assert.ok(
+  matchControlsSource.includes(").filter((number) => number !== normalizedCurrent)"),
+  "A quadra atual voltou a ser repetida na lista de troca rápida."
+);
+assert.ok(
+  matchControlsSource.includes("const freeOptions") && matchControlsSource.includes("const occupiedOptions"),
+  "A troca rápida não separa quadras livres das ocupadas."
+);
+assert.ok(
+  matchControlsSource.includes("pendingSelection") && matchControlsSource.includes("{ confirmed: true }"),
+  "A confirmação de quadra livre ou ocupada não permanece na janela de troca rápida."
+);
 assert.ok(mainSource.includes("courtNumberOverride"), "O número escolhido para um jogo não é persistido.");
+assert.ok(
+  mainSource.includes("function requestGameCourtNumber(value, { confirmed = false } = {})"),
+  "A confirmação da troca rápida não chega ao fluxo persistente da quadra."
+);
 assert.ok(matchControlsSource.includes("function ConfirmDuplicateCourtModal"), "A confirmação de número de quadra repetido está ausente.");
 assert.ok(matchControlsSource.includes("Confirmar repetição"), "O usuário não consegue confirmar duas partidas na mesma quadra.");
 assert.ok(!mainSource.includes("Quadras trocadas"), "O sistema ainda troca automaticamente os números das quadras.");
@@ -3068,6 +3084,21 @@ assert.ok(speechAnnouncementsSource.includes("getGameCourtLabel(game, courtNumbe
 assert.ok(styleSource.includes("QUADRAS PERSONALIZADAS — AGOSTO 2026"), "O acabamento visual das quadras personalizadas está ausente.");
 assert.ok(styleSource.includes(".courtNameBadge"), "O selo visual da quadra está ausente.");
 assert.ok(styleSource.includes(".courtEditorSheet"), "O editor responsivo de quadras está sem estilo.");
+assert.ok(
+  styleSource.includes(".courtEditorColumns")
+    && styleSource.includes(".courtEditorColumn.free")
+    && styleSource.includes(".courtEditorColumn.occupied")
+    && styleSource.includes("button.courtEditorOption.free")
+    && styleSource.includes("button.courtEditorOption.occupied")
+    && styleSource.includes(".courtEditorConfirmation"),
+  "O editor de quadras não mantém as colunas e confirmações semânticas."
+);
+assert.ok(
+  styleSource.includes('html[data-theme="dark"] .courtEditorCurrent')
+    && styleSource.includes("--court-free-surface: #102d25")
+    && styleSource.includes("--court-busy-surface: #332116"),
+  "O seletor de quadras não possui acabamento explícito no tema escuro."
+);
 assert.ok(styleSource.includes(".courtDuplicateModal"), "O aviso de quadra repetida está sem apresentação visual.");
 
 assert.ok(indexSource.includes('src/main.jsx'), "A entrada React não está ligada ao index.html.");
