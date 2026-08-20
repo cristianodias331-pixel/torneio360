@@ -183,6 +183,7 @@ import {
   compareCircuitStageScores,
   defaultCircuitPositionPoints,
   getCircuitCupPlacementKey,
+  getCircuitPerformanceColumns,
   getCircuitPlacementColumns,
   getCircuitRankingExportColumns,
   getCircuitPlacementLabel,
@@ -1328,6 +1329,24 @@ assert.equal(
   getCircuitTieBreakLabel({ mode: "performance", tieBreakOrder: ["totalGames", "balance", "wins"] }),
   "Total de Games → Saldo de games → Vitórias → Sorteio",
   "O resumo do circuito não refletiu a ordem escolhida pelo organizador."
+);
+assert.deepEqual(
+  getCircuitPerformanceColumns({ mode: "performance", tieBreakOrder: ["totalGames", "balance", "wins"] }),
+  [
+    { key: "pts", label: "Total de Games" },
+    { key: "bal", label: "Saldo de games" },
+    { key: "w", label: "Vitórias" },
+  ],
+  "As colunas visuais do circuito não refletiram a ordem escolhida pelo organizador."
+);
+assert.deepEqual(
+  getCircuitRankingExportColumns({ mode: "performance", tieBreakOrder: ["balance", "wins", "totalGames"] }).slice(0, 3),
+  [
+    { key: "bal", label: "Saldo de games" },
+    { key: "w", label: "Vitórias" },
+    { key: "pts", label: "Total de Games" },
+  ],
+  "A exportação do circuito não refletiu a ordem escolhida pelo organizador."
 );
 const historicalGenderGroups = buildCircuitRankingGroupsFromRecords({
   records: [
