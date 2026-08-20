@@ -990,6 +990,24 @@ assert.deepEqual(
   ["Ana", "Bia"],
   "O ranking público do circuito deixou de respeitar os critérios escolhidos.",
 );
+const normalizedPublicCircuitByTotalGames = normalizePublicCircuitForDisplay({
+  ranking_settings: {
+    mode: "performance",
+    tieBreakOrder: ["totalGames", "balance", "wins"],
+  },
+  ranking_groups: [{
+    title: "Geral",
+    rows: [
+      { name: "Ana", w: 3, pts: 10, bal: 1 },
+      { name: "Bia", w: 2, pts: 14, bal: 4 },
+    ],
+  }],
+});
+assert.deepEqual(
+  normalizedPublicCircuitByTotalGames.ranking_groups[0].rows.map((row) => row.name),
+  ["Bia", "Ana"],
+  "O ranking público do circuito voltou a usar uma ordem fixa diferente da escolhida pelo organizador.",
+);
 assert.deepEqual(
   getRegisteredAthletesForPublic(
     { players: { teams: [{ a: "Ana", b: "Bia" }] } },

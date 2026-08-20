@@ -12435,6 +12435,7 @@ function PublicTournamentPage({ publicId }) {
   const [activeArenaTab, setActiveArenaTab] = useState("tournaments");
   const [activeStatusTab, setActiveStatusTab] = useState("active");
   const [openingPublicId, setOpeningPublicId] = useState(null);
+  const [openingCircuitId, setOpeningCircuitId] = useState(null);
   const [error, setError] = useState(null);
 
   async function loadPublicArena({ silent = false } = {}) {
@@ -12510,7 +12511,10 @@ function PublicTournamentPage({ publicId }) {
       });
       setSelectedCircuit((current) => {
         if (!current) return null;
-        return publicCircuits.find((item) => String(item.id) === String(current.id)) || current;
+        const directoryItem = publicCircuits.find((item) => String(item.id) === String(current.id));
+        if (!directoryItem) return current;
+        if (current.directoryEntry !== true) return { ...directoryItem, ...current };
+        return directoryItem;
       });
       setError(null);
     }
@@ -12551,6 +12555,20 @@ function PublicTournamentPage({ publicId }) {
     }
 
     setSelectedTournament(data);
+  }
+
+  async function openPublicCircuit(item) {
+    setOpeningCircuitId(item.id);
+    const result = await fetchPublicCircuitDetail(item.id);
+    setOpeningCircuitId(null);
+
+    if (result.error || !result.data) {
+      console.error(result.error);
+      setError("Este circuito não está mais disponível no perfil da arena.");
+      return;
+    }
+
+    setSelectedCircuit(normalizePublicCircuitForDisplay(result.data, { directoryEntry: false }));
   }
 
   if (loading) {
@@ -12620,8 +12638,9 @@ function PublicTournamentPage({ publicId }) {
       onArenaTabChange={setActiveArenaTab}
       onStatusTabChange={setActiveStatusTab}
       onOpenTournament={openPublicTournament}
-      onOpenCircuit={setSelectedCircuit}
+      onOpenCircuit={openPublicCircuit}
       openingPublicId={openingPublicId}
+      openingCircuitId={openingCircuitId}
       getWhatsAppUrl={getBrazilianWhatsAppUrl}
       getCircuitStatus={(item) => normalizeCircuitStatus(getAutomaticEventStatus(item.end_date || item.endDate))}
       getCircuitDateLabel={(item) => item.start_date || item.startDate ? formatDateBR(item.start_date || item.startDate) : ""}
@@ -12746,7 +12765,9 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
             <div>
               <small className="publicCircuitName">{circuit?.name || "Circuito"}</small>
               <h2>{rankingTitle}</h2>
-              {placementMode ? <p className="publicCircuitRankingRule">{circuitCriteriaLabel} · Disputas paralelas não pontuam.</p> : null}
+              <p className="publicCircuitRankingRule">
+                {circuitCriteriaLabel}{placementMode ? " · Disputas paralelas não pontuam." : ""}
+              </p>
             </div>
           </div>
 
@@ -13113,7 +13134,14 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
 
         <section className="card" style={{ display: activePublicTab === "ranking" ? undefined : "none" }}>
           <div className="cardTitleRow">
-            <h2>{isCup ? "Ranking das chaves" : "Ranking do dia"}</h2>
+            <div>
+              <h2>{isCup ? "Ranking das chaves" : "Ranking do dia"}</h2>
+              {!isCup ? (
+                <p className="publicCircuitRankingRule">
+                  {getRankingCriteria(data.rankingCriteria || defaultRankingCriteria).label}
+                </p>
+              ) : null}
+            </div>
             <span className="readOnlyBadge">Somente visualização</span>
           </div>
           <TournamentTimingSummary data={data} compact />

@@ -1,6 +1,8 @@
 import {
   applyCircuitDrawOrder,
   circuitRankingModes,
+  circuitTieBreakOptions,
+  getCircuitTieBreakOrder,
   normalizeCircuitRankingSettings,
 } from "./circuitRankingSettings.mjs";
 import {
@@ -103,8 +105,9 @@ export function sortCircuitsForDisplay(items) {
 }
 
 export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = true } = {}) {
-  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings);
+  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
   const placementMode = rankingSettings.mode === circuitRankingModes.placement;
+  const tieBreakOrder = getCircuitTieBreakOrder(rankingSettings);
   const rankingGroups = (circuit?.ranking_groups || []).map((group) => ({
     ...group,
     rows: [...(group.rows || [])].sort((first, second) => {
@@ -115,7 +118,9 @@ export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = tru
 
       }
 
-      for (const key of ["w", "pts", "bal"]) {
+      for (const criterion of tieBreakOrder) {
+        const key = circuitTieBreakOptions.find((option) => option.value === criterion)?.key;
+        if (!key) continue;
         const difference = Number(second[key] || 0) - Number(first[key] || 0);
         if (difference !== 0) return difference;
       }
