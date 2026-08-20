@@ -212,6 +212,9 @@ export function ConfirmDuplicateCourtModal({ kind, number, onCancel, onConfirm }
 export function CourtOccupancyModal({ conflict, onChoose }) {
   if (!conflict) return null;
   const wasMarkedUnavailable = conflict.markedUnavailable === true;
+  const freeCourtNumbers = Array.isArray(conflict.freeCourtNumbers)
+    ? conflict.freeCourtNumbers
+    : [];
 
   return (
     <div className="courtDuplicateOverlay courtOccupancyOverlay" role="presentation" onMouseDown={(event) => {
@@ -231,11 +234,24 @@ export function CourtOccupancyModal({ conflict, onChoose }) {
             {" "}<strong>{conflict.usage?.gameLabel}</strong>.
           </p>
         )}
-        <p>Escolha a próxima quadra livre ou mantenha o número se o uso for intencional.</p>
+        <p>
+          {freeCourtNumbers.length
+            ? "Escolha uma quadra livre informada pelo organizador ou mantenha o número se o uso for intencional."
+            : "Não há outra quadra livre na configuração atual. Você ainda pode manter o número se o uso for intencional."}
+        </p>
         <div className="courtDuplicateActions courtOccupancyActions">
           <button type="button" className="secondaryBtn" onClick={() => onChoose("cancel")}>Cancelar</button>
           <button type="button" className="courtKeepNumberBtn" onClick={() => onChoose("same")}>Usar Quadra {conflict.number}</button>
-          <button type="button" className="courtNextFreeBtn" onClick={() => onChoose("next")}>Usar próxima livre</button>
+          {freeCourtNumbers.map((number) => (
+            <button
+              type="button"
+              className="courtNextFreeBtn"
+              key={number}
+              onClick={() => onChoose(`free:${number}`)}
+            >
+              Usar Quadra {number} livre
+            </button>
+          ))}
         </div>
       </section>
     </div>

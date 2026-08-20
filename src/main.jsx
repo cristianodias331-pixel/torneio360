@@ -10648,18 +10648,15 @@ function TournamentScreen({
       ));
   }
 
-  function getNextFreeCourtNumber(usages = getOpenCourtUsages()) {
+  function getAvailableCentralCourtNumbers(usages = getOpenCourtUsages()) {
     const occupied = new Set(usages.map((usage) => normalizeCourtNumberValue(usage.courtNumber)).filter(Boolean));
-    const configuredCourt = operationalCourtNumbers.find((number) => (
+    return normalizedCentralCourtNumbers.filter((number) => (
       !occupied.has(number) && !unavailableCentralCourtNumbers.has(number)
     ));
-    if (configuredCourt) return configuredCourt;
+  }
 
-    if (normalizedCentralCourtNumbers.length) return null;
-
-    let candidate = 1;
-    while (occupied.has(String(candidate)) && candidate < 9999) candidate += 1;
-    return String(candidate);
+  function getNextFreeCourtNumber(usages = getOpenCourtUsages()) {
+    return getAvailableCentralCourtNumbers(usages)[0] || null;
   }
 
   function setOperationalGameState(target, inProgress, courtNumber = null) {
@@ -10726,6 +10723,14 @@ function TournamentScreen({
       return;
     }
 
+    const usageScope = getOpenCourtUsages({
+      tournamentId: tournament.id,
+      gameKey: target.scope === "schedule"
+        ? `schedule:${target.roundIndex}:${target.gameIndex}`
+        : `bracket:${target.matchKey}`,
+    });
+    const freeCourtNumbers = getAvailableCentralCourtNumbers(usageScope);
+
     if (unavailableCentralCourtNumbers.has(courtNumber)) {
       setCourtOccupancyConflict({
         kind: "start",
@@ -10733,18 +10738,16 @@ function TournamentScreen({
         usage: null,
         markedUnavailable: true,
         target,
+        freeCourtNumbers,
       });
       return;
     }
-    const usage = getOpenCourtUsages({
-      tournamentId: tournament.id,
-      gameKey: target.scope === "schedule"
-        ? `schedule:${target.roundIndex}:${target.gameIndex}`
-        : `bracket:${target.matchKey}`,
-    }).find((item) => item.courtNumber === courtNumber);
+    const usage = usageScope.find((item) => item.courtNumber === courtNumber);
 
     if (!usage) {
-      setOperationalGameState(target, true);
+      // Registra a quadra efetivamente mostrada no cartão antes de iniciar.
+      // Assim a Central, os outros torneios e o próprio cartão usam a mesma fonte.
+      setOperationalGameState(target, true, courtNumber);
       return;
     }
 
@@ -10753,6 +10756,7 @@ function TournamentScreen({
       number: courtNumber,
       usage,
       target,
+      freeCourtNumbers,
     });
   }
 
@@ -10771,9 +10775,11 @@ function TournamentScreen({
     setCourtOccupancyConflict(null);
     if (choice === "cancel") return;
 
-    const nextCourtNumber = choice === "next"
-      ? getNextFreeCourtNumber()
-      : conflict.number;
+    const selectedFreeCourtNumber = typeof choice === "string" && choice.startsWith("free:")
+      ? normalizeCourtNumberValue(choice.slice(5))
+      : "";
+    const nextCourtNumber = selectedFreeCourtNumber
+      || (choice === "next" ? getNextFreeCourtNumber() : conflict.number);
 
     if (!nextCourtNumber) {
       showNotice(
@@ -10790,7 +10796,7 @@ function TournamentScreen({
     }
 
     setOperationalGameState(conflict.target, true, nextCourtNumber);
-    if (choice === "next") {
+    if (choice === "next" || selectedFreeCourtNumber) {
       showNotice("success", "Quadra livre selecionada", `O jogo foi iniciado na Quadra ${nextCourtNumber}.`);
     }
   }
@@ -10820,6 +10826,22 @@ function TournamentScreen({
     const nextNumber = normalizeCourtNumberValue(value);
     if (!courtEditor || !nextNumber) return;
 
+    const sourceData = latestDataRef.current;
+    const context = getCourtAssignmentContext(sourceData, courtEditor);
+    if (context.game && getGameCourtNumber(context.game, displayedCourtNumbers) === nextNumber) {
+      setCourtEditor(null);
+      return;
+    }
+
+    const usageScope = getOpenCourtUsages({
+      tournamentId: tournament.id,
+      gameKey: courtEditor.scope === "schedule"
+        ? `schedule:${courtEditor.roundIndex}:${courtEditor.gameIndex}`
+        : `bracket:${courtEditor.matchKey}`,
+    });
+    const usage = usageScope.find((item) => item.courtNumber === nextNumber);
+    const freeCourtNumbers = getAvailableCentralCourtNumbers(usageScope);
+
     if (unavailableCentralCourtNumbers.has(nextNumber)) {
       setCourtOccupancyConflict({
         kind: "assign",
@@ -10827,24 +10849,11 @@ function TournamentScreen({
         number: nextNumber,
         usage: null,
         markedUnavailable: true,
+        freeCourtNumbers,
       });
       setCourtEditor(null);
       return;
     }
-
-    const courtNumbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
-    const context = getCourtAssignmentContext(data, courtEditor);
-    if (context.game && getGameCourtNumber(context.game, courtNumbers) === nextNumber) {
-      setCourtEditor(null);
-      return;
-    }
-
-    const usage = getOpenCourtUsages({
-      tournamentId: tournament.id,
-      gameKey: courtEditor.scope === "schedule"
-        ? `schedule:${courtEditor.roundIndex}:${courtEditor.gameIndex}`
-        : `bracket:${courtEditor.matchKey}`,
-    }).find((item) => item.courtNumber === nextNumber);
 
     if (usage) {
       setCourtOccupancyConflict({
@@ -10852,6 +10861,7 @@ function TournamentScreen({
         editor: courtEditor,
         number: nextNumber,
         usage,
+        freeCourtNumbers,
       });
       setCourtEditor(null);
       return;
