@@ -254,14 +254,25 @@ export function getCircuitPlacementColumns(settings, { includeManual = false, to
   return columns;
 }
 
+export function getCircuitPerformanceColumns(settings) {
+  return getCircuitTieBreakOrder(settings).map((criterion) => {
+    const option = circuitTieBreakOptions.find((item) => item.value === criterion);
+    return {
+      key: option?.key,
+      label: option?.label
+        .replace("Maior quantidade de vitórias", "Vitórias")
+        .replace("Maior Total de Games", "Total de Games")
+        .replace("Melhor saldo de games", "Saldo de games"),
+    };
+  }).filter(({ key }) => Boolean(key));
+}
+
 export function getCircuitRankingExportColumns(settings) {
   const normalized = normalizeCircuitRankingSettings(settings);
   const placementMode = normalized.mode === circuitRankingModes.placement;
   return [
     ...(placementMode ? [{ key: "circuitPoints", label: "Total de pontos" }] : []),
-    { key: "w", label: "Vitórias" },
-    { key: "pts", label: "Total de Games" },
-    { key: "bal", label: "Saldo de games" },
+    ...getCircuitPerformanceColumns(normalized),
     { key: "played", label: "Jogos" },
     { key: "tournaments", label: "Etapas" },
   ];

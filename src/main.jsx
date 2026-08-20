@@ -329,6 +329,7 @@ import {
   defaultCircuitOtherPositionPoints,
   defaultCircuitPositionPoints,
   getCircuitManualParticipantKey,
+  getCircuitPerformanceColumns,
   getCircuitPlacementColumns,
   getCircuitRankingExportColumns,
   getCircuitTieBreakLabel,
@@ -8577,6 +8578,8 @@ setNewPublicInfo({
               const toolsExpanded = String(expandedCircuitToolsId || "") === normalizedCircuitId;
               const placementMode = rankingSettings.mode === circuitRankingModes.placement;
               const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings, { includeManual: true }) : null;
+              const performanceColumns = placementMode ? null : getCircuitPerformanceColumns(rankingSettings);
+              const circuitDisplayColumns = placementColumns || performanceColumns;
               const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
               const circuitRankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
               const unresolvedTieGroups = getUnresolvedCircuitTieGroups(circuitRankingGroups, rankingSettings);
@@ -8644,7 +8647,7 @@ setNewPublicInfo({
                       title={circuitRankingGroups[0].title}
                       rows={circuitRankingGroups[0].rows}
                       rankingCriteria={effectiveCircuitCriteria}
-                      columns={placementColumns}
+                      columns={circuitDisplayColumns}
                       showGames={!placementMode}
                       shareConfig={rankingSettings.rankingDivision === "gender" && circuitRankingGroups[0].key === "geral"
                         ? null
@@ -8660,7 +8663,7 @@ setNewPublicInfo({
                           title={group.title}
                           rows={group.rows}
                           rankingCriteria={effectiveCircuitCriteria}
-                          columns={placementColumns}
+                          columns={circuitDisplayColumns}
                           showGames={!placementMode}
                           shareConfig={rankingSettings.rankingDivision === "gender" && group.key === "geral"
                             ? null
@@ -12648,6 +12651,8 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
     : allRankingGroups;
   const placementMode = rankingSettings.mode === circuitRankingModes.placement;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
+  const performanceColumns = placementMode ? null : getCircuitPerformanceColumns(rankingSettings);
+  const circuitDisplayColumns = placementColumns || performanceColumns;
   const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
   const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
   const circuitCriteriaLabel = getCircuitTieBreakLabel(rankingSettings, { compact: true });
@@ -12754,7 +12759,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
               title={rankingGroups[0].title}
               rows={rankingGroups[0].rows}
               rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
-              columns={placementColumns}
+              columns={circuitDisplayColumns}
               showGames={!placementMode}
               shareConfig={getPublicCircuitGroupShareConfig(rankingGroups[0])}
               progressive
@@ -12768,7 +12773,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
                   title={group.title}
                   rows={group.rows}
                   rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
-                  columns={placementColumns}
+                  columns={circuitDisplayColumns}
                   showGames={!placementMode}
                   shareConfig={getPublicCircuitGroupShareConfig(group)}
                   progressive
