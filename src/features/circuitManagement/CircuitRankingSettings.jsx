@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import {
+  circuitTieBreakOrderOptions,
   getCircuitTieBreakLabel,
   normalizeCircuitPointValue,
   normalizeCircuitRankingSettings,
@@ -233,7 +234,7 @@ export function CircuitRankingSettingsEditor({
           title="Como funciona o cálculo da temporada"
           intro="A escolha altera somente o ranking do circuito. Torneios, confrontos e placares continuam preservados."
           sections={[
-            { title: "Desempenho acumulado", content: <p>Soma os jogos válidos e ordena sempre por Vitórias, Total de Games e Saldo de Games. Nas copas, entram somente os grupos e a chave principal.</p> },
+            { title: "Desempenho acumulado", content: <p>Soma os jogos válidos e permite ao organizador escolher a ordem entre Vitórias, Total de Games e Saldo de Games. Nas copas, entram somente os grupos e a chave principal.</p> },
             { title: "Pontuação por colocação", content: <p>Cada torneio usa automaticamente a tabela correspondente: posição final para Super e Simples; fase alcançada para Copas. Todas as modalidades podem participar do mesmo circuito.</p> },
             { title: "Disputas paralelas", content: <p>Nenhuma disputa paralela concede pontos, e seus jogos não são usados nos totais nem nos desempates do circuito.</p> },
             { title: "Alterações posteriores", content: <p>Se o modelo ou os valores forem alterados, o ranking será recalculado com os resultados já salvos. Nenhum dado do torneio será apagado.</p> },
@@ -244,7 +245,7 @@ export function CircuitRankingSettingsEditor({
       <div className="circuitRankingModeOptions" role="radiogroup" aria-label="Modelo do ranking do circuito">
         <button type="button" role="radio" aria-checked={settings.mode === "performance"} className={settings.mode === "performance" ? "selected" : ""} onClick={() => updateSettings({ mode: "performance" })}>
           <span className="circuitChoiceCheck" aria-hidden="true">{settings.mode === "performance" ? "✓" : ""}</span>
-          <span className="circuitChoiceText"><strong>Desempenho acumulado</strong><small>Vitórias, Saldo e Total de Games.</small></span>
+          <span className="circuitChoiceText"><strong>Desempenho acumulado</strong><small>Critérios na ordem escolhida pelo organizador.</small></span>
         </button>
         <button type="button" role="radio" aria-checked={settings.mode === "placement"} className={settings.mode === "placement" ? "selected" : ""} onClick={() => updateSettings({ mode: "placement" })}>
           <span className="circuitChoiceCheck" aria-hidden="true">{settings.mode === "placement" ? "✓" : ""}</span>
@@ -256,8 +257,19 @@ export function CircuitRankingSettingsEditor({
         <div className="circuitPerformanceSettings">
           <div className="circuitSettingsTitleRow">
             <div><strong>Critérios do ranking</strong><span>Ordem única para todas as modalidades selecionadas.</span></div>
-            <FormatExplanationButton iconOnly ariaLabel="Entenda os critérios do circuito" eyebrow="Desempates" title="Ordem do ranking sem pontos" intro="Os critérios internos de cada torneio continuam inalterados. Esta ordem vale somente para somar e ordenar o circuito." sections={[{ title: "Ordem", content: <p>Vitórias, Total de Games, Saldo de games e, persistindo empate absoluto, sorteio.</p> }, { title: "Copas", content: <p>Somente jogos da fase de grupos e da chave principal entram nos totais. Disputas paralelas não entram.</p> }]} />
+            <FormatExplanationButton iconOnly ariaLabel="Entenda os critérios do circuito" eyebrow="Desempates" title="Ordem do ranking sem pontos" intro="Os critérios internos de cada torneio continuam inalterados. Esta ordem vale somente para somar e ordenar o circuito." sections={[{ title: "Ordem", content: <p>Escolha livremente qual vem primeiro entre Vitórias, Total de Games e Saldo de games. Persistindo empate absoluto, será realizado o sorteio.</p> }, { title: "Copas", content: <p>Somente jogos da fase de grupos e da chave principal entram nos totais. Disputas paralelas não entram.</p> }]} />
           </div>
+          <label>
+            <span>Escolha a ordem dos critérios</span>
+            <select
+              value={settings.tieBreakOrder.join("_")}
+              onChange={(event) => updateSettings({ tieBreakOrder: event.target.value.split("_") })}
+            >
+              {circuitTieBreakOrderOptions.map((option) => (
+                <option key={option.order.join("_")} value={option.order.join("_")}>{option.label}</option>
+              ))}
+            </select>
+          </label>
           <p className="circuitRuleSummary">{getCircuitTieBreakLabel(settings)}</p>
         </div>
       ) : (

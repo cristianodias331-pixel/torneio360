@@ -7,6 +7,8 @@ import {
   applyCircuitExtraPoints,
   applyCircuitManualParticipants,
   circuitRankingModes,
+  circuitTieBreakOptions,
+  getCircuitTieBreakOrder,
   normalizeCircuitRankingSettings,
 } from "./circuitRankingSettings.mjs";
 import { calculateCircuitPlacementRowsByConfig } from "./circuitPlacement.mjs";
@@ -288,12 +290,15 @@ export function buildCircuitRankingGroupsFromRecords({
   applyCircuitExtraPoints(groups, rankingSettings);
 
   void criteriaValue;
+  const tieBreakOrder = getCircuitTieBreakOrder(rankingSettings);
   const sortRows = (rows) => Array.from(rows.values()).sort((first, second) => {
     if (placementMode) {
       const pointDifference = Number(second.circuitPoints || 0) - Number(first.circuitPoints || 0);
       if (pointDifference !== 0) return pointDifference;
     }
-    for (const key of ["w", "pts", "bal"]) {
+    for (const criterion of tieBreakOrder) {
+      const key = circuitTieBreakOptions.find((option) => option.value === criterion)?.key;
+      if (!key) continue;
       const difference = Number(second[key] || 0) - Number(first[key] || 0);
       if (difference !== 0) return difference;
     }
