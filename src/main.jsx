@@ -6407,7 +6407,7 @@ setNewPublicInfo({
     });
   }
 
-  async function saveEditedTournament({ confirmModalityChange = false } = {}) {
+  async function saveEditedTournament({ confirmModalityChange = false, closeEditorOnSubmit = false } = {}) {
     if (!editTarget || !editForm || editTournamentSaving) return;
     if (!ensureCloudConnection("salvar as informações do torneio")) return;
 
@@ -6505,6 +6505,11 @@ setNewPublicInfo({
     let mergeBase = editTarget;
     let saveResult = null;
     const editChangeId = generateCollaborationChangeId();
+    if (closeEditorOnSubmit) {
+      setEditTarget(null);
+      setEditForm(null);
+      setModalityChangeConfirmation(null);
+    }
     setEditTournamentSaving(true);
 
     try {
@@ -7404,7 +7409,7 @@ setNewPublicInfo({
         confirmation={modalityChangeConfirmation}
         busy={editTournamentSaving}
         onCancel={() => { if (!editTournamentSaving) setModalityChangeConfirmation(null); }}
-        onConfirm={() => void saveEditedTournament({ confirmModalityChange: true })}
+        onConfirm={() => void saveEditedTournament({ confirmModalityChange: true, closeEditorOnSubmit: true })}
       />
 
       <ConfirmEventGroupModalityChangeModal

@@ -2862,9 +2862,11 @@ assert.ok(
     && mainSource.includes("createInitialData(editForm.type, nextModalityConfig)")
     && mainSource.includes("const [editTournamentSaving, setEditTournamentSaving] = useState(false)")
     && mainSource.includes('editTournamentSaving ? "Salvando..."')
-    && confirmationDialogsSource.includes('busy ? "Trocando modalidade..."')
+    && confirmationDialogsSource.includes('A mudança pode alterar participantes, rodadas e placares da competição.')
+    && confirmationDialogsSource.includes('busy ? "Salvando..." : "Confirmar alteração"')
+    && confirmationDialogsSource.includes("compactModalityChangeConfirmBox")
     && mainSource.includes("confirmModalityChanges: true")
-    && confirmationDialogsSource.includes("Trocar modalidade"),
+    && mainSource.includes("closeEditorOnSubmit: true"),
   "A edição segura da modalidade de um torneio existente está ausente."
 );
 
@@ -2877,6 +2879,9 @@ assert.ok(
     && singleTournamentEditSource.includes('showNotice("success", "Torneio atualizado"')
     && singleTournamentEditSource.includes("displayOrder: editTarget.data.displayOrder")
     && singleTournamentEditSource.includes("displayOrderMode: editTarget.data.displayOrderMode")
+    && singleTournamentEditSource.includes("if (closeEditorOnSubmit)")
+    && singleTournamentEditSource.includes("setEditTarget(null)")
+    && singleTournamentEditSource.includes("setEditForm(null)")
     && !singleTournamentEditSource.includes("persistTournamentOrderSequence("),
   "A edição individual ainda pode declarar falha depois de o torneio já ter sido salvo por depender da persistência global da ordem."
 );

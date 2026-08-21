@@ -1,7 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { Trash2 } from "lucide-react";
-import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
 
 export function NoticeModal({ notice, onClose }) {
   if (!notice) return null;
@@ -180,22 +179,14 @@ export function ConfirmModalityChangeModal({ confirmation, busy = false, onCance
 
   return createPortal(
     <div className="confirmOverlay modalityChangeConfirmOverlay" role="dialog" aria-modal="true" aria-labelledby="modality-change-title">
-      <div className="confirmBox regenerationConfirmBox">
+      <div className="confirmBox compactModalityChangeConfirmBox">
         <div className="confirmIcon" aria-hidden="true">⚠️</div>
-        <span className="confirmEyebrow">Alteração estrutural</span>
-        <h2 id="modality-change-title">Trocar a modalidade deste torneio?</h2>
-        <p>
-          A modalidade será alterada de <strong>{getModalityDisplayName(confirmation.fromType)}</strong> para <strong>{getModalityDisplayName(confirmation.toType)}</strong>.
-        </p>
-        <ul className="regenerationImpactList">
-          <li>Nome, datas, local, foto e informações do evento serão preservados.</li>
-          <li>Participantes serão reiniciados conforme a nova modalidade.</li>
-          <li>Rodadas, chaves, sorteios e placares incompatíveis serão removidos.</li>
-        </ul>
+        <h2 id="modality-change-title">Confirmar alteração?</h2>
+        <p>A mudança pode alterar participantes, rodadas e placares da competição.</p>
         <div className="confirmActions">
           <button type="button" className="secondaryBtn" disabled={busy} onClick={onCancel}>Cancelar</button>
           <button type="button" className="regenerationConfirmBtn" disabled={busy} onClick={onConfirm}>
-            {busy ? "Trocando modalidade..." : "Trocar modalidade"}
+            {busy ? "Salvando..." : "Confirmar alteração"}
           </button>
         </div>
       </div>
