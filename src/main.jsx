@@ -2220,7 +2220,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [selectedTrashCircuitIds, setSelectedTrashCircuitIds] = useState([]);
   const [trashPermanentAction, setTrashPermanentAction] = useState(null);
   const [trashActionBusy, setTrashActionBusy] = useState(false);
-  const [expandedCircuitId, setExpandedCircuitId] = useState(null);
+  const [expandedCircuitId, setExpandedCircuitId] = useState(() => (
+    new URLSearchParams(window.location.search).get("circuito")
+  ));
   const [expandedCircuitToolsId, setExpandedCircuitToolsId] = useState(null);
   const [restoredTournamentId, setRestoredTournamentId] = useState(null);
   const circuitPersistenceQueueRef = useRef(Promise.resolve());
@@ -2260,6 +2262,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         params.get("tab") ||
         params.get("partidas") ||
         params.get("perfil") ||
+        params.get("circuito") ||
         (params.get("aba") && params.get("aba") !== "inicio")
       );
     } catch {
@@ -2279,6 +2282,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       if (!url.searchParams.get("tab") && state.last_tournament_tab) url.searchParams.set("tab", state.last_tournament_tab);
       if (!url.searchParams.get("partidas") && state.last_matches_tab) url.searchParams.set("partidas", state.last_matches_tab);
       if (!url.searchParams.get("perfil") && state.last_profile_subtab) url.searchParams.set("perfil", state.last_profile_subtab);
+      if (!url.searchParams.get("circuito") && state.last_circuit_id) url.searchParams.set("circuito", state.last_circuit_id);
 
       return `${url.pathname}${url.search}${url.hash || ""}`;
     } catch {
@@ -2293,7 +2297,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
       if (first.pathname !== second.pathname || first.hash !== second.hash) return false;
 
-      return ["aba", "torneio", "tab", "partidas", "perfil"].every(
+      return ["aba", "torneio", "tab", "partidas", "perfil", "circuito"].every(
         (key) => first.searchParams.get(key) === second.searchParams.get(key)
       );
     } catch {
@@ -2360,11 +2364,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     if (!canRestoreDetails) return false;
 
+    const currentParams = new URLSearchParams(window.location.search);
     if (state.last_panel) setActivePanel(state.last_panel);
     if (state.last_profile_subtab) setProfileSubtab(state.last_profile_subtab);
-    if (state.last_circuit_id) setExpandedCircuitId(state.last_circuit_id);
+    const circuitId = currentParams.get("circuito") || state.last_circuit_id;
+    if (circuitId) setExpandedCircuitId(circuitId);
 
-    const currentParams = new URLSearchParams(window.location.search);
     const tournamentId = state.last_tournament_id || currentParams.get("torneio");
     if (tournamentId) setRestoredTournamentId(tournamentId);
 
@@ -2401,13 +2406,20 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       else params.delete("partidas");
     }
 
+    if (Object.prototype.hasOwnProperty.call(next, "circuitId")) {
+      if (next.circuitId) params.set("circuito", next.circuitId);
+      else params.delete("circuito");
+    }
+
     const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash || ""}`;
     window.history.replaceState(null, "", nextUrl);
     scheduleUserAppStateSave({
       activePanel: params.get("aba") || activePanel || "inicio",
       selectedTournamentId: params.get("torneio"),
       profileSubtab: params.get("perfil") || profileSubtab,
-      circuitId: expandedCircuitId,
+      circuitId: Object.prototype.hasOwnProperty.call(next, "circuitId")
+        ? next.circuitId
+        : (params.get("circuito") || expandedCircuitId),
     });
   }
 
@@ -2432,9 +2444,28 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   async function goToPanel(panel) {
     if (!await guardSelectedTournamentBeforeLeaving()) return false;
     setSelected(null);
+    setExpandedCircuitId(null);
+    setExpandedCircuitToolsId(null);
     setActivePanel(panel);
-    updateAppUrl({ activePanel: panel, selectedTournamentId: null });
+    updateAppUrl({ activePanel: panel, selectedTournamentId: null, circuitId: null });
     return true;
+  }
+
+  function openOrganizerCircuit(circuit) {
+    if (!circuit?.id) return;
+    setExpandedCircuitId(circuit.id);
+    setExpandedCircuitToolsId(null);
+    setCreateCircuitOpen(false);
+    setCombineCircuitsOpen(false);
+    updateAppUrl({ activePanel: "circuitos", selectedTournamentId: null, circuitId: circuit.id });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeOrganizerCircuit() {
+    setExpandedCircuitId(null);
+    setExpandedCircuitToolsId(null);
+    updateAppUrl({ activePanel: "circuitos", selectedTournamentId: null, circuitId: null });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function openProfileSection(nextSubtab = "editar") {
@@ -2690,7 +2721,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       last_tournament_id: extra.selectedTournamentId ?? params.get("torneio"),
       last_tournament_tab: extra.tournamentTab || params.get("tab"),
       last_matches_tab: extra.matchesTab || params.get("partidas"),
-      last_circuit_id: extra.circuitId ?? expandedCircuitId,
+      last_circuit_id: Object.prototype.hasOwnProperty.call(extra, "circuitId")
+        ? extra.circuitId
+        : expandedCircuitId,
       last_profile_subtab: extra.profileSubtab || profileSubtab,
       scroll_y: scrollY,
       updated_at: new Date().toISOString(),
@@ -2876,6 +2909,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     return normalizeModalitySearch(searchable).includes(normalizedCircuitSearch);
   });
+  const openedOrganizerCircuit = expandedCircuitId
+    ? circuits.find((circuit) => String(circuit.id) === String(expandedCircuitId)) || null
+    : null;
+  const organizerCircuitsToRender = openedOrganizerCircuit
+    ? [openedOrganizerCircuit]
+    : visibleOrganizerCircuits;
 
   const filteredArenaProfiles = publicArenaProfiles.filter((arena) => {
     const term = arenaProfileSearch.trim().toLowerCase();
@@ -8436,8 +8475,8 @@ setNewPublicInfo({
 
 
 {activePanel === "circuitos" && (
-  <div className="circuitManagerPage">
-  <section className="card eventManagerToolbar circuitManagerToolbar">
+  <div className={`circuitManagerPage ${openedOrganizerCircuit ? "circuitDetailPage" : ""}`}>
+  {!openedOrganizerCircuit ? <section className="card eventManagerToolbar circuitManagerToolbar">
     <div>
       <span className="managerEyebrow">Temporadas e etapas</span>
       <h2>Meus circuitos</h2>
@@ -8447,9 +8486,9 @@ setNewPublicInfo({
       <button type="button" className="createCircuitButton" onClick={() => setCreateCircuitOpen(true)}>+ Criar circuito</button>
       <button type="button" className="combineCircuitsButton" onClick={() => setCombineCircuitsOpen(true)}><PlusCircle aria-hidden="true" /> Somar circuitos</button>
     </div>
-  </section>
+  </section> : null}
 
-  {combineCircuitsOpen ? (
+  {!openedOrganizerCircuit && combineCircuitsOpen ? (
     <div className="eventEditorOverlay" role="dialog" aria-modal="true" aria-label="Somar circuitos">
       <section className="card circuitsCard eventEditorSheet combinedCircuitSheet">
         <div className="circuitsHeader">
@@ -8480,7 +8519,7 @@ setNewPublicInfo({
     </div>
   ) : null}
 
-  {createCircuitOpen ? (
+  {!openedOrganizerCircuit && createCircuitOpen ? (
   <div className="eventEditorOverlay" role="dialog" aria-modal="true" aria-label="Criar circuito">
   <section className="card circuitsCard eventEditorSheet">
     <div className="circuitsHeader">
@@ -8562,7 +8601,19 @@ setNewPublicInfo({
   ) : null}
 
   <section className="card circuitsOverviewCard">
+    {openedOrganizerCircuit ? (
+      <header className="circuitDetailNavigation">
+        <button type="button" className="circuitDetailBackButton" onClick={closeOrganizerCircuit}>
+          <ChevronLeft aria-hidden="true" /> Voltar aos circuitos
+        </button>
+        <div className="circuitDetailActions" aria-label={`Ações do circuito ${openedOrganizerCircuit.name}`}>
+          <button type="button" className="editBtn" onClick={() => editCircuit(openedOrganizerCircuit)}>Editar circuito</button>
+          <button type="button" className="deleteBtn" onClick={() => setCircuitDeleteTarget(openedOrganizerCircuit)}>Excluir circuito</button>
+        </div>
+      </header>
+    ) : null}
     <div className="circuitsList">
+      {!openedOrganizerCircuit ? <>
       <h2>Circuitos cadastrados</h2>
       <div className="tournamentStatusSummary circuitStatusSummary eventListToolbar" aria-label="Filtrar circuitos por situação">
         <button type="button" className={`active ${circuitStatusFilter === "active" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "active"} onClick={() => setCircuitStatusFilter("active")}>
@@ -8589,54 +8640,58 @@ setNewPublicInfo({
           {circuitSearch ? <button type="button" aria-label="Limpar pesquisa de circuitos" onClick={() => setCircuitSearch("")}><X aria-hidden="true" /></button> : null}
         </label>
       </div>
+      </> : null}
       {circuits.length === 0 ? (
         <p>Nenhum circuito criado ainda.</p>
-      ) : visibleOrganizerCircuits.length === 0 ? (
+      ) : !openedOrganizerCircuit && visibleOrganizerCircuits.length === 0 ? (
         <p className="eventStatusEmpty">{circuitSearch.trim() ? `Nenhum circuito encontrado para “${circuitSearch.trim()}”.` : circuitStatusFilter === "combined" ? "Nenhum circuito somado criado ainda." : `Nenhum circuito ${circuitStatusFilter === "active" ? "em andamento" : circuitStatusFilter === "upcoming" ? "próximo" : "encerrado"}.`}</p>
-      ) : visibleOrganizerCircuits.map((circuit) => {
-        const selectedNames = getCircuitSelectedTournaments(circuit);
+      ) : organizerCircuitsToRender.map((circuit) => {
+        const isExpanded = String(expandedCircuitId || "") === String(circuit.id);
+        const selectedNames = isExpanded ? getCircuitSelectedTournaments(circuit) : [];
         const circuitStatus = getCircuitLifecycleStatus(circuit);
         const circuitRankingSettings = normalizeCircuitRankingSettings(circuit.rankingSettings);
         const sourceCircuitIds = circuitRankingSettings.sourceCircuitIds;
         const combinedCircuit = sourceCircuitIds.length > 0;
-        const sourceCircuits = sourceCircuitIds
-          .map((sourceId) => circuits.find((item) => String(item.id) === String(sourceId)))
-          .filter(Boolean);
-        const isExpanded = expandedCircuitId === circuit.id;
+        const selectedTournamentCount = normalizeCircuitTournamentIds([
+          ...(circuit.tournamentIds || []),
+          ...sourceCircuitIds.flatMap((sourceId) => (
+            circuits.find((item) => String(item.id) === String(sourceId))?.tournamentIds || []
+          )),
+        ]).length;
+        const sourceCircuits = isExpanded
+          ? sourceCircuitIds
+            .map((sourceId) => circuits.find((item) => String(item.id) === String(sourceId)))
+            .filter(Boolean)
+          : [];
+        const circuitSummaryContent = (
+          <div className="circuitSummaryIdentity">
+            <span className="circuitMonogram">{combinedCircuit ? "∑" : "CIR"}</span>
+            <div className="circuitItemMain">
+              <div className="circuitTitleLine">
+                <h3>{circuit.name}</h3>
+                <span className={`circuitStatus circuitStatus-${circuitStatus}`}>
+                  {circuitStatus === "finished" ? "Encerrado" : circuitStatus === "upcoming" ? "Próximo" : "Em andamento"}
+                </span>
+              </div>
+              <p><CalendarDays aria-hidden="true" /> {circuit.startDate ? formatDateBR(circuit.startDate) : "Sem início"} até {circuit.endDate ? formatDateBR(circuit.endDate) : "sem fim definido"}</p>
+              <small>
+                {combinedCircuit
+                  ? `${sourceCircuitIds.length} circuito(s) de origem · ${selectedTournamentCount} torneio(s) consolidados`
+                  : `${selectedTournamentCount} torneio(s)`}
+              </small>
+            </div>
+          </div>
+        );
         return (
           <article className={`circuitItem ${combinedCircuit ? "combinedCircuitItem" : ""} ${isExpanded ? "expanded" : ""}`} key={circuit.id}>
-            <button
-              type="button"
-              className="circuitItemSummary"
-              aria-expanded={isExpanded}
-              onClick={() => { const nextId = isExpanded ? null : circuit.id; setExpandedCircuitId(nextId); scheduleUserAppStateSave({ circuitId: nextId, activePanel: "circuitos" }); }}
-            >
-              <div className="circuitSummaryIdentity">
-                <span className="circuitMonogram">{combinedCircuit ? "∑" : "CIR"}</span>
-                <div className="circuitItemMain">
-                  <div className="circuitTitleLine">
-                    <h3>{circuit.name}</h3>
-                    <span className={`circuitStatus circuitStatus-${circuitStatus}`}>
-                      {circuitStatus === "finished" ? "Encerrado" : circuitStatus === "upcoming" ? "Próximo" : "Em andamento"}
-                    </span>
-                  </div>
-                  <p><CalendarDays aria-hidden="true" /> {circuit.startDate ? formatDateBR(circuit.startDate) : "Sem início"} até {circuit.endDate ? formatDateBR(circuit.endDate) : "sem fim definido"}</p>
-                  <small>
-                    {combinedCircuit
-                      ? `${sourceCircuits.length} circuito(s) de origem · ${selectedNames.length} torneio(s) consolidados`
-                      : `${selectedNames.length} torneio(s) · ${selectedNames.length ? selectedNames.map((t) => t.data?.eventName || t.name).join(", ") : "nenhum selecionado"}`}
-                  </small>
-                </div>
-              </div>
-              <span className="circuitExpandIcon" aria-hidden="true"><ChevronDown /></span>
-            </button>
-
             {isExpanded ? (
-              <div className="circuitItemActions circuitItemActionsTop" aria-label={`Ações do circuito ${circuit.name}`}>
-                <button type="button" className="editBtn" onClick={() => editCircuit(circuit)}>Editar circuito</button>
-                <button type="button" className="deleteBtn" onClick={() => setCircuitDeleteTarget(circuit)}>Excluir circuito</button>
-              </div>
-            ) : null}
+              <div className="circuitItemSummary circuitDetailSummary">{circuitSummaryContent}</div>
+            ) : (
+              <button type="button" className="circuitItemSummary circuitListOpenButton" onClick={() => openOrganizerCircuit(circuit)}>
+                {circuitSummaryContent}
+                <span className="circuitOpenAction">Abrir <ChevronRight aria-hidden="true" /></span>
+              </button>
+            )}
 
             {isExpanded ? (
               <section className="circuitStagesSummary">
