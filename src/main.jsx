@@ -6410,7 +6410,7 @@ setNewPublicInfo({
     });
   }
 
-  async function saveEditedTournament({ confirmModalityChange = false, closeEditorOnSubmit = false } = {}) {
+  async function saveEditedTournament({ confirmModalityChange = false } = {}) {
     if (!editTarget || !editForm || editTournamentSaving) return;
     if (!ensureCloudConnection("salvar as informações do torneio")) return;
 
@@ -6508,11 +6508,12 @@ setNewPublicInfo({
     let mergeBase = editTarget;
     let saveResult = null;
     const editChangeId = generateCollaborationChangeId();
-    if (closeEditorOnSubmit) {
-      setEditTarget(null);
-      setEditForm(null);
-      setModalityChangeConfirmation(null);
-    }
+    // Após a validação (e, quando necessário, a confirmação estrutural), a
+    // edição deve sair da tela imediatamente. A persistência continua em
+    // segundo plano sem prender o organizador no modal.
+    setEditTarget(null);
+    setEditForm(null);
+    setModalityChangeConfirmation(null);
     setEditTournamentSaving(true);
 
     try {
@@ -6555,8 +6556,7 @@ setNewPublicInfo({
             "As informações foram preservadas. Tente salvar novamente; a alteração mais recente será aplicada automaticamente."
           );
         } else {
-          console.error(saveResult?.error);
-          showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
+          console.error("Não foi possível confirmar a edição do torneio:", saveResult?.error);
         }
         return;
       }
@@ -6599,7 +6599,6 @@ setNewPublicInfo({
       });
     } catch (error) {
       console.error("Erro inesperado ao editar o torneio:", error);
-      showNotice("error", "Erro ao salvar", "Não foi possível atualizar este torneio.");
     } finally {
       setEditTournamentSaving(false);
     }
@@ -7412,7 +7411,7 @@ setNewPublicInfo({
         confirmation={modalityChangeConfirmation}
         busy={editTournamentSaving}
         onCancel={() => { if (!editTournamentSaving) setModalityChangeConfirmation(null); }}
-        onConfirm={() => void saveEditedTournament({ confirmModalityChange: true, closeEditorOnSubmit: true })}
+        onConfirm={() => void saveEditedTournament({ confirmModalityChange: true })}
       />
 
       <ConfirmEventGroupModalityChangeModal

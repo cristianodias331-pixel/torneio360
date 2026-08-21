@@ -2866,7 +2866,7 @@ assert.ok(
     && confirmationDialogsSource.includes('busy ? "Salvando..." : "Confirmar alteração"')
     && confirmationDialogsSource.includes("compactModalityChangeConfirmBox")
     && mainSource.includes("confirmModalityChanges: true")
-    && mainSource.includes("closeEditorOnSubmit: true"),
+    && mainSource.includes("confirmModalityChange: true"),
   "A edição segura da modalidade de um torneio existente está ausente."
 );
 
@@ -2879,11 +2879,13 @@ assert.ok(
     && singleTournamentEditSource.includes('showNotice("success", "Torneio atualizado"')
     && singleTournamentEditSource.includes("displayOrder: editTarget.data.displayOrder")
     && singleTournamentEditSource.includes("displayOrderMode: editTarget.data.displayOrderMode")
-    && singleTournamentEditSource.includes("if (closeEditorOnSubmit)")
     && singleTournamentEditSource.includes("setEditTarget(null)")
     && singleTournamentEditSource.includes("setEditForm(null)")
+    && singleTournamentEditSource.indexOf("setEditTarget(null)") < singleTournamentEditSource.indexOf("setEditTournamentSaving(true)")
+    && !singleTournamentEditSource.includes('showNotice("error", "Erro ao salvar"')
+    && !singleTournamentEditSource.includes("closeEditorOnSubmit")
     && !singleTournamentEditSource.includes("persistTournamentOrderSequence("),
-  "A edição individual ainda pode declarar falha depois de o torneio já ter sido salvo por depender da persistência global da ordem."
+  "A edição individual deve fechar após a validação e não pode exibir uma falha falsa depois de o torneio já ter sido salvo."
 );
 assert.equal(
   stableJsonStringify({ rodada: 1, placares: { b: 2, a: 4 } }),
