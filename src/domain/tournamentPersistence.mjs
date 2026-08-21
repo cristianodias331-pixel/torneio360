@@ -29,3 +29,8 @@ export function tournamentSnapshotMatches(serverTournament, expectedTournament, 
     && String(serverTournament.type || "") === String(expectedTournament.type || "")
     && stableJsonStringify(serverTournament.data || {}) === stableJsonStringify(expectedData || {});
 }
+
+export function tournamentMutationWasApplied(serverTournament, changeId) {
+  if (!serverTournament || !changeId) return false;
+  return String(serverTournament.last_change_id || "") === String(changeId);
+}

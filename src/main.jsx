@@ -130,7 +130,10 @@ import {
   getStoredTournamentGenderFields,
   getTournamentClassificationLabels,
 } from "./domain/tournamentGenderConfig.mjs";
-import { tournamentSnapshotMatches } from "./domain/tournamentPersistence.mjs";
+import {
+  tournamentMutationWasApplied,
+  tournamentSnapshotMatches,
+} from "./domain/tournamentPersistence.mjs";
 import {
   isTournamentSummary,
   normalizeTournamentSummaryRow,
@@ -4866,9 +4869,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function confirmTournamentSnapshotOnServer(updated, persistedData) {
-    const confirmationDelays = [0, 300, 900];
+    // A escrita do Postgres pode terminar depois que a resposta HTTP é
+    // interrompida em conexões lentas. O identificador exclusivo confirma a
+    // mutação exata sem depender da serialização completa do JSON retornado.
+    const confirmationDelays = [0, 400, 1000, 2200, 4200];
     let latestTournament = null;
     let latestError = null;
+    const confirmationColumns = updated.changeId
+      ? "id,user_id,name,type,status,created_at,updated_at,revision,last_change_id"
+      : "*";
 
     for (const delay of confirmationDelays) {
       if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay));
@@ -4876,12 +4885,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       const { data, error } = await executeTournamentRequest((signal) => (
         supabase
           .from("tournaments")
-          .select("*")
+          .select(confirmationColumns)
           .eq("id", updated.id)
           .eq("user_id", user.id)
           .abortSignal(signal)
           .maybeSingle()
-      ), 3500);
+      ), 5000);
 
       if (error) {
         latestError = error;
@@ -4889,8 +4898,20 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       }
 
       latestTournament = data;
-      if (tournamentSnapshotMatches(data, updated, persistedData)) {
-        return { matched: true, tournament: data, error: null };
+      if (tournamentMutationWasApplied(data, updated.changeId)) {
+        return {
+          matched: true,
+          tournament: {
+            ...updated,
+            ...data,
+            data: persistedData,
+            __summary: false,
+          },
+          error: null,
+        };
+      }
+      if (!updated.changeId && tournamentSnapshotMatches(data, updated, persistedData)) {
+        return { matched: true, tournament: { ...data, __summary: false }, error: null };
       }
     }
 
@@ -4973,9 +4994,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     let { data: savedTournament, error } = await executeTournamentRequest((signal) => (
       supabase
         .rpc("save_tournament_snapshot_safe", safeSaveArgs)
+        .select("id,user_id,name,type,status,created_at,updated_at,revision,last_change_id")
         .abortSignal(signal)
         .maybeSingle()
-    ));
+    ), 20000);
 
     const safeFunctionMissing = error && /save_tournament_snapshot_safe|function.*does not exist|schema cache/i.test(
       `${error.message || ""} ${error.details || ""} ${error.hint || ""}`
@@ -4996,8 +5018,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       if (serverRevision !== null) query = query.eq("revision", serverRevision);
       else if (serverTournament.updated_at) query = query.eq("updated_at", serverTournament.updated_at);
       ({ data: savedTournament, error } = await executeTournamentRequest((signal) => (
-        query.select("*").abortSignal(signal).maybeSingle()
-      )));
+        query
+          .select("id,user_id,name,type,status,created_at,updated_at,revision,last_change_id")
+          .abortSignal(signal)
+          .maybeSingle()
+      ), 20000));
     }
 
     if (error) {
@@ -5036,7 +5061,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return { ok: false, conflict: true, serverTournament: confirmation.tournament };
     }
 
-    return { ok: true, tournament: savedTournament };
+    return {
+      ok: true,
+      tournament: {
+        ...updated,
+        ...savedTournament,
+        data: persistedData,
+        __summary: false,
+      },
+    };
   }
 
   async function syncPendingTournamentDrafts(tournamentSource = []) {
@@ -6471,12 +6504,14 @@ setNewPublicInfo({
     let finalUpdated = updated;
     let mergeBase = editTarget;
     let saveResult = null;
+    const editChangeId = generateCollaborationChangeId();
     setEditTournamentSaving(true);
 
     try {
       for (let attempt = 0; attempt < 5; attempt += 1) {
         saveResult = await persistTournamentSnapshot({
           ...finalUpdated,
+          changeId: editChangeId,
           scoreSafetyBaseData: mergeBase.data,
           allowScoreRegression: modalityChanged,
         }, {

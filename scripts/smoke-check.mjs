@@ -51,6 +51,7 @@ import {
 } from "../src/domain/authValidation.mjs";
 import {
   stableJsonStringify,
+  tournamentMutationWasApplied,
   tournamentSnapshotMatches,
 } from "../src/domain/tournamentPersistence.mjs";
 import {
@@ -2900,9 +2901,28 @@ assert.equal(
   false,
   "A confirmação nunca pode aceitar como salva uma versão com placares diferentes."
 );
+assert.equal(
+  tournamentMutationWasApplied(
+    { id: "torneio-1", last_change_id: "87d4755c-4588-422b-83f7-a4bf19df064c" },
+    "87d4755c-4588-422b-83f7-a4bf19df064c"
+  ),
+  true,
+  "Uma resposta demorada deve ser confirmada pelo identificador exclusivo da mutação salva."
+);
+assert.equal(
+  tournamentMutationWasApplied(
+    { id: "torneio-1", last_change_id: "alteracao-anterior" },
+    "alteracao-atual"
+  ),
+  false,
+  "A confirmação não pode aceitar o identificador de outra alteração."
+);
 assert.ok(
   mainSource.includes("async function confirmTournamentSnapshotOnServer")
     && mainSource.includes("confirmedAfterAmbiguousResponse: true")
+    && singleTournamentEditSource.includes("const editChangeId = generateCollaborationChangeId()")
+    && singleTournamentEditSource.includes("changeId: editChangeId")
+    && mainSource.includes('.select("id,user_id,name,type,status,created_at,updated_at,revision,last_change_id")')
     && mainSource.includes(".abortSignal(signal)")
     && mainSource.includes("async function executeTournamentRequest")
     && mainSource.includes("A resposta da gravação falhou, mas o torneio foi confirmado no servidor."),
