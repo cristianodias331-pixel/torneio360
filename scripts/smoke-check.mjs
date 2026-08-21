@@ -3791,13 +3791,19 @@ assert.ok(
     && styleSource.includes("linear-gradient(135deg, #fb923c, #f97316) !important"),
   "As cores dos filtros ou o destaque laranja dos botões de criação foram sobrescritos."
 );
-const circuitActionsPosition = mainSource.indexOf('className="circuitItemActions circuitItemActionsTop"');
+const circuitActionsPosition = mainSource.indexOf('className="circuitDetailActions"');
 const circuitRankingPosition = mainSource.indexOf('className="circuitRankingBox"', circuitActionsPosition);
 assert.ok(
   circuitActionsPosition >= 0
     && circuitRankingPosition > circuitActionsPosition
-    && styleSource.includes("border-bottom: 1px solid var(--ui-border-soft) !important"),
-  "Editar e excluir circuito precisam aparecer antes do ranking no circuito expandido."
+    && mainSource.includes('className="circuitDetailBackButton"')
+    && mainSource.includes('onClick={() => openOrganizerCircuit(circuit)}')
+    && mainSource.includes('organizerCircuitsToRender.map')
+    && mainSource.includes('aria-pressed={circuitStatusFilter === "combined"}')
+    && mainSource.includes('params.set("circuito", next.circuitId)')
+    && styleSource.includes(".circuitDetailNavigation")
+    && styleSource.includes(".circuitOpenAction"),
+  "A lista de circuitos precisa permanecer leve e abrir um único circuito com ações antes do ranking."
 );
 assert.ok(
   mainSource.includes("setTournaments(optimisticTournaments)")
