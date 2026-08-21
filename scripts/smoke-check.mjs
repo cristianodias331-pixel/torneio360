@@ -3806,6 +3806,17 @@ assert.ok(
   "A lista de circuitos precisa permanecer leve e abrir um único circuito com ações antes do ranking."
 );
 assert.ok(
+  mainSource.includes('className="circuitRankingSpinner"')
+    && mainSource.includes('className="circuitRankingLoadingProgress"')
+    && mainSource.includes("Carregando dados do circuito")
+    && styleSource.includes("@keyframes circuitRankingSpin")
+    && styleSource.includes(".circuitRankingLoadingCopy")
+    && styleSource.includes(".circuitDetailActions button.editBtn")
+    && styleSource.includes(".circuitDetailActions button.deleteBtn")
+    && styleSource.includes(".proDashboard.theme-dark.playAppShell .circuitDetailActions button.editBtn"),
+  "O detalhe do circuito perdeu o carregamento visível ou o contraste das ações nos temas claro e escuro."
+);
+assert.ok(
   mainSource.includes("setTournaments(optimisticTournaments)")
     && mainSource.includes("setTournaments(remainingTournaments)")
     && mainSource.includes("setTrashTournaments((current) => [")

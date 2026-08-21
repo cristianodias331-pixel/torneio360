@@ -8749,19 +8749,27 @@ setNewPublicInfo({
               const historyLoadStatus = circuitHistoryLoadState[normalizedCircuitId]
                 || (circuitHistoryLoadedIdsRef.current.has(normalizedCircuitId) ? "loaded" : "loading");
               if (historyLoadStatus !== "loaded") {
+                if (historyLoadStatus === "loading") {
+                  return (
+                    <div className="circuitRankingLoadingState" role="status" aria-live="polite">
+                      <span className="circuitRankingSpinner" aria-hidden="true" />
+                      <div className="circuitRankingLoadingCopy">
+                        <strong>Carregando dados do circuito…</strong>
+                        <span>Torneios e ranking consolidado estão sendo preparados.</span>
+                      </div>
+                      <span className="circuitRankingLoadingProgress" aria-hidden="true"><i /></span>
+                    </div>
+                  );
+                }
                 return (
-                  <div className={`circuitRankingLoadingState ${historyLoadStatus === "error" ? "hasError" : ""}`}>
-                    <strong>{historyLoadStatus === "error" ? "Ranking indisponível no momento" : "Carregando ranking do circuito…"}</strong>
-                    <span>
-                      {historyLoadStatus === "error"
-                        ? "Os demais dados do circuito continuam disponíveis. Tente carregar o ranking novamente."
-                        : "O circuito já está aberto. Somente o ranking consolidado está sendo buscado."}
-                    </span>
-                    {historyLoadStatus === "error" ? (
-                      <button type="button" onClick={() => void loadCircuitRankingHistory(circuit.id, { force: true })}>
-                        Tentar novamente
-                      </button>
-                    ) : null}
+                  <div className="circuitRankingLoadingState hasError" role="alert">
+                    <div className="circuitRankingLoadingCopy">
+                      <strong>Ranking indisponível no momento</strong>
+                      <span>Os demais dados do circuito continuam disponíveis. Tente carregar o ranking novamente.</span>
+                    </div>
+                    <button type="button" onClick={() => void loadCircuitRankingHistory(circuit.id, { force: true })}>
+                      Tentar novamente
+                    </button>
                   </div>
                 );
               }
