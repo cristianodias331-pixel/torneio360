@@ -2925,6 +2925,9 @@ assert.equal(
 assert.ok(
   mainSource.includes("async function confirmTournamentSnapshotOnServer")
     && mainSource.includes("confirmedAfterAmbiguousResponse: true")
+    && mainSource.includes('const confirmationColumns = "*"')
+    && mainSource.includes("if (tournamentSnapshotMatches(data, updated, persistedData))")
+    && !mainSource.includes("if (!updated.changeId && tournamentSnapshotMatches(data, updated, persistedData))")
     && singleTournamentEditSource.includes("const editChangeId = generateCollaborationChangeId()")
     && singleTournamentEditSource.includes("changeId: editChangeId")
     && mainSource.includes('.select("id,user_id,name,type,status,created_at,updated_at,revision,last_change_id")')

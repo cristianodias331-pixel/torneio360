@@ -4875,9 +4875,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const confirmationDelays = [0, 400, 1000, 2200, 4200];
     let latestTournament = null;
     let latestError = null;
-    const confirmationColumns = updated.changeId
-      ? "id,user_id,name,type,status,created_at,updated_at,revision,last_change_id"
-      : "*";
+    // A confirmação precisa ler o snapshot completo. Em algumas respostas
+    // intermediárias do PostgREST o identificador da mutação pode não voltar,
+    // embora nome, modalidade e dados já tenham sido gravados corretamente.
+    // Conferir também o conteúdo evita declarar erro depois de um salvamento
+    // que de fato terminou no servidor.
+    const confirmationColumns = "*";
 
     for (const delay of confirmationDelays) {
       if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay));
@@ -4910,7 +4913,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           error: null,
         };
       }
-      if (!updated.changeId && tournamentSnapshotMatches(data, updated, persistedData)) {
+      if (tournamentSnapshotMatches(data, updated, persistedData)) {
         return { matched: true, tournament: { ...data, __summary: false }, error: null };
       }
     }
