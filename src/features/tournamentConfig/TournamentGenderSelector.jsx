@@ -29,9 +29,12 @@ export default function TournamentGenderSelector({
         className="tournamentGenderSelect"
         value={selectedValue}
         disabled={fixedByModality}
+        required={!fixedByModality}
+        aria-required={!fixedByModality}
         onChange={(event) => onChange(event.target.value)}
         aria-label="Gênero do torneio"
       >
+        {!fixedByModality ? <option value="" disabled>Escolha o gênero</option> : null}
         {tournamentGenderOptions.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}

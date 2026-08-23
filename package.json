@@ -5,8 +5,10 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "vite",
+    "dev:homologation": "vite --mode homologation",
     "prebuild": "node scripts/write-build-version.mjs",
     "build": "vite build",
+    "build:homologation": "vite build --mode homologation",
     "preview": "vite preview",
     "test": "node scripts/smoke-check.mjs",
     "check": "pnpm test && pnpm build"

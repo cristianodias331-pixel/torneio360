@@ -35,6 +35,11 @@ export const rankingCriteriaOptions = [
 
 export const defaultRankingCriteria = "wins_points_balance";
 
+// Modalidades de copa sempre classificam primeiro por vitórias. Esta constante
+// é usada apenas na criação de novos torneios; os torneios já salvos mantêm o
+// critério registrado neles.
+export const cupRankingCriteria = "wins_balance_points";
+
 export function getRankingCriteria(value) {
   return rankingCriteriaOptions.find((item) => item.value === value) || rankingCriteriaOptions[0];
 }

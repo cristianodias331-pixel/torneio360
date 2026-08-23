@@ -7514,6 +7514,99 @@ body {
   grid-column: 1 / -1;
 }
 
+.organizerProfileGrid .formField select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0 42px 0 14px;
+  background-color: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 700;
+}
+
+.organizerProfileGrid .formField select:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.profileLocationFeedback {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.profileLocationFeedback.error {
+  color: #b45309;
+}
+
+.profileForeignStateToggle {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+  user-select: none;
+}
+
+.profileForeignStateToggle input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #7c3aed;
+  cursor: pointer;
+}
+
+.profileForeignStateToggle.isDisabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.profileForeignStateToggle.isDisabled input {
+  cursor: not-allowed;
+}
+
+.organizerProfileGrid .formField .profileForeignStateInput {
+  width: 100%;
+  margin-top: 9px;
+}
+
+html[data-theme="dark"] .organizerProfileGrid .formField select,
+.proDashboard.theme-dark .organizerProfileGrid .formField select {
+  border-color: #334155;
+  background-color: #0f1b2a;
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .organizerProfileGrid .formField select:disabled,
+.proDashboard.theme-dark .organizerProfileGrid .formField select:disabled {
+  background-color: #111c2a;
+  color: #64748b;
+}
+
+html[data-theme="dark"] .profileLocationFeedback.error,
+.proDashboard.theme-dark .profileLocationFeedback.error {
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .profileForeignStateToggle,
+.proDashboard.theme-dark .profileForeignStateToggle {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .profileForeignStateToggle.isDisabled,
+.proDashboard.theme-dark .profileForeignStateToggle.isDisabled {
+  color: #64748b;
+}
+
 .saveProfileBtn {
   width: min(420px, 100%);
   align-self: center;
@@ -12402,7 +12495,7 @@ button.profileVisibilitySwitch.private strong {
   max-width: 100% !important;
   margin: 10px auto 0 !important;
   padding: 10px 16px !important;
-  border: 2px solid #000000 !important;
+  border: 1px solid #22c55e !important;
   border-radius: 14px !important;
   background: #ecfdf5 !important;
   color: #065f46 !important;
