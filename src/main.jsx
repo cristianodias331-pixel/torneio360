@@ -135,6 +135,11 @@ import {
   tournamentSnapshotMatches,
 } from "./domain/tournamentPersistence.mjs";
 import {
+  BRAZILIAN_STATES,
+  loadBrazilianCities,
+  normalizeBrazilianState,
+} from "./domain/brazilLocations.mjs";
+import {
   isTournamentSummary,
   normalizeTournamentSummaryRow,
   tournamentSummarySelect,
@@ -360,6 +365,7 @@ import {
   getSharedGameParticipants,
 } from "./domain/gameParticipants.mjs";
 import {
+  cupRankingCriteria,
   defaultRankingCriteria,
   formatRankingMetricValue,
   getRankingColumnLabel,
@@ -431,8 +437,10 @@ import { getCearenseQualified } from "./domain/cearenseQualification.mjs";
 import { getCopinhaSeededGroups } from "./domain/cupQualification.mjs";
 import "./style.css";
 
-const SUPABASE_URL = "https://dttutybojealkvuywszt.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Tr5qiUea-p42UknVoWwPKg_6K_b1EX_";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+  || "https://dttutybojealkvuywszt.supabase.co";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+  || "sb_publishable_Tr5qiUea-p42UknVoWwPKg_6K_b1EX_";
 const supabase = globalThis.__torneio360Supabase || createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
@@ -471,6 +479,10 @@ const {
 } = createCupPresentation({ getCupPlayTimeById });
 
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
+
+function getNewTournamentRankingCriteria(type, selectedCriteria = "") {
+  return isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria;
+}
 
 async function logout() {
   try {
@@ -616,7 +628,8 @@ function App() {
   const activeUserIdRef = useRef(null);
 
   async function reconcileOwnProfile() {
-    const { error } = await supabase.rpc("reconcile_my_profile");
+    const result = await supabase.rpc("reconcile_my_profile");
+    const { error } = result;
 
     // A função existe na correção de banco desta atualização. Enquanto ela
     // ainda não tiver sido aplicada, o restante do fluxo continua funcionando
@@ -624,9 +637,11 @@ function App() {
     if (error && !/reconcile_my_profile|function.*does not exist/i.test(`${error.message || ""} ${error.code || ""}`)) {
       console.warn("Não foi possível concluir a preparação do perfil:", error);
     }
+
+    return result;
   }
 
-  async function loadProfile(userId, { waitForAccess = false } = {}) {
+  async function loadProfile(userId, { waitForAccess = false, emailConfirmed = false } = {}) {
     const attempts = waitForAccess ? 6 : 1;
     let lastProfile = null;
 
@@ -663,7 +678,7 @@ function App() {
           status === "active" ||
           status === "blocked" ||
           status === "expired" ||
-          isProfilePendingEmailConfirmation(data);
+          (!emailConfirmed && isProfilePendingEmailConfirmation(data));
 
         if (!waitForAccess || isStableProfile || attempt === attempts - 1) {
           return data;
@@ -694,7 +709,10 @@ function App() {
     activeUserIdRef.current = data.user.id;
 
     setLoading(true);
-    const nextProfile = await loadProfile(data.user.id, { waitForAccess: true });
+    const nextProfile = await loadProfile(data.user.id, {
+      waitForAccess: true,
+      emailConfirmed: Boolean(data.user.email_confirmed_at),
+    });
     setLoading(false);
     return nextProfile;
   }
@@ -744,7 +762,10 @@ function App() {
       }
 
       if (data.session?.user?.id) {
-        await loadProfile(data.session.user.id, { waitForAccess: true });
+        await loadProfile(data.session.user.id, {
+          waitForAccess: true,
+          emailConfirmed: Boolean(data.session.user.email_confirmed_at),
+        });
       }
 
       if (!active) return;
@@ -789,7 +810,10 @@ function App() {
 
       if (isSameUser) {
         if (event === "USER_UPDATED") {
-          await loadProfile(nextUserId, { waitForAccess: true });
+          await loadProfile(nextUserId, {
+            waitForAccess: true,
+            emailConfirmed: Boolean(newSession?.user?.email_confirmed_at),
+          });
 
           if (getAuthFlowFromLocation() === "confirm" && newSession?.user?.email_confirmed_at) {
             clearAuthCallbackUrl();
@@ -800,7 +824,10 @@ function App() {
       }
 
       setLoading(true);
-      await loadProfile(nextUserId, { waitForAccess: true });
+      await loadProfile(nextUserId, {
+        waitForAccess: true,
+        emailConfirmed: Boolean(newSession?.user?.email_confirmed_at),
+      });
 
       if (!active) return;
 
@@ -815,7 +842,12 @@ function App() {
     void init();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-      void handleAuthEvent(event, newSession);
+      // O Supabase mantém um bloqueio interno enquanto notifica mudanças da
+      // sessão. Consultas iniciadas no mesmo callback podem ficar aguardando
+      // esse bloqueio e deixar o retorno do e-mail parado em uma tela vazia.
+      window.setTimeout(() => {
+        void handleAuthEvent(event, newSession);
+      }, 0);
     });
 
     return () => {
@@ -878,7 +910,7 @@ function App() {
     return <ProfileUnavailable onRetry={refreshProfile} onLogout={logout} />;
   }
 
-  if (isProfilePendingEmailConfirmation(profile)) {
+  if (!session.user?.email_confirmed_at && isProfilePendingEmailConfirmation(profile)) {
     return (
       <EmailConfirmationPending
         email={session.user?.email}
@@ -2778,6 +2810,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       isPublic: true,
     };
   });
+  const [profileCityOptions, setProfileCityOptions] = useState([]);
+  const [profileCitiesLoading, setProfileCitiesLoading] = useState(false);
+  const [profileCitiesError, setProfileCitiesError] = useState("");
+  const [profileUsesForeignState, setProfileUsesForeignState] = useState(() => {
+    const currentState = String(organizerProfile.state || "").trim();
+    return Boolean(currentState && !normalizeBrazilianState(currentState));
+  });
+  const [profileSaveConfirmationOpen, setProfileSaveConfirmationOpen] = useState(false);
   const organizerProfileBaseRef = useRef({
     photoUrl: profile.photo_url || "",
     arenaName: profile.arena_name || "",
@@ -4398,6 +4438,61 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setOrganizerProfile((prev) => ({ ...prev, [field]: value }));
   }
 
+  function updateOrganizerState(nextState) {
+    if (nextState) setProfileUsesForeignState(false);
+    setOrganizerProfile((prev) => ({
+      ...prev,
+      state: nextState,
+      city: normalizeBrazilianState(prev.state) === nextState ? prev.city : "",
+    }));
+  }
+
+  function updateForeignStatePreference(enabled) {
+    if (normalizeBrazilianState(organizerProfile.state)) return;
+    setProfileUsesForeignState(enabled);
+    setOrganizerProfile((prev) => ({
+      ...prev,
+      state: "",
+      city: "",
+    }));
+  }
+
+  useEffect(() => {
+    const currentState = String(organizerProfile.state || "").trim();
+    if (normalizeBrazilianState(currentState)) {
+      setProfileUsesForeignState(false);
+    } else if (currentState) {
+      setProfileUsesForeignState(true);
+    }
+  }, [organizerProfile.state]);
+
+  useEffect(() => {
+    const stateCode = normalizeBrazilianState(organizerProfile.state);
+    if (!stateCode) {
+      setProfileCityOptions([]);
+      setProfileCitiesLoading(false);
+      setProfileCitiesError("");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setProfileCitiesLoading(true);
+    setProfileCitiesError("");
+
+    loadBrazilianCities(stateCode, { signal: controller.signal })
+      .then((cities) => setProfileCityOptions(cities))
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        setProfileCityOptions([]);
+        setProfileCitiesError(error?.message || "Não foi possível carregar as cidades.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setProfileCitiesLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [organizerProfile.state]);
+
   function organizerProfileFromRow(row, fallback = {}) {
     return {
       photoUrl: row?.photo_url ?? fallback.photoUrl ?? "",
@@ -4495,36 +4590,60 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       isPublic: publicProfileData.is_public,
     }));
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .update(changedProfileData)
-      .eq("id", user.id)
-      .select("*")
-      .single();
+    try {
+      // Uma conta recém-confirmada pode abrir a plataforma antes de a linha do
+      // perfil estar visível para a sessão atual. Reconcilia e renova a sessão
+      // antes do UPDATE para que o primeiro salvamento também seja confiável.
+      await reconcileOwnProfile();
+      await supabase.auth.refreshSession();
 
-    setProfileSaving(false);
+      const updateProfile = () => supabase
+        .from("profiles")
+        .update(changedProfileData)
+        .eq("id", user.id)
+        .select("*")
+        .maybeSingle();
 
-    if (error) {
-      console.error("Erro ao salvar perfil no Supabase:", error);
-      showNotice("error", "Perfil não salvo", `O Supabase recusou a alteração. Detalhe: ${error.message || "erro desconhecido"}`);
-      return;
-    }
+      let { data, error } = await updateProfile();
 
-    if (data) {
+      // UPDATE sem linha não é sucesso. Reprovisiona o perfil e tenta uma vez,
+      // sem usar .single(), que transformava zero linhas no erro PGRST116.
+      if (!error && !data) {
+        await reconcileOwnProfile();
+        await supabase.auth.refreshSession();
+        ({ data, error } = await updateProfile());
+      }
+
+      if (error || !data) {
+        const saveError = error || new Error("O perfil ainda não está disponível para esta conta.");
+        console.error("Erro ao salvar perfil no Supabase:", saveError);
+        showNotice(
+          "error",
+          "Perfil não salvo",
+          "Não foi possível concluir o cadastro agora. Atualize a página e tente novamente."
+        );
+        return;
+      }
+
       onProfileChange?.((prev) => ({ ...prev, ...data }));
       const savedOrganizerProfile = organizerProfileFromRow(data, organizerProfile);
       organizerProfileBaseRef.current = savedOrganizerProfile;
       setOrganizerProfile(savedOrganizerProfile);
       localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(savedOrganizerProfile));
       saveCachedProfile(user.id, { ...profile, ...data });
-    }
 
-    await loadPublicArenaProfiles();
-    setProfileSaveSuccess(true);
-    profileSaveSuccessTimerRef.current = setTimeout(() => {
-      setProfileSaveSuccess(false);
-      profileSaveSuccessTimerRef.current = null;
-    }, 2600);
+      setProfileSaveSuccess(true);
+      setProfileSaveConfirmationOpen(true);
+      profileSaveSuccessTimerRef.current = setTimeout(() => {
+        setProfileSaveSuccess(false);
+        profileSaveSuccessTimerRef.current = null;
+      }, 2600);
+      void loadPublicArenaProfiles().catch((refreshError) => {
+        console.warn("Perfil salvo; a lista pública será atualizada depois:", refreshError);
+      });
+    } finally {
+      setProfileSaving(false);
+    }
   }
 
   function toggleNewPublicInfo(field) {
@@ -4559,7 +4678,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     showNotice(
       "warning",
       "Complete o perfil da arena",
-      "Informe o nome da arena e o nome do responsável antes de criar um evento público."
+      "Informe o nome da organização e o nome do responsável antes de criar um evento público."
     );
     openProfileSection("editar");
     return false;
@@ -5783,7 +5902,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
-    if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === newRankingCriteria)) {
+    const effectiveNewRankingCriteria = getNewTournamentRankingCriteria(newType, newRankingCriteria);
+    if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === effectiveNewRankingCriteria)) {
       showNotice("warning", "Critério obrigatório", "Escolha a ordem dos critérios do ranking antes de criar o torneio.");
       return;
     }
@@ -5826,7 +5946,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           getEffectiveTournamentGenderMode(item.type, item.participantGenderMode) === tournamentGenderModes.other
           && !item.genderOther?.trim()
         )
-        || !rankingCriteriaOptions.some((option) => option.value === item.rankingCriteria)
+        || !rankingCriteriaOptions.some((option) => option.value === getNewTournamentRankingCriteria(item.type, item.rankingCriteria))
         || !item.date
         || !["4", "6", 4, 6].includes(item.winningScore)
         || Boolean(item.endDate && item.endDate < item.date)
@@ -5866,7 +5986,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       coverImageUrl: newCoverImageUrl,
       eventCoverImageUrl: newCoverImageUrl,
       winningScore: isMultiCategory ? 4 : (Number(newWinningScore) || 4),
-      rankingCriteria: isMultiCategory ? defaultRankingCriteria : newRankingCriteria,
+      rankingCriteria: isMultiCategory ? defaultRankingCriteria : effectiveNewRankingCriteria,
       publishedOnProfile: true,
       publishedAt: new Date().toISOString(),
     };
@@ -5894,7 +6014,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             eventStartTime: item.time,
             location: item.location.trim(),
             winningScore: Number(item.winningScore) || 4,
-            rankingCriteria: item.rankingCriteria,
+            rankingCriteria: getNewTournamentRankingCriteria(item.type, item.rankingCriteria),
             coverImageUrl: item.coverImageUrl || newCoverImageUrl,
             usesEventCover: !item.coverImageUrl,
           },
@@ -8108,10 +8228,16 @@ setNewPublicInfo({
 
           <div className="formField compactField categoryCriteriaField">
             <label>Critério do ranking</label>
-            <select value={item.rankingCriteria} onChange={(e) => updateCategorySchedule(index, "rankingCriteria", e.target.value)}>
-              <option value="">Escolha o critério</option>
-              {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            {isCupType(modalityConfig[item.type]) ? (
+              <select value={cupRankingCriteria} disabled aria-label="Critério automático das modalidades de copa">
+                <option value={cupRankingCriteria}>{getRankingCriteria(cupRankingCriteria).label}</option>
+              </select>
+            ) : (
+              <select value={item.rankingCriteria} onChange={(e) => updateCategorySchedule(index, "rankingCriteria", e.target.value)}>
+                <option value="">Escolha o critério</option>
+                {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            )}
           </div>
 
           <label className={`categoryCoverPicker ${item.coverImageUrl ? "hasImage" : ""}`}>
@@ -8266,12 +8392,18 @@ setNewPublicInfo({
 
   <div className="formField fullField">
     <label>Critério do ranking <span aria-hidden="true">*</span></label>
-    <select value={newRankingCriteria} onChange={(e) => setNewRankingCriteria(e.target.value)} required aria-required="true">
-      <option value="">Escolha a ordem dos critérios</option>
-      {rankingCriteriaOptions.map((option) => (
-        <option key={option.value} value={option.value}>{option.label}</option>
-      ))}
-    </select>
+    {isCupType(modalityConfig[newType]) ? (
+      <select value={cupRankingCriteria} disabled aria-label="Critério automático das modalidades de copa">
+        <option value={cupRankingCriteria}>{getRankingCriteria(cupRankingCriteria).label}</option>
+      </select>
+    ) : (
+      <select value={newRankingCriteria} onChange={(e) => setNewRankingCriteria(e.target.value)} required aria-required="true">
+        <option value="">Escolha a ordem dos critérios</option>
+        {rankingCriteriaOptions.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    )}
   </div>
   </>
   )}
@@ -9154,7 +9286,7 @@ setNewPublicInfo({
           <span aria-hidden="true">●</span>
           <div>
             <strong>Perfil público da arena</strong>
-            <small>Com o nome da arena e do responsável preenchidos, seus eventos aparecem automaticamente para os visitantes.</small>
+            <small>Com o nome da organização e do responsável preenchidos, seus eventos aparecem automaticamente para os visitantes.</small>
           </div>
         </div>
       </div>
@@ -9275,8 +9407,8 @@ setNewPublicInfo({
 
     <div className="organizerProfileGrid">
       <div className="formField">
-        <label>Nome da arena</label>
-        <input value={organizerProfile.arenaName} onChange={(e) => updateOrganizerProfile("arenaName", e.target.value)} placeholder="Ex: Arena Beach Sports" />
+        <label>Organização</label>
+        <input value={organizerProfile.arenaName} onChange={(e) => updateOrganizerProfile("arenaName", e.target.value)} placeholder="Nome da sua organização" />
       </div>
 
       <div className="formField">
@@ -9331,13 +9463,72 @@ setNewPublicInfo({
       </div>
 
       <div className="formField">
-        <label>Cidade</label>
-        <input value={organizerProfile.city} onChange={(e) => updateOrganizerProfile("city", e.target.value)} placeholder="Fortaleza" />
+        <label>Estado</label>
+        <select
+          value={normalizeBrazilianState(organizerProfile.state)}
+          onChange={(e) => updateOrganizerState(e.target.value)}
+          disabled={profileUsesForeignState}
+        >
+          <option value="">Selecione o estado</option>
+          {BRAZILIAN_STATES.map((state) => (
+            <option key={state.code} value={state.code}>{state.name} ({state.code})</option>
+          ))}
+        </select>
+        <label className={`profileForeignStateToggle${normalizeBrazilianState(organizerProfile.state) ? " isDisabled" : ""}`}>
+          <input
+            type="checkbox"
+            checked={profileUsesForeignState}
+            disabled={Boolean(normalizeBrazilianState(organizerProfile.state))}
+            onChange={(event) => updateForeignStatePreference(event.target.checked)}
+          />
+          <span>Estado estrangeiro</span>
+        </label>
+        {profileUsesForeignState ? (
+          <input
+            className="profileForeignStateInput"
+            value={organizerProfile.state}
+            onChange={(event) => updateOrganizerProfile("state", event.target.value)}
+            placeholder="Digite o estado, província ou região"
+            autoComplete="address-level1"
+          />
+        ) : null}
       </div>
 
       <div className="formField">
-        <label>Estado</label>
-        <input value={organizerProfile.state} onChange={(e) => updateOrganizerProfile("state", e.target.value)} placeholder="CE" />
+        <label>Cidade</label>
+        {profileUsesForeignState ? (
+          <input
+            value={organizerProfile.city}
+            onChange={(e) => updateOrganizerProfile("city", e.target.value)}
+            placeholder="Digite a cidade"
+            autoComplete="address-level2"
+          />
+        ) : profileCitiesError ? (
+          <>
+            <input
+              value={organizerProfile.city}
+              onChange={(e) => updateOrganizerProfile("city", e.target.value)}
+              placeholder="Digite a cidade"
+            />
+            <small className="profileLocationFeedback error">{profileCitiesError} Você ainda pode digitar a cidade.</small>
+          </>
+        ) : (
+          <select
+            value={organizerProfile.city}
+            onChange={(e) => updateOrganizerProfile("city", e.target.value)}
+            disabled={!normalizeBrazilianState(organizerProfile.state) || profileCitiesLoading}
+          >
+            <option value="">
+              {profileCitiesLoading ? "Carregando cidades..." : "Selecione a cidade"}
+            </option>
+            {organizerProfile.city && !profileCityOptions.includes(organizerProfile.city) ? (
+              <option value={organizerProfile.city}>{organizerProfile.city}</option>
+            ) : null}
+            {profileCityOptions.map((city) => (
+              <option key={city} value={city}>{city}</option>
+            ))}
+          </select>
+        )}
       </div>
 
     </div>
@@ -9348,6 +9539,14 @@ setNewPublicInfo({
         ✅ Alterado com sucesso
       </div>
     ) : null}
+    <NoticeModal
+      notice={profileSaveConfirmationOpen ? {
+        type: "success",
+        title: "Alterações salvas",
+        message: "O perfil da sua organização foi atualizado com sucesso.",
+      } : null}
+      onClose={() => setProfileSaveConfirmationOpen(false)}
+    />
   </section>
   ) : null}
 
@@ -9849,27 +10048,50 @@ function TournamentScreen({
     const queuedSave = saveQueueRef.current.then(runSave, runSave);
     saveQueueRef.current = queuedSave.then(() => true, () => false);
 
-    return queuedSave.then((rawResult) => {
-      submittedChangesRef.current.delete(changeId);
+    return queuedSave.then(async (rawResult) => {
       const result = rawResult === true ? { ok: true } : (rawResult || { ok: false });
-      const ok = result.ok === true;
+      let ok = result.ok === true;
       const isLatestVersion = version === dataVersionRef.current;
+      let confirmedByRealtime = isLatestVersion && (
+        lastConfirmedDataVersionRef.current >= version
+        || !hasUnsavedChangesRef.current
+      );
+
+      // Em outro dispositivo/rede, o evento Realtime pode confirmar o UPDATE
+      // imediatamente antes da resposta HTTP chegar. Mantemos o changeId por
+      // tempo suficiente para reconhecer essa confirmação como nossa própria
+      // gravação e evitamos o falso aviso de erro.
+      if (!ok && isLatestVersion && !confirmedByRealtime) {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        confirmedByRealtime = lastConfirmedDataVersionRef.current >= version
+          || !hasUnsavedChangesRef.current;
+      }
+      if (confirmedByRealtime) ok = true;
+
+      setTimeout(() => {
+        const pendingChange = submittedChangesRef.current.get(changeId);
+        if (pendingChange?.version === version) submittedChangesRef.current.delete(changeId);
+      }, 15000);
 
       if (ok && isLatestVersion) {
-        const confirmedTournament = result.savedIsCurrent === false
-          ? tournamentRef.current
-          : result.tournament;
-        const normalizedSavedData = normalizeTournamentData(
-          confirmedTournament?.type || tournament.type,
-          confirmedTournament?.data || result.savedData || snapshot
-        );
-        latestDataRef.current = normalizedSavedData;
-        setDataState(normalizedSavedData);
-        hasUnsavedChangesRef.current = false;
-        allowScoreRegressionRef.current = false;
-        clearTournamentDraft(userId, tournament.id);
-        clearSaveRetryTimer();
-        saveRetryAttemptRef.current = 0;
+        // Quando o Realtime já confirmou, ele também já aplicou os dados mais
+        // recentes. Não voltamos a aplicar um snapshot antigo sobre a tela.
+        if (result.ok === true) {
+          const confirmedTournament = result.savedIsCurrent === false
+            ? tournamentRef.current
+            : result.tournament;
+          const normalizedSavedData = normalizeTournamentData(
+            confirmedTournament?.type || tournament.type,
+            confirmedTournament?.data || result.savedData || snapshot
+          );
+          latestDataRef.current = normalizedSavedData;
+          setDataState(normalizedSavedData);
+          hasUnsavedChangesRef.current = false;
+          allowScoreRegressionRef.current = false;
+          clearTournamentDraft(userId, tournament.id);
+          clearSaveRetryTimer();
+          saveRetryAttemptRef.current = 0;
+        }
       }
 
       if (!ok && (result.retryable || result.conflict) && isLatestVersion) {
@@ -10171,6 +10393,12 @@ function TournamentScreen({
       );
 
       if (!ok) {
+        const confirmedAfterQueue = lastConfirmedDataVersionRef.current >= dataVersionRef.current
+          || !hasUnsavedChangesRef.current;
+        if (confirmedAfterQueue) {
+          setSavingStatus("Salvo na nuvem");
+          return true;
+        }
         setSavingStatus("Erro ao salvar");
         showNotice(
           "error",

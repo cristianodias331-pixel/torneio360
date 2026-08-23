@@ -78,6 +78,10 @@ import {
 } from "../src/domain/scoreRules.mjs";
 import { formatParticipantName } from "../src/domain/participantNames.mjs";
 import {
+  BRAZILIAN_STATES,
+  normalizeBrazilianState,
+} from "../src/domain/brazilLocations.mjs";
+import {
   createInitialData,
   formatParticipantNameWhileTyping,
   isTournamentDataObject,
@@ -1472,6 +1476,33 @@ for (const [template, split, label] of [
     assert.ok(game[0] <= split && game[1] > split && game[2] <= split && game[3] > split, `${label} perdeu a formação homem/mulher das duplas.`);
   }
 }
+const super12MixedPartnerCounts = new Map();
+const super12MixedOpponentCounts = new Map();
+const incrementSuper12MixedPair = (counts, first, second) => {
+  const key = [first, second].sort((left, right) => left - right).join("-");
+  counts.set(key, (counts.get(key) || 0) + 1);
+};
+for (const [manA, womanA, manB, womanB] of super12MixedTemplate.flat()) {
+  incrementSuper12MixedPair(super12MixedPartnerCounts, manA, womanA);
+  incrementSuper12MixedPair(super12MixedPartnerCounts, manB, womanB);
+  incrementSuper12MixedPair(super12MixedOpponentCounts, manA, manB);
+  incrementSuper12MixedPair(super12MixedOpponentCounts, womanA, womanB);
+  incrementSuper12MixedPair(super12MixedOpponentCounts, manA, womanB);
+  incrementSuper12MixedPair(super12MixedOpponentCounts, manB, womanA);
+}
+for (let man = 1; man <= 6; man += 1) {
+  for (let woman = 7; woman <= 12; woman += 1) {
+    assert.equal(
+      super12MixedPartnerCounts.get(`${man}-${woman}`),
+      1,
+      `O Super 12 mista repetiu ou omitiu a parceria entre os participantes ${man} e ${woman}.`
+    );
+  }
+}
+assert.ok(
+  Math.max(...super12MixedOpponentCounts.values()) <= 2,
+  "O Super 12 mista repetiu o mesmo confronto mais vezes que o mínimo necessário."
+);
 assert.equal(fixed12Template.length, 5, "As seis duplas fixas devem preservar cinco rodadas.");
 const fixedPairKeys = new Set();
 for (const [roundIndex, round] of fixed12Template.entries()) {
@@ -2592,7 +2623,7 @@ assert.ok(
 
 assert.ok(
   mainSource.includes("ensureArenaProfileReadyForPublication")
-    && mainSource.includes("Informe o nome da arena e o nome do responsável"),
+    && mainSource.includes("Informe o nome da organização e o nome do responsável"),
   "A criação de eventos não exige o perfil público mínimo da arena."
 );
 assert.ok(
@@ -3025,6 +3056,35 @@ assert.ok(
     && mainSource.includes("participantGenderMode"),
   "Criação e edição devem separar Categoria da escolha estruturada de Gênero."
 );
+const tournamentGenderSelectorSource = readFileSync(
+  new URL("src/features/tournamentConfig/TournamentGenderSelector.jsx", root),
+  "utf8"
+);
+assert.ok(
+  tournamentGenderSelectorSource.includes('<option value="" disabled>Escolha o gênero</option>')
+    && tournamentGenderSelectorSource.includes("required={!fixedByModality}"),
+  "A criação deve iniciar sem gênero selecionado e exigir uma escolha do organizador."
+);
+assert.equal(BRAZILIAN_STATES.length, 27, "O formulário deve oferecer todos os estados brasileiros e o Distrito Federal.");
+assert.equal(normalizeBrazilianState("Ceará"), "CE");
+assert.equal(normalizeBrazilianState("sp"), "SP");
+assert.ok(
+  mainSource.includes("profileUsesForeignState")
+    && mainSource.includes("Estado estrangeiro")
+    && mainSource.includes("Digite o estado, província ou região")
+    && mainSource.includes("profileSaveConfirmationOpen")
+    && mainSource.includes('title: "Alterações salvas"'),
+  "O perfil deve confirmar o salvamento em primeiro plano e permitir estado estrangeiro manual."
+);
+assert.ok(
+  mainSource.includes("<label>Organização</label>")
+    && mainSource.includes('placeholder="Nome da sua organização"')
+    && mainSource.includes("Selecione o estado")
+    && mainSource.includes("Selecione a cidade")
+    && mainSource.includes('title: "Alterações salvas"')
+    && mainSource.includes("O perfil da sua organização foi atualizado com sucesso."),
+  "O perfil deve usar Organização, seleção Estado/Cidade e confirmação explícita de salvamento."
+);
 const confirmedGenderRegistry = setParticipantGender({}, "Bárbara Souza", participantGenderValues.feminine);
 assert.equal(
   getParticipantGender(confirmedGenderRegistry, "Barbara Souza", { confirmedOnly: true }),
@@ -3354,12 +3414,15 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes('const [newRankingCriteria, setNewRankingCriteria] = useState("");')
-    && mainSource.includes('if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === newRankingCriteria))')
-    && mainSource.includes('!rankingCriteriaOptions.some((option) => option.value === item.rankingCriteria)')
+    && mainSource.includes('function getNewTournamentRankingCriteria(type, selectedCriteria = "")')
+    && mainSource.includes('isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria')
+    && mainSource.includes('if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === effectiveNewRankingCriteria))')
+    && mainSource.includes('getNewTournamentRankingCriteria(item.type, item.rankingCriteria)')
     && mainSource.includes('showNotice("warning", "Critério obrigatório"')
     && mainSource.includes('<option value="">Escolha a ordem dos critérios</option>')
-    && mainSource.includes('rankingCriteria: isMultiCategory ? defaultRankingCriteria : newRankingCriteria,'),
-  "A criação do torneio ainda permite salvar sem escolher explicitamente o critério do ranking."
+    && mainSource.includes('rankingCriteria: isMultiCategory ? defaultRankingCriteria : effectiveNewRankingCriteria,')
+    && mainSource.includes('aria-label="Critério automático das modalidades de copa"'),
+  "A criação não preserva a escolha obrigatória nas modalidades comuns ou o critério automático nas copas."
 );
 assert.ok(
   participantAttendanceSource.includes('function normalizeParticipantAttendance(config, players, attendance)')
@@ -3850,6 +3913,23 @@ assert.ok(
   mainSource.includes("const saveQueueRef = useRef(Promise.resolve(true))")
     && mainSource.includes("queueTournamentSave(latestDataRef.current"),
   "As gravações do torneio podem terminar fora de ordem e sobrescrever dados mais novos."
+);
+assert.ok(
+  mainSource.includes("submittedChangesRef.current.get(changeId)")
+    && mainSource.includes("lastConfirmedDataVersionRef.current >= version")
+    && mainSource.includes("}, 15000)")
+    && mainSource.includes("confirmedAfterQueue"),
+  "Uma confirmação Realtime da própria gravação pode voltar a ser exibida como erro entre dispositivos."
+);
+assert.ok(
+  mainSource.includes('await reconcileOwnProfile()')
+    && mainSource.includes('await supabase.auth.refreshSession()')
+    && mainSource.includes('.maybeSingle()')
+    && !mainSource.slice(
+      mainSource.indexOf("async function saveOrganizerProfile()"),
+      mainSource.indexOf("function toggleNewPublicInfo")
+    ).match(/\.select\("\*"\)\s*\.single\(\)/),
+  "O primeiro salvamento do perfil ainda exige uma linha única antes de reconciliar a conta confirmada."
 );
 assert.ok(
   localAppStorageSource.includes("export function saveTournamentDraft(")
