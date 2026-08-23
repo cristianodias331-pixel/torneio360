@@ -10107,14 +10107,6 @@ function TournamentScreen({
         scheduleSaveRetry();
       }
 
-      if (!ok && result.protected && isLatestVersion && tournamentScreenMountedRef.current) {
-        setNotice({
-          type: "warning",
-          title: "Placares protegidos",
-          message: `${result.scoreSafety?.removedScores || "Vários"} placares finalizados deixariam de ser salvos. A alteração foi interrompida e a cópia anterior continua preservada na nuvem.`,
-        });
-      }
-
       if (updateStatus && isLatestVersion && tournamentScreenMountedRef.current) {
         if (ok) setSavingStatus("Salvo na nuvem");
         else if (result.retryable || result.conflict || result.offline) setSavingStatus(isBrowserOffline() ? getOfflineBackupStatus() : "Sincronização pendente");
