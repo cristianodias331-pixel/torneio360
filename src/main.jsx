@@ -9805,6 +9805,7 @@ function TournamentScreen({
   const lastConfirmedDataVersionRef = useRef(-1);
   const localBackupStateRef = useRef({ version: -1, saved: true });
   const allowScoreRegressionRef = useRef(initialTournamentState.allowScoreRegression);
+  const offlineNoticeShownRef = useRef(false);
   const tournamentScreenMountedRef = useRef(true);
   const onSaveRef = useRef(onSave);
   const tournamentRef = useRef(tournament);
@@ -9830,6 +9831,16 @@ function TournamentScreen({
       return "Guardando neste aparelho...";
     }
     return backupState.saved ? "Salvo neste aparelho" : "Falha no backup local";
+  }
+
+  function showOfflineNoticeOnce() {
+    if (offlineNoticeShownRef.current) return;
+    offlineNoticeShownRef.current = true;
+    showNotice(
+      "warning",
+      "Você está sem internet",
+      "As alterações ficam guardadas neste aparelho e serão sincronizadas automaticamente quando a conexão voltar."
+    );
   }
 
   function setData(nextValue, { allowScoreRegression = false } = {}) {
@@ -9869,6 +9880,7 @@ function TournamentScreen({
       );
     }
     setSavingStatus(isBrowserOffline() ? "Guardando neste aparelho..." : "Salvando...");
+    if (isBrowserOffline()) showOfflineNoticeOnce();
     void localBackup.then((saved) => {
       if (!tournamentScreenMountedRef.current) return;
       if (localBackupStateRef.current.version !== draftVersion) return;
@@ -10232,6 +10244,7 @@ function TournamentScreen({
 
   useEffect(() => {
     const handleOnline = () => {
+      offlineNoticeShownRef.current = false;
       if (!hasUnsavedChangesRef.current) return;
       clearSaveRetryTimer();
       setSavingStatus("Sincronizando...");
@@ -10240,7 +10253,9 @@ function TournamentScreen({
       });
     };
     const handleOffline = () => {
-      if (hasUnsavedChangesRef.current) setSavingStatus(getOfflineBackupStatus());
+      if (!hasUnsavedChangesRef.current) return;
+      setSavingStatus(getOfflineBackupStatus());
+      showOfflineNoticeOnce();
     };
 
     window.addEventListener("online", handleOnline);
@@ -10391,13 +10406,14 @@ function TournamentScreen({
           setSavingStatus("Salvo na nuvem");
           return true;
         }
-        setSavingStatus("Erro ao salvar");
-        showNotice(
-          "error",
-          "Dados ainda não sincronizados",
-          "A tela foi mantida aberta para proteger placares, confrontos e rankings. Verifique a conexão e tente novamente."
-        );
-        return false;
+        setSavingStatus(isBrowserOffline() ? getOfflineBackupStatus() : "Sincronização pendente");
+        if (isBrowserOffline()) showOfflineNoticeOnce();
+
+        // A cópia local durável já foi criada por setData/queueTournamentSave.
+        // Portanto, uma falha temporária ou uma edição feita em outro dispositivo
+        // não deve prender o organizador nesta tela. A fila volta a sincronizar
+        // automaticamente sem descartar placares, confrontos ou rankings.
+        return true;
       }
     }
 
@@ -11684,7 +11700,10 @@ function applyScheduleScoreChange({ roundIndex, gameIndex, field, value }, clear
     }
 
     return copy;
-  }, { allowScoreRegression: clearCupBrackets });
+    // Este caminho só é chamado por uma edição direta do organizador. Inclusive
+    // apagar um placar é uma alteração válida e deve prevalecer entre dispositivos.
+    // Reduções automáticas continuam bloqueadas pelo guardião de dados críticos.
+  }, { allowScoreRegression: true });
 }
 
 function updateScore(roundIndex, gameIndex, field, value) {
@@ -11806,7 +11825,7 @@ function updateBracketScore(matchKey, field, value) {
 
     copy.brackets = rebuildCupBracketGames(copy, existingScores);
     return copy;
-  });
+  }, { allowScoreRegression: true });
 }
 
 function clearScores() {
