@@ -148,7 +148,7 @@ export function calculateRankPlacementRows({
       thirdPlaces: position === 3 ? 1 : 0,
     };
 
-    const isFixedTeam = config?.type === "fixed12" || config?.type === "fixed16";
+    const isFixedTeam = config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24";
     if (!isFixedTeam || normalizedSettings.identity === "team") return [base];
     const team = data.players?.teams?.[row.id];
     return [team?.a, team?.b].filter(Boolean).map((name, athleteIndex) => ({

@@ -40,7 +40,7 @@ export function createShuffleVideoSnapshot(data, config, tournament) {
       { title: "Masculino", entries: [...(data?.players?.men || [])] },
       { title: "Feminino", entries: [...(data?.players?.women || [])] },
     ];
-  } else if (config.type === "fixed12" || config.type === "fixed16") {
+  } else if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
     kind = "teams";
     sections = [{
       title: "Duplas sorteadas",

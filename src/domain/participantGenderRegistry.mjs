@@ -249,7 +249,7 @@ export function collectTournamentGenderCandidates(tournament, config) {
     return candidates;
   }
 
-  if ((config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) && !isIndividualCupType(config)) {
+  if ((config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24" || isCupType(config)) && !isIndividualCupType(config)) {
     (data.players?.teams || []).forEach((team) => {
       add(team?.a, category, category !== participantGenderValues.unknown ? "category" : "position");
       add(team?.b, category, category !== participantGenderValues.unknown ? "category" : "position");

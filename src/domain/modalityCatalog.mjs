@@ -8,6 +8,8 @@ export const modalityDisplayNames = {
   "Super 20 Mista (Dupla Aleatória)": "Super 20 mista",
   "Super 12 Mista (Dupla Fixa)": "Super 6 (dupla fixa)",
   "Super 16 Mista (Dupla Fixa)": "Super 8 (dupla fixa)",
+  "Super 10 (Dupla Fixa)": "Super 10 (dupla fixa)",
+  "Super 12 (Dupla Fixa)": "Super 12 (dupla fixa)",
   "Simples 8": "Simples (1 contra 1 por jogo)",
   "Campeonato Cearense": "Torneio modelo Campeonato Cearense",
   "Campeonato Cearense Individual": "Torneio modelo Campeonato Cearense — Individual",
@@ -24,7 +26,12 @@ export const modalityPickerGroups = [
     id: "fixed",
     title: "Duplas fixas",
     subtitle: "Os parceiros permanecem juntos durante todo o torneio.",
-    types: ["Super 12 Mista (Dupla Fixa)", "Super 16 Mista (Dupla Fixa)"],
+    types: [
+      "Super 12 Mista (Dupla Fixa)",
+      "Super 16 Mista (Dupla Fixa)",
+      "Super 10 (Dupla Fixa)",
+      "Super 12 (Dupla Fixa)",
+    ],
   },
   {
     id: "individual",
@@ -54,6 +61,8 @@ export const modalityPickerGroups = [
 export const modalityPickerDescriptions = {
   "Super 12 Mista (Dupla Fixa)": "6 duplas definidas e classificação por equipe.",
   "Super 16 Mista (Dupla Fixa)": "8 duplas definidas e classificação por equipe.",
+  "Super 10 (Dupla Fixa)": "10 duplas fixas, 9 rodadas e 45 jogos sem repetir adversários.",
+  "Super 12 (Dupla Fixa)": "12 duplas fixas, 11 rodadas e 66 jogos sem repetir adversários.",
   "Super 08": "8 participantes, parceiros variados e um ranking individual.",
   "Super 12": "12 participantes, parceiros variados e um ranking individual.",
   Reizinho: "Escolha 4 atletas no formato tradicional ou 6 conforme o Super 6.",

@@ -28,7 +28,7 @@ export function calculateTournamentRanking({
 
   if (isMixedType(config)) {
     names = [...data.players.men, ...data.players.women];
-  } else if (config?.type === "fixed12" || config?.type === "fixed16") {
+  } else if (config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24") {
     names = data.players.teams.map((team) => `${team.a} + ${team.b}`);
   } else {
     names = data.players;

@@ -132,6 +132,8 @@ export function buildCircuitRankingGroups({
         (isCupType(config) && !isIndividualCupType(config))
         || config.type === "fixed12"
         || config.type === "fixed16"
+        || config.type === "fixed20"
+        || config.type === "fixed24"
       ) && (!placementMode || rankingSettings.identity === "team");
 
       rows.forEach((row) => {
@@ -352,6 +354,8 @@ export function buildCircuitTournamentRankingRecords({
       (isCupType(config) && !isIndividualCupType(config))
       || config?.type === "fixed12"
       || config?.type === "fixed16"
+      || config?.type === "fixed20"
+      || config?.type === "fixed24"
     ) && (!placementMode || rankingSettings.identity === "team");
     const nameOccurrences = new Map();
 

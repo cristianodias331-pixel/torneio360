@@ -171,7 +171,7 @@ export function createInitialData(type, config) {
     };
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16") {
+  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
     return {
       ...base,
       players: {
@@ -409,7 +409,7 @@ export function normalizeTournamentData(type, rawData) {
     };
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16") {
+  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
     const players = {
       teams: normalizeTeams(sourcePlayers.teams, config.teams),
     };
@@ -465,7 +465,7 @@ export function needsTournamentDataRepair(type, rawData) {
       || players.women.length !== config.women;
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16") {
+  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
     return !Array.isArray(players.teams) || players.teams.length !== config.teams;
   }
 

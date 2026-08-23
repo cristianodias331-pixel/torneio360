@@ -277,6 +277,7 @@ import {
   optimizeCourts,
   shuffleArray,
 } from "../src/domain/scheduleGeneration.mjs";
+import { generateSchedule } from "../src/domain/tournamentScheduleFactory.mjs";
 import {
   createCearenseGroups,
   createCupGroups,
@@ -1530,6 +1531,28 @@ const bergerRounds = berger(8);
 assert.equal(bergerRounds.length, 7, "O gerador todos contra todos deve preservar sete rodadas para oito participantes.");
 const bergerPairs = new Set(bergerRounds.flat().map((pair) => [...pair].sort((first, second) => first - second).join("-")));
 assert.equal(bergerPairs.size, 28, "O gerador todos contra todos deve produzir cada confronto uma única vez.");
+const createFixedTeams = (count) => ({
+  teams: Array.from({ length: count }, (_, index) => ({
+    a: `Atleta ${index + 1}A`,
+    b: `Atleta ${index + 1}B`,
+  })),
+});
+const assertFixedTeamSchedule = (type, teamCount, expectedRounds, expectedGames) => {
+  const schedule = generateSchedule(type, createFixedTeams(teamCount));
+  assert.equal(schedule.length, expectedRounds, `${type} deve gerar ${expectedRounds} rodadas.`);
+  assert.ok(schedule.every((round) => round.length === teamCount / 2), `${type} deve usar todas as duplas em cada rodada.`);
+  const pairKeys = schedule.flat().map((game) => [...game.ids1, ...game.ids2].sort((a, b) => a - b).join("-"));
+  assert.equal(pairKeys.length, expectedGames, `${type} deve gerar ${expectedGames} partidas.`);
+  assert.equal(new Set(pairKeys).size, expectedGames, `${type} não pode repetir adversários.`);
+  const appearances = Array.from({ length: teamCount }, () => 0);
+  for (const game of schedule.flat()) {
+    appearances[game.ids1[0]] += 1;
+    appearances[game.ids2[0]] += 1;
+  }
+  assert.ok(appearances.every((count) => count === expectedRounds), `${type} deve colocar cada dupla em todas as rodadas.`);
+};
+assertFixedTeamSchedule("Super 10 (Dupla Fixa)", 10, 9, 45);
+assertFixedTeamSchedule("Super 12 (Dupla Fixa)", 12, 11, 66);
 const shuffleInput = [1, 2, 3, 4, 5, 6];
 const shuffled = shuffleArray(shuffleInput);
 assert.deepEqual(shuffleInput, [1, 2, 3, 4, 5, 6], "O sorteio não pode alterar a lista original.");
@@ -2703,6 +2726,8 @@ const expectedModalityLabels = [
   "Super 6 (dupla fixa)",
   "Super 8",
   "Super 8 (dupla fixa)",
+  "Super 10 (dupla fixa)",
+  "Super 12 (dupla fixa)",
   "Super 12",
   "Super 10 mista",
   "Super 12 mista",
