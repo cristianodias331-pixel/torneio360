@@ -379,6 +379,18 @@ import {
 
 const root = new URL("../", import.meta.url);
 const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
+assert.ok(
+  mainSource.includes('"Você está sem internet"')
+    && !mainSource.includes('"Dados ainda não sincronizados"'),
+  "A edição voltou a bloquear a tela entre dispositivos ou deixou de avisar quando não há internet."
+);
+assert.ok(
+  mainSource.includes("function applyScheduleScoreChange")
+    && mainSource.includes("function updateBracketScore")
+    && mainSource.match(/function applyScheduleScoreChange[\s\S]*?allowScoreRegression: true/)
+    && mainSource.match(/function updateBracketScore[\s\S]*?allowScoreRegression: true/),
+  "A remoção manual de placar deixou de ser reconhecida como uma alteração intencional."
+);
 const styleSource = readFileSync(new URL("src/style.css", root), "utf8");
 const authValidationSource = readFileSync(
   new URL("src/domain/authValidation.mjs", root),
@@ -3998,6 +4010,55 @@ const sameFieldConflict = mergeConcurrentTournamentData(
 assert.deepEqual(sameFieldConflict.conflicts, ["score"], "O mesmo campo alterado em dois dispositivos deve gerar conflito explícito.");
 assert.equal(sameFieldConflict.data.score, 6, "A alteração que está sendo salva por último deve prevalecer automaticamente.");
 
+const intentionalScoreRemovalMerge = mergeConcurrentTournamentData(
+  {
+    schedule: [[{
+      matchKey: "round-1-game-1",
+      ids1: [1],
+      ids2: [2],
+      team1: ["Ana"],
+      team2: ["Bia"],
+      s1: 4,
+      s2: 2,
+      courtNumberOverride: "1",
+    }]],
+  },
+  {
+    schedule: [[{
+      matchKey: "round-1-game-1",
+      ids1: [1],
+      ids2: [2],
+      team1: ["Ana"],
+      team2: ["Bia"],
+      s1: "",
+      s2: 2,
+      courtNumberOverride: "1",
+    }]],
+  },
+  {
+    schedule: [[{
+      matchKey: "round-1-game-1",
+      ids1: [1],
+      ids2: [2],
+      team1: ["Ana"],
+      team2: ["Bia"],
+      s1: 4,
+      s2: 2,
+      courtNumberOverride: "3",
+    }]],
+  }
+);
+assert.equal(
+  intentionalScoreRemovalMerge.data.schedule[0][0].s1,
+  "",
+  "A remoção manual do placar deve prevalecer mesmo quando outro dispositivo altera outro campo."
+);
+assert.equal(
+  intentionalScoreRemovalMerge.data.schedule[0][0].courtNumberOverride,
+  "3",
+  "A sincronização deve manter também a alteração independente feita no outro dispositivo."
+);
+
 const createSuper20Data = () => ({
   players: {
     men: Array.from({ length: 10 }, (_, index) => `Homem ${index + 1}`),
@@ -4278,8 +4339,9 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes("Salvando antes de sair...")
-    && mainSource.includes("A tela foi mantida aberta para proteger placares, confrontos e rankings"),
-  "O torneio pode ser fechado antes de concluir o último salvamento."
+    && mainSource.includes("Sincronização pendente")
+    && mainSource.includes("A cópia local durável já foi criada"),
+  "O torneio deixou de aguardar o salvamento ou voltou a prender a tela após criar a cópia local durável."
 );
 assert.ok(
   tournamentCircuitManagerSource.includes("function TournamentCircuitManagerModal")
