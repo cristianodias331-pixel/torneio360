@@ -1758,6 +1758,8 @@ function Login({
                 "Super 6 (dupla fixa)",
                 "Super 8",
                 "Super 8 (dupla fixa)",
+                "Super 10 (dupla fixa)",
+                "Super 12 (dupla fixa)",
                 "Super 12",
                 "Super 10 mista",
                 "Super 12 mista",
@@ -1776,6 +1778,8 @@ function Login({
                 "Super 6 (dupla fixa)",
                 "Super 8",
                 "Super 8 (dupla fixa)",
+                "Super 10 (dupla fixa)",
+                "Super 12 (dupla fixa)",
                 "Super 12",
                 "Super 10 mista",
                 "Super 12 mista",
@@ -1811,6 +1815,16 @@ function Login({
             <Info
               title="Super 8 (dupla fixa)"
               text="Formato com 8 duplas fixas, indicado para torneios maiores em que cada equipe permanece igual durante toda a competição. O sistema organiza os jogos entre as duplas, distribui as rodadas e registra os resultados. A classificação é por dupla, não individual. Conforme os placares são preenchidos, o ranking geral é atualizado com vitórias, total de games e saldo de games, ajudando o organizador a acompanhar quem está avançando melhor."
+            />
+
+            <Info
+              title="Super 10 (dupla fixa)"
+              text="Formato com 10 duplas fixas. O sorteio distribui as duplas nos números de 1 a 10 e o chaveamento numérico permanece fixo. São 9 rodadas, 5 jogos por rodada e 45 partidas no total, com cada dupla enfrentando todas as demais exatamente uma vez."
+            />
+
+            <Info
+              title="Super 12 (dupla fixa)"
+              text="Formato com 12 duplas fixas. O sorteio distribui as duplas nos números de 1 a 12 e o chaveamento numérico permanece fixo. São 11 rodadas, 6 jogos por rodada e 66 partidas no total, com cada dupla enfrentando todas as demais exatamente uma vez."
             />
 
             <Info
@@ -9078,6 +9092,20 @@ setNewPublicInfo({
       />
     )}
 
+    {allowedTypes.includes("Super 10 (Dupla Fixa)") && (
+      <Info
+        title="Super 10 (dupla fixa)"
+        text="Formato com 10 duplas fixas. O sorteio distribui as duplas nos números de 1 a 10 e o chaveamento numérico permanece fixo. São 9 rodadas, 5 jogos por rodada e 45 partidas no total, com cada dupla enfrentando todas as demais exatamente uma vez."
+      />
+    )}
+
+    {allowedTypes.includes("Super 12 (Dupla Fixa)") && (
+      <Info
+        title="Super 12 (dupla fixa)"
+        text="Formato com 12 duplas fixas. O sorteio distribui as duplas nos números de 1 a 12 e o chaveamento numérico permanece fixo. São 11 rodadas, 6 jogos por rodada e 66 partidas no total, com cada dupla enfrentando todas as demais exatamente uma vez."
+      />
+    )}
+
     {allowedTypes.includes("Super 12") && (
       <Info
         title="Super 12"
@@ -10841,7 +10869,7 @@ function TournamentScreen({
         return ids.map((id) => allPlayers[id] || "");
       }
 
-      if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
+      if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
         return ids.map((id) => getTeamName(nextData.players?.teams?.[id]));
       }
 
@@ -11393,7 +11421,7 @@ function TournamentScreen({
       copy.participantAttendance.men = menOrder.map((index) => copy.participantAttendance.men[index]);
       copy.players.women = womenOrder.map((index) => copy.players.women[index]);
       copy.participantAttendance.women = womenOrder.map((index) => copy.participantAttendance.women[index]);
-    } else if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
+    } else if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
       const teamOrder = shuffledIndexes(copy.players.teams.length);
       copy.players.teams = teamOrder.map((index) => copy.players.teams[index]);
       copy.participantAttendance.teams = teamOrder.map((index) => copy.participantAttendance.teams[index]);

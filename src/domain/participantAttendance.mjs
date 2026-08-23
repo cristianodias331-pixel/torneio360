@@ -30,7 +30,7 @@ export function normalizeParticipantAttendance(config, players, attendance) {
     };
   }
 
-  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
+  if (config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24" || isCupType(config)) {
     const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
     return {
       teams: (players?.teams || []).map((_, index) => ({
@@ -69,7 +69,7 @@ export function getParticipantAttendanceEntries(config, data) {
     }));
   }
 
-  if (config?.type === "fixed12" || config?.type === "fixed16" || isCupType(config)) {
+  if (config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24" || isCupType(config)) {
     return (data.players?.teams || []).flatMap((team, index) => ([
       {
         path: { kind: "team", index, field: "a" },

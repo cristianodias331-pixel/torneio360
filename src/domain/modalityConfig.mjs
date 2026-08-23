@@ -13,6 +13,8 @@ export const allowedByPlan = {
     "Reizinho",
     "Super 08",
     "Super 16 Mista (Dupla Fixa)",
+    "Super 10 (Dupla Fixa)",
+    "Super 12 (Dupla Fixa)",
     "Super 12",
     "Super 10 Mista (Dupla Aleatória)",
     "Super 12 Mista (Dupla Aleatória)",
@@ -24,6 +26,8 @@ export const allowedByPlan = {
     "Reizinho",
     "Super 08",
     "Super 16 Mista (Dupla Fixa)",
+    "Super 10 (Dupla Fixa)",
+    "Super 12 (Dupla Fixa)",
     "Super 12",
     "Super 10 Mista (Dupla Aleatória)",
     "Super 12 Mista (Dupla Aleatória)",
@@ -100,6 +104,18 @@ export const modalityConfig = {
     type: "fixed16",
     teams: 8,
     courts: 4,
+  },
+
+  "Super 10 (Dupla Fixa)": {
+    type: "fixed20",
+    teams: 10,
+    courts: 5,
+  },
+
+  "Super 12 (Dupla Fixa)": {
+    type: "fixed24",
+    teams: 12,
+    courts: 6,
   },
 
   "Simples 8": {

@@ -20,7 +20,7 @@ export function getShuffleNames(data, config) {
     return data.players.teams.map((participant) => participant.a);
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
+  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
     return data.players.teams.map((team, index) => `Dupla ${index + 1}: ${getTeamName(team)}`);
   }
 

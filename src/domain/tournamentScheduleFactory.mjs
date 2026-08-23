@@ -139,6 +139,40 @@ export function generateSchedule(type, players) {
     return optimizeCourts(schedule);
   }
 
+  if (config.type === "fixed20") {
+    const teamNames = players.teams.map((team) => `${team.a} + ${team.b}`);
+    const schedule = berger(10).map((round) =>
+      round.map((game, index) => ({
+        court: index + 1,
+        team1: [teamNames[game[0]]],
+        ids1: [game[0]],
+        team2: [teamNames[game[1]]],
+        ids2: [game[1]],
+        s1: "",
+        s2: "",
+      }))
+    );
+
+    return optimizeCourts(schedule);
+  }
+
+  if (config.type === "fixed24") {
+    const teamNames = players.teams.map((team) => `${team.a} + ${team.b}`);
+    const schedule = berger(12).map((round) =>
+      round.map((game, index) => ({
+        court: index + 1,
+        team1: [teamNames[game[0]]],
+        ids1: [game[0]],
+        team2: [teamNames[game[1]]],
+        ids2: [game[1]],
+        s1: "",
+        s2: "",
+      }))
+    );
+
+    return optimizeCourts(schedule);
+  }
+
   if (config.type === "simple8") {
     const schedule = berger(players.length).map((round) =>
       round.map((game, index) => ({
