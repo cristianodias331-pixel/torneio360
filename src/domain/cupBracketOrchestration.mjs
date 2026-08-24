@@ -17,6 +17,7 @@ import {
 import {
   cearenseMainBracketPlans,
   copinhaBracketPlans,
+  playRankingLegacyV2MainBracketPlans,
   playRankingMainBracketPlans,
 } from "./cupBracketPlans.mjs";
 import {
@@ -48,9 +49,12 @@ export function generatePlayRankingBrackets(data) {
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
   const repechageName = cupConfig.repechageName || "Disputa Paralela";
   const groupCount = createCearenseGroups(cupConfig.teamCount || 4).length;
-  const mainPlan = cupConfig.playRankingBracketVersion === 2
+  const bracketVersion = Number(cupConfig.playRankingBracketVersion) || 0;
+  const mainPlan = bracketVersion >= 3
     ? playRankingMainBracketPlans[groupCount]
-    : null;
+    : bracketVersion === 2
+      ? playRankingLegacyV2MainBracketPlans[groupCount]
+      : null;
   const mainRounds = mainPlan
     ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
     : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
@@ -483,34 +487,58 @@ export function getCupAllBracketGames(data) {
 }
 
 export function rebuildCupBracketGames(currentData, existingScores = {}) {
-  const baseGames = getCupAllBracketGames(currentData).map((game) => ({
+  const templates = getCupAllBracketGames(currentData);
+  const storedEntries = Object.entries(existingScores).map(([matchKey, game]) => ({
     ...game,
-    s1: existingScores[game.matchKey]?.s1 ?? game.s1 ?? "",
-    s2: existingScores[game.matchKey]?.s2 ?? game.s2 ?? "",
-    inProgress: existingScores[game.matchKey]?.inProgress === true,
-    ...getMatchTimerFields(existingScores[game.matchKey] || game),
-    ...(existingScores[game.matchKey]?.courtNumberOverride
-      ? { courtNumberOverride: existingScores[game.matchKey].courtNumberOverride }
-      : {}),
+    matchKey,
   }));
+  const usedStoredKeys = new Set();
+  const rebuiltGames = [];
+  const sameIds = (first, second) => JSON.stringify(first || []) === JSON.stringify(second || []);
+  const getOrientation = (stored, game) => {
+    if (!stored || !game.ids1?.length || !game.ids2?.length) return null;
+    if (sameIds(stored.ids1, game.ids1) && sameIds(stored.ids2, game.ids2)) return "same";
+    if (sameIds(stored.ids1, game.ids2) && sameIds(stored.ids2, game.ids1)) return "swapped";
+    return null;
+  };
 
-  // Resolve novamente depois de reaplicar os placares. Assim, o vencedor de
-  // uma fase anterior aparece imediatamente na fase seguinte.
-  const resolvedGames = baseGames.map((game) => resolveBracketGame(game, baseGames, currentData));
-  const safeGames = isPlayRankingData(currentData)
-    ? resolvedGames.map((game) => {
-        const stored = existingScores[game.matchKey];
-        const sameParticipants = stored
-          && JSON.stringify(stored.ids1 || []) === JSON.stringify(game.ids1 || [])
-          && JSON.stringify(stored.ids2 || []) === JSON.stringify(game.ids2 || []);
+  templates.forEach((template) => {
+    const resolved = resolveBracketGame(template, rebuiltGames, currentData);
+    const preferred = existingScores[resolved.matchKey];
+    let stored = preferred && !usedStoredKeys.has(resolved.matchKey) && getOrientation(preferred, resolved)
+      ? { ...preferred, matchKey: resolved.matchKey }
+      : null;
 
-        if (game.phase !== "repechage" || !stored || sameParticipants) return game;
+    if (!stored && resolved.ids1?.length && resolved.ids2?.length) {
+      stored = storedEntries.find((candidate) => (
+        !usedStoredKeys.has(candidate.matchKey)
+        && candidate.phase === resolved.phase
+        && getOrientation(candidate, resolved)
+      )) || null;
+    }
 
-        return { ...game, s1: "", s2: "" };
-      })
-    : resolvedGames;
+    const orientation = getOrientation(stored, resolved);
+    if (stored) usedStoredKeys.add(stored.matchKey);
+    const scoreState = orientation === "same"
+      ? { s1: stored.s1 ?? "", s2: stored.s2 ?? "" }
+      : orientation === "swapped"
+        ? { s1: stored.s2 ?? "", s2: stored.s1 ?? "" }
+        : { s1: "", s2: "" };
 
-  return safeGames.map((game) => resolveBracketGame(game, safeGames, currentData));
+    rebuiltGames.push({
+      ...resolved,
+      ...scoreState,
+      inProgress: Boolean(orientation && stored?.inProgress === true),
+      ...getMatchTimerFields(orientation ? stored : resolved),
+      ...(orientation && stored?.courtNumberOverride
+        ? { courtNumberOverride: stored.courtNumberOverride }
+        : {}),
+    });
+  });
+
+  // Uma última resolução propaga vencedores e perdedores depois que somente os
+  // placares de confrontos realmente equivalentes foram reaplicados.
+  return rebuiltGames.map((game) => resolveBracketGame(game, rebuiltGames, currentData));
 }
 
 export function syncCupBracketScores(currentData) {
@@ -523,6 +551,7 @@ export function syncCupBracketScores(currentData) {
       s2: game.s2,
       ids1: game.ids1,
       ids2: game.ids2,
+      phase: game.phase,
       inProgress: game.inProgress === true,
       ...getMatchTimerFields(game),
       courtNumberOverride: game.courtNumberOverride,

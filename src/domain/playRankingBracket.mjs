@@ -202,7 +202,7 @@ export function getPlayRankingOpeningLosses(data, mainRounds, qualifiedMain) {
       if (gamesDifference !== 0) return gamesDifference;
 
       const campaignDifference = compareCearenseCampaignMetrics(first, second, {
-        useCoefficient: data.cupConfig?.playRankingBracketVersion === 2,
+        useCoefficient: Number(data.cupConfig?.playRankingBracketVersion) >= 2,
       });
       if (campaignDifference !== 0) return campaignDifference;
 

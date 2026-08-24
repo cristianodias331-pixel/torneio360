@@ -172,11 +172,9 @@ export const cearenseMainBracketPlans = {
   ],
 };
 
-// Plano próprio do Modelo Torneio 360 para sete grupos. Os códigos C e R
-// representam, respectivamente, campeões e segundos colocados ordenados pela
-// campanha entre grupos. O desenho mantém os dois melhores campeões nas
-// extremidades da chave e reproduz os cruzamentos da regra de referência.
-export const playRankingMainBracketPlans = {
+// A versão 2 foi publicada somente com um plano especial para sete grupos.
+// Ela permanece isolada para que chaves já salvas não mudem silenciosamente.
+export const playRankingLegacyV2MainBracketPlans = {
   7: [
     {
       title: "Oitavas de final",
@@ -202,4 +200,91 @@ export const playRankingMainBracketPlans = {
     { title: "3º lugar", games: [["m13", "l:m11", "l:m12"]] },
     { title: "Final", games: [["m14", "w:m11", "w:m12"]] },
   ],
+};
+
+// Estrutura oficial do Modelo Torneio 360. C1..Cn são os campeões ordenados
+// pela campanha; R1..Rn são os segundos colocados dos mesmos grupos. Assim, o
+// sorteio que define a posição de um campeão leva junto o segundo colocado do
+// seu grupo. Os desenhos mantêm Cn e Rn em metades opostas e concedem os BYEs
+// às melhores sementes. As quantidades possíveis do modelo geram de 1 a 10
+// grupos; os planos compatíveis já existentes são reutilizados onde coincidem
+// com a estrutura oficial, com planos próprios para seis e sete grupos.
+export const playRankingMainBracketPlans = {
+  1: [
+    { title: "Final", games: [["m1", "c1", "r1"]] },
+  ],
+  2: copinhaBracketPlans[2].main,
+  3: copinhaBracketPlans[3].main,
+  4: [
+    {
+      title: "Quartas de final",
+      games: [
+        ["m1", "c1", "r3"],
+        ["m2", "r2", "c4"],
+        ["m3", "c3", "r1"],
+        ["m4", "r4", "c2"],
+      ],
+    },
+    { title: "Semifinal", games: [["m5", "w:m1", "w:m2"], ["m6", "w:m3", "w:m4"]] },
+    { title: "3º lugar", games: [["m7", "l:m5", "l:m6"]] },
+    { title: "Final", games: [["m8", "w:m5", "w:m6"]] },
+  ],
+  5: copinhaBracketPlans[5].main,
+  6: [
+    {
+      title: "Oitavas de final",
+      games: [
+        ["b1", "c1", null],
+        ["m1", "r2", "r3"],
+        ["b2", "c4", null],
+        ["m2", "r6", "c5"],
+        ["m3", "c6", "r1"],
+        ["b3", null, "c3"],
+        ["m4", "r4", "r5"],
+        ["b4", null, "c2"],
+      ],
+    },
+    {
+      title: "Quartas de final",
+      games: [
+        ["m5", "w:b1", "w:m1"],
+        ["m6", "w:b2", "w:m2"],
+        ["m7", "w:m3", "w:b3"],
+        ["m8", "w:m4", "w:b4"],
+      ],
+    },
+    { title: "Semifinal", games: [["m9", "w:m5", "w:m6"], ["m10", "w:m7", "w:m8"]] },
+    { title: "3º lugar", games: [["m11", "l:m9", "l:m10"]] },
+    { title: "Final", games: [["m12", "w:m9", "w:m10"]] },
+  ],
+  7: [
+    {
+      title: "Oitavas de final",
+      games: [
+        ["b1", "c1", null],
+        ["m1", "r7", "r2"],
+        ["m2", "c4", "r3"],
+        ["m3", "r6", "c5"],
+        ["m4", "c6", "r5"],
+        ["m5", "r4", "c3"],
+        ["m6", "c7", "r1"],
+        ["b2", null, "c2"],
+      ],
+    },
+    {
+      title: "Quartas de final",
+      games: [
+        ["m7", "w:b1", "w:m1"],
+        ["m8", "w:m2", "w:m3"],
+        ["m9", "w:m4", "w:m5"],
+        ["m10", "w:m6", "w:b2"],
+      ],
+    },
+    { title: "Semifinal", games: [["m11", "w:m7", "w:m8"], ["m12", "w:m9", "w:m10"]] },
+    { title: "3º lugar", games: [["m13", "l:m11", "l:m12"]] },
+    { title: "Final", games: [["m14", "w:m11", "w:m12"]] },
+  ],
+  8: copinhaBracketPlans[8].main,
+  9: copinhaBracketPlans[9].main,
+  10: copinhaBracketPlans[10].main,
 };

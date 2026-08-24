@@ -438,6 +438,11 @@ import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { calculateCupGroupRankings } from "./domain/cupGroupRanking.mjs";
 import { getCearenseQualified } from "./domain/cearenseQualification.mjs";
 import { getCopinhaSeededGroups } from "./domain/cupQualification.mjs";
+import {
+  PLAY_RANKING_BRACKET_VERSION,
+  PLAY_RANKING_RETROACTIVE_PROFILE_ID,
+  migratePlayRankingBracketForReferenceProfile,
+} from "./domain/playRankingBracketMigration.mjs";
 import "./style.css";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
@@ -2262,6 +2267,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const selectedRef = useRef(selected);
   const dashboardLoadInFlightRef = useRef(false);
   const dashboardLastLoadedAtRef = useRef(0);
+  const playRankingRetroMigrationInFlightRef = useRef(null);
   const tournamentRealtimeEpochRef = useRef(0);
   const circuitRealtimeEpochRef = useRef(0);
   const circuitHistoryLoadedIdsRef = useRef(new Set());
@@ -5568,6 +5574,139 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return activeTournaments;
   }
 
+  async function migrateReferenceProfilePlayRankingTournaments(tournamentSource = []) {
+    if (String(user.id || "") !== PLAY_RANKING_RETROACTIVE_PROFILE_ID || isBrowserOffline()) {
+      return {
+        tournaments: tournamentSource,
+        migratedCount: 0,
+        blockedCount: 0,
+        failedCount: 0,
+        preservedScores: 0,
+      };
+    }
+
+    if (playRankingRetroMigrationInFlightRef.current) {
+      return playRankingRetroMigrationInFlightRef.current;
+    }
+
+    const migrationRequest = (async () => {
+      const candidates = (tournamentSource || []).filter((item) => (
+        !item?.data?.deletedAt
+        && modalityConfig[item?.type]?.type === "playranking"
+      ));
+      if (!candidates.length) {
+        return {
+          tournaments: tournamentSource,
+          migratedCount: 0,
+          blockedCount: 0,
+          failedCount: 0,
+          preservedScores: 0,
+        };
+      }
+
+      const { data: freshRows, error: freshRowsError } = await executeTournamentRequest((signal) => (
+        supabase
+          .from("tournaments")
+          .select("*")
+          .eq("user_id", PLAY_RANKING_RETROACTIVE_PROFILE_ID)
+          .in("id", candidates.map((item) => item.id))
+          .abortSignal(signal)
+      ), 20000);
+      if (freshRowsError) {
+        console.error("Erro ao carregar os torneios protegidos do PLAY RANKING®:", freshRowsError);
+        return {
+          tournaments: tournamentSource,
+          migratedCount: 0,
+          blockedCount: 0,
+          failedCount: candidates.length,
+          preservedScores: 0,
+        };
+      }
+
+      const fullRows = (freshRows || []).map((item) => ({ ...item, __summary: false }));
+      const fullRowsById = new Map(fullRows.map((item) => [String(item.id), item]));
+      const savedById = new Map();
+      let migratedCount = 0;
+      let blockedCount = 0;
+      let failedCount = 0;
+      let preservedScores = 0;
+
+      for (const candidate of candidates) {
+        let current = fullRowsById.get(String(candidate.id));
+        if (!current || isTournamentSummary(current)) {
+          failedCount += 1;
+          continue;
+        }
+
+        let finished = false;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const normalizedData = normalizeTournamentData(current.type, current.data);
+          const migration = migratePlayRankingBracketForReferenceProfile(current, normalizedData);
+
+          if (migration.blocked) {
+            blockedCount += 1;
+            finished = true;
+            break;
+          }
+          if (!migration.applied) {
+            finished = true;
+            break;
+          }
+
+          const result = await persistTournamentSnapshot({
+            ...current,
+            data: migration.data,
+            scoreSafetyBaseData: current.data,
+            allowScoreRegression: true,
+            changeId: generateCollaborationChangeId(),
+          }, {
+            expectedUpdatedAt: current.updated_at || null,
+            expectedRevision: getCollaborationRevision(current),
+          });
+
+          if (result.ok && result.tournament) {
+            savedById.set(String(result.tournament.id), result.tournament);
+            migratedCount += 1;
+            preservedScores += migration.preservedScores;
+            finished = true;
+            break;
+          }
+          if (result.conflict && result.serverTournament?.data) {
+            current = { ...result.serverTournament, __summary: false };
+            continue;
+          }
+
+          failedCount += 1;
+          finished = true;
+          break;
+        }
+
+        if (!finished) failedCount += 1;
+      }
+
+      const nextTournaments = sortTournamentsByStoredOrder(
+        tournamentsRef.current.map((item) => (
+          savedById.get(String(item.id)) || item
+        ))
+      );
+      tournamentsRef.current = nextTournaments;
+      setTournaments(nextTournaments);
+
+      return {
+        tournaments: nextTournaments,
+        migratedCount,
+        blockedCount,
+        failedCount,
+        preservedScores,
+      };
+    })().finally(() => {
+      playRankingRetroMigrationInFlightRef.current = null;
+    });
+
+    playRankingRetroMigrationInFlightRef.current = migrationRequest;
+    return migrationRequest;
+  }
+
   async function openArenaProfile(arena) {
     window.location.assign(getArenaPublicUrl(arena.id));
   }
@@ -5689,13 +5828,18 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         tournamentsRef.current = synchronizedTournaments;
         setTournaments(synchronizedTournaments);
 
-        const criteriaCircuits = await syncAutomaticCircuitCriteria(synchronizedTournaments, loadedCircuits);
+        const playRankingMigration = await migrateReferenceProfilePlayRankingTournaments(
+          synchronizedTournaments
+        );
+        const readyTournaments = playRankingMigration.tournaments;
+
+        const criteriaCircuits = await syncAutomaticCircuitCriteria(readyTournaments, loadedCircuits);
         const readyCircuits = criteriaCircuits || loadedCircuits;
         circuitsRef.current = readyCircuits;
         setCircuits(readyCircuits);
 
         await saveDashboardCache(user.id, {
-          tournaments: synchronizedTournaments,
+          tournaments: readyTournaments,
           trashTournaments: trashTournamentsRef.current,
           circuits: readyCircuits,
           trashCircuits: trashCircuitsRef.current,
@@ -5715,6 +5859,24 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             "success",
             "Dados sincronizados",
             `${pendingSync.syncedCount} alteração(ões) guardada(s) neste aparelho foram enviada(s) para a nuvem.`
+          );
+        } else if (playRankingMigration.failedCount > 0) {
+          showNotice(
+            "warning",
+            "Atualização parcialmente pendente",
+            `${playRankingMigration.failedCount} torneio(s) do Modelo Torneio 360 do PLAY RANKING® não puderam ser atualizados agora. Nenhum dado anterior foi descartado.`
+          );
+        } else if (playRankingMigration.blockedCount > 0) {
+          showNotice(
+            "warning",
+            "Sorteio necessário",
+            `${playRankingMigration.blockedCount} torneio(s) do Modelo Torneio 360 mantiveram a chave anterior porque ainda existe desempate pendente na fase de grupos.`
+          );
+        } else if (playRankingMigration.migratedCount > 0) {
+          showNotice(
+            "success",
+            "Estrutura oficial aplicada",
+            `${playRankingMigration.migratedCount} torneio(s) do PLAY RANKING® foram atualizados com backup da chave anterior e ${playRankingMigration.preservedScores} placar(es) compatível(is) preservado(s).`
           );
         }
       } else if (hasCachedDashboard) {
@@ -9893,17 +10055,23 @@ function TournamentScreen({
     const draft = readTournamentDraft(userId, tournament);
     const sourceData = draft?.data || tournament.data;
     const normalizedData = normalizeTournamentData(tournament.type, sourceData);
-    const repairNeeded = Boolean(draft) || needsTournamentDataRepair(tournament.type, tournament.data);
-    const repairIsSafe = preservesTournamentCriticalData(sourceData || {}, normalizedData);
+    const playRankingMigration = migratePlayRankingBracketForReferenceProfile(tournament, normalizedData);
+    const effectiveData = playRankingMigration.data;
+    const repairNeeded = Boolean(draft)
+      || needsTournamentDataRepair(tournament.type, tournament.data)
+      || playRankingMigration.applied;
+    const repairIsSafe = playRankingMigration.applied
+      || preservesTournamentCriticalData(sourceData || {}, effectiveData);
     return {
-      data: normalizedData,
+      data: effectiveData,
       recoveredDraft: Boolean(draft),
       baseUpdatedAt: draft?.baseUpdatedAt || tournament.updated_at || null,
       baseRevision: draft?.baseRevision ?? getCollaborationRevision(tournament),
       baseData: draft?.baseData || tournament.data || {},
       shouldPersistRepair: repairNeeded && repairIsSafe,
       unsafeRepairDetected: repairNeeded && !repairIsSafe,
-      allowScoreRegression: draft?.allowScoreRegression === true,
+      allowScoreRegression: draft?.allowScoreRegression === true || playRankingMigration.applied,
+      playRankingMigration,
     };
   }, [tournament.id, tournament.type, userId]);
   const initialDataWasRepairedRef = useRef(
@@ -10598,6 +10766,24 @@ function TournamentScreen({
       type: "warning",
       title: "Dados antigos protegidos",
       message: "A plataforma encontrou um formato inesperado e bloqueou qualquer gravação automática que pudesse reduzir nomes, jogos ou placares.",
+    });
+  }, []);
+
+  useEffect(() => {
+    const migration = initialTournamentState.playRankingMigration;
+    if (migration?.blocked) {
+      setNotice({
+        type: "warning",
+        title: "Sorteio necessário antes da nova chave",
+        message: "A chave antiga foi preservada. Resolva o desempate indicado na aba Grupos para aplicar a estrutura oficial do Modelo Torneio 360.",
+      });
+      return;
+    }
+    if (!migration?.applied || migration.pendingScores <= 0) return;
+    setNotice({
+      type: "success",
+      title: "Estrutura oficial aplicada",
+      message: `${migration.preservedScores} placar(es) de confrontos idênticos foram mantidos. Os outros ${migration.pendingScores} permanecem protegidos no backup da chave anterior.`,
     });
   }, []);
 
@@ -11782,6 +11968,21 @@ function generateBrackets() {
     return;
   }
 
+  const bracketSource = isCampeonatoCearenseData(data)
+    ? {
+      ...structuredClone(data),
+      cupConfig: { ...(data.cupConfig || {}), cearenseBracketVersion: 2 },
+    }
+    : isPlayRankingData(data)
+    ? {
+      ...structuredClone(data),
+      cupConfig: {
+        ...(data.cupConfig || {}),
+        playRankingBracketVersion: PLAY_RANKING_BRACKET_VERSION,
+      },
+    }
+    : data;
+
   if (isCopinhaData(data)) {
     const hasUnresolvedTie = calculateCupGroupRankings(data, data.rankingCriteria)
       .some((group) => group.unresolvedTieIds?.length > 1);
@@ -11799,9 +12000,9 @@ function generateBrackets() {
   }
 
   if (isCearenseData(data)) {
-    const hasUnresolvedGroupTie = calculateCupGroupRankings(data, data.rankingCriteria)
+    const hasUnresolvedGroupTie = calculateCupGroupRankings(bracketSource, bracketSource.rankingCriteria)
       .some((group) => group.unresolvedTieIds?.length > 1);
-    const hasUnresolvedCampaignTie = getCearenseQualified(data).unresolvedCampaignTies.length > 0;
+    const hasUnresolvedCampaignTie = getCearenseQualified(bracketSource).unresolvedCampaignTies.length > 0;
 
     if (hasUnresolvedGroupTie || hasUnresolvedCampaignTie) {
       showNotice(
@@ -11814,17 +12015,6 @@ function generateBrackets() {
     }
   }
 
-  const bracketSource = isCampeonatoCearenseData(data)
-    ? {
-      ...structuredClone(data),
-      cupConfig: { ...(data.cupConfig || {}), cearenseBracketVersion: 2 },
-    }
-    : isPlayRankingData(data)
-    ? {
-      ...structuredClone(data),
-      cupConfig: { ...(data.cupConfig || {}), playRankingBracketVersion: 2 },
-    }
-    : data;
   const copy = syncCupBracketScores(bracketSource);
   setData(copy, { allowScoreRegression: true });
 
@@ -13112,7 +13302,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       return;
     }
 
-    setSelectedTournament({ ...result.data, directoryEntry: false });
+    setSelectedTournament({ ...item, ...result.data, directoryEntry: false });
   }
 
   async function openPublicCircuit(item) {
@@ -13155,6 +13345,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const circuits = sortCircuitsForDisplay(Array.isArray(bundle.circuits) ? bundle.circuits : []);
   const arenaName = profile.arena_name || profile.name || "Arena Torneio360";
   const organizer = {
+    id: profile.id,
     photoUrl: profile.photo_url || "",
     arenaName,
     organizerName: profile.name || "",
@@ -13353,7 +13544,7 @@ function PublicTournamentPage({ publicId }) {
       return;
     }
 
-    setSelectedTournament(data);
+    setSelectedTournament({ ...item, ...data });
   }
 
   async function openPublicCircuit(item) {
@@ -13646,7 +13837,11 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
     setActivePublicMatchesTabState(tab);
   }
   const config = modalityConfig[tournament.type];
-  const data = normalizeTournamentData(tournament.type, tournament.data);
+  const normalizedData = normalizeTournamentData(tournament.type, tournament.data);
+  const migrationTournament = tournament.user_id || !liveOrganizer?.id
+    ? tournament
+    : { ...tournament, user_id: liveOrganizer.id };
+  const data = migratePlayRankingBracketForReferenceProfile(migrationTournament, normalizedData).data;
   const secondParallelVisible = isCearenseSecondParallelEnabled(data);
   const sunsetSecondParallelVisible = isSunsetData(data);
   const thirdParallelVisible = isCearenseThirdParallelEnabled(data);

@@ -76,8 +76,9 @@ export function getCearenseQualified(data) {
 
   const groupRankings = calculateCupGroupRankings(data, data.rankingCriteria);
   const storedOverrides = data.cupConfig?.campaignTieBreakOverrides || {};
+  const playRankingBracketVersion = Number(data.cupConfig?.playRankingBracketVersion) || 0;
   const campaignRankingOptions = {
-    useCoefficient: data.cupConfig?.playRankingBracketVersion === 2,
+    useCoefficient: playRankingBracketVersion >= 2,
   };
   const champions = [];
   const runnersUp = [];
@@ -94,9 +95,30 @@ export function getCearenseQualified(data) {
   });
 
   const rankedChampions = rankCearenseCampaignEntries(champions, storedOverrides, "campeoes", campaignRankingOptions);
-  const rankedRunnersUp = rankCearenseCampaignEntries(runnersUp, storedOverrides, "segundos", campaignRankingOptions);
   const rankedParallel = rankCearenseCampaignEntries(parallel, storedOverrides, "paralela", campaignRankingOptions);
   const addCampaignRank = (row, index) => ({ ...row, groupRank: index + 1 });
+
+  if (playRankingBracketVersion >= 3) {
+    const groupRankById = new Map(rankedChampions.rows.map((row, index) => [row.groupId, index + 1]));
+    const rankedMainChampions = rankedChampions.rows.map((row) => ({
+      ...row,
+      groupRank: groupRankById.get(row.groupId),
+    }));
+    const linkedRunnersUp = runnersUp
+      .map((row) => ({ ...row, groupRank: groupRankById.get(row.groupId) }))
+      .sort((first, second) => first.groupRank - second.groupRank);
+
+    return {
+      main: [...rankedMainChampions, ...linkedRunnersUp],
+      repechage: rankedParallel.rows.map(addCampaignRank),
+      unresolvedCampaignTies: [
+        ...rankedChampions.unresolvedTies,
+        ...rankedParallel.unresolvedTies,
+      ],
+    };
+  }
+
+  const rankedRunnersUp = rankCearenseCampaignEntries(runnersUp, storedOverrides, "segundos", campaignRankingOptions);
 
   return {
     main: [
