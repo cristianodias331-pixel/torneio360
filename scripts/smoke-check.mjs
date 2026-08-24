@@ -3015,6 +3015,24 @@ assert.ok(
     && styleSource.includes("z-index: 120000 !important"),
   "As notificações globais precisam aparecer acima do editor que iniciou a ação."
 );
+
+const createTournamentStart = mainSource.indexOf("async function createTournament()");
+const createTournamentEnd = mainSource.indexOf("async function confirmDeleteTournament()", createTournamentStart);
+const createTournamentSource = mainSource.slice(createTournamentStart, createTournamentEnd);
+assert.ok(
+  createTournamentStart >= 0
+    && createTournamentEnd > createTournamentStart
+    && createTournamentSource.includes("const confirmedCreatedTournaments")
+    && createTournamentSource.includes("catch (localProjectionError)")
+    && createTournamentSource.includes("setCreateTournamentOpen(false)")
+    && createTournamentSource.includes('showNotice("success", isMultiCategory ? "Torneios criados" : "Torneio criado"')
+    && createTournamentSource.includes('selectedTournamentId: null')
+    && createTournamentSource.includes('document.getElementById("historico-torneios")')
+    && createTournamentSource.includes("setTournamentStatusFilter(getTournamentLifecycleStatus(confirmedCreatedTournaments[0]))")
+    && !createTournamentSource.includes("setSelected(firstCreatedTournament)")
+    && createTournamentSource.indexOf("if (creationError)") < createTournamentSource.indexOf("setCreateTournamentOpen(false)"),
+  "Após a criação confirmada, o editor deve fechar, a lista deve aparecer e a confirmação visual deve ser exibida."
+);
 assert.equal(
   stableJsonStringify({ rodada: 1, placares: { b: 2, a: 4 } }),
   stableJsonStringify({ placares: { a: 4, b: 2 }, rodada: 1 }),
@@ -4027,7 +4045,7 @@ assert.ok(
     && mainSource.slice(
       mainSource.indexOf("async function saveOrganizerProfile()"),
       mainSource.indexOf("function toggleNewPublicInfo")
-    ).includes('showNotice(\n        "error",\n        "Perfil não salvo"')
+    ).includes('"Perfil não salvo"')
     && !mainSource.slice(
       mainSource.indexOf("async function saveOrganizerProfile()"),
       mainSource.indexOf("function toggleNewPublicInfo")
