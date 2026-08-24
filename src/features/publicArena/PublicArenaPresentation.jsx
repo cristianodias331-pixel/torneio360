@@ -55,13 +55,13 @@ export function PublicImageLightbox({ image, onClose }) {
   );
 }
 
-function PublicImagePreviewButton({ src, alt, title, variant, onPreview }) {
+function PublicImagePreviewButton({ src, previewSrc, alt, title, variant, onPreview }) {
   if (!src) return null;
   return (
     <button
       type="button"
       className={`publicImagePreviewButton ${variant || "event-cover"}`}
-      onClick={() => onPreview?.({ src, alt, title })}
+      onClick={() => onPreview?.({ src: previewSrc || src, alt, title })}
       aria-label={`Ampliar ${title || alt || "imagem"}`}
       title="Clique para ampliar"
     >
@@ -182,9 +182,12 @@ export function PublicArenaTournamentCardsView({
     const isGroup = group.items.length > 1 || firstDetails.multiCategoryEvent === true;
     const title = isGroup ? firstDetails.eventName || first.name : first.name;
     const eventCoverImage = (isGroup ? firstDetails.eventCoverImageUrl : "") || firstDetails.coverImageUrl || "";
+    const eventCoverThumbnail = (isGroup ? firstDetails.eventCoverImageThumbnailUrl : "")
+      || firstDetails.coverImageThumbnailUrl
+      || "";
     const profileCoverImage = organizer.photoUrl || "/torneio360-profile.png";
-    const coverImage = eventCoverImage || profileCoverImage;
-    const coverVariant = eventCoverImage ? "event-cover" : "profile-photo";
+    const coverImage = eventCoverThumbnail || eventCoverImage || profileCoverImage;
+    const coverVariant = eventCoverImage || eventCoverThumbnail ? "event-cover" : "profile-photo";
     const registrationOpen = group.items.some((item) => isRegistrationOpen(getRegistrationDeadline(item)));
 
     return (
@@ -193,8 +196,9 @@ export function PublicArenaTournamentCardsView({
           {coverImage ? (
             <PublicImagePreviewButton
               src={coverImage}
-              alt={eventCoverImage ? `Foto de ${title}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
-              title={eventCoverImage ? title : organizer.arenaName || "Perfil da arena"}
+              previewSrc={eventCoverImage || eventCoverThumbnail || profileCoverImage}
+              alt={coverVariant === "event-cover" ? `Foto de ${title}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+              title={coverVariant === "event-cover" ? title : organizer.arenaName || "Perfil da arena"}
               variant={coverVariant}
               onPreview={onPreviewImage}
             />
@@ -306,16 +310,21 @@ export function PublicArenaPageView({
           ) : displayedItems.map((item) => {
             const circuitStatus = getCircuitStatus(item);
             const circuitCoverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl || "";
-            const circuitImage = circuitCoverImage || organizer.photoUrl || "";
-            const circuitImageVariant = circuitCoverImage ? "event-cover" : "profile-photo";
+            const circuitCoverThumbnail = item.ranking_settings?.coverImageThumbnailUrl
+              || item.rankingSettings?.coverImageThumbnailUrl
+              || item.coverImageThumbnailUrl
+              || "";
+            const circuitImage = circuitCoverThumbnail || circuitCoverImage || organizer.photoUrl || "";
+            const circuitImageVariant = circuitCoverImage || circuitCoverThumbnail ? "event-cover" : "profile-photo";
             return (
               <article className={`card publicArenaEventCard publicArenaCircuitCard ${circuitImage ? "publicArenaEventCardWithCover" : ""}`} key={item.id}>
                 {circuitImage ? (
                   <div className={`publicArenaEventCover ${circuitImageVariant}`}>
                     <PublicImagePreviewButton
                       src={circuitImage}
-                      alt={circuitCoverImage ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
-                      title={circuitCoverImage ? item.name : organizer.arenaName || "Perfil da arena"}
+                      previewSrc={circuitCoverImage || circuitCoverThumbnail || organizer.photoUrl}
+                      alt={circuitImageVariant === "event-cover" ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+                      title={circuitImageVariant === "event-cover" ? item.name : organizer.arenaName || "Perfil da arena"}
                       variant={circuitImageVariant}
                       onPreview={setPreviewImage}
                     />

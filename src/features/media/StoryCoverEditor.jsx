@@ -3,6 +3,7 @@ import {
   STORY_COVER_HEIGHT,
   STORY_COVER_WIDTH,
   clampStoryCoverTransform,
+  getStoryCoverBackgroundRect,
   getStoryCoverRenderRect,
   storyCoverHasNativeResolution,
 } from "./storyCoverCrop.mjs";
@@ -134,12 +135,27 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
       sourceHeight: imageSize.height,
       ...transform,
     });
+    const backgroundRect = getStoryCoverBackgroundRect(imageSize.width, imageSize.height);
     const outputScale = width / STORY_COVER_WIDTH;
+    const backgroundBlur = Math.max(9, Math.round(34 * outputScale));
+    const backgroundBleed = backgroundBlur * 2;
     canvas.width = width;
     canvas.height = height;
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
-    context.fillStyle = "#ffffff";
+    context.fillStyle = "#071524";
+    context.fillRect(0, 0, width, height);
+    context.save();
+    context.filter = `blur(${backgroundBlur}px) brightness(0.5) saturate(0.85)`;
+    context.drawImage(
+      image,
+      backgroundRect.left * outputScale - backgroundBleed,
+      backgroundRect.top * outputScale - backgroundBleed,
+      backgroundRect.width * outputScale + (backgroundBleed * 2),
+      backgroundRect.height * outputScale + (backgroundBleed * 2)
+    );
+    context.restore();
+    context.fillStyle = "rgba(3, 12, 24, 0.18)";
     context.fillRect(0, 0, width, height);
     context.drawImage(
       image,
@@ -229,8 +245,13 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
       if (!drawCover(canvas, STORY_COVER_WIDTH, STORY_COVER_HEIGHT)) {
         throw new Error("Não foi possível preparar a imagem.");
       }
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
-      await onApply?.(dataUrl);
+      const thumbnailCanvas = document.createElement("canvas");
+      if (!drawCover(thumbnailCanvas, PREVIEW_WIDTH, PREVIEW_HEIGHT)) {
+        throw new Error("Não foi possível preparar a miniatura.");
+      }
+      const imageUrl = canvas.toDataURL("image/jpeg", 0.88);
+      const thumbnailUrl = thumbnailCanvas.toDataURL("image/jpeg", 0.8);
+      await onApply?.({ imageUrl, thumbnailUrl });
     } catch (applyError) {
       setError(applyError?.message || "Não foi possível preparar a imagem.");
       setProcessing(false);
@@ -256,7 +277,7 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
           <div>
             <span className="storyCoverEditorEyebrow">Capa vertical 9:16</span>
             <h2 id="story-cover-editor-title">Enquadrar foto</h2>
-            <p>Arraste para posicionar. Use a roda do mouse ou dois dedos para aproximar.</p>
+            <p>A foto inteira aparece por padrão. O fundo desfocado completa o formato 9:16.</p>
           </div>
           <button type="button" className="secondaryBtn" onClick={onCancel} disabled={processing}>Fechar</button>
         </header>
@@ -291,7 +312,7 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
               </div>
             ) : null}
             {fileName ? <small title={fileName}>{fileName}</small> : null}
-            <div className="storyCoverGestureHint">Arraste para mover · roda para zoom · pinça no celular</div>
+            <div className="storyCoverGestureHint">Aproxime para recortar · arraste para mover · pinça no celular</div>
             {error ? <div className="storyCoverEditorError" role="alert">{error}</div> : null}
           </aside>
         </div>

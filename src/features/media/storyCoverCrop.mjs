@@ -11,7 +11,28 @@ function clamp(value, minimum, maximum) {
 export function getStoryCoverBaseScale(sourceWidth, sourceHeight) {
   const width = Math.max(1, Number(sourceWidth) || 1);
   const height = Math.max(1, Number(sourceHeight) || 1);
+  return Math.min(STORY_COVER_WIDTH / width, STORY_COVER_HEIGHT / height);
+}
+
+export function getStoryCoverBackgroundScale(sourceWidth, sourceHeight) {
+  const width = Math.max(1, Number(sourceWidth) || 1);
+  const height = Math.max(1, Number(sourceHeight) || 1);
   return Math.max(STORY_COVER_WIDTH / width, STORY_COVER_HEIGHT / height);
+}
+
+export function getStoryCoverBackgroundRect(sourceWidth, sourceHeight) {
+  const width = Math.max(1, Number(sourceWidth) || 1);
+  const height = Math.max(1, Number(sourceHeight) || 1);
+  const scale = getStoryCoverBackgroundScale(width, height);
+  const renderedWidth = width * scale;
+  const renderedHeight = height * scale;
+
+  return {
+    width: renderedWidth,
+    height: renderedHeight,
+    left: (STORY_COVER_WIDTH - renderedWidth) / 2,
+    top: (STORY_COVER_HEIGHT - renderedHeight) / 2,
+  };
 }
 
 export function clampStoryCoverTransform({

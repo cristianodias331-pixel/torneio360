@@ -189,6 +189,7 @@ import {
   STORY_COVER_HEIGHT,
   STORY_COVER_WIDTH,
   clampStoryCoverTransform,
+  getStoryCoverBackgroundRect,
   getStoryCoverBaseScale,
   getStoryCoverRenderRect,
   storyCoverHasNativeResolution,
@@ -448,6 +449,10 @@ const publicArenaApiSource = readFileSync(
 );
 const publicEventCoversMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240001_public_event_covers.sql", root),
+  "utf8"
+);
+const publicCoverThumbnailsMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240002_public_cover_thumbnails.sql", root),
   "utf8"
 );
 const publicIdentifiersSource = readFileSync(
@@ -5167,20 +5172,35 @@ assert.equal(
   "A foto própria do circuito deixou de ser preservada nas configurações persistidas."
 );
 assert.equal(
+  normalizeCircuitRankingSettings({ coverImageThumbnailUrl: "data:image/jpeg;base64,mini" }).coverImageThumbnailUrl,
+  "data:image/jpeg;base64,mini",
+  "A miniatura própria do circuito deixou de ser preservada nas configurações persistidas."
+);
+assert.equal(
   getPublicTournamentDirectoryItem({
     id: "evento-com-capa",
-    data: { eventCoverImageUrl: "data:image/jpeg;base64,evento" },
-  }).data.eventCoverImageUrl,
-  "data:image/jpeg;base64,evento",
-  "A foto geral do evento com várias categorias deixou de chegar ao perfil público."
+    data: { eventCoverImageThumbnailUrl: "data:image/jpeg;base64,mini-evento" },
+  }).data.eventCoverImageThumbnailUrl,
+  "data:image/jpeg;base64,mini-evento",
+  "A miniatura geral do evento com várias categorias deixou de chegar ao perfil público."
 );
 assert.equal(STORY_COVER_WIDTH, 1080, "A largura padrão da capa Stories foi alterada.");
 assert.equal(STORY_COVER_HEIGHT, 1920, "A altura padrão da capa Stories foi alterada.");
-assert.equal(getStoryCoverBaseScale(3000, 2000), 0.96, "O recorte horizontal não cobre corretamente o quadro 9:16.");
+assert.equal(getStoryCoverBaseScale(3000, 2000), 0.36, "A foto horizontal não é mais preservada inteira dentro do quadro 9:16.");
 assert.deepEqual(
   clampStoryCoverTransform({ sourceWidth: 3000, sourceHeight: 2000, zoom: 1, x: 9999, y: 9999 }),
-  { zoom: 1, x: 900, y: 0 },
-  "O arraste da capa permite revelar área vazia fora da fotografia."
+  { zoom: 1, x: 0, y: 0 },
+  "A foto inteira deveria permanecer centralizada antes do zoom."
+);
+assert.deepEqual(
+  clampStoryCoverTransform({ sourceWidth: 3000, sourceHeight: 2000, zoom: 3, x: 9999, y: 9999 }),
+  { zoom: 3, x: 1080, y: 120 },
+  "O arraste após o zoom deixou de respeitar os limites da fotografia."
+);
+assert.deepEqual(
+  getStoryCoverBackgroundRect(3000, 2000),
+  { width: 2880, height: 1920, left: -900, top: 0 },
+  "O fundo adaptativo não cobre corretamente o quadro 9:16."
 );
 assert.deepEqual(
   getStoryCoverRenderRect({ sourceWidth: 1080, sourceHeight: 1920, zoom: 1, x: 0, y: 0 }),
@@ -5198,6 +5218,9 @@ assert.ok(
     && mainSource.includes("Foto do circuito")
     && !mainSource.includes('className="photoZoomButtons"')
     && storyCoverEditorSource.includes('canvas.toDataURL("image/jpeg", 0.88)')
+    && storyCoverEditorSource.includes('thumbnailCanvas.toDataURL("image/jpeg", 0.8)')
+    && storyCoverEditorSource.includes("getStoryCoverBackgroundRect")
+    && storyCoverEditorSource.includes("context.filter")
     && storyCoverEditorSource.includes("handlePointerMove")
     && storyCoverEditorSource.includes("handleWheel")
     && storyCoverEditorSource.includes('document.querySelectorAll(\'[aria-modal="true"]\')')
@@ -5210,6 +5233,9 @@ assert.ok(
     && publicEventCoversMigrationSource.includes("create or replace function public.get_public_tournament_cover")
     && publicEventCoversMigrationSource.includes("create or replace function public.get_public_circuit_cover")
     && publicEventCoversMigrationSource.includes("- 'coverImageUrl'")
+    && publicCoverThumbnailsMigrationSource.includes("eventCoverImageThumbnailUrl")
+    && publicArenaPresentationSource.includes("previewSrc")
+    && styleSource.includes("CAPAS RESPONSIVAS — REGRAS FINAIS DA HOMOLOGAÇÃO")
     && styleSource.includes("FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS")
     && styleSource.includes(".publicArenaEventCover.profile-photo")
     && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover")
