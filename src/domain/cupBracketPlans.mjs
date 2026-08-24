@@ -171,3 +171,35 @@ export const cearenseMainBracketPlans = {
     { title: "Final", games: [["m20", "w:m17", "w:m18"]] },
   ],
 };
+
+// Plano próprio do Modelo Torneio 360 para sete grupos. Os códigos C e R
+// representam, respectivamente, campeões e segundos colocados ordenados pela
+// campanha entre grupos. O desenho mantém os dois melhores campeões nas
+// extremidades da chave e reproduz os cruzamentos da regra de referência.
+export const playRankingMainBracketPlans = {
+  7: [
+    {
+      title: "Oitavas de final",
+      games: [
+        ["m1", "r5", "r2"],
+        ["m2", "c4", "r6"],
+        ["m3", "r4", "c5"],
+        ["m4", "c6", "r1"],
+        ["m5", "r7", "c3"],
+        ["m6", "c7", "r3"],
+      ],
+    },
+    {
+      title: "Quartas de final",
+      games: [
+        ["m7", "c1", "w:m1"],
+        ["m8", "w:m2", "w:m3"],
+        ["m9", "w:m4", "w:m5"],
+        ["m10", "w:m6", "c2"],
+      ],
+    },
+    { title: "Semifinal", games: [["m11", "w:m7", "w:m8"], ["m12", "w:m9", "w:m10"]] },
+    { title: "3º lugar", games: [["m13", "l:m11", "l:m12"]] },
+    { title: "Final", games: [["m14", "w:m11", "w:m12"]] },
+  ],
+};
