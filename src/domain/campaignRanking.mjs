@@ -1,24 +1,32 @@
 import { getCopinhaManualTieOrder } from "./groupRankingRules.mjs";
 
-export function compareCearenseCampaignMetrics(first, second) {
+export function compareCearenseCampaignMetrics(first, second, { useCoefficient = false } = {}) {
   const firstPlayed = Math.max(1, Number(first.played) || 0);
   const secondPlayed = Math.max(1, Number(second.played) || 0);
 
-  for (const key of ["w", "bal", "pts"]) {
+  for (const key of useCoefficient ? ["w", "bal"] : ["w", "bal", "pts"]) {
     const difference = Number(second[key] || 0) * firstPlayed - Number(first[key] || 0) * secondPlayed;
     if (difference !== 0) return difference;
+  }
+
+  if (useCoefficient) {
+    const coefficientDifference = Number(second.coefficient || 0) - Number(first.coefficient || 0);
+    if (Math.abs(coefficientDifference) >= 1e-12) return coefficientDifference;
   }
 
   return 0;
 }
 
-export function haveSameCearenseCampaign(first, second) {
+export function haveSameCearenseCampaign(first, second, { useCoefficient = false } = {}) {
   const firstPlayed = Math.max(1, Number(first.played) || 0);
   const secondPlayed = Math.max(1, Number(second.played) || 0);
 
-  return ["w", "bal", "pts"].every((key) => (
+  const sameProportionalMetrics = (useCoefficient ? ["w", "bal"] : ["w", "bal", "pts"]).every((key) => (
     Number(first[key] || 0) * secondPlayed === Number(second[key] || 0) * firstPlayed
   ));
+
+  return sameProportionalMetrics && (!useCoefficient
+    || Math.abs(Number(first.coefficient || 0) - Number(second.coefficient || 0)) < 1e-12);
 }
 
 export function greatestCommonDivisor(first, second) {
@@ -38,13 +46,16 @@ export function getReducedRatio(value, divisor) {
   return `${Number(value || 0) / commonDivisor}/${safeDivisor / commonDivisor}`;
 }
 
-export function getCearenseCampaignTieKey(scope, row) {
-  return `${scope}:${getReducedRatio(row.w, row.played)}:${getReducedRatio(row.bal, row.played)}:${getReducedRatio(row.pts, row.played)}`;
+export function getCearenseCampaignTieKey(scope, row, { useCoefficient = false } = {}) {
+  const finalMetric = useCoefficient
+    ? Number(row.coefficient || 0).toFixed(12)
+    : getReducedRatio(row.pts, row.played);
+  return `${scope}:${getReducedRatio(row.w, row.played)}:${getReducedRatio(row.bal, row.played)}:${finalMetric}`;
 }
 
-export function rankCearenseCampaignEntries(entries, storedOverrides, scope) {
+export function rankCearenseCampaignEntries(entries, storedOverrides, scope, { useCoefficient = false } = {}) {
   const baseEntries = [...entries].sort((a, b) => {
-    const comparison = compareCearenseCampaignMetrics(a, b);
+    const comparison = compareCearenseCampaignMetrics(a, b, { useCoefficient });
     if (comparison !== 0) return comparison;
     if (a.groupId === b.groupId) return a.groupPosition - b.groupPosition;
     return a.name.localeCompare(b.name);
@@ -55,7 +66,7 @@ export function rankCearenseCampaignEntries(entries, storedOverrides, scope) {
   for (let start = 0; start < baseEntries.length;) {
     let end = start + 1;
 
-    while (end < baseEntries.length && haveSameCearenseCampaign(baseEntries[start], baseEntries[end])) {
+    while (end < baseEntries.length && haveSameCearenseCampaign(baseEntries[start], baseEntries[end], { useCoefficient })) {
       end += 1;
     }
 
@@ -65,7 +76,7 @@ export function rankCearenseCampaignEntries(entries, storedOverrides, scope) {
     if (tiedEntries.length === 1 || distinctGroups.size === 1) {
       rankedEntries.push(...tiedEntries);
     } else {
-      const tieKey = getCearenseCampaignTieKey(scope, tiedEntries[0]);
+      const tieKey = getCearenseCampaignTieKey(scope, tiedEntries[0], { useCoefficient });
       const manualOrder = getCopinhaManualTieOrder(tiedEntries, storedOverrides[tieKey]);
 
       if (manualOrder) {

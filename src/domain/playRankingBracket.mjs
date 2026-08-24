@@ -201,7 +201,9 @@ export function getPlayRankingOpeningLosses(data, mainRounds, qualifiedMain) {
       const gamesDifference = second.openingLossGames - first.openingLossGames;
       if (gamesDifference !== 0) return gamesDifference;
 
-      const campaignDifference = compareCearenseCampaignMetrics(first, second);
+      const campaignDifference = compareCearenseCampaignMetrics(first, second, {
+        useCoefficient: data.cupConfig?.playRankingBracketVersion === 2,
+      });
       if (campaignDifference !== 0) return campaignDifference;
 
       const seedDifference = seedIndexById.get(first.id) - seedIndexById.get(second.id);

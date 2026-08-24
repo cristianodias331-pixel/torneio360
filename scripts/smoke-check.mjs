@@ -348,6 +348,8 @@ import {
   getCopinhaEntryCode,
   getCopinhaPlanEntry,
 } from "../src/domain/cupBracketConstruction.mjs";
+import { playRankingMainBracketPlans } from "../src/domain/cupBracketPlans.mjs";
+import { generatePlayRankingBrackets } from "../src/domain/cupBracketOrchestration.mjs";
 import {
   getCopinhaHeadToHeadWinnerId,
   getCopinhaManualTieOrder,
@@ -1807,6 +1809,43 @@ const plannedBracket = buildCopinhaBracketFromPlan(
 assert.deepEqual([plannedBracket[0].games[0].ids1, plannedBracket[0].games[0].ids2], [[0], [1]], "O plano da chave deixou de posicionar as classificadas.");
 assert.equal(plannedBracket[0].games[0].matchKey, "main_final_1", "O plano da chave alterou a chave persistida do confronto.");
 assert.equal(JSON.stringify(plannedBracketEntries), plannedBracketEntriesSnapshot, "A aplicação do plano não pode alterar as classificadas.");
+const playRankingSevenGroupEntries = [
+  ...Array.from({ length: 7 }, (_, index) => ({
+    id: index + 1,
+    groupPosition: 1,
+    groupRank: index + 1,
+  })),
+  ...Array.from({ length: 7 }, (_, index) => ({
+    id: index + 8,
+    groupPosition: 2,
+    groupRank: index + 1,
+  })),
+];
+const playRankingSevenGroupOpening = buildCopinhaBracketFromPlan(
+  playRankingSevenGroupEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingMainBracketPlans[7])
+)[0].games;
+assert.deepEqual(
+  playRankingSevenGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [
+    [1, null],
+    [12, 9],
+    [4, 13],
+    [11, 5],
+    [6, 8],
+    [14, 3],
+    [7, 10],
+    [2, null],
+  ],
+  "O Modelo Torneio 360 com sete grupos deixou de reproduzir a distribuição de referência."
+);
+assert.deepEqual(
+  playRankingSevenGroupOpening.map((game) => game.isBye),
+  [true, false, false, false, false, false, false, true],
+  "Os dois melhores campeões do Modelo Torneio 360 devem receber BYE nas extremidades da chave."
+);
 const copinhaEliminationEntries = [
   { id: 0, groupId: 0 },
   { id: 1, groupId: 1 },
@@ -2259,6 +2298,41 @@ function completeGroupScheduleWithLowerIdWinning(schedule) {
     };
   }));
 }
+const playRankingSevenGroupData = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: {
+    teamCount: 21,
+    format: "playranking",
+    playRankingBracketVersion: 2,
+  },
+  players: createNamedTeams(21),
+  schedule: completeGroupScheduleWithLowerIdWinning(
+    generateCupGroupSchedule(createNamedTeams(21), { teamCount: 21, format: "playranking" })
+  ),
+  brackets: [],
+};
+const generatedPlayRankingSevenGroupOpening = generatePlayRankingBrackets(playRankingSevenGroupData).main[0].games;
+assert.equal(generatedPlayRankingSevenGroupOpening.length, 8, "A chave integrada do Modelo Torneio 360 com sete grupos deve abrir com oito posições.");
+assert.deepEqual(
+  generatedPlayRankingSevenGroupOpening.map((game) => game.isBye),
+  [true, false, false, false, false, false, false, true],
+  "A geração integrada não manteve os BYEs do Modelo Torneio 360 no topo e na base."
+);
+assert.equal(
+  new Set(generatedPlayRankingSevenGroupOpening.flatMap((game) => [...game.ids1, ...game.ids2])).size,
+  14,
+  "A chave integrada do Modelo Torneio 360 perdeu ou repetiu uma dupla classificada."
+);
+const legacyPlayRankingSevenGroupOpening = generatePlayRankingBrackets({
+  ...playRankingSevenGroupData,
+  cupConfig: { teamCount: 21, format: "playranking" },
+}).main[0].games;
+assert.deepEqual(
+  legacyPlayRankingSevenGroupOpening.map((game) => game.isBye),
+  [true, false, false, false, true, false, false, false],
+  "Uma chave antiga do Modelo Torneio 360 foi migrada silenciosamente sem regeneração autorizada."
+);
 const standardGroupPlayers = createNamedTeams(6);
 const standardGroupSchedule = completeGroupScheduleWithLowerIdWinning(
   generateCupGroupSchedule(standardGroupPlayers, { teamCount: 6, format: "standard" })
@@ -2503,6 +2577,14 @@ assert.ok(
     { ...proportionalCampaignThreeGames, w: 2 }
   ) < 0,
   "A campanha com melhor percentual de vitórias deixou de vir primeiro."
+);
+assert.ok(
+  compareCearenseCampaignMetrics(
+    { ...proportionalCampaignTwoGames, coefficient: 0.8 },
+    { ...proportionalCampaignTwoGames, id: 11, coefficient: 0.762 },
+    { useCoefficient: true }
+  ) < 0,
+  "O maior coeficiente deixou de decidir campanhas com o mesmo percentual de vitórias e saldo médio."
 );
 assert.equal(greatestCommonDivisor(12, 18), 6, "O divisor comum usado nas chaves de empate foi alterado.");
 assert.equal(getReducedRatio(-4, 6), "-2/3", "A redução de saldos negativos foi alterada.");
@@ -3737,7 +3819,7 @@ assert.ok(
     && styleSource.includes('.sunsetGroupFormationChoice'),
   "A Copa Sunset perdeu a formação opcional de grupos de quatro ou suas chaves independentes."
 );
-assert.ok(campaignRankingSource.includes('function compareCearenseCampaignMetrics(first, second)'), "A comparação normalizada entre grupos está ausente.");
+assert.ok(campaignRankingSource.includes('function compareCearenseCampaignMetrics('), "A comparação normalizada entre grupos está ausente.");
 assert.ok(cupBracketOrchestrationSource.includes('function generateCearenseBrackets(data)'), "As chaves Principal e Paralela do Campeonato Cearense estão ausentes.");
 assert.ok(mainSource.includes('campaignTieBreakOverrides'), "O sorteio de empate absoluto entre grupos não é persistido.");
 assert.ok(matchScheduleSource.includes('className="matchByeScore">BYE</span>'), "Os BYEs do Campeonato Cearense não são identificados no cartão universal da chave.");

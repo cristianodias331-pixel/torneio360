@@ -17,6 +17,7 @@ import {
 import {
   cearenseMainBracketPlans,
   copinhaBracketPlans,
+  playRankingMainBracketPlans,
 } from "./cupBracketPlans.mjs";
 import {
   buildPlayRankingParallelRounds,
@@ -46,7 +47,13 @@ export function generatePlayRankingBrackets(data) {
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
   const repechageName = cupConfig.repechageName || "Disputa Paralela";
-  const mainRounds = buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
+  const groupCount = createCearenseGroups(cupConfig.teamCount || 4).length;
+  const mainPlan = cupConfig.playRankingBracketVersion === 2
+    ? playRankingMainBracketPlans[groupCount]
+    : null;
+  const mainRounds = mainPlan
+    ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
+    : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
   const openingLosses = getPlayRankingOpeningLosses(data, mainRounds, qualified.main);
   const repechageRounds = openingLosses.ready
     ? buildPlayRankingParallelRounds(openingLosses.losses, qualified.repechage, repechageName)

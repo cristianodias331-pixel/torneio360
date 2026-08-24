@@ -11685,6 +11685,11 @@ function generateBrackets() {
       ...structuredClone(data),
       cupConfig: { ...(data.cupConfig || {}), cearenseBracketVersion: 2 },
     }
+    : isPlayRankingData(data)
+    ? {
+      ...structuredClone(data),
+      cupConfig: { ...(data.cupConfig || {}), playRankingBracketVersion: 2 },
+    }
     : data;
   const copy = syncCupBracketScores(bracketSource);
   setData(copy, { allowScoreRegression: true });

@@ -352,7 +352,7 @@ export default function TournamentFormatInfoButton({
                 <div>
                   <h3>Critérios e independência das chaves</h3>
                   {isPlayRanking ? (
-                    <p>Dentro de cada grupo, a ordem é vitórias, saldo de games, confronto direto, coeficiente e sorteio. O coeficiente é a média, partida a partida, da divisão dos games feitos pelo total de games jogados. Em confronto circular, o sistema passa diretamente ao coeficiente. O Total de Games aparece apenas como estatística da tabela. Entre grupos, o sistema compara percentual de vitórias, saldo médio e média de games.</p>
+                    <p>Dentro de cada grupo, a ordem é vitórias, saldo de games, confronto direto, coeficiente e sorteio. O coeficiente é a média, partida a partida, da divisão dos games feitos pelo total de games jogados. Em confronto circular, o sistema passa diretamente ao coeficiente. O Total de Games aparece apenas como estatística da tabela. Entre grupos, campeões, segundos colocados e participantes da paralela são ordenados separadamente por percentual de vitórias, saldo médio, coeficiente e sorteio.</p>
                   ) : (
                     <p>Os melhores grupos são definidos comparando somente os campeões. O saldo do campeão de grupo com quatro participantes é dividido por 1,5; em empate, o organizador realiza o sorteio. Todo o grupo herda essa posição MG.</p>
                   )}
