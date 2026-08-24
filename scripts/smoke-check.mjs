@@ -455,6 +455,10 @@ const publicCoverThumbnailsMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240002_public_cover_thumbnails.sql", root),
   "utf8"
 );
+const groupedEventGeneralCoverMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240003_grouped_event_general_cover.sql", root),
+  "utf8"
+);
 const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
@@ -5234,8 +5238,16 @@ assert.ok(
     && publicEventCoversMigrationSource.includes("create or replace function public.get_public_circuit_cover")
     && publicEventCoversMigrationSource.includes("- 'coverImageUrl'")
     && publicCoverThumbnailsMigrationSource.includes("eventCoverImageThumbnailUrl")
+    && groupedEventGeneralCoverMigrationSource.includes("multiCategoryEvent")
+    && groupedEventGeneralCoverMigrationSource.includes("eventCoverImageUrl")
+    && publicArenaApiSource.includes("tournamentData.multiCategoryEvent === true")
     && publicArenaPresentationSource.includes("previewSrc")
+    && publicArenaPresentationSource.includes("publicArenaGroupedEventFrame")
+    && publicArenaPresentationSource.includes("publicArenaGroupedEventItems")
+    && mainSource.includes('const eventCoverImageUrl = firstDetails.eventCoverImageUrl || ""')
     && styleSource.includes("CAPAS RESPONSIVAS — REGRAS FINAIS DA HOMOLOGAÇÃO")
+    && styleSource.includes("CARTÕES PÚBLICOS PADRONIZADOS — HOMOLOGAÇÃO")
+    && styleSource.includes(".storyCoverEditorModal .actionConfirmBtn")
     && styleSource.includes("FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS")
     && styleSource.includes(".publicArenaEventCover.profile-photo")
     && styleSource.includes(".publicArenaEventCover.profile-photo .publicImagePreviewButton")

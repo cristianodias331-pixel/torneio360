@@ -245,7 +245,10 @@ export function createPublicArenaApi({ supabase }) {
       parameter: "p_public_id",
       fallback: async (normalizedPublicId) => {
         const detail = await fetchPublicTournamentDetail(normalizedPublicId);
-        return detail.data?.data?.eventCoverImageUrl || detail.data?.data?.coverImageUrl || "";
+        const tournamentData = detail.data?.data || {};
+        return tournamentData.multiCategoryEvent === true
+          ? tournamentData.eventCoverImageUrl || ""
+          : tournamentData.coverImageUrl || "";
       },
     });
   }

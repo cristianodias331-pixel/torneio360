@@ -6905,8 +6905,8 @@ setNewPublicInfo({
     ));
     const firstTournament = groupItems[0] || group.items[0];
     const firstDetails = firstTournament?.data || {};
-    const eventCoverImageUrl = firstDetails.eventCoverImageUrl || firstDetails.coverImageUrl || "";
-    const eventCoverImageThumbnailUrl = firstDetails.eventCoverImageThumbnailUrl || firstDetails.coverImageThumbnailUrl || "";
+    const eventCoverImageUrl = firstDetails.eventCoverImageUrl || "";
+    const eventCoverImageThumbnailUrl = firstDetails.eventCoverImageThumbnailUrl || "";
 
     setEditEventGroup({
       key: group.key,
