@@ -945,7 +945,14 @@ function App() {
     );
   }
 
-  return <Dashboard profile={profile} user={session.user} onProfileChange={setProfile} />;
+  return (
+    <Dashboard
+      profile={profile}
+      user={session.user}
+      onProfileChange={setProfile}
+      onReconcileOwnProfile={reconcileOwnProfile}
+    />
+  );
 }
 
 
@@ -2124,7 +2131,7 @@ function CourtCenterModal(props) {
   );
 }
 
-function Dashboard({ profile, user, onProfileChange }) {
+function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile }) {
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
   const [trashCircuits, setTrashCircuits] = useState([]);
@@ -2832,7 +2839,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const currentState = String(organizerProfile.state || "").trim();
     return Boolean(currentState && !normalizeBrazilianState(currentState));
   });
-  const [profileSaveConfirmationOpen, setProfileSaveConfirmationOpen] = useState(false);
   const organizerProfileBaseRef = useRef({
     photoUrl: profile.photo_url || "",
     arenaName: profile.arena_name || "",
@@ -4598,18 +4604,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
-    localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify({
-      ...organizerProfile,
-      organizerName: publicProfileData.name,
-      arenaName: publicProfileData.arena_name,
-      isPublic: publicProfileData.is_public,
-    }));
+    try {
+      localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify({
+        ...organizerProfile,
+        organizerName: publicProfileData.name,
+        arenaName: publicProfileData.arena_name,
+        isPublic: publicProfileData.is_public,
+      }));
+    } catch (storageError) {
+      console.warn("Não foi possível preparar a cópia local do perfil.", storageError);
+    }
 
     try {
       // Uma conta recém-confirmada pode abrir a plataforma antes de a linha do
       // perfil estar visível para a sessão atual. Reconcilia e renova a sessão
       // antes do UPDATE para que o primeiro salvamento também seja confiável.
-      await reconcileOwnProfile();
+      await onReconcileOwnProfile?.();
       await supabase.auth.refreshSession();
 
       const updateProfile = () => supabase
@@ -4624,7 +4634,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       // UPDATE sem linha não é sucesso. Reprovisiona o perfil e tenta uma vez,
       // sem usar .single(), que transformava zero linhas no erro PGRST116.
       if (!error && !data) {
-        await reconcileOwnProfile();
+        await onReconcileOwnProfile?.();
         await supabase.auth.refreshSession();
         ({ data, error } = await updateProfile());
       }
@@ -4644,11 +4654,19 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       const savedOrganizerProfile = organizerProfileFromRow(data, organizerProfile);
       organizerProfileBaseRef.current = savedOrganizerProfile;
       setOrganizerProfile(savedOrganizerProfile);
-      localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(savedOrganizerProfile));
+      try {
+        localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(savedOrganizerProfile));
+      } catch (storageError) {
+        console.warn("Não foi possível atualizar a cópia local do perfil salvo.", storageError);
+      }
       saveCachedProfile(user.id, { ...profile, ...data });
 
       setProfileSaveSuccess(true);
-      setProfileSaveConfirmationOpen(true);
+      showNotice(
+        "success",
+        "Alterações salvas",
+        "O perfil da sua organização foi atualizado com sucesso."
+      );
       profileSaveSuccessTimerRef.current = setTimeout(() => {
         setProfileSaveSuccess(false);
         profileSaveSuccessTimerRef.current = null;
@@ -4656,6 +4674,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       void loadPublicArenaProfiles().catch((refreshError) => {
         console.warn("Perfil salvo; a lista pública será atualizada depois:", refreshError);
       });
+    } catch (error) {
+      console.error("Erro inesperado ao salvar o perfil:", error);
+      showNotice(
+        "error",
+        "Perfil não salvo",
+        "Não foi possível salvar as alterações agora. Tente novamente em alguns instantes."
+      );
     } finally {
       setProfileSaving(false);
     }
@@ -6682,12 +6707,9 @@ setNewPublicInfo({
     let mergeBase = editTarget;
     let saveResult = null;
     const editChangeId = generateCollaborationChangeId();
-    // Após a validação (e, quando necessário, a confirmação estrutural), a
-    // edição deve sair da tela imediatamente. A persistência continua em
-    // segundo plano sem prender o organizador no modal.
-    setEditTarget(null);
-    setEditForm(null);
-    setModalityChangeConfirmation(null);
+    // Mantém o formulário ou a confirmação visível em estado de salvamento.
+    // Assim, nenhuma falha de persistência deixa o organizador em uma tela
+    // silenciosa depois que os modais são fechados.
     setEditTournamentSaving(true);
 
     try {
@@ -6722,60 +6744,92 @@ setNewPublicInfo({
         mergeBase = remoteTournament;
       }
 
-      if (!saveResult?.ok) {
-        if (saveResult?.conflict) {
-          showNotice(
-            "warning",
-            "Sincronização ainda em andamento",
-            "As informações foram preservadas. Tente salvar novamente; a alteração mais recente será aplicada automaticamente."
-          );
-        } else {
-          console.error("Não foi possível confirmar a edição do torneio:", saveResult?.error);
-        }
-        return;
-      }
-
-      finalUpdated = saveResult.tournament;
-
-      const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
-      const orderedTournaments = manualOrderActive
-        ? tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament)
-        : sortTournamentsByEventSchedule(tournaments.map((tournament) => tournament.id === finalUpdated.id ? finalUpdated : tournament));
-
-      setTournaments(orderedTournaments);
-      setEditTarget(null);
-      setEditForm(null);
+    } catch (error) {
+      // Este bloco cobre apenas a persistência. Depois que ela for confirmada,
+      // nenhum processamento local poderá transformar um sucesso em falha.
+      console.error("Erro inesperado ao salvar o torneio:", error);
       setModalityChangeConfirmation(null);
-      showNotice("success", "Torneio atualizado", "As informações foram salvas com sucesso.");
+      showNotice(
+        "error",
+        "Torneio não atualizado",
+        "Ocorreu um erro inesperado durante o salvamento. O formulário foi mantido para você tentar novamente."
+      );
+      setEditTournamentSaving(false);
+      return;
+    }
 
-      void (async () => {
-        const criteriaCircuits = await syncAutomaticCircuitCriteria(orderedTournaments, circuitsRef.current);
-        const { circuits: rankedCircuits, success: circuitRankingSaved } = await persistCircuitRankings(
-          orderedTournaments,
-          criteriaCircuits || circuitsRef.current,
-          finalUpdated.id
-        );
-        await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
-        if (!circuitRankingSaved) {
-          showNotice(
-            "warning",
-            "Torneio atualizado; ranking pendente",
-            "O torneio está salvo. O ranking do circuito será atualizado na próxima sincronização."
-          );
-        }
-      })().catch((error) => {
-        console.error("Erro ao atualizar os dados derivados do torneio editado:", error);
+    if (!saveResult?.ok) {
+      setModalityChangeConfirmation(null);
+      if (saveResult?.conflict) {
         showNotice(
           "warning",
-          "Torneio atualizado; sincronização pendente",
-          "O torneio está salvo. Os dados derivados serão atualizados na próxima sincronização."
+          "Sincronização ainda em andamento",
+          "As informações foram preservadas. Tente salvar novamente; a alteração mais recente será aplicada automaticamente."
         );
-      });
-    } catch (error) {
-      console.error("Erro inesperado ao editar o torneio:", error);
-    } finally {
+      } else if (saveResult?.protected) {
+        showNotice(
+          "warning",
+          "Alteração não aplicada",
+          "A proteção do torneio impediu que participantes, rodadas ou placares fossem removidos. Revise a alteração e tente novamente."
+        );
+      } else {
+        console.error("Não foi possível confirmar a edição do torneio:", saveResult?.error);
+        showNotice(
+          "error",
+          "Torneio não atualizado",
+          "Não foi possível confirmar o salvamento. O formulário foi mantido para você tentar novamente."
+        );
+      }
       setEditTournamentSaving(false);
+      return;
     }
+
+    // A partir daqui o snapshot já foi confirmado no servidor. A atualização
+    // da lista é defensiva porque ela é apenas uma projeção local do dado salvo.
+    finalUpdated = saveResult.tournament || finalUpdated;
+    const currentTournaments = Array.isArray(tournaments) ? tournaments.filter(Boolean) : [];
+    const replacedTournaments = currentTournaments.map((tournament) => (
+      String(tournament?.id) === String(finalUpdated.id) ? finalUpdated : tournament
+    ));
+    let orderedTournaments = replacedTournaments;
+    try {
+      orderedTournaments = hasSavedManualTournamentOrder(replacedTournaments)
+        ? replacedTournaments
+        : sortTournamentsByEventSchedule(replacedTournaments);
+    } catch (localStateError) {
+      console.error("O torneio foi salvo, mas a ordenação local precisou usar a lista original:", localStateError);
+    }
+
+    setTournaments(orderedTournaments);
+    setEditTarget(null);
+    setEditForm(null);
+    setModalityChangeConfirmation(null);
+    setEditTournamentSaving(false);
+    showNotice("success", "Torneio atualizado", "As informações foram salvas com sucesso.");
+
+    void (async () => {
+      const criteriaCircuits = await syncAutomaticCircuitCriteria(orderedTournaments, circuitsRef.current);
+      const { circuits: rankedCircuits, success: circuitRankingSaved } = await persistCircuitRankings(
+        orderedTournaments,
+        criteriaCircuits || circuitsRef.current,
+        finalUpdated.id
+      );
+      await syncPublicArenaDirectory(orderedTournaments, rankedCircuits);
+      if (!circuitRankingSaved) {
+        showNotice(
+          "warning",
+          "Torneio atualizado; ranking pendente",
+          "O torneio está salvo. O ranking do circuito será atualizado na próxima sincronização."
+        );
+      }
+    })().catch((error) => {
+      console.error("Erro ao atualizar os dados derivados do torneio editado:", error);
+      showNotice(
+        "warning",
+        "Torneio atualizado; sincronização pendente",
+        "O torneio está salvo. Os dados derivados serão atualizados na próxima sincronização."
+      );
+    });
   }
 
   async function openEditEventGroup(group) {
@@ -9568,14 +9622,6 @@ setNewPublicInfo({
         ✅ Alterado com sucesso
       </div>
     ) : null}
-    <NoticeModal
-      notice={profileSaveConfirmationOpen ? {
-        type: "success",
-        title: "Alterações salvas",
-        message: "O perfil da sua organização foi atualizado com sucesso.",
-      } : null}
-      onClose={() => setProfileSaveConfirmationOpen(false)}
-    />
   </section>
   ) : null}
 

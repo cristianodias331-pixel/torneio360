@@ -13,7 +13,7 @@ export function NoticeModal({ notice, onClose }) {
   }[notice.type || "info"];
 
   return createPortal(
-    <div className="confirmOverlay">
+    <div className="confirmOverlay noticeOverlay" role="dialog" aria-modal="true" aria-live="assertive">
       <div className={`confirmBox noticeBox ${notice.type || "info"}`}>
         <div className="confirmIcon">{icon}</div>
         <h2>{notice.title}</h2>

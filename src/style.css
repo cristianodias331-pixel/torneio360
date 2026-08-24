@@ -29791,6 +29791,12 @@ html[data-theme="dark"] .trashSearchField input {
   z-index: 40000 !important;
 }
 
+/* Avisos globais usam portal no body. Eles precisam ficar acima de qualquer
+   editor ainda montado durante a transição entre salvar, fechar e notificar. */
+.noticeOverlay {
+  z-index: 120000 !important;
+}
+
 /* =========================================================
    CENTRAL DE QUADRAS COMPARTILHADA
    Inventário físico por local, sem alterar rodadas ou jogos.

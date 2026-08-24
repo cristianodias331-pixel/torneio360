@@ -2996,11 +2996,24 @@ assert.ok(
     && singleTournamentEditSource.includes("displayOrderMode: editTarget.data.displayOrderMode")
     && singleTournamentEditSource.includes("setEditTarget(null)")
     && singleTournamentEditSource.includes("setEditForm(null)")
-    && singleTournamentEditSource.indexOf("setEditTarget(null)") < singleTournamentEditSource.indexOf("setEditTournamentSaving(true)")
-    && !singleTournamentEditSource.includes('showNotice("error", "Erro ao salvar"')
+    && singleTournamentEditSource.indexOf("setEditTournamentSaving(true)") < singleTournamentEditSource.indexOf("setEditTarget(null)")
+    && singleTournamentEditSource.includes("const replacedTournaments = currentTournaments.map")
+    && singleTournamentEditSource.includes("catch (localStateError)")
+    && singleTournamentEditSource.indexOf("if (!saveResult?.ok)") < singleTournamentEditSource.indexOf("const replacedTournaments")
+    && singleTournamentEditSource.indexOf('showNotice("success", "Torneio atualizado"') > singleTournamentEditSource.indexOf("setEditTarget(null)")
+    && singleTournamentEditSource.includes('"Torneio não atualizado"')
+    && singleTournamentEditSource.includes("O formulário foi mantido para você tentar novamente.")
+    && singleTournamentEditSource.includes("setModalityChangeConfirmation(null)")
     && !singleTournamentEditSource.includes("closeEditorOnSubmit")
     && !singleTournamentEditSource.includes("persistTournamentOrderSequence("),
-  "A edição individual deve fechar após a validação e não pode exibir uma falha falsa depois de o torneio já ter sido salvo."
+  "A edição individual deve permanecer visível durante o salvamento e informar todos os resultados ao organizador."
+);
+assert.ok(
+  confirmationDialogsSource.includes('className="confirmOverlay noticeOverlay"')
+    && confirmationDialogsSource.includes('aria-live="assertive"')
+    && styleSource.includes(".noticeOverlay")
+    && styleSource.includes("z-index: 120000 !important"),
+  "As notificações globais precisam aparecer acima do editor que iniciou a ação."
 );
 assert.equal(
   stableJsonStringify({ rodada: 1, placares: { b: 2, a: 4 } }),
@@ -3156,8 +3169,9 @@ assert.ok(
   mainSource.includes("profileUsesForeignState")
     && mainSource.includes("Estado estrangeiro")
     && mainSource.includes("Digite o estado, província ou região")
-    && mainSource.includes("profileSaveConfirmationOpen")
-    && mainSource.includes('title: "Alterações salvas"'),
+    && mainSource.includes("onReconcileOwnProfile={reconcileOwnProfile}")
+    && !mainSource.includes("profileSaveConfirmationOpen")
+    && mainSource.includes('"Alterações salvas"'),
   "O perfil deve confirmar o salvamento em primeiro plano e permitir estado estrangeiro manual."
 );
 assert.ok(
@@ -3165,7 +3179,7 @@ assert.ok(
     && mainSource.includes('placeholder="Nome da sua organização"')
     && mainSource.includes("Selecione o estado")
     && mainSource.includes("Selecione a cidade")
-    && mainSource.includes('title: "Alterações salvas"')
+    && mainSource.includes('"Alterações salvas"')
     && mainSource.includes("O perfil da sua organização foi atualizado com sucesso."),
   "O perfil deve usar Organização, seleção Estado/Cidade e confirmação explícita de salvamento."
 );
@@ -4006,14 +4020,19 @@ assert.ok(
   "Uma confirmação Realtime da própria gravação pode voltar a ser exibida como erro entre dispositivos."
 );
 assert.ok(
-  mainSource.includes('await reconcileOwnProfile()')
+  mainSource.includes('onReconcileOwnProfile={reconcileOwnProfile}')
+    && mainSource.includes('await onReconcileOwnProfile?.()')
     && mainSource.includes('await supabase.auth.refreshSession()')
     && mainSource.includes('.maybeSingle()')
+    && mainSource.slice(
+      mainSource.indexOf("async function saveOrganizerProfile()"),
+      mainSource.indexOf("function toggleNewPublicInfo")
+    ).includes('showNotice(\n        "error",\n        "Perfil não salvo"')
     && !mainSource.slice(
       mainSource.indexOf("async function saveOrganizerProfile()"),
       mainSource.indexOf("function toggleNewPublicInfo")
     ).match(/\.select\("\*"\)\s*\.single\(\)/),
-  "O primeiro salvamento do perfil ainda exige uma linha única antes de reconciliar a conta confirmada."
+  "O salvamento do perfil deve reconciliar a conta dentro do Dashboard e sempre informar falhas ao organizador."
 );
 assert.ok(
   localAppStorageSource.includes("export function saveTournamentDraft(")
