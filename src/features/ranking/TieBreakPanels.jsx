@@ -51,6 +51,7 @@ export function CopinhaTieBreakPanel({
   drawInProgress = false,
 }) {
   const tiedGroups = (groupRankings || []).filter((group) => group.unresolvedTieIds?.length > 1);
+  const isPlayRanking = groupRankings?.[0]?.rankingMode === "playranking";
 
   if (!tiedGroups.length && !groupCampaignTies.length && !campaignTies.length) return null;
 
@@ -60,7 +61,9 @@ export function CopinhaTieBreakPanel({
         <span className="tieBreakIntroIcon"><Dices /></span>
         <p>
           <strong>Desempate por sorteio necessário</strong>
-          {isOfficialCearense
+          {isPlayRanking
+            ? "As duplas abaixo permaneceram iguais após vitórias, saldo de games, confronto direto e coeficiente. Faça o sorteio antes de gerar as chaves."
+            : isOfficialCearense
             ? "As duplas abaixo permaneceram iguais em vitórias e saldo. Entre duas duplas vale o confronto direto; entre três ou mais, faça o sorteio antes de gerar as chaves."
             : isCearense
             ? "As duplas abaixo permaneceram iguais em vitórias, saldo e Total de Games. Faça o sorteio antes de gerar as chaves."
@@ -139,10 +142,19 @@ export function CopinhaTieBreakPanel({
 
 export function CupGroupRankingView({ groupRankings, rankingCriteria, className = "" }) {
   const isOfficialCearense = groupRankings?.[0]?.rankingMode === "cearense-official";
+  const isPlayRanking = groupRankings?.[0]?.rankingMode === "playranking";
   const hasDefinedGroupOrder = isOfficialCearense && groupRankings.every((group) => group.groupRank);
-  const effectiveCriteria = ["copinha", "cearense-official"].includes(groupRankings?.[0]?.rankingMode)
+  const effectiveCriteria = ["copinha", "cearense-official", "playranking"].includes(groupRankings?.[0]?.rankingMode)
     ? "wins_balance_points"
     : rankingCriteria;
+  const columns = isPlayRanking
+    ? [
+      { key: "w", label: "Vitórias" },
+      { key: "bal", label: "Saldo de games" },
+      { key: "coefficient", label: "Coeficiente" },
+      { key: "pts", label: "Total de Games" },
+    ]
+    : null;
 
   return (
     <div className={`${hasDefinedGroupOrder ? "cearenseGroupRankingStack" : "twoCols"} ${className}`.trim()}>
@@ -154,6 +166,7 @@ export function CupGroupRankingView({ groupRankings, rankingCriteria, className 
             : group.name}
           rows={group.rows}
           rankingCriteria={effectiveCriteria}
+          columns={columns}
           showPodium={false}
         />
       ))}

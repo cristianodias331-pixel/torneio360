@@ -49,11 +49,13 @@ export function getRankingColumnLabel(key) {
     w: "Vitórias",
     pts: "Total de Games",
     bal: "Saldo de games",
+    coefficient: "Coeficiente",
     playTimeSeconds: "Tempo em jogo",
   }[key] || key;
 }
 
 export function formatRankingMetricValue(key, value) {
   if (key === "playTimeSeconds") return formatMatchTotalDuration(value);
+  if (key === "coefficient") return Number(value || 0).toFixed(3);
   return String(Number(value || 0));
 }

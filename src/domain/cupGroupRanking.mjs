@@ -7,6 +7,7 @@ import {
   isCearenseData,
   isCopinhaData,
   isOfficialCearenseData,
+  isPlayRankingData,
 } from "./cupFormat.mjs";
 import { createCupGroups, getTeamName } from "./cupGroups.mjs";
 import {
@@ -14,6 +15,7 @@ import {
   rankCearenseGroupRows,
   rankCopinhaGroupRows,
   rankOfficialCearenseGroupRows,
+  rankPlayRankingGroupRows,
 } from "./groupRankingRules.mjs";
 import { defaultRankingCriteria, getRankingCriteria } from "./rankingCriteria.mjs";
 import { getScoreWinnerSide, getWinningScore } from "./scoreRules.mjs";
@@ -29,6 +31,7 @@ export function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRa
   const isCopinha = isCopinhaData(data);
   const isCearense = isCearenseData(data);
   const isOfficialCearense = isOfficialCearenseData(data);
+  const isPlayRanking = isPlayRankingData(data);
   const tieBreakOverrides = cupConfig.tieBreakOverrides || {};
 
   const groupRankings = groups.map((group) => {
@@ -44,8 +47,10 @@ export function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRa
     }));
 
     const tableById = {};
+    const coefficientTotalById = {};
     rows.forEach((row) => {
       tableById[row.id] = row;
+      coefficientTotalById[row.id] = 0;
     });
 
     const groupGames = (data.schedule || [])
@@ -63,11 +68,13 @@ export function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRa
 
       const win1 = winnerSide === "team1";
       const win2 = winnerSide === "team2";
+      const totalGames = s1 + s2;
 
       game.ids1.forEach((id) => {
         tableById[id].pts += s1;
         tableById[id].bal += s1 - s2;
         tableById[id].played += 1;
+        if (isPlayRanking && totalGames > 0) coefficientTotalById[id] += s1 / totalGames;
         if (win1) tableById[id].w += 1;
       });
 
@@ -75,9 +82,16 @@ export function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRa
         tableById[id].pts += s2;
         tableById[id].bal += s2 - s1;
         tableById[id].played += 1;
+        if (isPlayRanking && totalGames > 0) coefficientTotalById[id] += s2 / totalGames;
         if (win2) tableById[id].w += 1;
       });
     });
+
+    if (isPlayRanking) {
+      rows.forEach((row) => {
+        row.coefficient = row.played > 0 ? coefficientTotalById[row.id] / row.played : 0;
+      });
+    }
 
     if (isCopinha) {
       const ranked = rankCopinhaGroupRows(
@@ -96,7 +110,14 @@ export function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRa
     }
 
     if (isCearense) {
-      const ranked = isOfficialCearense
+      const ranked = isPlayRanking
+        ? rankPlayRankingGroupRows(
+          rows,
+          groupGames,
+          winningScore,
+          tieBreakOverrides[String(group.id)]
+        )
+        : isOfficialCearense
         ? rankOfficialCearenseGroupRows(
           rows,
           groupGames,
@@ -115,7 +136,11 @@ export function calculateCupGroupRankings(data, rankingCriteriaValue = defaultRa
         ...group,
         rows: ranked.rows,
         unresolvedTieIds: ranked.unresolvedTieIds,
-        rankingMode: isOfficialCearense ? "cearense-official" : "cearense",
+        rankingMode: isPlayRanking
+          ? "playranking"
+          : isOfficialCearense
+          ? "cearense-official"
+          : "cearense",
       };
     }
 
