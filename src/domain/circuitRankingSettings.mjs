@@ -94,6 +94,8 @@ export function normalizeCircuitRankingSettings(value) {
 
   return {
     deletedAt: String(source.deletedAt || ""),
+    coverImageUrl: String(source.coverImageUrl || ""),
+    coverImageThumbnailUrl: String(source.coverImageThumbnailUrl || ""),
     mode: source.mode === circuitRankingModes.placement ? circuitRankingModes.placement : circuitRankingModes.performance,
     tournamentFormat: source.tournamentFormat === circuitTournamentFormats.cup
       ? circuitTournamentFormats.cup

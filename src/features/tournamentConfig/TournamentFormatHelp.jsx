@@ -264,6 +264,9 @@ export default function TournamentFormatInfoButton({
                   <h3>Eliminatória Principal</h3>
                   <p>A chave começa em <strong>{summary.mainOpeningRound}</strong>, com tamanho de {summary.mainBracketSize} posições.</p>
                   <p>{summary.mainByes > 0 ? `${summary.mainByes} participante${summary.mainByes === 1 ? " recebe" : "s recebem"} BYE nessa abertura.` : "A primeira fase começa sem BYEs."}</p>
+                  {isPlayRanking ? (
+                    <p>Os campeões são ordenados entre os grupos e recebem os primeiros seeds. O segundo colocado herda a posição do campeão do seu grupo; os dois ficam em metades opostas da chave e só podem voltar a se encontrar na final. A árvore é fixa, sem novo ranqueamento entre as fases.</p>
+                  ) : null}
                 </div>
               </article>
 
@@ -352,7 +355,7 @@ export default function TournamentFormatInfoButton({
                 <div>
                   <h3>Critérios e independência das chaves</h3>
                   {isPlayRanking ? (
-                    <p>Dentro de cada grupo, a ordem é vitórias, saldo de games, confronto direto, coeficiente e sorteio. O coeficiente é a média, partida a partida, da divisão dos games feitos pelo total de games jogados. Em confronto circular, o sistema passa diretamente ao coeficiente. O Total de Games aparece apenas como estatística da tabela. Entre grupos, campeões, segundos colocados e participantes da paralela são ordenados separadamente por percentual de vitórias, saldo médio, coeficiente e sorteio.</p>
+                    <p>Dentro de cada grupo, a ordem é vitórias, saldo de games, confronto direto, coeficiente e sorteio. O coeficiente é a média, partida a partida, da divisão dos games feitos pelo total de games jogados. Em confronto circular, o sistema passa diretamente ao coeficiente. O Total de Games aparece apenas como estatística da tabela. Entre grupos, somente os campeões definem a ordem dos grupos por percentual de vitórias, saldo médio, coeficiente e sorteio; o segundo colocado acompanha a posição do campeão do seu grupo. Os participantes da paralela continuam ordenados separadamente.</p>
                   ) : (
                     <p>Os melhores grupos são definidos comparando somente os campeões. O saldo do campeão de grupo com quatro participantes é dividido por 1,5; em empate, o organizador realiza o sorteio. Todo o grupo herda essa posição MG.</p>
                   )}

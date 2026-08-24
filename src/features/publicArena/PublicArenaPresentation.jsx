@@ -9,11 +9,67 @@ import {
   Trophy,
   UserRound,
   Users,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import {
   BeachLogo,
   PlatformSupportLinks,
 } from "../appShell/EntryPresentation.jsx";
+
+export function PublicImageLightbox({ image, onClose }) {
+  React.useEffect(() => {
+    if (!image) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [image, onClose]);
+
+  if (!image?.src) return null;
+
+  return (
+    <div
+      className="publicImageLightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label={image.title || "Visualização ampliada da imagem"}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="publicImageLightboxPanel">
+        <button type="button" className="publicImageLightboxClose" onClick={onClose} aria-label="Fechar imagem ampliada">
+          <X aria-hidden="true" />
+        </button>
+        <img src={image.src} alt={image.alt || image.title || "Imagem ampliada"} />
+        {image.title ? <strong>{image.title}</strong> : null}
+      </div>
+    </div>
+  );
+}
+
+function PublicImagePreviewButton({ src, previewSrc, alt, title, variant, onPreview }) {
+  if (!src) return null;
+  return (
+    <button
+      type="button"
+      className={`publicImagePreviewButton ${variant || "event-cover"}`}
+      onClick={() => onPreview?.({ src: previewSrc || src, alt, title })}
+      aria-label={`Ampliar ${title || alt || "imagem"}`}
+      title="Clique para ampliar"
+    >
+      <img src={src} alt={alt} loading="lazy" decoding="async" />
+      <span className="publicImageZoomBadge" aria-hidden="true"><ZoomIn /></span>
+    </button>
+  );
+}
 
 export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWhatsAppUrl }) {
   if (!open) {
@@ -91,6 +147,8 @@ export function PublicArenaTournamentCardsView({
   formatDate,
   sortTournaments,
   RegistrationStatus,
+  onPreviewImage,
+  onRequestCover,
 }) {
   const groups = (items || []).reduce((result, tournament) => {
     const details = tournament.data || {};
@@ -103,43 +161,105 @@ export function PublicArenaTournamentCardsView({
     return result;
   }, []);
 
+  React.useEffect(() => {
+    if (!onRequestCover) return;
+    const requestedGroups = new Set();
+    (items || []).forEach((tournament) => {
+      const details = tournament.data || {};
+      const grouped = details.multiCategoryEvent === true && details.eventGroupKey;
+      const publicCoverImage = grouped ? details.eventCoverImageUrl : details.coverImageUrl;
+      if (publicCoverImage || !tournament.public_id) return;
+      const groupKey = grouped
+        ? `group:${details.eventGroupKey}`
+        : `tournament:${tournament.id}`;
+      if (requestedGroups.has(groupKey)) return;
+      requestedGroups.add(groupKey);
+      onRequestCover(tournament);
+    });
+  }, [items, onRequestCover]);
+
+  function renderTournamentCard(tournament, {
+    grouped = false,
+    groupDetails = null,
+    groupTitle = "",
+  } = {}) {
+    const details = tournament.data || {};
+    const effectiveGroupDetails = groupDetails || details;
+    const eventCoverImage = grouped
+      ? effectiveGroupDetails.eventCoverImageUrl || ""
+      : details.coverImageUrl || "";
+    const eventCoverThumbnail = grouped
+      ? effectiveGroupDetails.eventCoverImageThumbnailUrl || ""
+      : details.coverImageThumbnailUrl || "";
+    const profileCoverImage = organizer.photoUrl || "/torneio360-profile.png";
+    const coverImage = eventCoverThumbnail || eventCoverImage || profileCoverImage;
+    const coverVariant = eventCoverImage || eventCoverThumbnail ? "event-cover" : "profile-photo";
+    const imageTitle = coverVariant === "event-cover"
+      ? grouped ? groupTitle : tournament.name
+      : organizer.arenaName || "Perfil da arena";
+    const registrationOpen = isRegistrationOpen(getRegistrationDeadline(tournament));
+
+    return (
+      <article
+        className={`card publicArenaEventCard publicArenaEventCardWithCover ${grouped ? "publicArenaGroupedCategoryCard" : ""}`}
+        key={tournament.id}
+      >
+        <div className={`publicArenaEventCover ${coverVariant}`}>
+          {coverImage ? (
+            <PublicImagePreviewButton
+              src={coverImage}
+              previewSrc={eventCoverImage || eventCoverThumbnail || profileCoverImage}
+              alt={coverVariant === "event-cover" ? `Foto de ${imageTitle}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+              title={imageTitle}
+              variant={coverVariant}
+              onPreview={onPreviewImage}
+            />
+          ) : <span><Trophy aria-hidden="true" /></span>}
+        </div>
+
+        <div className="publicArenaEventBody">
+          <small>{getModalityName(tournament.type)}</small>
+          <h2>{tournament.name}</h2>
+          <p>
+            {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDate(details.eventDate)}</span> : null}
+            {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
+          </p>
+          <RegistrationStatus open={registrationOpen} whatsapp={organizer.whatsapp} eventName={tournament.name} />
+        </div>
+
+        <button type="button" onClick={() => onOpen(tournament)} disabled={openingPublicId === tournament.public_id}>
+          {openingPublicId === tournament.public_id ? "Abrindo..." : "Ver torneio"}
+        </button>
+      </article>
+    );
+  }
+
   return groups.map((group) => {
     const first = group.items[0];
     const firstDetails = first.data || {};
     const isGroup = group.items.length > 1 || firstDetails.multiCategoryEvent === true;
     const title = isGroup ? firstDetails.eventName || first.name : first.name;
-    const coverImage = firstDetails.coverImageUrl || organizer.photoUrl;
-    const registrationOpen = group.items.some((item) => isRegistrationOpen(getRegistrationDeadline(item)));
+
+    if (!isGroup) return renderTournamentCard(first);
 
     return (
-      <article className={`card publicArenaEventCard publicArenaEventCardWithCover ${isGroup ? "publicArenaGroupedEvent" : ""}`} key={group.key}>
-        <div className="publicArenaEventCover">
-          {coverImage ? <img src={coverImage} alt={`Capa de ${title}`} loading="lazy" decoding="async" /> : <span><Trophy aria-hidden="true" /></span>}
+      <section className="publicArenaGroupedEventFrame" key={group.key}>
+        <header className="publicArenaGroupedEventHeader">
+          <div>
+            <small>Evento com categorias agrupadas</small>
+            <h2>{title}</h2>
+          </div>
+          <span>{group.items.length} {group.items.length === 1 ? "categoria" : "categorias"}</span>
+        </header>
+
+        <div className="publicArenaGroupedEventItems">
+          {sortTournaments(group.items).map((tournament) => renderTournamentCard(tournament, {
+            grouped: true,
+            groupDetails: firstDetails,
+            groupTitle: title,
+          }))}
         </div>
-        <div className="publicArenaEventBody">
-          <small>{isGroup ? `${group.items.length} ${group.items.length === 1 ? "categoria" : "categorias"}` : getModalityName(first.type)}</small>
-          <h2>{title}</h2>
-          <p>
-            {firstDetails.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDate(firstDetails.eventDate)}</span> : null}
-            {firstDetails.location ? <span><MapPin aria-hidden="true" /> {firstDetails.location}</span> : null}
-          </p>
-          <RegistrationStatus open={registrationOpen} whatsapp={organizer.whatsapp} eventName={title} />
-          {isGroup ? (
-            <div className="publicGroupedCategoryList">
-              {sortTournaments(group.items).map((item) => (
-                <button type="button" key={item.id} onClick={() => onOpen(item)} disabled={openingPublicId === item.public_id}>
-                  <span>{item.name}</span><small>{getModalityName(item.type)}</small>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        {!isGroup ? (
-          <button type="button" onClick={() => onOpen(first)} disabled={openingPublicId === first.public_id}>
-            {openingPublicId === first.public_id ? "Abrindo..." : "Ver torneio"}
-          </button>
-        ) : null}
-      </article>
+      </section>
     );
   });
 }
@@ -167,9 +287,12 @@ export function PublicArenaPageView({
   getCircuitTournamentCount,
   HeroHeader,
   TournamentCards,
+  onRequestTournamentCover,
+  onRequestCircuitCover,
 }) {
   const initialVisibleItems = 8;
   const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
+  const [previewImage, setPreviewImage] = React.useState(null);
 
   React.useEffect(() => {
     setVisibleLimit(initialVisibleItems);
@@ -177,6 +300,14 @@ export function PublicArenaPageView({
 
   const displayedItems = visibleItems.slice(0, visibleLimit);
   const remainingItems = Math.max(0, visibleItems.length - displayedItems.length);
+
+  React.useEffect(() => {
+    if (activeArenaTab !== "circuits" || !onRequestCircuitCover) return;
+    displayedItems.forEach((item) => {
+      const coverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl;
+      if (!coverImage) onRequestCircuitCover(item);
+    });
+  }, [activeArenaTab, displayedItems, onRequestCircuitCover]);
 
   return (
     <div className={`publicPage publicArenaPage ${pageClassName}`.trim()}>
@@ -207,12 +338,30 @@ export function PublicArenaPageView({
           {visibleItems.length === 0 ? (
             <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
           ) : activeArenaTab === "tournaments" ? (
-            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} />
+            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} onPreviewImage={setPreviewImage} onRequestCover={onRequestTournamentCover} />
           ) : displayedItems.map((item) => {
             const circuitStatus = getCircuitStatus(item);
+            const circuitCoverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl || "";
+            const circuitCoverThumbnail = item.ranking_settings?.coverImageThumbnailUrl
+              || item.rankingSettings?.coverImageThumbnailUrl
+              || item.coverImageThumbnailUrl
+              || "";
+            const circuitImage = circuitCoverThumbnail || circuitCoverImage || organizer.photoUrl || "";
+            const circuitImageVariant = circuitCoverImage || circuitCoverThumbnail ? "event-cover" : "profile-photo";
             return (
-              <article className="card publicArenaEventCard publicArenaCircuitCard" key={item.id}>
-                <div className="publicArenaEventIcon"><GitBranch aria-hidden="true" /></div>
+              <article className={`card publicArenaEventCard publicArenaCircuitCard ${circuitImage ? "publicArenaEventCardWithCover" : ""}`} key={item.id}>
+                {circuitImage ? (
+                  <div className={`publicArenaEventCover ${circuitImageVariant}`}>
+                    <PublicImagePreviewButton
+                      src={circuitImage}
+                      previewSrc={circuitCoverImage || circuitCoverThumbnail || organizer.photoUrl}
+                      alt={circuitImageVariant === "event-cover" ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+                      title={circuitImageVariant === "event-cover" ? item.name : organizer.arenaName || "Perfil da arena"}
+                      variant={circuitImageVariant}
+                      onPreview={setPreviewImage}
+                    />
+                  </div>
+                ) : <div className="publicArenaEventIcon"><GitBranch aria-hidden="true" /></div>}
                 <div>
                   <small>Circuito</small><h2>{item.name}</h2>
                   <span className={`publicCircuitStatus ${circuitStatus}`}>{circuitStatus === "closed" ? "Encerrado" : "Em andamento"}</span>
@@ -235,6 +384,7 @@ export function PublicArenaPageView({
           ) : null}
         </section>
       </main>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }

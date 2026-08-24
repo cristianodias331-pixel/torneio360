@@ -8242,6 +8242,673 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   }
 }
 
+/* Editor das capas 9:16 — homologação */
+.storyCoverEditorOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110000;
+  display: grid;
+  padding: clamp(12px, 3vw, 30px);
+  place-items: center;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  isolation: isolate;
+  background: rgba(2, 9, 18, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+html[data-theme="dark"] .storyCoverEditorOverlay {
+  --ui-surface-raised: #18222f;
+  --ui-surface-muted: #141e2a;
+  --ui-text: #e7eef8;
+  --ui-text-strong: #f5f8fc;
+  --ui-muted: #aab6c5;
+  --ui-border: #2b3745;
+}
+
+html[data-theme="light"] .storyCoverEditorOverlay {
+  --ui-surface-raised: #ffffff;
+  --ui-surface-muted: #eef3f8;
+  --ui-text: #132033;
+  --ui-text-strong: #09182e;
+  --ui-muted: #59687b;
+  --ui-border: #cbd6e4;
+}
+
+.storyCoverEditorModal {
+  width: min(880px, 96vw);
+  max-height: 94dvh;
+  padding: clamp(16px, 2.6vw, 26px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--ui-border, #dbe4ef);
+  border-radius: 24px;
+  background: var(--ui-surface-raised, #ffffff);
+  color: var(--ui-text-strong, #0f172a);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+}
+
+body.storyCoverScrollLocked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.storyCoverUnderlyingModalLocked {
+  pointer-events: none !important;
+}
+
+.storyCoverEditorModal > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.storyCoverEditorModal > header h2 {
+  margin: 3px 0 4px;
+  color: inherit;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+}
+
+.storyCoverEditorModal > header p {
+  margin: 0;
+  color: var(--ui-muted, #64748b);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.storyCoverEditorEyebrow {
+  color: #0ea5e9;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.storyCoverEditorBody {
+  display: grid;
+  grid-template-columns: minmax(160px, 300px) minmax(230px, 1fr);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 42px);
+}
+
+.storyCoverEditorFrame {
+  position: relative;
+  width: min(290px, 34vw, 33.75dvh);
+  aspect-ratio: 9 / 16;
+  justify-self: center;
+  overflow: hidden;
+  border: 3px solid #38bdf8;
+  border-radius: 20px;
+  background: #06111f;
+  box-shadow: 0 18px 44px rgba(8, 47, 73, 0.3);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.storyCoverEditorFrame:active {
+  cursor: grabbing;
+}
+
+.storyCoverEditorFrame canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.storyCoverEditorFrame > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.storyCoverSafeArea {
+  position: absolute;
+  inset: 5%;
+  border: 1px dashed rgba(255, 255, 255, 0.52);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.storyCoverEditorInfo {
+  display: grid;
+  gap: 9px;
+  align-content: center;
+}
+
+.storyCoverEditorInfo > strong {
+  font-size: 1.02rem;
+}
+
+.storyCoverEditorInfo > span,
+.storyCoverEditorInfo > small {
+  color: var(--ui-muted, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.storyCoverEditorInfo > small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storyCoverQuality {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 12px 13px;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.storyCoverQuality.warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.storyCoverQuality strong {
+  font-size: 0.83rem;
+}
+
+.storyCoverQuality span {
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.storyCoverGestureHint {
+  margin-top: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border, #dbe4ef);
+  border-radius: 12px;
+  background: var(--ui-surface-muted, #f1f5f9);
+  color: var(--ui-text, #334155);
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.storyCoverEditorError {
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.storyCoverEditorModal > footer {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(190px, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.storyCoverEditorModal > footer button {
+  min-height: 44px;
+}
+
+html[data-theme="dark"] .storyCoverQuality,
+.proDashboard.theme-dark .storyCoverQuality {
+  border-color: #166534;
+  background: #092d22;
+  color: #86efac;
+}
+
+html[data-theme="dark"] .storyCoverQuality.warning,
+.proDashboard.theme-dark .storyCoverQuality.warning {
+  border-color: #9a3412;
+  background: #32160a;
+  color: #fdba74;
+}
+
+@media (max-width: 720px) {
+  .storyCoverEditorOverlay {
+    align-items: start;
+    padding: 8px;
+  }
+
+  .storyCoverEditorModal {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .storyCoverEditorModal > header {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .storyCoverEditorModal > header p {
+    font-size: 0.75rem;
+  }
+
+  .storyCoverEditorModal > header button {
+    min-width: 70px;
+    padding: 8px 10px;
+  }
+
+  .storyCoverEditorBody {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .storyCoverEditorFrame {
+    width: min(185px, 46vw, 26dvh);
+    border-width: 2px;
+    border-radius: 14px;
+  }
+
+  .storyCoverEditorInfo {
+    gap: 5px;
+  }
+
+  .storyCoverEditorInfo > strong,
+  .storyCoverEditorInfo > span,
+  .storyCoverEditorInfo > small {
+    text-align: center;
+  }
+
+  .storyCoverQuality {
+    margin-top: 3px;
+    padding: 8px 10px;
+    text-align: left;
+  }
+
+  .storyCoverGestureHint {
+    margin-top: 3px;
+    padding: 7px 9px;
+  }
+
+  .storyCoverEditorModal > footer {
+    position: sticky;
+    bottom: -14px;
+    margin: 12px -4px -4px;
+    padding: 8px 4px 4px;
+    background: var(--ui-surface-raised, #ffffff);
+  }
+}
+
+@media (max-height: 620px) {
+  .storyCoverEditorModal > header p,
+  .storyCoverEditorInfo > span,
+  .storyCoverEditorInfo > small,
+  .storyCoverQuality span {
+    display: none;
+  }
+
+  .storyCoverEditorFrame {
+    width: min(150px, 24dvh);
+  }
+}
+
+/* Acabamento do editor de perfil e dos campos de capa no tema escuro */
+.publicPage .publicArenaEventCover.profile-photo {
+  background: transparent !important;
+}
+
+.publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton {
+  width: 116px !important;
+  height: 116px !important;
+  border-radius: 50% !important;
+}
+
+.publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+  width: 108px !important;
+  height: 108px !important;
+  max-width: 108px !important;
+  max-height: 108px !important;
+}
+
+.photoEditorModal {
+  border: 1px solid var(--ui-border, #dbe4ef) !important;
+  background: var(--ui-surface-raised, #ffffff) !important;
+  color: var(--ui-text-strong, #0f172a) !important;
+}
+
+.photoEditorModal h2 {
+  color: var(--ui-text-strong, #0f172a) !important;
+}
+
+.photoEditorModal p,
+.photoEditorHint {
+  color: var(--ui-muted, #64748b) !important;
+}
+
+.photoEditorPreview {
+  border-color: #38bdf8 !important;
+  background: #06111f !important;
+  box-shadow: 0 16px 36px rgba(14, 165, 233, 0.2) !important;
+}
+
+.photoZoomButtons {
+  display: none !important;
+}
+
+.photoEditorActions {
+  position: static !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
+  padding: 10px 0 0 !important;
+  border-top: 1px solid var(--ui-border, #dbe4ef) !important;
+  background: transparent !important;
+}
+
+.photoEditorActions button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+}
+
+.tournamentCoverDropzone {
+  border-color: color-mix(in srgb, var(--ui-accent, #38bdf8) 60%, transparent) !important;
+  background: var(--ui-surface-muted, #f1f5f9) !important;
+  color: var(--ui-text, #334155) !important;
+}
+
+.tournamentCoverDropzone > span {
+  color: inherit !important;
+  text-align: center;
+}
+
+html[data-theme="dark"] .tournamentCoverDropzone,
+.proDashboard.theme-dark .tournamentCoverDropzone {
+  border-color: #4f7198 !important;
+  background: #111d2c !important;
+  color: #dbeafe !important;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.05) !important;
+}
+
+html[data-theme="dark"] .tournamentCoverDropzone:hover,
+.proDashboard.theme-dark .tournamentCoverDropzone:hover {
+  border-color: #60a5fa !important;
+  background: #172a41 !important;
+}
+
+html[data-theme="dark"] .photoEditorActions,
+.proDashboard.theme-dark .photoEditorActions {
+  border-top-color: #344b65 !important;
+  background: transparent !important;
+}
+
+@media (max-width: 680px) {
+  .publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton {
+    width: 104px !important;
+    height: 104px !important;
+  }
+
+  .publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+    width: 98px !important;
+    height: 98px !important;
+    max-width: 98px !important;
+    max-height: 98px !important;
+  }
+}
+
+/* =========================================================
+   FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS — HOMOLOGAÇÃO
+   A foto herdada do perfil mantém formato circular. Capas
+   próprias preservam a proporção e abrem em tamanho maior.
+   ========================================================= */
+.publicPage .publicArenaEventCover {
+  display: grid !important;
+  place-items: center !important;
+  padding: 8px !important;
+  background: linear-gradient(145deg, #edf6ff, #f8fbff) !important;
+}
+
+.publicPage .publicArenaEventCover .publicImagePreviewButton {
+  position: relative !important;
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  place-items: center !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: zoom-in !important;
+}
+
+.publicPage .publicArenaEventCover .publicImagePreviewButton > img {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+}
+
+.publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+  width: min(104px, calc(100% - 8px)) !important;
+  height: min(104px, calc(100% - 8px)) !important;
+  aspect-ratio: 1 !important;
+  border: 3px solid #ffffff !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  box-shadow: 0 8px 22px rgba(15, 42, 72, 0.2) !important;
+}
+
+.publicPage .publicArenaEventCover.event-cover .publicImagePreviewButton > img {
+  max-width: calc(100% - 4px) !important;
+  max-height: calc(100% - 4px) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 7px 18px rgba(15, 42, 72, 0.16) !important;
+}
+
+.publicImageZoomBadge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: rgba(8, 32, 61, 0.88);
+  color: #ffffff;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+}
+
+.publicImageZoomBadge svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.publicCoverPreviewButton.publicTournamentCover {
+  position: relative;
+  display: grid;
+  width: min(100%, 170px) !important;
+  aspect-ratio: 9 / 16;
+  max-height: none !important;
+  margin: 0 auto 14px !important;
+  padding: 6px !important;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(104, 144, 187, 0.35) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(145deg, #081a2d, #102b47) !important;
+  box-shadow: 0 18px 42px rgba(15, 42, 72, 0.18) !important;
+  cursor: zoom-in;
+}
+
+.publicCoverPreviewButton.publicTournamentCover > img {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  border-radius: 12px;
+  object-fit: contain !important;
+}
+
+.publicCoverPreviewButton.publicTournamentCover > span {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 999px;
+  background: rgba(5, 20, 38, 0.86);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.publicImageLightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: grid;
+  padding: clamp(14px, 3vw, 34px);
+  place-items: center;
+  background: rgba(2, 9, 18, 0.9);
+  backdrop-filter: blur(9px);
+}
+
+.publicImageLightboxPanel {
+  position: relative;
+  display: grid;
+  width: fit-content;
+  max-width: 94vw;
+  max-height: 92dvh;
+  gap: 10px;
+  justify-items: center;
+}
+
+.publicImageLightboxPanel > img {
+  display: block;
+  max-width: 92vw;
+  max-height: 84dvh;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 18px;
+  object-fit: contain;
+  background: #06111f;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+}
+
+.publicImageLightboxPanel > strong {
+  max-width: min(720px, 90vw);
+  color: #ffffff;
+  font-size: 14px;
+  text-align: center;
+}
+
+.publicImageLightboxClose {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  min-width: 42px !important;
+  min-height: 42px !important;
+  padding: 0 !important;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: 999px !important;
+  background: rgba(5, 20, 38, 0.9) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+  cursor: pointer;
+}
+
+.publicImageLightboxClose svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tournamentCoverDropzone {
+  width: min(100%, 280px) !important;
+  min-height: 0 !important;
+  aspect-ratio: 9 / 16;
+  justify-self: start;
+  padding: 8px;
+  background: color-mix(in srgb, var(--surface, #ffffff) 92%, #dbeafe) !important;
+}
+
+.tournamentCoverDropzone img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 13px;
+  object-fit: contain !important;
+}
+
+@media (max-width: 680px) {
+  .publicPage.publicArenaPage .publicArenaEventCover {
+    padding: 3px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+    width: calc(100% - 2px) !important;
+    height: calc(100% - 2px) !important;
+    border-width: 2px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCover.event-cover .publicImagePreviewButton > img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 8px !important;
+  }
+
+  .publicImageZoomBadge {
+    right: -2px;
+    bottom: -2px;
+    width: 20px;
+    height: 20px;
+    border-width: 1px;
+  }
+
+  .publicImageZoomBadge svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .publicCoverPreviewButton.publicTournamentCover {
+    width: min(38vw, 128px) !important;
+    padding: 4px !important;
+    border-radius: 14px !important;
+  }
+
+  .publicCoverPreviewButton.publicTournamentCover > img {
+    border-radius: 11px;
+  }
+
+  .publicCoverPreviewButton.publicTournamentCover > span {
+    right: 8px;
+    bottom: 8px;
+    font-size: 9px;
+  }
+
+  .tournamentCoverDropzone {
+    width: min(100%, 220px) !important;
+  }
+}
+
 .regenerationImpactList {
   display: grid;
   gap: 8px;
@@ -31309,5 +31976,406 @@ html[data-theme="dark"] .participantOccupancyModal > p.participantOccupancyHint,
 
   .participantOccupancyActions {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* CAPAS RESPONSIVAS — REGRAS FINAIS DA HOMOLOGAÇÃO */
+@media (max-width: 760px) {
+  .publicEventMediaInfo.hasCover .publicEventMediaInfoDetails {
+    display: contents !important;
+  }
+
+  .publicEventMediaInfo.hasCover .publicOrganizerCard {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+.publicEventMediaInfo {
+  display: block;
+  width: 100%;
+}
+
+.publicEventMediaInfo.hasCover {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.publicEventMediaInfoDetails {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  align-content: start;
+}
+
+.publicEventMediaInfo .publicCoverPreviewButton.publicTournamentCover {
+  width: 176px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  align-self: start;
+}
+
+.publicEventMediaInfo .publicTournamentInfoCard,
+.publicEventMediaInfo .publicOrganizerCard,
+.publicEventMediaInfo .publicCircuitIdentityCard {
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.event-cover) {
+  grid-template-columns: 126px minmax(0, 1fr) auto !important;
+  min-height: 224px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCover.event-cover {
+  width: 126px !important;
+  height: 224px !important;
+  min-height: 224px !important;
+  align-self: stretch;
+  border-radius: inherit 0 0 inherit !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCover.event-cover .publicImagePreviewButton > img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border-radius: 11px !important;
+  object-fit: cover !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCover.profile-photo {
+  align-self: stretch;
+}
+
+@media (max-width: 760px) {
+  .publicEventMediaInfo.hasCover {
+    grid-template-columns: clamp(86px, 27vw, 104px) minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+  }
+
+  .publicEventMediaInfo .publicCoverPreviewButton.publicTournamentCover {
+    width: 100% !important;
+    padding: 3px !important;
+    border-radius: 12px !important;
+  }
+
+  .publicEventMediaInfo .publicCoverPreviewButton.publicTournamentCover > img {
+    border-radius: 9px !important;
+  }
+
+  .publicEventMediaInfo .publicCoverPreviewButton.publicTournamentCover > span {
+    right: 5px;
+    bottom: 5px;
+    max-width: calc(100% - 10px);
+    padding: 4px 6px;
+    overflow: hidden;
+    font-size: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .publicEventMediaInfoDetails {
+    gap: 8px;
+  }
+
+  .publicEventMediaInfo .publicTournamentInfoCard,
+  .publicEventMediaInfo .publicOrganizerCard,
+  .publicEventMediaInfo .publicCircuitIdentityCard {
+    padding: 11px !important;
+    border-radius: 14px !important;
+  }
+
+  .publicEventMediaInfo .publicTournamentInfoCard h2,
+  .publicEventMediaInfo .publicOrganizerCard h2,
+  .publicEventMediaInfo .publicCircuitIdentityCard h2 {
+    font-size: 14px !important;
+  }
+
+  .publicEventMediaInfo .publicInfoGrid {
+    gap: 6px !important;
+  }
+
+  .publicEventMediaInfo .publicInfoGrid > span {
+    min-height: 28px !important;
+    padding: 5px 7px !important;
+    font-size: 9px !important;
+  }
+
+  .publicEventMediaInfo .publicOrganizerHeader {
+    gap: 7px !important;
+  }
+
+  .publicEventMediaInfo .publicOrganizerHeader img {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.event-cover) {
+    grid-template-columns: 74px minmax(0, 1fr) !important;
+    min-height: 136px !important;
+    align-items: start !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.event-cover {
+    width: 74px !important;
+    height: 132px !important;
+    min-height: 132px !important;
+    padding: 2px !important;
+    border-radius: 11px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.event-cover .publicImagePreviewButton > img {
+    border-radius: 8px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.profile-photo) {
+    grid-template-columns: 56px minmax(0, 1fr) !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo {
+    width: 56px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo .publicImagePreviewButton {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: 50% !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+    border-width: 2px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .publicEventMediaInfo.hasCover {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .publicEventMediaInfo .publicOrganizerCard {
+    grid-column: 1 / -1;
+  }
+}
+
+/* =========================================================
+   CARTÕES PÚBLICOS PADRONIZADOS — HOMOLOGAÇÃO
+   Categorias agrupadas mantêm o tamanho de um evento isolado.
+   ========================================================= */
+.storyCoverEditorModal .actionConfirmBtn {
+  border-color: #16a34a !important;
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(22, 163, 74, 0.24) !important;
+}
+
+.storyCoverEditorModal .actionConfirmBtn:hover:not(:disabled) {
+  border-color: #15803d !important;
+  background: linear-gradient(135deg, #15803d, #166534) !important;
+}
+
+html[data-theme="dark"] .storyCoverEditorModal .actionConfirmBtn,
+.proDashboard.theme-dark .storyCoverEditorModal .actionConfirmBtn {
+  border-color: #22c55e !important;
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.publicPage.publicArenaPage .publicArenaGroupedEventFrame {
+  grid-column: 1 / -1;
+  display: grid;
+  min-width: 0;
+  gap: 11px;
+  padding: 11px;
+  border: 2px solid transparent;
+  border-radius: 20px;
+  background:
+    linear-gradient(#f8fbff, #f8fbff) padding-box,
+    linear-gradient(115deg, #22c55e, #0ea5e9 52%, #8b5cf6) border-box;
+  box-shadow: 0 14px 34px rgba(15, 42, 72, 0.1);
+}
+
+.publicPage.publicArenaPage .publicArenaGroupedEventHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 4px 0;
+}
+
+.publicPage.publicArenaPage .publicArenaGroupedEventHeader small {
+  color: #0f8a73;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.publicPage.publicArenaPage .publicArenaGroupedEventHeader h2 {
+  margin: 2px 0 0;
+  color: #0b1d35;
+  font-size: 16px;
+  line-height: 1.18;
+}
+
+.publicPage.publicArenaPage .publicArenaGroupedEventHeader > span {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #e6f9f2;
+  color: #08745f;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.publicPage.publicArenaPage .publicArenaGroupedEventItems {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover,
+.publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.event-cover),
+.publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.profile-photo) {
+  grid-template-columns: 76px minmax(0, 1fr) auto !important;
+  width: 100%;
+  height: 142px !important;
+  min-height: 142px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 8px 10px !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.event-cover {
+  width: 68px !important;
+  height: 121px !important;
+  min-height: 121px !important;
+  padding: 2px !important;
+  align-self: center !important;
+  border-radius: 11px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo {
+  width: 68px !important;
+  height: 68px !important;
+  min-height: 68px !important;
+  padding: 4px !important;
+  align-self: center !important;
+  border-radius: 50% !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo .publicImagePreviewButton,
+.publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 50% !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventBody {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  align-content: center;
+  padding: 0 !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
+  min-width: 92px;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  align-self: center;
+}
+
+@media (max-width: 760px) {
+  .publicPage.publicArenaPage .publicArenaGroupedEventFrame {
+    gap: 9px;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .publicPage.publicArenaPage .publicArenaGroupedEventHeader {
+    align-items: flex-start;
+    padding: 2px;
+  }
+
+  .publicPage.publicArenaPage .publicArenaGroupedEventHeader h2 {
+    font-size: 14px;
+  }
+
+  .publicPage.publicArenaPage .publicArenaGroupedEventItems {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover,
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.event-cover),
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover:has(.publicArenaEventCover.profile-photo) {
+    grid-template-columns: 68px minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) 42px !important;
+    height: 186px !important;
+    min-height: 186px !important;
+    gap: 7px 9px !important;
+    padding: 9px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.event-cover {
+    grid-column: 1;
+    grid-row: 1;
+    width: 68px !important;
+    height: 121px !important;
+    min-height: 121px !important;
+    padding: 2px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover.profile-photo {
+    grid-column: 1;
+    grid-row: 1;
+    width: 58px !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 3px !important;
+    justify-self: center;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventBody {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
+    grid-column: 1 / -1 !important;
+    grid-row: 2;
+    width: 100% !important;
+    min-height: 42px !important;
   }
 }

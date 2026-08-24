@@ -186,6 +186,15 @@ import {
   moveShuffleAnimationItems,
 } from "../src/features/media/shuffleAnimation.mjs";
 import {
+  STORY_COVER_HEIGHT,
+  STORY_COVER_WIDTH,
+  clampStoryCoverTransform,
+  getStoryCoverBackgroundRect,
+  getStoryCoverBaseScale,
+  getStoryCoverRenderRect,
+  storyCoverHasNativeResolution,
+} from "../src/features/media/storyCoverCrop.mjs";
+import {
   applyCircuitDrawOrder,
   applyCircuitExtraPoints,
   applyCircuitManualParticipants,
@@ -348,8 +357,20 @@ import {
   getCopinhaEntryCode,
   getCopinhaPlanEntry,
 } from "../src/domain/cupBracketConstruction.mjs";
-import { playRankingMainBracketPlans } from "../src/domain/cupBracketPlans.mjs";
-import { generatePlayRankingBrackets } from "../src/domain/cupBracketOrchestration.mjs";
+import {
+  playRankingLegacyV2MainBracketPlans,
+  playRankingMainBracketPlans,
+} from "../src/domain/cupBracketPlans.mjs";
+import {
+  generatePlayRankingBrackets,
+  syncCupBracketScores,
+} from "../src/domain/cupBracketOrchestration.mjs";
+import {
+  PLAY_RANKING_BRACKET_VERSION,
+  PLAY_RANKING_RETROACTIVE_PROFILE_ID,
+  migratePlayRankingBracketForReferenceProfile,
+  shouldMigratePlayRankingBracket,
+} from "../src/domain/playRankingBracketMigration.mjs";
 import { createCupPresentation } from "../src/domain/cupPresentation.mjs";
 import {
   getCopinhaHeadToHeadWinnerId,
@@ -397,6 +418,12 @@ assert.ok(
     && mainSource.match(/function updateBracketScore[\s\S]*?allowScoreRegression: true/),
   "A remoção manual de placar deixou de ser reconhecida como uma alteração intencional."
 );
+assert.ok(
+  mainSource.match(/function migrateReferenceProfilePlayRankingTournaments[\s\S]*?String\(user\.id \|\| ""\) !== PLAY_RANKING_RETROACTIVE_PROFILE_ID/)
+    && mainSource.match(/function migrateReferenceProfilePlayRankingTournaments[\s\S]*?modalityConfig\[item\?\.type\]\?\.type === "playranking"/)
+    && mainSource.match(/function migrateReferenceProfilePlayRankingTournaments[\s\S]*?\.eq\("user_id", PLAY_RANKING_RETROACTIVE_PROFILE_ID\)/),
+  "A atualização retroativa deixou de estar isolada ao perfil PLAY RANKING® e à sua modalidade Modelo Torneio 360."
+);
 const styleSource = readFileSync(new URL("src/style.css", root), "utf8");
 const authValidationSource = readFileSync(
   new URL("src/domain/authValidation.mjs", root),
@@ -438,12 +465,20 @@ const publicArenaApiSource = readFileSync(
   new URL("src/services/publicArenaApi.mjs", root),
   "utf8"
 );
-const publicIdentifiersSource = readFileSync(
-  new URL("src/domain/publicIdentifiers.mjs", root),
+const publicEventCoversMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240001_public_event_covers.sql", root),
   "utf8"
 );
-const imageResizeSource = readFileSync(
-  new URL("src/features/media/imageResize.mjs", root),
+const publicCoverThumbnailsMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240002_public_cover_thumbnails.sql", root),
+  "utf8"
+);
+const groupedEventGeneralCoverMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240003_grouped_event_general_cover.sql", root),
+  "utf8"
+);
+const publicIdentifiersSource = readFileSync(
+  new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
 );
 const rankingShareButtonSource = readFileSync(
@@ -493,6 +528,14 @@ const participantManagementSource = readFileSync(
 );
 const publicArenaPresentationSource = readFileSync(
   new URL("src/features/publicArena/PublicArenaPresentation.jsx", root),
+  "utf8"
+);
+const storyCoverEditorSource = readFileSync(
+  new URL("src/features/media/StoryCoverEditor.jsx", root),
+  "utf8"
+);
+const storyCoverCropSource = readFileSync(
+  new URL("src/features/media/storyCoverCrop.mjs", root),
   "utf8"
 );
 const rankingTablesSource = readFileSync(
@@ -1832,13 +1875,13 @@ assert.deepEqual(
   playRankingSevenGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
   [
     [1, null],
-    [12, 9],
-    [4, 13],
-    [11, 5],
-    [6, 8],
-    [14, 3],
-    [7, 10],
-    [2, null],
+    [14, 9],
+    [4, 10],
+    [13, 5],
+    [6, 12],
+    [11, 3],
+    [7, 8],
+    [null, 2],
   ],
   "O Modelo Torneio 360 com sete grupos deixou de reproduzir a distribuição de referência."
 );
@@ -1847,6 +1890,99 @@ assert.deepEqual(
   [true, false, false, false, false, false, false, true],
   "Os dois melhores campeões do Modelo Torneio 360 devem receber BYE nas extremidades da chave."
 );
+const playRankingLegacyV2SevenGroupOpening = buildCopinhaBracketFromPlan(
+  playRankingSevenGroupEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingLegacyV2MainBracketPlans[7])
+)[0].games;
+assert.deepEqual(
+  playRankingLegacyV2SevenGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [
+    [1, null],
+    [12, 9],
+    [4, 13],
+    [11, 5],
+    [6, 8],
+    [14, 3],
+    [7, 10],
+    [2, null],
+  ],
+  "A versão 2 deixou de preservar a chave antiga enquanto não houver migração autorizada."
+);
+const playRankingFourGroupEntries = [
+  ...Array.from({ length: 4 }, (_, index) => ({ id: index + 1, groupPosition: 1, groupRank: index + 1 })),
+  ...Array.from({ length: 4 }, (_, index) => ({ id: index + 5, groupPosition: 2, groupRank: index + 1 })),
+];
+const playRankingFourGroupOpening = buildCopinhaBracketFromPlan(
+  playRankingFourGroupEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingMainBracketPlans[4])
+)[0].games;
+assert.deepEqual(
+  playRankingFourGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [[1, 7], [6, 4], [3, 5], [8, 2]],
+  "A chave oficial com quatro grupos não reproduziu os quatro confrontos de referência."
+);
+const playRankingSixGroupEntries = [
+  ...Array.from({ length: 6 }, (_, index) => ({ id: index + 1, groupPosition: 1, groupRank: index + 1 })),
+  ...Array.from({ length: 6 }, (_, index) => ({ id: index + 7, groupPosition: 2, groupRank: index + 1 })),
+];
+const playRankingSixGroupOpening = buildCopinhaBracketFromPlan(
+  playRankingSixGroupEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingMainBracketPlans[6])
+)[0].games;
+assert.deepEqual(
+  playRankingSixGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [[1, null], [8, 9], [4, null], [12, 5], [6, 7], [null, 3], [10, 11], [null, 2]],
+  "A chave oficial com seis grupos não reproduziu os BYEs e confrontos de referência."
+);
+for (let groupCount = 2; groupCount <= 10; groupCount += 1) {
+  const entries = [
+    ...Array.from({ length: groupCount }, (_, index) => ({
+      id: index + 1,
+      groupPosition: 1,
+      groupRank: index + 1,
+    })),
+    ...Array.from({ length: groupCount }, (_, index) => ({
+      id: groupCount + index + 1,
+      groupPosition: 2,
+      groupRank: index + 1,
+    })),
+  ];
+  const openingGames = buildCopinhaBracketFromPlan(
+    entries,
+    "main",
+    "Eliminatória Principal",
+    expandBracketPlanWithVisualByes(playRankingMainBracketPlans[groupCount])
+  )[0].games;
+  const expectedByeCount = getNextPowerOfTwo(groupCount * 2) - groupCount * 2;
+  const byeSeedIds = openingGames
+    .filter((game) => game.isBye)
+    .flatMap((game) => [...game.ids1, ...game.ids2])
+    .sort((first, second) => first - second);
+  assert.deepEqual(
+    byeSeedIds,
+    Array.from({ length: expectedByeCount }, (_, index) => index + 1),
+    `Os BYEs com ${groupCount} grupos deixaram de pertencer às melhores sementes.`
+  );
+
+  for (let groupRank = 1; groupRank <= groupCount; groupRank += 1) {
+    const championId = groupRank;
+    const runnerUpId = groupCount + groupRank;
+    const championGameIndex = openingGames.findIndex((game) => [...game.ids1, ...game.ids2].includes(championId));
+    const runnerUpGameIndex = openingGames.findIndex((game) => [...game.ids1, ...game.ids2].includes(runnerUpId));
+    assert.ok(championGameIndex >= 0 && runnerUpGameIndex >= 0, `Uma semente sumiu da chave com ${groupCount} grupos.`);
+    assert.notEqual(
+      championGameIndex < openingGames.length / 2,
+      runnerUpGameIndex < openingGames.length / 2,
+      `Campeão e segundo colocado do grupo ${groupRank} não ficaram em metades opostas com ${groupCount} grupos.`
+    );
+  }
+}
 const copinhaEliminationEntries = [
   { id: 0, groupId: 0 },
   { id: 1, groupId: 1 },
@@ -2305,7 +2441,7 @@ const playRankingSevenGroupData = {
   cupConfig: {
     teamCount: 21,
     format: "playranking",
-    playRankingBracketVersion: 2,
+    playRankingBracketVersion: PLAY_RANKING_BRACKET_VERSION,
   },
   players: createNamedTeams(21),
   schedule: completeGroupScheduleWithLowerIdWinning(
@@ -2325,14 +2461,81 @@ assert.equal(
   14,
   "A chave integrada do Modelo Torneio 360 perdeu ou repetiu uma dupla classificada."
 );
-const legacyPlayRankingSevenGroupOpening = generatePlayRankingBrackets({
+const legacyPlayRankingSevenGroupData = {
+  ...playRankingSevenGroupData,
+  cupConfig: { teamCount: 21, format: "playranking", playRankingBracketVersion: 2 },
+};
+const legacyPlayRankingSevenGroupOpening = generatePlayRankingBrackets(legacyPlayRankingSevenGroupData).main[0].games;
+const expectedLegacyPlayRankingSevenGroupOpening = buildCopinhaBracketFromPlan(
+  getCearenseQualified(legacyPlayRankingSevenGroupData).main,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingLegacyV2MainBracketPlans[7])
+)[0].games;
+assert.deepEqual(
+  legacyPlayRankingSevenGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  expectedLegacyPlayRankingSevenGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  "A versão 2 do Modelo Torneio 360 deixou de manter sua distribuição anterior."
+);
+const unversionedPlayRankingSevenGroupOpening = generatePlayRankingBrackets({
   ...playRankingSevenGroupData,
   cupConfig: { teamCount: 21, format: "playranking" },
 }).main[0].games;
 assert.deepEqual(
-  legacyPlayRankingSevenGroupOpening.map((game) => game.isBye),
+  unversionedPlayRankingSevenGroupOpening.map((game) => game.isBye),
   [true, false, false, false, true, false, false, false],
-  "Uma chave antiga do Modelo Torneio 360 foi migrada silenciosamente sem regeneração autorizada."
+  "Uma chave sem versão foi migrada silenciosamente fora do perfil retroativo autorizado."
+);
+const retroactivePlayers = createNamedTeams(4);
+const retroactiveBaseData = {
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 4, format: "playranking" },
+  players: retroactivePlayers,
+  schedule: completeGroupScheduleWithLowerIdWinning(
+    generateCupGroupSchedule(retroactivePlayers, { teamCount: 4, format: "playranking" })
+  ),
+  brackets: [],
+};
+const retroactiveGenerated = syncCupBracketScores(retroactiveBaseData);
+const retroactiveScored = {
+  ...retroactiveGenerated,
+  brackets: retroactiveGenerated.brackets.map((game, index) => (
+    index === 0 ? { ...game, s1: "4", s2: "2" } : game
+  )),
+};
+const referenceTournament = {
+  user_id: PLAY_RANKING_RETROACTIVE_PROFILE_ID,
+  type: "Modelo Play Ranking",
+  data: retroactiveScored,
+};
+assert.equal(
+  shouldMigratePlayRankingBracket(referenceTournament, retroactiveScored),
+  true,
+  "O perfil oficial PLAY RANKING deixou de ser reconhecido pela migração retroativa."
+);
+const retroactiveMigration = migratePlayRankingBracketForReferenceProfile(referenceTournament, retroactiveScored);
+assert.equal(retroactiveMigration.applied, true, "A migração retroativa autorizada não foi aplicada.");
+assert.equal(retroactiveMigration.data.cupConfig.playRankingBracketVersion, PLAY_RANKING_BRACKET_VERSION, "A migração não registrou a versão oficial.");
+assert.equal(retroactiveMigration.preservedScores, 1, "Um placar do mesmo confronto deixou de ser transportado.");
+assert.equal(retroactiveMigration.pendingScores, 0, "Um confronto idêntico foi marcado indevidamente como pendente.");
+assert.deepEqual(
+  retroactiveMigration.data.privateData.playRankingBracketBackups[0].brackets,
+  retroactiveScored.brackets,
+  "A chave anterior completa não foi preservada no backup reversível."
+);
+const otherProfileTournament = {
+  ...referenceTournament,
+  user_id: "95f7aefa-d2b9-4df5-9c64-97902f4298e4",
+};
+const otherProfileMigration = migratePlayRankingBracketForReferenceProfile(otherProfileTournament, retroactiveScored);
+assert.equal(otherProfileMigration.applied, false, "Um torneio antigo do perfil Sunset foi alterado retroativamente.");
+assert.equal(otherProfileMigration.data, retroactiveScored, "A migração tocou nos dados de outro perfil.");
+const otherModalityData = { ...retroactiveScored, cupConfig: { teamCount: 4, format: "cearense" } };
+assert.equal(
+  migratePlayRankingBracketForReferenceProfile(referenceTournament, otherModalityData).applied,
+  false,
+  "A migração do PLAY RANKING atingiu outra modalidade do mesmo perfil."
 );
 const standardGroupPlayers = createNamedTeams(6);
 const standardGroupSchedule = completeGroupScheduleWithLowerIdWinning(
@@ -2499,10 +2702,49 @@ assert.deepEqual(
   ["campeoes", "paralela"],
   "Os empates proporcionais entre grupos deixaram de ser identificados por disputa."
 );
+const playRankingV3BeforeDraw = getCearenseQualified({
+  ...officialGroupData,
+  cupConfig: {
+    teamCount: 7,
+    format: "playranking",
+    playRankingBracketVersion: PLAY_RANKING_BRACKET_VERSION,
+  },
+});
+assert.ok(
+  !playRankingV3BeforeDraw.unresolvedCampaignTies.some((tie) => tie.scope === "segundos"),
+  "O segundo colocado não pode receber um sorteio independente do campeão de seu grupo."
+);
+const playRankingV3ChampionTie = playRankingV3BeforeDraw.unresolvedCampaignTies.find((tie) => tie.scope === "campeoes");
+assert.ok(playRankingV3ChampionTie, "O empate entre campeões precisa continuar solicitando sorteio.");
+const reversedChampionOrder = [...playRankingV3ChampionTie.teamIds].reverse();
+const playRankingV3AfterDraw = getCearenseQualified({
+  ...officialGroupData,
+  cupConfig: {
+    teamCount: 7,
+    format: "playranking",
+    playRankingBracketVersion: PLAY_RANKING_BRACKET_VERSION,
+    campaignTieBreakOverrides: {
+      [playRankingV3ChampionTie.tieKey]: reversedChampionOrder,
+    },
+  },
+});
+const playRankingV3Champions = playRankingV3AfterDraw.main.filter((row) => row.groupPosition === 1);
+const playRankingV3RunnersUp = playRankingV3AfterDraw.main.filter((row) => row.groupPosition === 2);
+assert.deepEqual(
+  playRankingV3RunnersUp.map((row) => row.groupId),
+  playRankingV3Champions.map((row) => row.groupId),
+  "Cada segundo colocado deve acompanhar a posição sorteada do campeão do mesmo grupo."
+);
+assert.deepEqual(
+  playRankingV3RunnersUp.map((row) => row.groupRank),
+  playRankingV3Champions.map((row) => row.groupRank),
+  "Campeão e segundo colocado do mesmo grupo perderam o seed vinculado."
+);
 assert.ok(
   mainSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL = "Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
     && tieBreakPanelsSource.includes('"playranking"')
-    && tournamentFormatHelpSource.includes("O Total de Games permanece visível somente como estatística."),
+    && tournamentFormatHelpSource.includes("O Total de Games permanece visível somente como estatística.")
+    && tournamentFormatHelpSource.includes("o segundo colocado acompanha a posição do campeão do seu grupo"),
   "O Modelo Torneio 360 não explica sua regra exclusiva ou voltou a tratar Total de Games como desempate do grupo."
 );
 const copinhaPlayers = createNamedTeams(9);
@@ -3910,9 +4152,9 @@ assert.ok(
 );
 assert.ok(
   publicIdentifiersSource.includes("export function generatePublicId")
-    && imageResizeSource.includes("export function resizeImageFile")
+    && storyCoverCropSource.includes("export function readStoryCoverFile")
     && mainSource.includes('from "./domain/publicIdentifiers.mjs"')
-    && mainSource.includes('from "./features/media/imageResize.mjs"'),
+    && mainSource.includes('from "./features/media/storyCoverCrop.mjs"'),
   "Os identificadores públicos ou o tratamento de imagens voltaram ao componente principal."
 );
 assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
@@ -5143,6 +5385,97 @@ assert.ok(
     && styleSource.includes('html[data-theme="dark"] .participantOccupancyList li')
     && styleSource.includes("@media (max-width: 520px)"),
   "O aviso não bloqueante de participantes ocupados perdeu a confirmação, as chaves ou a adaptação visual."
+);
+
+assert.equal(
+  normalizeCircuitRankingSettings({ coverImageUrl: "data:image/jpeg;base64,capa" }).coverImageUrl,
+  "data:image/jpeg;base64,capa",
+  "A foto própria do circuito deixou de ser preservada nas configurações persistidas."
+);
+assert.equal(
+  normalizeCircuitRankingSettings({ coverImageThumbnailUrl: "data:image/jpeg;base64,mini" }).coverImageThumbnailUrl,
+  "data:image/jpeg;base64,mini",
+  "A miniatura própria do circuito deixou de ser preservada nas configurações persistidas."
+);
+assert.equal(
+  getPublicTournamentDirectoryItem({
+    id: "evento-com-capa",
+    data: { eventCoverImageThumbnailUrl: "data:image/jpeg;base64,mini-evento" },
+  }).data.eventCoverImageThumbnailUrl,
+  "data:image/jpeg;base64,mini-evento",
+  "A miniatura geral do evento com várias categorias deixou de chegar ao perfil público."
+);
+assert.equal(STORY_COVER_WIDTH, 1080, "A largura padrão da capa Stories foi alterada.");
+assert.equal(STORY_COVER_HEIGHT, 1920, "A altura padrão da capa Stories foi alterada.");
+assert.equal(getStoryCoverBaseScale(3000, 2000), 0.36, "A foto horizontal não é mais preservada inteira dentro do quadro 9:16.");
+assert.deepEqual(
+  clampStoryCoverTransform({ sourceWidth: 3000, sourceHeight: 2000, zoom: 1, x: 9999, y: 9999 }),
+  { zoom: 1, x: 0, y: 0 },
+  "A foto inteira deveria permanecer centralizada antes do zoom."
+);
+assert.deepEqual(
+  clampStoryCoverTransform({ sourceWidth: 3000, sourceHeight: 2000, zoom: 3, x: 9999, y: 9999 }),
+  { zoom: 3, x: 1080, y: 120 },
+  "O arraste após o zoom deixou de respeitar os limites da fotografia."
+);
+assert.deepEqual(
+  getStoryCoverBackgroundRect(3000, 2000),
+  { width: 2880, height: 1920, left: -900, top: 0 },
+  "O fundo adaptativo não cobre corretamente o quadro 9:16."
+);
+assert.deepEqual(
+  getStoryCoverRenderRect({ sourceWidth: 1080, sourceHeight: 1920, zoom: 1, x: 0, y: 0 }),
+  { zoom: 1, x: 0, y: 0, width: 1080, height: 1920, left: 0, top: 0 },
+  "Uma foto Stories pronta deixou de preencher exatamente a saída."
+);
+assert.equal(storyCoverHasNativeResolution(2160, 3840), true, "Fotos grandes deixaram de ser reconhecidas como adequadas.");
+assert.equal(storyCoverHasNativeResolution(540, 960), false, "Fotos pequenas deixaram de receber o alerta de nitidez.");
+assert.ok(
+  mainSource.includes("readStoryCoverFile")
+    && mainSource.includes("StoryCoverEditor")
+    && mainSource.includes("createPortal(")
+    && mainSource.includes("document.body")
+    && mainSource.includes("1080 × 1920 px (9:16)")
+    && mainSource.includes("Foto do circuito")
+    && !mainSource.includes('className="photoZoomButtons"')
+    && storyCoverEditorSource.includes('canvas.toDataURL("image/jpeg", 0.88)')
+    && storyCoverEditorSource.includes('thumbnailCanvas.toDataURL("image/jpeg", 0.8)')
+    && storyCoverEditorSource.includes("getStoryCoverBackgroundRect")
+    && storyCoverEditorSource.includes("context.filter")
+    && storyCoverEditorSource.includes("handlePointerMove")
+    && storyCoverEditorSource.includes("handleWheel")
+    && storyCoverEditorSource.includes('document.querySelectorAll(\'[aria-modal="true"]\')')
+    && storyCoverEditorSource.includes('body.style.position = "fixed"')
+    && storyCoverEditorSource.includes("dialog.inert = true")
+    && mainSource.includes("PublicImageLightbox")
+    && publicArenaPresentationSource.includes('organizer.photoUrl || "/torneio360-profile.png"')
+    && publicArenaApiSource.includes("get_public_tournament_cover")
+    && publicArenaApiSource.includes("get_public_circuit_cover")
+    && publicEventCoversMigrationSource.includes("create or replace function public.get_public_tournament_cover")
+    && publicEventCoversMigrationSource.includes("create or replace function public.get_public_circuit_cover")
+    && publicEventCoversMigrationSource.includes("- 'coverImageUrl'")
+    && publicCoverThumbnailsMigrationSource.includes("eventCoverImageThumbnailUrl")
+    && groupedEventGeneralCoverMigrationSource.includes("multiCategoryEvent")
+    && groupedEventGeneralCoverMigrationSource.includes("eventCoverImageUrl")
+    && publicArenaApiSource.includes("tournamentData.multiCategoryEvent === true")
+    && publicArenaPresentationSource.includes("previewSrc")
+    && publicArenaPresentationSource.includes("publicArenaGroupedEventFrame")
+    && publicArenaPresentationSource.includes("publicArenaGroupedEventItems")
+    && mainSource.includes('const eventCoverImageUrl = firstDetails.eventCoverImageUrl || ""')
+    && styleSource.includes("CAPAS RESPONSIVAS — REGRAS FINAIS DA HOMOLOGAÇÃO")
+    && styleSource.includes("CARTÕES PÚBLICOS PADRONIZADOS — HOMOLOGAÇÃO")
+    && styleSource.includes(".storyCoverEditorModal .actionConfirmBtn")
+    && styleSource.includes("FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS")
+    && styleSource.includes(".publicArenaEventCover.profile-photo")
+    && styleSource.includes(".publicArenaEventCover.profile-photo .publicImagePreviewButton")
+    && styleSource.includes("box-sizing: border-box !important")
+    && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover")
+    && styleSource.includes(".storyCoverEditorFrame")
+    && styleSource.includes("aspect-ratio: 9 / 16")
+    && styleSource.includes("z-index: 110000")
+    && styleSource.includes(".storyCoverUnderlyingModalLocked")
+    && styleSource.includes('html[data-theme="dark"] .tournamentCoverDropzone'),
+  "As imagens públicas perderam o editor Stories, a moldura circular, o contraste noturno ou a ampliação."
 );
 
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {

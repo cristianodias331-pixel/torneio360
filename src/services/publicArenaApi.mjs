@@ -15,6 +15,41 @@ import {
 
 export function createPublicArenaApi({ supabase }) {
   let directoryRequestInFlight = null;
+  const publicCoverCache = new Map();
+  const publicCoverRequests = new Map();
+
+  async function fetchPublicCover({ kind, id, rpcName, parameter, fallback }) {
+    const normalizedId = String(id || "").trim();
+    if (!normalizedId) return "";
+    const cacheKey = `${kind}:${normalizedId}`;
+    if (publicCoverCache.has(cacheKey)) return publicCoverCache.get(cacheKey);
+    if (publicCoverRequests.has(cacheKey)) return publicCoverRequests.get(cacheKey);
+
+    const request = (async () => {
+      let coverImageUrl = "";
+      try {
+        const result = await supabase.rpc(rpcName, { [parameter]: normalizedId });
+        if (!result.error) coverImageUrl = String(result.data || "");
+      } catch (error) {
+        coverImageUrl = "";
+      }
+
+      if (!coverImageUrl) {
+        const fallbackResult = await fallback(normalizedId);
+        coverImageUrl = String(fallbackResult || "");
+      }
+
+      publicCoverCache.set(cacheKey, coverImageUrl);
+      return coverImageUrl;
+    })();
+
+    publicCoverRequests.set(cacheKey, request);
+    try {
+      return await request;
+    } finally {
+      publicCoverRequests.delete(cacheKey);
+    }
+  }
 
   async function fetchPublicArenaDirectory({ search = null, limit = 250 } = {}) {
     const normalizedSearch = String(search || "").trim() || null;
@@ -202,11 +237,42 @@ export function createPublicArenaApi({ supabase }) {
     }
   }
 
+  function fetchPublicTournamentCover(publicId) {
+    return fetchPublicCover({
+      kind: "tournament",
+      id: publicId,
+      rpcName: "get_public_tournament_cover",
+      parameter: "p_public_id",
+      fallback: async (normalizedPublicId) => {
+        const detail = await fetchPublicTournamentDetail(normalizedPublicId);
+        const tournamentData = detail.data?.data || {};
+        return tournamentData.multiCategoryEvent === true
+          ? tournamentData.eventCoverImageUrl || ""
+          : tournamentData.coverImageUrl || "";
+      },
+    });
+  }
+
+  function fetchPublicCircuitCover(circuitId) {
+    return fetchPublicCover({
+      kind: "circuit",
+      id: circuitId,
+      rpcName: "get_public_circuit_cover",
+      parameter: "p_circuit_id",
+      fallback: async (normalizedCircuitId) => {
+        const detail = await fetchPublicCircuitDetail(normalizedCircuitId);
+        return detail.data?.ranking_settings?.coverImageUrl || detail.data?.rankingSettings?.coverImageUrl || "";
+      },
+    });
+  }
+
   return {
     fetchPublicArenaBundle,
     fetchPublicArenaDirectory,
     fetchPublicArenaPhoto,
+    fetchPublicCircuitCover,
     fetchPublicCircuitDetail,
+    fetchPublicTournamentCover,
     fetchPublicTournamentDetail,
   };
 }

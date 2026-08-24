@@ -94,6 +94,7 @@ import ParticipantImportModalView, {
 import {
   PublicArenaDirectoryView,
   PublicArenaHeroHeaderView,
+  PublicImageLightbox,
   PublicArenaPageView,
   PublicRegistrationStatusView,
   PublicArenaTournamentCardsView,
@@ -165,7 +166,8 @@ import {
   NoticeModal,
 } from "./features/dialogs/ConfirmationDialogs.jsx";
 import ShuffleVideoModal from "./features/media/ShuffleVideoModal.jsx";
-import { resizeImageFile } from "./features/media/imageResize.mjs";
+import StoryCoverEditor from "./features/media/StoryCoverEditor.jsx";
+import { readStoryCoverFile } from "./features/media/storyCoverCrop.mjs";
 import {
   createShuffleVideoFile,
   createShuffleVideoSnapshot,
@@ -436,6 +438,11 @@ import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { calculateCupGroupRankings } from "./domain/cupGroupRanking.mjs";
 import { getCearenseQualified } from "./domain/cearenseQualification.mjs";
 import { getCopinhaSeededGroups } from "./domain/cupQualification.mjs";
+import {
+  PLAY_RANKING_BRACKET_VERSION,
+  PLAY_RANKING_RETROACTIVE_PROFILE_ID,
+  migratePlayRankingBracketForReferenceProfile,
+} from "./domain/playRankingBracketMigration.mjs";
 import "./style.css";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
@@ -455,7 +462,9 @@ const {
   fetchPublicArenaBundle,
   fetchPublicArenaDirectory,
   fetchPublicArenaPhoto,
+  fetchPublicCircuitCover,
   fetchPublicCircuitDetail,
+  fetchPublicTournamentCover,
   fetchPublicTournamentDetail,
 } = createPublicArenaApi({ supabase });
 
@@ -2180,6 +2189,7 @@ const [newCategorySchedules, setNewCategorySchedules] = useState([{
   winningScore: "4",
   rankingCriteria: "",
   coverImageUrl: "",
+  coverImageThumbnailUrl: "",
 }]);
 const [newDate, setNewDate] = useState("");
 const [newEndDate, setNewEndDate] = useState("");
@@ -2189,7 +2199,10 @@ const [newDailyStartTimes, setNewDailyStartTimes] = useState({});
 const [newDay, setNewDay] = useState("");
 const [newLocation, setNewLocation] = useState("");
 const [newCoverImageUrl, setNewCoverImageUrl] = useState("");
+const [newCoverImageThumbnailUrl, setNewCoverImageThumbnailUrl] = useState("");
 const [coverImageLoading, setCoverImageLoading] = useState(false);
+const [coverImageEditor, setCoverImageEditor] = useState(null);
+const coverImageApplyRef = useRef(null);
 const [newWinningScore, setNewWinningScore] = useState(4);
 const [newRankingCriteria, setNewRankingCriteria] = useState("");
 const [newPublicInfo, setNewPublicInfo] = useState({
@@ -2254,6 +2267,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const selectedRef = useRef(selected);
   const dashboardLoadInFlightRef = useRef(false);
   const dashboardLastLoadedAtRef = useRef(0);
+  const playRankingRetroMigrationInFlightRef = useRef(null);
   const tournamentRealtimeEpochRef = useRef(0);
   const circuitRealtimeEpochRef = useRef(0);
   const circuitHistoryLoadedIdsRef = useRef(new Set());
@@ -2264,6 +2278,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [circuitForm, setCircuitForm] = useState({
     id: null,
     name: "",
+    coverImageUrl: "",
+    coverImageThumbnailUrl: "",
     startDate: "",
     endDate: "",
     tournamentIds: [],
@@ -3005,6 +3021,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return {
       id: row.id,
       name: row.name || "",
+      coverImageUrl: rankingSettings.coverImageUrl,
+      coverImageThumbnailUrl: rankingSettings.coverImageThumbnailUrl,
       startDate: row.start_date || "",
       endDate: row.end_date || "",
       status: normalizeCircuitStatus(row.status),
@@ -3559,6 +3577,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuitForm({
       id: null,
       name: "",
+      coverImageUrl: "",
+      coverImageThumbnailUrl: "",
       startDate: "",
       endDate: "",
       tournamentIds: [],
@@ -3634,7 +3654,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const selectedTournamentIds = normalizeCircuitTournamentIds(form.tournamentIds);
     const comparableRankingSettings = (value) => {
       const normalized = normalizeCircuitRankingSettings(value);
-      return { ...normalized, genderRegistry: {}, rankingDivision: "general" };
+      return { ...normalized, coverImageUrl: "", coverImageThumbnailUrl: "", genderRegistry: {}, rankingDivision: "general" };
     };
     const rankingCalculationChanged = !isEditing
       || JSON.stringify(selectedTournamentIds) !== JSON.stringify((previousCircuit?.tournamentIds || []).map(String))
@@ -3676,6 +3696,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       ranking_criteria_mode: "automatic",
       ranking_settings: normalizeCircuitRankingSettings({
         ...form.rankingSettings,
+        coverImageUrl: form.coverImageUrl,
+        coverImageThumbnailUrl: form.coverImageThumbnailUrl,
         tournamentFormat: "",
         genderRegistry: mergeParticipantGenderRegistries(
           getArenaParticipantGenderRegistry(),
@@ -3890,6 +3912,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuitForm({
       id: null,
       name: "",
+      coverImageUrl: "",
+      coverImageThumbnailUrl: "",
       startDate,
       endDate,
       tournamentIds: [tournament.id],
@@ -3910,6 +3934,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       _baseCircuit: editableCircuit,
       id: editableCircuit.id,
       name: editableCircuit.name || "",
+      coverImageUrl: editableCircuit.coverImageUrl || editableCircuit.rankingSettings?.coverImageUrl || "",
+      coverImageThumbnailUrl: editableCircuit.coverImageThumbnailUrl || editableCircuit.rankingSettings?.coverImageThumbnailUrl || "",
       startDate: editableCircuit.startDate || "",
       endDate: editableCircuit.endDate || "",
       tournamentIds: normalizeCircuitTournamentIds(editableCircuit.tournamentIds),
@@ -4548,17 +4574,28 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCoverImageLoading(true);
 
     try {
-      const imageUrl = await resizeImageFile(file, {
-        maxWidth: 1400,
-        maxHeight: 900,
-        quality: 0.82,
-      });
-      applyImage(imageUrl);
+      const imageUrl = await readStoryCoverFile(file);
+      coverImageApplyRef.current = applyImage;
+      setCoverImageEditor({ imageUrl, fileName: file.name || "" });
     } catch (error) {
-      showNotice("warning", "Foto não adicionada", error.message || "Escolha outra imagem.");
-    } finally {
+      coverImageApplyRef.current = null;
       setCoverImageLoading(false);
+      showNotice("warning", "Foto não adicionada", error.message || "Escolha outra imagem.");
     }
+  }
+
+  function cancelTournamentCoverEditor() {
+    coverImageApplyRef.current = null;
+    setCoverImageEditor(null);
+    setCoverImageLoading(false);
+  }
+
+  function applyTournamentCover(images) {
+    coverImageApplyRef.current?.(images);
+    coverImageApplyRef.current = null;
+    setCoverImageEditor(null);
+    setCoverImageLoading(false);
+    showNotice("info", "Foto enquadrada", "A capa foi preparada em 1080 × 1920 px. Salve as alterações para concluir.");
   }
 
   function buildOrganizerProfilePayload() {
@@ -4878,13 +4915,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setPhotoEditor((prev) => prev ? {
       ...prev,
       zoom: clampPhotoZoom((prev.zoom || 1) + direction),
-    } : prev);
-  }
-
-  function nudgePhotoZoom(amount) {
-    setPhotoEditor((prev) => prev ? {
-      ...prev,
-      zoom: clampPhotoZoom((prev.zoom || 1) + amount),
     } : prev);
   }
 
@@ -5544,6 +5574,139 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return activeTournaments;
   }
 
+  async function migrateReferenceProfilePlayRankingTournaments(tournamentSource = []) {
+    if (String(user.id || "") !== PLAY_RANKING_RETROACTIVE_PROFILE_ID || isBrowserOffline()) {
+      return {
+        tournaments: tournamentSource,
+        migratedCount: 0,
+        blockedCount: 0,
+        failedCount: 0,
+        preservedScores: 0,
+      };
+    }
+
+    if (playRankingRetroMigrationInFlightRef.current) {
+      return playRankingRetroMigrationInFlightRef.current;
+    }
+
+    const migrationRequest = (async () => {
+      const candidates = (tournamentSource || []).filter((item) => (
+        !item?.data?.deletedAt
+        && modalityConfig[item?.type]?.type === "playranking"
+      ));
+      if (!candidates.length) {
+        return {
+          tournaments: tournamentSource,
+          migratedCount: 0,
+          blockedCount: 0,
+          failedCount: 0,
+          preservedScores: 0,
+        };
+      }
+
+      const { data: freshRows, error: freshRowsError } = await executeTournamentRequest((signal) => (
+        supabase
+          .from("tournaments")
+          .select("*")
+          .eq("user_id", PLAY_RANKING_RETROACTIVE_PROFILE_ID)
+          .in("id", candidates.map((item) => item.id))
+          .abortSignal(signal)
+      ), 20000);
+      if (freshRowsError) {
+        console.error("Erro ao carregar os torneios protegidos do PLAY RANKING®:", freshRowsError);
+        return {
+          tournaments: tournamentSource,
+          migratedCount: 0,
+          blockedCount: 0,
+          failedCount: candidates.length,
+          preservedScores: 0,
+        };
+      }
+
+      const fullRows = (freshRows || []).map((item) => ({ ...item, __summary: false }));
+      const fullRowsById = new Map(fullRows.map((item) => [String(item.id), item]));
+      const savedById = new Map();
+      let migratedCount = 0;
+      let blockedCount = 0;
+      let failedCount = 0;
+      let preservedScores = 0;
+
+      for (const candidate of candidates) {
+        let current = fullRowsById.get(String(candidate.id));
+        if (!current || isTournamentSummary(current)) {
+          failedCount += 1;
+          continue;
+        }
+
+        let finished = false;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const normalizedData = normalizeTournamentData(current.type, current.data);
+          const migration = migratePlayRankingBracketForReferenceProfile(current, normalizedData);
+
+          if (migration.blocked) {
+            blockedCount += 1;
+            finished = true;
+            break;
+          }
+          if (!migration.applied) {
+            finished = true;
+            break;
+          }
+
+          const result = await persistTournamentSnapshot({
+            ...current,
+            data: migration.data,
+            scoreSafetyBaseData: current.data,
+            allowScoreRegression: true,
+            changeId: generateCollaborationChangeId(),
+          }, {
+            expectedUpdatedAt: current.updated_at || null,
+            expectedRevision: getCollaborationRevision(current),
+          });
+
+          if (result.ok && result.tournament) {
+            savedById.set(String(result.tournament.id), result.tournament);
+            migratedCount += 1;
+            preservedScores += migration.preservedScores;
+            finished = true;
+            break;
+          }
+          if (result.conflict && result.serverTournament?.data) {
+            current = { ...result.serverTournament, __summary: false };
+            continue;
+          }
+
+          failedCount += 1;
+          finished = true;
+          break;
+        }
+
+        if (!finished) failedCount += 1;
+      }
+
+      const nextTournaments = sortTournamentsByStoredOrder(
+        tournamentsRef.current.map((item) => (
+          savedById.get(String(item.id)) || item
+        ))
+      );
+      tournamentsRef.current = nextTournaments;
+      setTournaments(nextTournaments);
+
+      return {
+        tournaments: nextTournaments,
+        migratedCount,
+        blockedCount,
+        failedCount,
+        preservedScores,
+      };
+    })().finally(() => {
+      playRankingRetroMigrationInFlightRef.current = null;
+    });
+
+    playRankingRetroMigrationInFlightRef.current = migrationRequest;
+    return migrationRequest;
+  }
+
   async function openArenaProfile(arena) {
     window.location.assign(getArenaPublicUrl(arena.id));
   }
@@ -5665,13 +5828,18 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         tournamentsRef.current = synchronizedTournaments;
         setTournaments(synchronizedTournaments);
 
-        const criteriaCircuits = await syncAutomaticCircuitCriteria(synchronizedTournaments, loadedCircuits);
+        const playRankingMigration = await migrateReferenceProfilePlayRankingTournaments(
+          synchronizedTournaments
+        );
+        const readyTournaments = playRankingMigration.tournaments;
+
+        const criteriaCircuits = await syncAutomaticCircuitCriteria(readyTournaments, loadedCircuits);
         const readyCircuits = criteriaCircuits || loadedCircuits;
         circuitsRef.current = readyCircuits;
         setCircuits(readyCircuits);
 
         await saveDashboardCache(user.id, {
-          tournaments: synchronizedTournaments,
+          tournaments: readyTournaments,
           trashTournaments: trashTournamentsRef.current,
           circuits: readyCircuits,
           trashCircuits: trashCircuitsRef.current,
@@ -5691,6 +5859,24 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             "success",
             "Dados sincronizados",
             `${pendingSync.syncedCount} alteração(ões) guardada(s) neste aparelho foram enviada(s) para a nuvem.`
+          );
+        } else if (playRankingMigration.failedCount > 0) {
+          showNotice(
+            "warning",
+            "Atualização parcialmente pendente",
+            `${playRankingMigration.failedCount} torneio(s) do Modelo Torneio 360 do PLAY RANKING® não puderam ser atualizados agora. Nenhum dado anterior foi descartado.`
+          );
+        } else if (playRankingMigration.blockedCount > 0) {
+          showNotice(
+            "warning",
+            "Sorteio necessário",
+            `${playRankingMigration.blockedCount} torneio(s) do Modelo Torneio 360 mantiveram a chave anterior porque ainda existe desempate pendente na fase de grupos.`
+          );
+        } else if (playRankingMigration.migratedCount > 0) {
+          showNotice(
+            "success",
+            "Estrutura oficial aplicada",
+            `${playRankingMigration.migratedCount} torneio(s) do PLAY RANKING® foram atualizados com backup da chave anterior e ${playRankingMigration.preservedScores} placar(es) compatível(is) preservado(s).`
           );
         }
       } else if (hasCachedDashboard) {
@@ -6031,7 +6217,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       location: isMultiCategory ? "" : newLocation.trim(),
       publicInfo: buildTournamentPublicInfo(),
       coverImageUrl: newCoverImageUrl,
+      coverImageThumbnailUrl: newCoverImageThumbnailUrl,
       eventCoverImageUrl: newCoverImageUrl,
+      eventCoverImageThumbnailUrl: newCoverImageThumbnailUrl,
       winningScore: isMultiCategory ? 4 : (Number(newWinningScore) || 4),
       rankingCriteria: isMultiCategory ? defaultRankingCriteria : effectiveNewRankingCriteria,
       publishedOnProfile: true,
@@ -6063,6 +6251,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             winningScore: Number(item.winningScore) || 4,
             rankingCriteria: getNewTournamentRankingCriteria(item.type, item.rankingCriteria),
             coverImageUrl: item.coverImageUrl || newCoverImageUrl,
+            coverImageThumbnailUrl: item.coverImageThumbnailUrl || newCoverImageThumbnailUrl,
             usesEventCover: !item.coverImageUrl,
           },
           status: "active",
@@ -6157,6 +6346,7 @@ setNewCategorySchedules([{
   winningScore: "4",
   rankingCriteria: "",
   coverImageUrl: "",
+  coverImageThumbnailUrl: "",
 }]);
 setNewDate("");
 setNewEndDate("");
@@ -6166,6 +6356,7 @@ setNewDailyStartTimes({});
 setNewDay("");
 setNewLocation("");
 setNewCoverImageUrl("");
+setNewCoverImageThumbnailUrl("");
 setNewWinningScore(4);
 setNewRankingCriteria("");
 setNewPublicInfo({
@@ -6623,6 +6814,7 @@ setNewPublicInfo({
       eventStartTime: details.eventStartTime || "",
       location: details.location || "",
       coverImageUrl: details.coverImageUrl || "",
+      coverImageThumbnailUrl: details.coverImageThumbnailUrl || "",
       winningScore: Number(details.winningScore || 4),
       rankingCriteria: details.rankingCriteria || defaultRankingCriteria,
     });
@@ -6694,6 +6886,7 @@ setNewPublicInfo({
       multiCategoryEvent: editTarget.data?.multiCategoryEvent,
       eventGroupKey: editTarget.data?.eventGroupKey,
       eventCoverImageUrl: editTarget.data?.eventCoverImageUrl,
+      eventCoverImageThumbnailUrl: editTarget.data?.eventCoverImageThumbnailUrl,
       usesEventCover: editTarget.data?.usesEventCover,
       eventName: editForm.eventName.trim(),
       category: editForm.category.trim(),
@@ -6715,6 +6908,7 @@ setNewPublicInfo({
       eventStartTime: editForm.eventStartTime,
       location: editForm.location.trim(),
       coverImageUrl: editForm.coverImageUrl || "",
+      coverImageThumbnailUrl: editForm.coverImageThumbnailUrl || "",
       winningScore: Number(editForm.winningScore) || 4,
       rankingCriteria: editForm.rankingCriteria || defaultRankingCriteria,
     };
@@ -6873,12 +7067,14 @@ setNewPublicInfo({
     ));
     const firstTournament = groupItems[0] || group.items[0];
     const firstDetails = firstTournament?.data || {};
-    const eventCoverImageUrl = firstDetails.eventCoverImageUrl || firstDetails.coverImageUrl || "";
+    const eventCoverImageUrl = firstDetails.eventCoverImageUrl || "";
+    const eventCoverImageThumbnailUrl = firstDetails.eventCoverImageThumbnailUrl || "";
 
     setEditEventGroup({
       key: group.key,
       eventName: firstDetails.eventName || group.name || "",
       coverImageUrl: eventCoverImageUrl,
+      coverImageThumbnailUrl: eventCoverImageThumbnailUrl,
       publicInfo: firstDetails.publicInfo || buildTournamentPublicInfo(),
       categories: (groupItems.length ? groupItems : group.items).map((tournament) => {
         const details = tournament.data || {};
@@ -6901,6 +7097,7 @@ setNewPublicInfo({
           winningScore: Number(details.winningScore || 4),
           rankingCriteria: details.rankingCriteria || defaultRankingCriteria,
           coverImageUrl: usesEventCover ? "" : (details.coverImageUrl || ""),
+          coverImageThumbnailUrl: usesEventCover ? "" : (details.coverImageThumbnailUrl || ""),
           usesEventCover,
           removed: false,
           hasGeneratedGames: Boolean(details.schedule?.length || details.brackets?.length),
@@ -6951,6 +7148,7 @@ setNewPublicInfo({
           winningScore: 4,
           rankingCriteria: "",
           coverImageUrl: "",
+          coverImageThumbnailUrl: "",
           usesEventCover: true,
           removed: false,
           hasGeneratedGames: false,
@@ -7046,6 +7244,7 @@ setNewPublicInfo({
           ? `${formatDateBR(groupStartDate)} até ${formatDateBR(groupEndDate)}`
           : formatDateBR(groupStartDate),
         eventCoverImageUrl: editEventGroup.coverImageUrl || "",
+        eventCoverImageThumbnailUrl: editEventGroup.coverImageThumbnailUrl || "",
         usesEventCover: category.usesEventCover,
         category: category.name.trim(),
         ...getStoredTournamentGenderFields(category.type, category.participantGenderMode, category.genderOther),
@@ -7059,6 +7258,9 @@ setNewPublicInfo({
         winningScore: Number(category.winningScore) || 4,
         rankingCriteria: category.rankingCriteria,
         coverImageUrl: category.usesEventCover ? (editEventGroup.coverImageUrl || "") : category.coverImageUrl,
+        coverImageThumbnailUrl: category.usesEventCover
+          ? (editEventGroup.coverImageThumbnailUrl || "")
+          : (category.coverImageThumbnailUrl || ""),
       };
       const result = await persistTournamentSnapshot({
         ...original,
@@ -7100,6 +7302,7 @@ setNewPublicInfo({
             ? `${formatDateBR(groupStartDate)} até ${formatDateBR(groupEndDate)}`
             : formatDateBR(groupStartDate),
           eventCoverImageUrl: editEventGroup.coverImageUrl || "",
+          eventCoverImageThumbnailUrl: editEventGroup.coverImageThumbnailUrl || "",
           usesEventCover: category.usesEventCover,
           publicInfo: editEventGroup.publicInfo,
           publishedOnProfile: true,
@@ -7116,6 +7319,9 @@ setNewPublicInfo({
           winningScore: Number(category.winningScore) || 4,
           rankingCriteria: category.rankingCriteria,
           coverImageUrl: category.usesEventCover ? (editEventGroup.coverImageUrl || "") : category.coverImageUrl,
+          coverImageThumbnailUrl: category.usesEventCover
+            ? (editEventGroup.coverImageThumbnailUrl || "")
+            : (category.coverImageThumbnailUrl || ""),
         },
         status: "active",
       }));
@@ -7209,6 +7415,7 @@ setNewPublicInfo({
       winningScore: "4",
       rankingCriteria: "",
       coverImageUrl: "",
+      coverImageThumbnailUrl: "",
     }]);
   }
 
@@ -7724,15 +7931,23 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto do torneio</strong>
-                    <span>Esta imagem identifica o evento no perfil público da arena.</span>
+                    <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
                   </div>
-                  {editForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEditForm("coverImageUrl", "")}>Remover foto</button> : null}
+                  {editForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setEditForm((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
                 </div>
                 <label className={`tournamentCoverDropzone ${editForm.coverImageUrl ? "hasImage" : ""}`}>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (imageUrl) => updateEditForm("coverImageUrl", imageUrl))}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => setEditForm((prev) => ({
+                        ...prev,
+                        coverImageUrl: imageUrl,
+                        coverImageThumbnailUrl: thumbnailUrl,
+                      })));
+                    }}
                   />
                   {editForm.coverImageUrl ? <img src={editForm.coverImageUrl} alt="Prévia da foto do torneio" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</span>}
                 </label>
@@ -7814,12 +8029,20 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto geral do evento</strong>
-                    <span>As categorias configuradas para usar a foto geral serão atualizadas juntas.</span>
+                    <span>Padrão Stories: 1080 × 1920 px (9:16). As categorias configuradas para usar esta foto serão atualizadas juntas.</span>
                   </div>
-                  {editEventGroup.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEventGroupField("coverImageUrl", "")}>Remover foto</button> : null}
+                  {editEventGroup.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setEditEventGroup((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
                 </div>
                 <label className={`tournamentCoverDropzone ${editEventGroup.coverImageUrl ? "hasImage" : ""}`}>
-                  <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupField("coverImageUrl", value))} />
+                  <input type="file" accept="image/*" onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => setEditEventGroup((prev) => ({
+                      ...prev,
+                      coverImageUrl: imageUrl,
+                      coverImageThumbnailUrl: thumbnailUrl,
+                    })));
+                  }} />
                   {editEventGroup.coverImageUrl
                     ? <img src={editEventGroup.coverImageUrl} alt="Prévia da foto geral do evento" />
                     : <span><Camera aria-hidden="true" /> Escolher foto geral</span>}
@@ -7923,7 +8146,16 @@ setNewPublicInfo({
                         </label>
                         {!category.usesEventCover ? (
                           <label className={`categoryCoverPicker ${category.coverImageUrl ? "hasImage" : ""}`}>
-                            <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupCategory(category.key, "coverImageUrl", value))} />
+                            <input type="file" accept="image/*" onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = "";
+                              void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => setEditEventGroup((current) => ({
+                                ...current,
+                                categories: current.categories.map((item) => item.key === category.key
+                                  ? { ...item, coverImageUrl: imageUrl, coverImageThumbnailUrl: thumbnailUrl }
+                                  : item),
+                              })));
+                            }} />
                             {category.coverImageUrl ? <img src={category.coverImageUrl} alt={`Foto de ${category.name || "categoria"}`} /> : <span><Camera aria-hidden="true" /> Escolher foto própria</span>}
                           </label>
                         ) : null}
@@ -7936,8 +8168,8 @@ setNewPublicInfo({
 
             <div className="editTournamentActions eventGroupEditActions">
               <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
-              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving}>
-                {editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
+              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving || coverImageLoading}>
+                {coverImageLoading ? "Preparando foto..." : editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
               </button>
             </div>
           </div>
@@ -7960,6 +8192,27 @@ setNewPublicInfo({
               <div className="formField fullField">
                 <label>Nome do circuito</label>
                 <input value={circuitEditForm.name} onChange={(e) => setCircuitEditForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Ex: Circuito Verão" />
+              </div>
+              <div className="formField fullField tournamentCoverField">
+                <div className="tournamentCoverIntro">
+                  <div>
+                    <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
+                    <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
+                  </div>
+                  {circuitEditForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
+                </div>
+                <label className={`tournamentCoverDropzone ${circuitEditForm.coverImageUrl ? "hasImage" : ""}`}>
+                  <input type="file" accept="image/*" onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => setCircuitEditForm((prev) => ({
+                      ...prev,
+                      coverImageUrl: imageUrl,
+                      coverImageThumbnailUrl: thumbnailUrl,
+                    })));
+                  }} />
+                  {circuitEditForm.coverImageUrl ? <img src={circuitEditForm.coverImageUrl} alt="Prévia da foto do circuito" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do circuito"}</span>}
+                </label>
               </div>
               <div className="formField">
                 <label>Data inicial</label>
@@ -8025,10 +8278,22 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="secondaryBtn" onClick={() => setCircuitEditForm(null)}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" onClick={() => saveCircuit(circuitEditForm)}>Salvar alterações</button>
+              <button type="button" className="actionConfirmBtn" disabled={coverImageLoading} onClick={() => saveCircuit(circuitEditForm)}>{coverImageLoading ? "Preparando foto..." : "Salvar alterações"}</button>
             </div>
           </div>
         </div>
+      ) : null}
+
+      {coverImageEditor ? (
+        createPortal(
+          <StoryCoverEditor
+            sourceUrl={coverImageEditor.imageUrl}
+            fileName={coverImageEditor.fileName}
+            onCancel={cancelTournamentCoverEditor}
+            onApply={applyTournamentCover}
+          />,
+          document.body
+        )
       ) : null}
 
       {photoEditor ? (
@@ -8048,11 +8313,6 @@ setNewPublicInfo({
               <canvas ref={photoCanvasRef} aria-label="Prévia da foto ajustada" />
             </div>
             <div className="photoEditorHint">Toque e arraste para mover • Pinça ou roda do mouse para zoom</div>
-            <div className="photoZoomButtons" aria-label="Controles de zoom">
-              <button type="button" className="secondaryBtn" onClick={() => nudgePhotoZoom(-0.12)}>−</button>
-              <span>{Math.round((photoEditor.zoom || 1) * 100)}%</span>
-              <button type="button" className="secondaryBtn" onClick={() => nudgePhotoZoom(0.12)}>+</button>
-            </div>
             <div className="photoEditorActions">
               <button type="button" className="cancelBtn" onClick={() => setPhotoEditor(null)}>Cancelar</button>
               <button type="button" onClick={applyEditedOrganizerPhoto}>Aplicar foto</button>
@@ -8351,7 +8611,15 @@ setNewPublicInfo({
           </div>
 
           <label className={`categoryCoverPicker ${item.coverImageUrl ? "hasImage" : ""}`}>
-            <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateCategorySchedule(index, "coverImageUrl", value))} />
+            <input type="file" accept="image/*" onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => setNewCategorySchedules((current) => current.map((category, categoryIndex) => (
+                categoryIndex === index
+                  ? { ...category, coverImageUrl: imageUrl, coverImageThumbnailUrl: thumbnailUrl }
+                  : category
+              ))));
+            }} />
             {item.coverImageUrl
               ? <img src={item.coverImageUrl} alt={`Foto de ${item.category || `categoria ${index + 1}`}`} />
               : <span><Camera aria-hidden="true" /> Foto própria</span>}
@@ -8462,15 +8730,22 @@ setNewPublicInfo({
     <div className="tournamentCoverIntro">
       <div>
         <strong><Camera aria-hidden="true" /> {newMultiCategoryEvent === "sim" ? "Foto geral do evento" : "Foto do torneio"}</strong>
-        <span>{newMultiCategoryEvent === "sim" ? "As categorias sem foto própria usarão esta imagem." : "Use uma foto específica do evento. Se não escolher, será usada a foto da arena."}</span>
+        <span>{newMultiCategoryEvent === "sim" ? "Padrão Stories: 1080 × 1920 px (9:16). As categorias sem foto própria usarão esta imagem." : "Padrão Stories: 1080 × 1920 px (9:16). Se não escolher, a foto redonda da arena será usada no cartão."}</span>
       </div>
-      {newCoverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setNewCoverImageUrl("")}>Remover foto</button> : null}
+      {newCoverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => { setNewCoverImageUrl(""); setNewCoverImageThumbnailUrl(""); }}>Remover foto</button> : null}
     </div>
     <label className={`tournamentCoverDropzone ${newCoverImageUrl ? "hasImage" : ""}`}>
       <input
         type="file"
         accept="image/*"
-        onChange={(event) => void prepareTournamentCover(event.target.files?.[0], setNewCoverImageUrl)}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => {
+            setNewCoverImageUrl(imageUrl);
+            setNewCoverImageThumbnailUrl(thumbnailUrl);
+          });
+        }}
       />
       {newCoverImageUrl ? <img src={newCoverImageUrl} alt="Prévia da foto do torneio" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</span>}
     </label>
@@ -8518,8 +8793,8 @@ setNewPublicInfo({
   </>
   )}
 
- <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving}>
-  {saving ? "Salvando..." : "Criar torneio"}
+ <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving || coverImageLoading}>
+  {coverImageLoading ? "Preparando foto..." : saving ? "Salvando..." : "Criar torneio"}
 </button>
       </section>
       </div>
@@ -8777,6 +9052,27 @@ setNewPublicInfo({
         <label>Nome do circuito</label>
         <input value={circuitForm.name} onChange={(e) => setCircuitForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Ex: Circuito Verão" />
       </div>
+      <div className="formField fullField tournamentCoverField">
+        <div className="tournamentCoverIntro">
+          <div>
+            <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
+            <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
+          </div>
+          {circuitForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitForm((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
+        </div>
+        <label className={`tournamentCoverDropzone ${circuitForm.coverImageUrl ? "hasImage" : ""}`}>
+          <input type="file" accept="image/*" onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            void prepareTournamentCover(file, ({ imageUrl, thumbnailUrl }) => setCircuitForm((prev) => ({
+              ...prev,
+              coverImageUrl: imageUrl,
+              coverImageThumbnailUrl: thumbnailUrl,
+            })));
+          }} />
+          {circuitForm.coverImageUrl ? <img src={circuitForm.coverImageUrl} alt="Prévia da foto do circuito" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do circuito"}</span>}
+        </label>
+      </div>
       <div className="formField">
         <label>Data inicial</label>
         <input className="clickableDateInput" type="date" required value={circuitForm.startDate} onClick={openDatePicker} onFocus={openDatePicker} onChange={(e) => setCircuitForm((prev) => ({ ...prev, startDate: e.target.value }))} />
@@ -8836,7 +9132,7 @@ setNewPublicInfo({
     />
 
     <div className="circuitFormActions">
-      <button type="button" className="actionCreateBtn" onClick={() => saveCircuit()}>Criar circuito</button>
+      <button type="button" className="actionCreateBtn" disabled={coverImageLoading} onClick={() => saveCircuit()}>{coverImageLoading ? "Preparando foto..." : "Criar circuito"}</button>
     </div>
   </section>
   </div>
@@ -9759,17 +10055,23 @@ function TournamentScreen({
     const draft = readTournamentDraft(userId, tournament);
     const sourceData = draft?.data || tournament.data;
     const normalizedData = normalizeTournamentData(tournament.type, sourceData);
-    const repairNeeded = Boolean(draft) || needsTournamentDataRepair(tournament.type, tournament.data);
-    const repairIsSafe = preservesTournamentCriticalData(sourceData || {}, normalizedData);
+    const playRankingMigration = migratePlayRankingBracketForReferenceProfile(tournament, normalizedData);
+    const effectiveData = playRankingMigration.data;
+    const repairNeeded = Boolean(draft)
+      || needsTournamentDataRepair(tournament.type, tournament.data)
+      || playRankingMigration.applied;
+    const repairIsSafe = playRankingMigration.applied
+      || preservesTournamentCriticalData(sourceData || {}, effectiveData);
     return {
-      data: normalizedData,
+      data: effectiveData,
       recoveredDraft: Boolean(draft),
       baseUpdatedAt: draft?.baseUpdatedAt || tournament.updated_at || null,
       baseRevision: draft?.baseRevision ?? getCollaborationRevision(tournament),
       baseData: draft?.baseData || tournament.data || {},
       shouldPersistRepair: repairNeeded && repairIsSafe,
       unsafeRepairDetected: repairNeeded && !repairIsSafe,
-      allowScoreRegression: draft?.allowScoreRegression === true,
+      allowScoreRegression: draft?.allowScoreRegression === true || playRankingMigration.applied,
+      playRankingMigration,
     };
   }, [tournament.id, tournament.type, userId]);
   const initialDataWasRepairedRef = useRef(
@@ -10464,6 +10766,24 @@ function TournamentScreen({
       type: "warning",
       title: "Dados antigos protegidos",
       message: "A plataforma encontrou um formato inesperado e bloqueou qualquer gravação automática que pudesse reduzir nomes, jogos ou placares.",
+    });
+  }, []);
+
+  useEffect(() => {
+    const migration = initialTournamentState.playRankingMigration;
+    if (migration?.blocked) {
+      setNotice({
+        type: "warning",
+        title: "Sorteio necessário antes da nova chave",
+        message: "A chave antiga foi preservada. Resolva o desempate indicado na aba Grupos para aplicar a estrutura oficial do Modelo Torneio 360.",
+      });
+      return;
+    }
+    if (!migration?.applied || migration.pendingScores <= 0) return;
+    setNotice({
+      type: "success",
+      title: "Estrutura oficial aplicada",
+      message: `${migration.preservedScores} placar(es) de confrontos idênticos foram mantidos. Os outros ${migration.pendingScores} permanecem protegidos no backup da chave anterior.`,
     });
   }, []);
 
@@ -11648,6 +11968,21 @@ function generateBrackets() {
     return;
   }
 
+  const bracketSource = isCampeonatoCearenseData(data)
+    ? {
+      ...structuredClone(data),
+      cupConfig: { ...(data.cupConfig || {}), cearenseBracketVersion: 2 },
+    }
+    : isPlayRankingData(data)
+    ? {
+      ...structuredClone(data),
+      cupConfig: {
+        ...(data.cupConfig || {}),
+        playRankingBracketVersion: PLAY_RANKING_BRACKET_VERSION,
+      },
+    }
+    : data;
+
   if (isCopinhaData(data)) {
     const hasUnresolvedTie = calculateCupGroupRankings(data, data.rankingCriteria)
       .some((group) => group.unresolvedTieIds?.length > 1);
@@ -11665,9 +12000,9 @@ function generateBrackets() {
   }
 
   if (isCearenseData(data)) {
-    const hasUnresolvedGroupTie = calculateCupGroupRankings(data, data.rankingCriteria)
+    const hasUnresolvedGroupTie = calculateCupGroupRankings(bracketSource, bracketSource.rankingCriteria)
       .some((group) => group.unresolvedTieIds?.length > 1);
-    const hasUnresolvedCampaignTie = getCearenseQualified(data).unresolvedCampaignTies.length > 0;
+    const hasUnresolvedCampaignTie = getCearenseQualified(bracketSource).unresolvedCampaignTies.length > 0;
 
     if (hasUnresolvedGroupTie || hasUnresolvedCampaignTie) {
       showNotice(
@@ -11680,17 +12015,6 @@ function generateBrackets() {
     }
   }
 
-  const bracketSource = isCampeonatoCearenseData(data)
-    ? {
-      ...structuredClone(data),
-      cupConfig: { ...(data.cupConfig || {}), cearenseBracketVersion: 2 },
-    }
-    : isPlayRankingData(data)
-    ? {
-      ...structuredClone(data),
-      cupConfig: { ...(data.cupConfig || {}), playRankingBracketVersion: 2 },
-    }
-    : data;
   const copy = syncCupBracketScores(bracketSource);
   setData(copy, { allowScoreRegression: true });
 
@@ -12808,6 +13132,65 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [selectedCircuit, setSelectedCircuit] = useState(null);
   const [openingPublicId, setOpeningPublicId] = useState(null);
   const [openingCircuitId, setOpeningCircuitId] = useState(null);
+  const requestedTournamentCoversRef = useRef(new Set());
+  const requestedCircuitCoversRef = useRef(new Set());
+  const tournamentCoverCacheRef = useRef(new Map());
+  const circuitCoverCacheRef = useRef(new Map());
+
+  function getTournamentCardCoverKey(tournament) {
+    const details = tournament?.data || {};
+    return details.multiCategoryEvent === true && details.eventGroupKey
+      ? `group:${details.eventGroupKey}`
+      : `tournament:${tournament?.id || tournament?.public_id || ""}`;
+  }
+
+  function applyTournamentCardCover(tournament, coverImageUrl) {
+    if (!coverImageUrl) return tournament;
+    const details = tournament?.data || {};
+    return {
+      ...tournament,
+      data: {
+        ...details,
+        ...(details.multiCategoryEvent === true
+          ? { eventCoverImageUrl: coverImageUrl }
+          : { coverImageUrl }),
+      },
+    };
+  }
+
+  const loadTournamentCardCover = React.useCallback(async (tournament) => {
+    const publicId = String(tournament?.public_id || "").trim();
+    const coverKey = getTournamentCardCoverKey(tournament);
+    if (!publicId || !coverKey || requestedTournamentCoversRef.current.has(coverKey)) return;
+    requestedTournamentCoversRef.current.add(coverKey);
+    const coverImageUrl = await fetchPublicTournamentCover(publicId);
+    if (!coverImageUrl) return;
+    tournamentCoverCacheRef.current.set(coverKey, coverImageUrl);
+    setBundle((current) => current ? {
+      ...current,
+      tournaments: (current.tournaments || []).map((item) => (
+        getTournamentCardCoverKey(item) === coverKey ? applyTournamentCardCover(item, coverImageUrl) : item
+      )),
+    } : current);
+  }, []);
+
+  const loadCircuitCardCover = React.useCallback(async (circuit) => {
+    const circuitId = String(circuit?.id || "").trim();
+    if (!circuitId || requestedCircuitCoversRef.current.has(circuitId)) return;
+    requestedCircuitCoversRef.current.add(circuitId);
+    const coverImageUrl = await fetchPublicCircuitCover(circuitId);
+    if (!coverImageUrl) return;
+    circuitCoverCacheRef.current.set(circuitId, coverImageUrl);
+    setBundle((current) => current ? {
+      ...current,
+      circuits: (current.circuits || []).map((item) => String(item.id) === circuitId ? {
+        ...item,
+        coverImageUrl,
+        ranking_settings: { ...(item.ranking_settings || {}), coverImageUrl },
+        rankingSettings: { ...(item.rankingSettings || {}), coverImageUrl },
+      } : item),
+    } : current);
+  }, []);
 
   function loadProfilePhotoInBackground(profile) {
     const profileId = String(profile?.id || "");
@@ -12837,10 +13220,20 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
         setBundle(null);
       }
     } else {
-      const normalizedCircuits = (result.data.circuits || []).map((circuit) => (
-        normalizePublicCircuitForDisplay(circuit, { directoryEntry: true })
-      ));
-      const normalizedBundle = { ...result.data, circuits: normalizedCircuits };
+      const tournamentsWithCachedCovers = (result.data.tournaments || []).map((tournament) => {
+        const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
+        return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
+      });
+      const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
+        const cachedCover = circuitCoverCacheRef.current.get(String(circuit.id));
+        const circuitWithCover = cachedCover ? {
+          ...circuit,
+          coverImageUrl: cachedCover,
+          ranking_settings: { ...(circuit.ranking_settings || {}), coverImageUrl: cachedCover },
+        } : circuit;
+        return normalizePublicCircuitForDisplay(circuitWithCover, { directoryEntry: true });
+      });
+      const normalizedBundle = { ...result.data, tournaments: tournamentsWithCachedCovers, circuits: normalizedCircuits };
       setBundle(normalizedBundle);
       loadProfilePhotoInBackground(normalizedBundle.profile);
       setSelectedTournament((current) => {
@@ -12909,7 +13302,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       return;
     }
 
-    setSelectedTournament({ ...result.data, directoryEntry: false });
+    setSelectedTournament({ ...item, ...result.data, directoryEntry: false });
   }
 
   async function openPublicCircuit(item) {
@@ -12952,6 +13345,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const circuits = sortCircuitsForDisplay(Array.isArray(bundle.circuits) ? bundle.circuits : []);
   const arenaName = profile.arena_name || profile.name || "Arena Torneio360";
   const organizer = {
+    id: profile.id,
     photoUrl: profile.photo_url || "",
     arenaName,
     organizerName: profile.name || "",
@@ -13007,6 +13401,8 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       onStatusTabChange={setActiveStatusTab}
       onOpenTournament={openPublicTournament}
       onOpenCircuit={openPublicCircuit}
+      onRequestTournamentCover={loadTournamentCardCover}
+      onRequestCircuitCover={loadCircuitCardCover}
       openingPublicId={openingPublicId}
       openingCircuitId={openingCircuitId}
       getWhatsAppUrl={getBrazilianWhatsAppUrl}
@@ -13148,7 +13544,7 @@ function PublicTournamentPage({ publicId }) {
       return;
     }
 
-    setSelectedTournament(data);
+    setSelectedTournament({ ...item, ...data });
   }
 
   async function openPublicCircuit(item) {
@@ -13246,10 +13642,14 @@ function PublicTournamentPage({ publicId }) {
 }
 
 function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBackToArena }) {
+  const [previewImage, setPreviewImage] = useState(null);
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [circuit?.id]);
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
+  const circuitCoverImage = rankingSettings.coverImageUrl || circuit?.coverImageUrl || "";
+  const circuitCoverThumbnail = rankingSettings.coverImageThumbnailUrl || circuit?.coverImageThumbnailUrl || "";
+  const circuitCoverDisplay = circuitCoverThumbnail || circuitCoverImage;
   const storedRankingGroups = Array.isArray(circuit?.ranking_groups)
     ? circuit.ranking_groups.filter((group) => Array.isArray(group?.rows) && group.rows.length > 0)
     : [];
@@ -13318,6 +13718,20 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
       </header>
 
       <main className="publicContent publicCircuitContent">
+        <div className={`publicEventMediaInfo ${circuitCoverDisplay ? "hasCover" : ""}`}>
+        {circuitCoverDisplay ? (
+          <button
+            type="button"
+            className="publicTournamentCover publicCoverPreviewButton"
+            onClick={() => setPreviewImage({ src: circuitCoverImage || circuitCoverDisplay, alt: `Foto do circuito ${circuit?.name || "Circuito"}`, title: circuit?.name || "Circuito" })}
+            aria-label={`Ampliar foto do circuito ${circuit?.name || "Circuito"}`}
+          >
+            <img src={circuitCoverDisplay} alt={`Foto do circuito ${circuit?.name || "Circuito"}`} />
+            <span>Ver foto maior</span>
+          </button>
+        ) : null}
+
+        <div className="publicEventMediaInfoDetails">
         <section className="card publicCircuitIdentityCard">
           {organizer.photoUrl ? (
             <img src={organizer.photoUrl} alt={`Foto de ${arenaName}`} />
@@ -13330,6 +13744,8 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
             <p>{(circuit?.tournament_ids || circuit?.tournamentIds || []).length} torneio(s) neste circuito</p>
           </div>
         </section>
+        </div>
+        </div>
 
         <section className="card publicCircuitStagesCard">
           <div className="cardTitleRow">
@@ -13399,6 +13815,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
           )}
         </section>
       </main>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }
@@ -13408,6 +13825,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
   const publicMatchesTabStorageKey = `publicTournamentMatchesTab:${tournament.public_id || tournament.id}`;
   const [activePublicTab, setActivePublicTabState] = useState(() => readPublicViewStorage(publicTabStorageKey, "participantes"));
   const [activePublicMatchesTab, setActivePublicMatchesTabState] = useState(() => readPublicViewStorage(publicMatchesTabStorageKey, "grupos"));
+  const [previewImage, setPreviewImage] = useState(null);
 
   function setActivePublicTab(tab) {
     savePublicViewStorage(publicTabStorageKey, tab);
@@ -13419,7 +13837,11 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
     setActivePublicMatchesTabState(tab);
   }
   const config = modalityConfig[tournament.type];
-  const data = normalizeTournamentData(tournament.type, tournament.data);
+  const normalizedData = normalizeTournamentData(tournament.type, tournament.data);
+  const migrationTournament = tournament.user_id || !liveOrganizer?.id
+    ? tournament
+    : { ...tournament, user_id: liveOrganizer.id };
+  const data = migratePlayRankingBracketForReferenceProfile(migrationTournament, normalizedData).data;
   const secondParallelVisible = isCearenseSecondParallelEnabled(data);
   const sunsetSecondParallelVisible = isSunsetData(data);
   const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
@@ -13475,6 +13897,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
   };
 
   const publicAthletes = getRegisteredAthletesForPublic(data, config);
+  const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
 
   return (
     <div className="publicPage">
@@ -13507,12 +13930,20 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
       </header>
 
       <main className="publicContent">
-        {data.coverImageUrl ? (
-          <figure className="publicTournamentCover">
-            <img src={data.coverImageUrl} alt={`Foto do torneio ${tournament.name}`} />
-          </figure>
+        <div className={`publicEventMediaInfo ${tournamentCoverDisplay ? "hasCover" : ""}`}>
+        {tournamentCoverDisplay ? (
+          <button
+            type="button"
+            className="publicTournamentCover publicCoverPreviewButton"
+            onClick={() => setPreviewImage({ src: data.coverImageUrl || tournamentCoverDisplay, alt: `Foto do torneio ${tournament.name}`, title: tournament.name })}
+            aria-label={`Ampliar foto do torneio ${tournament.name}`}
+          >
+            <img src={tournamentCoverDisplay} alt={`Foto do torneio ${tournament.name}`} />
+            <span>Ver foto maior</span>
+          </button>
         ) : null}
 
+        <div className="publicEventMediaInfoDetails">
         <section className="card publicTournamentInfoCard">
           <h2>Informações do torneio</h2>
           <div className="publicInfoGrid">
@@ -13552,6 +13983,8 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
             </div>
           </section>
         ) : null}
+        </div>
+        </div>
 
         <nav className="tournamentTopTabs publicTournamentTabs" aria-label="Visualização pública do torneio">
           <button type="button" className={activePublicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
@@ -13810,6 +14243,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
         </section>
 
       </main>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }
