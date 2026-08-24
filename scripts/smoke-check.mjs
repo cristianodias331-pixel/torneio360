@@ -5021,6 +5021,87 @@ assert.deepEqual(
   { waiting: 1, inProgress: 1, finished: 1, total: 3 },
   "O resumo operacional deixou de separar jogos aguardando, em andamento e finalizados."
 );
+const disabledCearenseParallelData = {
+  cupConfig: {
+    format: "cearense",
+    secondRepechageEnabled: false,
+    thirdRepechageEnabled: false,
+  },
+  brackets: [
+    { phase: "main", matchKey: "main_final_1", ids1: [1], team1: ["Ana"], ids2: [2], team2: ["Bia"], s1: 4, s2: 1 },
+    {
+      phase: "repechage",
+      matchKey: "repechage_sf_1",
+      ids1: [3],
+      team1: ["Carla"],
+      ids2: [4],
+      team2: ["Dora"],
+      s1: "",
+      s2: "",
+      inProgress: true,
+      matchTimerStartedAt: new Date(timerStart).toISOString(),
+      matchTimerFirstStartedAt: new Date(timerStart).toISOString(),
+    },
+    { phase: "thirdParallel", matchKey: "thirdParallel_sf_1", ids1: [5], team1: ["Eva"], ids2: [6], team2: ["Fê"], s1: "", s2: "" },
+    { phase: "repechage", matchKey: "repechage_bye_1", ids1: [7], team1: ["Gabi"], ids2: [], team2: ["BYE"], s1: "", s2: "", isBye: true },
+  ],
+};
+assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary(disabledCearenseParallelData),
+  { waiting: 0, inProgress: 0, finished: 1, total: 1 },
+  "Disputas paralelas desativadas no Campeonato Cearense não podem aparecer no resumo operacional."
+);
+assert.equal(
+  tournamentOperationsForTest.getTournamentActiveCourtUsages(
+    { id: "cearense-disabled", name: "Cearense", data: disabledCearenseParallelData },
+    disabledCearenseParallelData
+  ).length,
+  0,
+  "Uma disputa paralela desativada não pode manter quadra ocupada."
+);
+assert.equal(
+  tournamentOperationsForTest.getNextMatchTimerExpiryDelay(disabledCearenseParallelData, timerStart + 7200000),
+  null,
+  "O cronômetro de uma disputa paralela desativada não pode interferir no torneio."
+);
+const disabledParallelTimerCap = tournamentOperationsForTest.capExpiredTournamentMatchTimers(
+  disabledCearenseParallelData,
+  timerStart + 7200000
+);
+assert.equal(disabledParallelTimerCap.cappedCount, 0, "Uma fase desativada não pode ser alterada pelo limite dos cronômetros.");
+assert.equal(disabledParallelTimerCap.data.brackets[1].inProgress, true, "Os dados preservados de uma fase desativada foram modificados.");
+assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary({
+    ...disabledCearenseParallelData,
+    cupConfig: {
+      ...disabledCearenseParallelData.cupConfig,
+      secondRepechageEnabled: true,
+      thirdRepechageEnabled: true,
+    },
+  }),
+  { waiting: 1, inProgress: 1, finished: 1, total: 3 },
+  "Disputas paralelas ativadas devem continuar participando do resumo operacional, sem somar BYEs."
+);
+assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary({
+    ...disabledCearenseParallelData,
+    cupConfig: {
+      format: "cearense-individual",
+      secondRepechageEnabled: false,
+      thirdRepechageEnabled: false,
+    },
+  }),
+  { waiting: 0, inProgress: 0, finished: 1, total: 1 },
+  "A Copa Cearense Individual deve ignorar as mesmas disputas paralelas desativadas."
+);
+assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary({
+    ...disabledCearenseParallelData,
+    cupConfig: { format: "playranking" },
+  }),
+  { waiting: 1, inProgress: 1, finished: 1, total: 3 },
+  "As fases próprias dos outros modelos de copa não podem ser ocultadas pelas opções exclusivas do Cearense."
+);
 assert.deepEqual(
   tournamentOperationsForTest.getTournamentTimingSummary({
     schedule: [[{
