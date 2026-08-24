@@ -31990,6 +31990,133 @@ html[data-theme="dark"] .participantOccupancyModal > p.participantOccupancyHint,
   }
 }
 
+/* =========================================================
+   PALETA SEMÂNTICA SUAVE DOS BOTÕES — HOMOLOGAÇÃO
+   A ação define a família de cor; fundos brancos deixam de ser
+   usados como aparência de botão na plataforma administrativa.
+   ========================================================= */
+:root {
+  --button-neutral-bg: #e8eff7;
+  --button-neutral-border: #b8c9dc;
+  --button-neutral-text: #294762;
+  --button-blue-bg: #dce9f6;
+  --button-blue-border: #98b7d6;
+  --button-blue-text: #24557f;
+  --button-blue-active-bg: #c8dced;
+  --button-blue-active-border: #789fc6;
+  --button-blue-active-text: #183f66;
+  --button-green-bg: #dceee4;
+  --button-green-border: #91bda3;
+  --button-green-text: #2b6545;
+  --button-red-bg: #f2e0e3;
+  --button-red-border: #d5a0a8;
+  --button-red-text: #8a3f4a;
+  --button-purple-bg: #e9e3f2;
+  --button-purple-border: #b8a8cf;
+  --button-purple-text: #654c80;
+  --button-cyan-bg: #dcecee;
+  --button-cyan-border: #98bec3;
+  --button-cyan-text: #32666c;
+  --button-orange-bg: #f3e6d8;
+  --button-orange-border: #d3b394;
+  --button-orange-text: #805a35;
+  --button-soft-shadow: 0 4px 12px rgba(37, 65, 92, .08);
+}
+
+html[data-theme="dark"],
+.proDashboard.theme-dark {
+  --button-neutral-bg: #223044;
+  --button-neutral-border: #40546d;
+  --button-neutral-text: #d9e5f2;
+  --button-blue-bg: #213b55;
+  --button-blue-border: #4d6f91;
+  --button-blue-text: #d0e2f3;
+  --button-blue-active-bg: #2b4a68;
+  --button-blue-active-border: #6689aa;
+  --button-blue-active-text: #edf6ff;
+  --button-green-bg: #233d31;
+  --button-green-border: #4f725e;
+  --button-green-text: #d0e6d7;
+  --button-red-bg: #422d33;
+  --button-red-border: #75525a;
+  --button-red-text: #f0d5da;
+  --button-purple-bg: #352f47;
+  --button-purple-border: #625878;
+  --button-purple-text: #e2daec;
+  --button-cyan-bg: #233d43;
+  --button-cyan-border: #4d747a;
+  --button-cyan-text: #d2e8eb;
+  --button-orange-bg: #44362b;
+  --button-orange-border: #745d49;
+  --button-orange-text: #eadccf;
+  --button-soft-shadow: 0 4px 12px rgba(0, 0, 0, .14);
+}
+
+/* Base profissional: controles comuns recebem azul acinzentado, nunca branco. */
+.proDashboard.playAppShell button:where(
+  :not(.playNavItem):not(.moveLineBtn):not(.themeToggleButton):not(.profileTrigger):not(.profileMenuToggle):not(.profileVisibilitySwitch):not(.participantAttendanceStatus):not(.confirmAllParticipantsBtn):not(.pendingAllParticipantsBtn):not(.matchCardStatus):not(.publicImagePreviewButton)
+) {
+  border-color: var(--button-neutral-border) !important;
+  background: var(--button-neutral-bg) !important;
+  color: var(--button-neutral-text) !important;
+  -webkit-text-fill-color: var(--button-neutral-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+  filter: none !important;
+}
+
+/* Ações públicas de navegação e abertura também deixam de usar fundo branco. */
+.publicPage button:not(.publicImagePreviewButton):not(.publicImageLightboxClose) {
+  border-color: var(--button-neutral-border) !important;
+  background: var(--button-neutral-bg) !important;
+  color: var(--button-neutral-text) !important;
+  -webkit-text-fill-color: var(--button-neutral-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+  filter: none !important;
+}
+
+/* Abas ativas ficam legíveis sem azul/lilás elétrico. */
+.proDashboard.playAppShell :is(
+  .playTabs,
+  .tournamentTopTabs,
+  .matchesSubTabs,
+  .profileSubtabs,
+  .trashCategoryTabs
+) button.active,
+.publicPage :is(.publicTournamentTabs, .publicArenaTabs, .publicArenaStatusTabs) button.active {
+  border-color: var(--button-blue-active-border) !important;
+  background: var(--button-blue-active-bg) !important;
+  color: var(--button-blue-active-text) !important;
+  -webkit-text-fill-color: var(--button-blue-active-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+html body .publicPage.publicArenaPage button.publicOrganizerAccess {
+  border-color: var(--button-green-border) !important;
+  background: var(--button-green-bg) !important;
+  color: var(--button-green-text) !important;
+  -webkit-text-fill-color: var(--button-green-text) !important;
+}
+
+html body .publicPage.publicArenaPage :is(.publicArenaEventCard, .publicCircuitCard, .publicArenaCard) > button {
+  border-color: var(--button-blue-border) !important;
+  background: var(--button-blue-bg) !important;
+  color: var(--button-blue-text) !important;
+  -webkit-text-fill-color: var(--button-blue-text) !important;
+}
+
+.proDashboard.playAppShell button:where(:not(:disabled)):hover,
+.publicPage button:where(:not(:disabled)):hover {
+  filter: none !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 14px rgba(37, 65, 92, .12) !important;
+}
+
+.proDashboard.playAppShell button:disabled,
+.publicPage button:disabled {
+  opacity: .56 !important;
+  box-shadow: none !important;
+}
+
 .publicEventMediaInfo {
   display: block;
   width: 100%;
@@ -32378,4 +32505,164 @@ html[data-theme="dark"] .storyCoverEditorModal .actionConfirmBtn,
     width: 100% !important;
     min-height: 42px !important;
   }
+}
+
+/* Prioridade final da paleta em modais renderizados fora do painel. */
+:is(
+  .confirmOverlay,
+  .storyCoverEditorOverlay,
+  .photoEditorOverlay,
+  .editTournamentOverlay,
+  .rankingExportOverlay,
+  .shuffleVideoOverlay,
+  .courtEditorOverlay
+) button:not(.publicImagePreviewButton) {
+  border-color: var(--button-neutral-border) !important;
+  background: var(--button-neutral-bg) !important;
+  color: var(--button-neutral-text) !important;
+  -webkit-text-fill-color: var(--button-neutral-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+  filter: none !important;
+}
+
+button:is(
+  .actionConfirmBtn,
+  .actionRestoreBtn,
+  .confirmBtn,
+  .regenerationConfirmBtn,
+  .circuitExtraSave,
+  .circuitManualSave,
+  .tournamentCircuitSave,
+  .courtEditorConfirmationSubmit,
+  .participantImportApplyButton,
+  .genderSuggestionConfirmButton
+) {
+  border-color: var(--button-green-border) !important;
+  background: var(--button-green-bg) !important;
+  color: var(--button-green-text) !important;
+  -webkit-text-fill-color: var(--button-green-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+button:is(
+  .cancelBtn,
+  .deleteBtn,
+  .danger,
+  .removePhotoBtn,
+  .stopBtn,
+  .manualDeleteButton,
+  .courtEditorConfirmationCancel,
+  .participantImportCancelButton,
+  .trashDeleteSelectedBtn,
+  .trashEmptyBtn,
+  .trashPermanentBtn
+) {
+  border-color: var(--button-red-border) !important;
+  background: var(--button-red-bg) !important;
+  color: var(--button-red-text) !important;
+  -webkit-text-fill-color: var(--button-red-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+button:is(.actionShuffleBtn, .circuitTieDrawButton, .combineCircuitsButton, .shuffleVideoGenerate) {
+  border-color: var(--button-purple-border) !important;
+  background: var(--button-purple-bg) !important;
+  color: var(--button-purple-text) !important;
+  -webkit-text-fill-color: var(--button-purple-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+button:is(.actionGenerateBtn, .circuitExtraPointsButton) {
+  border-color: var(--button-cyan-border) !important;
+  background: var(--button-cyan-bg) !important;
+  color: var(--button-cyan-text) !important;
+  -webkit-text-fill-color: var(--button-cyan-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+button:is(.actionCreateBtn, .createCircuitButton, .participantOccupancyConfirmBtn) {
+  border-color: var(--button-orange-border) !important;
+  background: var(--button-orange-bg) !important;
+  color: var(--button-orange-text) !important;
+  -webkit-text-fill-color: var(--button-orange-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+button:is(
+  .actionOpenBtn,
+  .actionNavigateBtn,
+  .editBtn,
+  .editEventGroupBtn,
+  .shareTournamentBtn,
+  .sharePrimaryAction,
+  .shareHighlightBtn,
+  .rankingShareButton,
+  .shuffleVideoDownload,
+  .mapsMiniBtn,
+  .circuitOpenAction,
+  .openCourtCenterButton,
+  .addOpenTournamentButton
+) {
+  border-color: var(--button-blue-border) !important;
+  background: var(--button-blue-bg) !important;
+  color: var(--button-blue-text) !important;
+  -webkit-text-fill-color: var(--button-blue-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+}
+
+/* Entrada da plataforma: mesma linguagem suave e sem botões brancos. */
+.landingPage button:not(.linkBtn):not(.installAppDismiss) {
+  border-color: var(--button-neutral-border) !important;
+  background: var(--button-neutral-bg) !important;
+  color: var(--button-neutral-text) !important;
+  -webkit-text-fill-color: var(--button-neutral-text) !important;
+  box-shadow: var(--button-soft-shadow) !important;
+  filter: none !important;
+}
+
+.landingPage :is(.landingHeaderActions, .heroActions) button.secondaryBtn,
+.landingPage .accessCard form > button:not(.linkBtn) {
+  border-color: var(--button-blue-border) !important;
+  background: var(--button-blue-bg) !important;
+  color: var(--button-blue-text) !important;
+  -webkit-text-fill-color: var(--button-blue-text) !important;
+}
+
+.landingPage .landingHeaderActions button:last-child,
+.landingPage .landingTrialBanner button:not(.linkBtn),
+.landingPage .heroActions button:first-child {
+  border-color: var(--button-orange-border) !important;
+  background: var(--button-orange-bg) !important;
+  color: var(--button-orange-text) !important;
+  -webkit-text-fill-color: var(--button-orange-text) !important;
+}
+
+.landingPage button.explainBtn:not(.linkBtn) {
+  border-color: var(--button-orange-border) !important;
+  background: var(--button-orange-bg) !important;
+  color: var(--button-orange-text) !important;
+  -webkit-text-fill-color: var(--button-orange-text) !important;
+}
+
+.landingPage button.mockVoiceBtn:not(.linkBtn) {
+  border-color: var(--button-cyan-border) !important;
+  background: var(--button-cyan-bg) !important;
+  color: var(--button-cyan-text) !important;
+  -webkit-text-fill-color: var(--button-cyan-text) !important;
+}
+
+.landingPage :is(.authModeTabs, .accessToggle) button.active {
+  border-color: var(--button-blue-active-border) !important;
+  background: var(--button-blue-active-bg) !important;
+  color: var(--button-blue-active-text) !important;
+  -webkit-text-fill-color: var(--button-blue-active-text) !important;
+}
+
+button.installAppAction {
+  border-color: #607e9e !important;
+  background: #345574 !important;
+  color: #edf4fb !important;
+  -webkit-text-fill-color: #edf4fb !important;
+  box-shadow: 0 5px 14px rgba(5, 20, 44, .18) !important;
+  filter: none !important;
 }
