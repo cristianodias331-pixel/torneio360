@@ -7,7 +7,11 @@ import {
 
 export function generateCearenseGroupSchedule(players, cupConfig) {
   const teamCount = cupConfig.teamCount || 4;
-  const groups = createCearenseGroups(teamCount, cupConfig.format === "sunset" ? cupConfig.groupFormation : "automatic");
+  const groups = createCearenseGroups(
+    teamCount,
+    cupConfig.format === "sunset" ? cupConfig.groupFormation : "automatic",
+    cupConfig.groupSizes,
+  );
   const teamNames = players.teams.map((team) => getTeamName(team));
   const groupRounds = groups.map((group) => createRoundRobinPairings(group.teamIds));
   const roundCount = Math.max(...groupRounds.map((rounds) => rounds.length));
