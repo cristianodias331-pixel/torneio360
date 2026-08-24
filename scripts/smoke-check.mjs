@@ -354,6 +354,7 @@ import {
   rankCearenseGroupRows,
   rankCopinhaGroupRows,
   rankOfficialCearenseGroupRows,
+  rankPlayRankingGroupRows,
 } from "../src/domain/groupRankingRules.mjs";
 import {
   compareCearenseCampaignMetrics,
@@ -2207,9 +2208,43 @@ assert.deepEqual(directCopinhaTie.rows.slice(0, 2).map((row) => row.id), [0, 1],
 assert.deepEqual(directCopinhaTie.unresolvedTieIds, [], "Um confronto direto válido não pode permanecer pendente.");
 const customCriteria = { order: ["pts", "w", "bal"] };
 const cearenseTie = rankCearenseGroupRows(basicTiedRows, threeFinishedGroupGames, 4, customCriteria);
-assert.deepEqual(cearenseTie.unresolvedTieIds, [0, 1, 2], "O empate absoluto do Modelo Torneio 360 deve solicitar sorteio.");
+assert.deepEqual(cearenseTie.unresolvedTieIds, [0, 1, 2], "O empate absoluto da regra configurável de copa deve solicitar sorteio.");
 const resolvedCearenseTie = rankCearenseGroupRows(basicTiedRows, threeFinishedGroupGames, 4, customCriteria, [1, 2, 0]);
 assert.deepEqual(resolvedCearenseTie.rows.map((row) => row.id), [1, 2, 0], "A ordem sorteada do empate absoluto não foi preservada.");
+const playRankingTotalGamesAreStatistics = rankPlayRankingGroupRows([
+  { id: 0, name: "Ana", w: 1, bal: 0, pts: 5 },
+  { id: 1, name: "Bia", w: 1, bal: 0, pts: 9 },
+  { id: 2, name: "Carla", w: 0, bal: -2, pts: 7 },
+], threeFinishedGroupGames, 4);
+assert.deepEqual(
+  playRankingTotalGamesAreStatistics.rows.slice(0, 2).map((row) => row.id),
+  [0, 1],
+  "O Total de Games não pode superar o confronto direto no Modelo Torneio 360."
+);
+assert.deepEqual(
+  playRankingTotalGamesAreStatistics.unresolvedTieIds,
+  [],
+  "Um confronto direto válido do Modelo Torneio 360 não pode permanecer pendente."
+);
+const playRankingCircularHeadToHead = rankPlayRankingGroupRows([
+  { id: 0, name: "Ana", w: 1, bal: 0, pts: 10, coefficient: ((6 / 10) + (5 / 12)) / 2 },
+  { id: 1, name: "Bia", w: 1, bal: 0, pts: 10, coefficient: ((4 / 10) + (6 / 10)) / 2 },
+  { id: 2, name: "Carla", w: 1, bal: 0, pts: 11, coefficient: ((4 / 10) + (7 / 12)) / 2 },
+], [
+  { ids1: [0], ids2: [1], s1: "6", s2: "4" },
+  { ids1: [1], ids2: [2], s1: "6", s2: "4" },
+  { ids1: [2], ids2: [0], s1: "7", s2: "5" },
+], 6);
+assert.deepEqual(
+  playRankingCircularHeadToHead.rows.map((row) => row.id),
+  [0, 1, 2],
+  "O confronto direto circular não avançou corretamente para o coeficiente."
+);
+assert.deepEqual(playRankingCircularHeadToHead.unresolvedTieIds, [], "Coeficientes diferentes não podem exigir sorteio.");
+const playRankingTripleTie = rankPlayRankingGroupRows(basicTiedRows, threeFinishedGroupGames, 4);
+assert.deepEqual(playRankingTripleTie.unresolvedTieIds, [0, 1, 2], "Três duplas empatadas no Modelo Torneio 360 devem seguir para sorteio.");
+const resolvedPlayRankingTripleTie = rankPlayRankingGroupRows(basicTiedRows, threeFinishedGroupGames, 4, [2, 1, 0]);
+assert.deepEqual(resolvedPlayRankingTripleTie.rows.map((row) => row.id), [2, 1, 0], "O sorteio do Modelo Torneio 360 não foi respeitado.");
 const officialDirectTie = rankOfficialCearenseGroupRows(twoTiedRows, threeFinishedGroupGames, 4);
 assert.deepEqual(officialDirectTie.rows.slice(0, 2).map((row) => row.id), [0, 1], "O confronto direto oficial entre duas duplas não foi aplicado.");
 const officialTripleTie = rankOfficialCearenseGroupRows(basicTiedRows, threeFinishedGroupGames, 4);
@@ -2249,6 +2284,81 @@ assert.deepEqual(
 );
 assert.equal(standardGroupRankings[0].rankingMode, "standard", "A tabela comum perdeu seu modo de classificação.");
 assert.equal(JSON.stringify(standardGroupSchedule), standardGroupScheduleSnapshot, "O cálculo do ranking não pode alterar os jogos salvos.");
+const playRankingIntegrationPlayers = createNamedTeams(6);
+const playRankingIntegrationSchedule = generateCupGroupSchedule(
+  playRankingIntegrationPlayers,
+  { teamCount: 6, format: "playranking" }
+).map((round) => round.map((game) => {
+  const pairKey = [...game.ids1, ...game.ids2].sort((a, b) => a - b).join(":");
+  const resultByPair = {
+    "0:1": { winnerId: 0, winnerScore: "4", loserScore: "2" },
+    "0:2": { winnerId: 2, winnerScore: "4", loserScore: "1" },
+    "1:2": { winnerId: 1, winnerScore: "4", loserScore: "3" },
+  }[pairKey];
+  const winnerId = resultByPair?.winnerId ?? Math.min(game.ids1[0], game.ids2[0]);
+  const winnerScore = resultByPair?.winnerScore ?? "4";
+  const loserScore = resultByPair?.loserScore ?? "2";
+  return {
+    ...game,
+    s1: game.ids1[0] === winnerId ? winnerScore : loserScore,
+    s2: game.ids2[0] === winnerId ? winnerScore : loserScore,
+  };
+}));
+const playRankingIntegrationGroups = calculateCupGroupRankings({
+  winningScore: 4,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 6, format: "playranking" },
+  players: playRankingIntegrationPlayers,
+  schedule: playRankingIntegrationSchedule,
+});
+assert.deepEqual(
+  playRankingIntegrationGroups[0].rows.map((row) => row.id),
+  [2, 0, 1],
+  "O Modelo Torneio 360 não aplicou saldo e confronto direto antes do Total de Games."
+);
+assert.deepEqual(
+  playRankingIntegrationGroups[0].rows.map(({ id, pts }) => ({ id, pts })),
+  [{ id: 2, pts: 7 }, { id: 0, pts: 5 }, { id: 1, pts: 6 }],
+  "O Total de Games deixou de ser preservado como estatística no Modelo Torneio 360."
+);
+const coefficientExampleSchedule = generateCupGroupSchedule(
+  playRankingIntegrationPlayers,
+  { teamCount: 6, format: "playranking" }
+).map((round) => round.map((game) => {
+  const pairKey = [...game.ids1, ...game.ids2].sort((a, b) => a - b).join(":");
+  const resultByPair = {
+    "0:1": { winnerId: 0, winnerScore: "6", loserScore: "4" },
+    "0:2": { winnerId: 0, winnerScore: "6", loserScore: "0" },
+    "1:2": { winnerId: 1, winnerScore: "6", loserScore: "1" },
+  }[pairKey];
+  const winnerId = resultByPair?.winnerId ?? Math.min(game.ids1[0], game.ids2[0]);
+  const winnerScore = resultByPair?.winnerScore ?? "6";
+  const loserScore = resultByPair?.loserScore ?? "2";
+  return {
+    ...game,
+    s1: game.ids1[0] === winnerId ? winnerScore : loserScore,
+    s2: game.ids2[0] === winnerId ? winnerScore : loserScore,
+  };
+}));
+const coefficientExampleRows = calculateCupGroupRankings({
+  winningScore: 6,
+  rankingCriteria: "wins_points_balance",
+  cupConfig: { teamCount: 6, format: "playranking" },
+  players: playRankingIntegrationPlayers,
+  schedule: coefficientExampleSchedule,
+})[0].rows;
+assert.deepEqual(
+  coefficientExampleRows.map(({ id, w, bal, pts }) => ({ id, w, bal, pts })),
+  [
+    { id: 0, w: 2, bal: 8, pts: 12 },
+    { id: 1, w: 1, bal: 3, pts: 10 },
+    { id: 2, w: 0, bal: -11, pts: 1 },
+  ],
+  "O exemplo de Game Average alterou vitórias, saldo ou Total de Games."
+);
+assert.ok(Math.abs(coefficientExampleRows[0].coefficient - 0.8) < 1e-12, "O coeficiente 0,800 não foi calculado pela média partida a partida.");
+assert.ok(Math.abs(coefficientExampleRows[1].coefficient - 0.6285714285714286) < 1e-12, "O coeficiente 0,629 não foi calculado corretamente.");
+assert.ok(Math.abs(coefficientExampleRows[2].coefficient - 0.07142857142857142) < 1e-12, "O coeficiente 0,071 não foi calculado corretamente.");
 const officialGroupPlayers = createNamedTeams(7);
 const officialGroupSchedule = completeGroupScheduleWithLowerIdWinning(
   generateCupGroupSchedule(officialGroupPlayers, { teamCount: 7, format: "cearense" })
@@ -2302,12 +2412,23 @@ const playRankingQualified = getCearenseQualified({
   ...officialGroupData,
   cupConfig: { teamCount: 7, format: "playranking" },
 });
+const playRankingGroupRankings = calculateCupGroupRankings({
+  ...officialGroupData,
+  cupConfig: { teamCount: 7, format: "playranking" },
+});
+assert.ok(playRankingGroupRankings.every((group) => group.rankingMode === "playranking"), "A regra exclusiva do Modelo Torneio 360 não foi selecionada.");
 assert.deepEqual(playRankingQualified.main.map((row) => row.id), [0, 4, 1, 5], "O Modelo Torneio 360 deixou de enviar campeões e segundos à principal.");
 assert.deepEqual(playRankingQualified.repechage.map((row) => row.id), [2, 3, 6], "O Modelo Torneio 360 alterou os classificados iniciais da paralela.");
 assert.deepEqual(
   playRankingQualified.unresolvedCampaignTies.map((tie) => tie.scope).sort(),
   ["campeoes", "paralela"],
   "Os empates proporcionais entre grupos deixaram de ser identificados por disputa."
+);
+assert.ok(
+  mainSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL = "Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
+    && tieBreakPanelsSource.includes('"playranking"')
+    && tournamentFormatHelpSource.includes("O Total de Games permanece visível somente como estatística."),
+  "O Modelo Torneio 360 não explica sua regra exclusiva ou voltou a tratar Total de Games como desempate do grupo."
 );
 const copinhaPlayers = createNamedTeams(9);
 const copinhaSchedule = completeGroupScheduleWithLowerIdWinning(
@@ -2480,6 +2601,8 @@ assert.equal(rankingCriteriaOptions.length, 6, "Alguma ordem válida dos critér
 assert.deepEqual(getRankingCriteria("points_balance_wins").order, ["pts", "bal", "w"], "A ordem escolhida do ranking não é respeitada.");
 assert.equal(getRankingCriteria("inexistente").value, defaultRankingCriteria, "Um critério inválido não retorna ao padrão seguro.");
 assert.equal(getRankingColumnLabel("pts"), "Total de Games", "A nomenclatura de Total de Games foi alterada.");
+assert.equal(getRankingColumnLabel("coefficient"), "Coeficiente", "A coluna de coeficiente do Modelo Torneio 360 foi alterada.");
+assert.equal(formatRankingMetricValue("coefficient", 0.6285714285714286), "0.629", "O coeficiente não é exibido com três casas decimais.");
 assert.equal(formatRankingMetricValue("playTimeSeconds", 125), "00:02:05", "O tempo total em jogo não usa horas, minutos e segundos no ranking.");
 assert.equal(formatMatchDuration(125), "02:05", "O cronômetro da partida deixou de usar minutos e segundos.");
 assert.equal(formatMatchTotalDuration(77264), "21:27:44", "O total acumulado não usa horas, minutos e segundos.");

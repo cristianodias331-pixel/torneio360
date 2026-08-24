@@ -480,6 +480,13 @@ const {
 } = createCupPresentation({ getCupPlayTimeById });
 
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
+const PLAY_RANKING_GROUP_CRITERIA_LABEL = "Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio";
+
+function getAutomaticCupRankingLabel(type) {
+  return modalityConfig[type]?.type === "playranking"
+    ? PLAY_RANKING_GROUP_CRITERIA_LABEL
+    : getRankingCriteria(cupRankingCriteria).label;
+}
 
 function getNewTournamentRankingCriteria(type, selectedCriteria = "") {
   return isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria;
@@ -1877,7 +1884,7 @@ function Login({
 
             <Info
               title="Modelo Torneio 360"
-              text="Mantém a fase de grupos e os critérios do modelo Campeonato Cearense, mas acrescenta uma segunda oportunidade: as duplas derrotadas somente na primeira fase efetivamente jogada da Eliminatória Principal também entram na Disputa Paralela. Elas são ordenadas pela qualidade da derrota e recebem prioridade na montagem da nova chave."
+              text="Na fase de grupos, classifica por vitórias, saldo de games, confronto direto, coeficiente e sorteio; o Total de Games fica apenas como estatística. As duplas derrotadas somente na primeira fase efetivamente jogada da Eliminatória Principal também entram na Disputa Paralela, com prioridade na montagem da nova chave."
             />
           </div>
         </section>
@@ -7763,9 +7770,15 @@ setNewPublicInfo({
 
               <div className="formField fullField">
                 <label>Critério do ranking</label>
-                <select value={editForm.rankingCriteria} onChange={(e) => updateEditForm("rankingCriteria", e.target.value)}>
-                  {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
+                {modalityConfig[editForm.type]?.type === "playranking" ? (
+                  <select value="playranking_group_rule" disabled aria-label="Critério automático do Modelo Torneio 360">
+                    <option value="playranking_group_rule">{PLAY_RANKING_GROUP_CRITERIA_LABEL}</option>
+                  </select>
+                ) : (
+                  <select value={editForm.rankingCriteria} onChange={(e) => updateEditForm("rankingCriteria", e.target.value)}>
+                    {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                )}
               </div>
             </div>
 
@@ -7892,10 +7905,16 @@ setNewPublicInfo({
                       </div>
                       <div className="formField fullField">
                         <label>Critério do ranking</label>
-                        <select value={category.rankingCriteria} onChange={(event) => updateEventGroupCategory(category.key, "rankingCriteria", event.target.value)}>
-                          <option value="">Escolha o critério</option>
-                          {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                        </select>
+                        {modalityConfig[category.type]?.type === "playranking" ? (
+                          <select value="playranking_group_rule" disabled aria-label="Critério automático do Modelo Torneio 360">
+                            <option value="playranking_group_rule">{PLAY_RANKING_GROUP_CRITERIA_LABEL}</option>
+                          </select>
+                        ) : (
+                          <select value={category.rankingCriteria} onChange={(event) => updateEventGroupCategory(category.key, "rankingCriteria", event.target.value)}>
+                            <option value="">Escolha o critério</option>
+                            {rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        )}
                       </div>
                       <div className="formField fullField categoryEditCoverField">
                         <label className="eventCoverToggle">
@@ -8321,7 +8340,7 @@ setNewPublicInfo({
             <label>Critério do ranking</label>
             {isCupType(modalityConfig[item.type]) ? (
               <select value={cupRankingCriteria} disabled aria-label="Critério automático das modalidades de copa">
-                <option value={cupRankingCriteria}>{getRankingCriteria(cupRankingCriteria).label}</option>
+                <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(item.type)}</option>
               </select>
             ) : (
               <select value={item.rankingCriteria} onChange={(e) => updateCategorySchedule(index, "rankingCriteria", e.target.value)}>
@@ -8485,7 +8504,7 @@ setNewPublicInfo({
     <label>Critério do ranking <span aria-hidden="true">*</span></label>
     {isCupType(modalityConfig[newType]) ? (
       <select value={cupRankingCriteria} disabled aria-label="Critério automático das modalidades de copa">
-        <option value={cupRankingCriteria}>{getRankingCriteria(cupRankingCriteria).label}</option>
+        <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(newType)}</option>
       </select>
     ) : (
       <select value={newRankingCriteria} onChange={(e) => setNewRankingCriteria(e.target.value)} required aria-required="true">
@@ -9242,7 +9261,7 @@ setNewPublicInfo({
     {allowedTypes.includes("Modelo Play Ranking") && (
       <Info
         title="Modelo Torneio 360"
-        text="Usa a mesma fase de grupos do modelo Campeonato Cearense. A diferença é que as duplas derrotadas somente na primeira fase jogada da Eliminatória Principal também seguem para a Disputa Paralela, com prioridade e sem confronto direto entre elas na estreia sempre que houver uma dupla vinda dos grupos disponível."
+        text="Na fase de grupos, classifica por vitórias, saldo de games, confronto direto, coeficiente e sorteio; o Total de Games fica apenas como estatística. As duplas derrotadas somente na primeira fase jogada da Eliminatória Principal também seguem para a Disputa Paralela, com prioridade e sem confronto direto entre elas na estreia sempre que houver uma dupla vinda dos grupos disponível."
       />
     )}
   </div>

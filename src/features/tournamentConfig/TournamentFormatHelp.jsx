@@ -239,7 +239,9 @@ export default function TournamentFormatInfoButton({
                   <h3>Fase de grupos</h3>
                   <p>Os {summary.teamCount} participantes serão distribuídos em <strong>{summary.groupDescription}</strong>.</p>
                   <p>Cada participante fará <strong>{summary.gamesPerTeamDescription} jogos</strong> na fase de grupos, totalizando {summary.groupMatches} partidas.</p>
-                  {!isPlayRanking ? <p>A classificação de cada grupo segue: vitórias, saldo de games, confronto direto quando restarem exatamente dois participantes empatados e sorteio quando três ou mais permanecerem empatados.</p> : null}
+                  {isPlayRanking
+                    ? <p>A classificação de cada grupo segue: vitórias, saldo de games, confronto direto, coeficiente e sorteio. Em confronto direto circular, o sistema ignora esse critério e passa ao coeficiente. O Total de Games permanece visível somente como estatística.</p>
+                    : <p>A classificação de cada grupo segue: vitórias, saldo de games, confronto direto quando restarem exatamente dois participantes empatados e sorteio quando três ou mais permanecerem empatados.</p>}
                 </div>
               </article>
 
@@ -350,7 +352,7 @@ export default function TournamentFormatInfoButton({
                 <div>
                   <h3>Critérios e independência das chaves</h3>
                   {isPlayRanking ? (
-                    <p>Dentro de cada grupo continuam valendo os critérios escolhidos pelo organizador. Entre grupos, o sistema compara percentual de vitórias, saldo médio e média de games.</p>
+                    <p>Dentro de cada grupo, a ordem é vitórias, saldo de games, confronto direto, coeficiente e sorteio. O coeficiente é a média, partida a partida, da divisão dos games feitos pelo total de games jogados. Em confronto circular, o sistema passa diretamente ao coeficiente. O Total de Games aparece apenas como estatística da tabela. Entre grupos, o sistema compara percentual de vitórias, saldo médio e média de games.</p>
                   ) : (
                     <p>Os melhores grupos são definidos comparando somente os campeões. O saldo do campeão de grupo com quatro participantes é dividido por 1,5; em empate, o organizador realiza o sorteio. Todo o grupo herda essa posição MG.</p>
                   )}
