@@ -6079,27 +6079,55 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           status: "active",
         }];
 
-    const { data: createdTournaments, error } = await supabase
-      .from("tournaments")
-      .insert(rowsToInsert)
-      .select("*");
+    let createdTournaments = null;
+    let creationError = null;
+    try {
+      const result = await supabase
+        .from("tournaments")
+        .insert(rowsToInsert)
+        .select("*");
+      createdTournaments = result.data;
+      creationError = result.error;
+    } catch (error) {
+      creationError = error;
+    } finally {
+      setSaving(false);
+    }
 
-    setSaving(false);
-
-    if (error) {
+    if (creationError) {
       showNotice("error", "Erro ao criar torneio", "Tente novamente em alguns instantes.");
-      console.error(error);
+      console.error(creationError);
       return;
     }
 
-    const manualOrderActive = hasSavedManualTournamentOrder(tournaments);
-    const chronologicalInsertion = insertTournamentsByEventSchedule(tournaments, createdTournaments || []);
-    const optimisticTournaments = manualOrderActive
-      ? chronologicalInsertion.map((tournament, displayOrder) => ({
-          ...tournament,
-          data: { ...(tournament.data || {}), displayOrder, displayOrderMode: "manual" },
-        }))
-      : chronologicalInsertion;
+    // O banco já confirmou a criação. A organização local da lista não pode
+    // impedir o fechamento do editor nem esconder a confirmação de sucesso.
+    const confirmedCreatedTournaments = Array.isArray(createdTournaments)
+      ? createdTournaments.filter(Boolean)
+      : [];
+    const currentTournaments = Array.isArray(tournaments) ? tournaments.filter(Boolean) : [];
+    const createdIds = new Set(confirmedCreatedTournaments.map((tournament) => String(tournament.id)));
+    const safeInsertion = [
+      ...currentTournaments.filter((tournament) => !createdIds.has(String(tournament.id))),
+      ...confirmedCreatedTournaments,
+    ];
+    let manualOrderActive = false;
+    let optimisticTournaments = safeInsertion;
+    try {
+      manualOrderActive = hasSavedManualTournamentOrder(currentTournaments);
+      const chronologicalInsertion = insertTournamentsByEventSchedule(
+        currentTournaments,
+        confirmedCreatedTournaments
+      );
+      optimisticTournaments = manualOrderActive
+        ? chronologicalInsertion.map((tournament, displayOrder) => ({
+            ...tournament,
+            data: { ...(tournament.data || {}), displayOrder, displayOrderMode: "manual" },
+          }))
+        : chronologicalInsertion;
+    } catch (localProjectionError) {
+      console.error("O torneio foi criado, mas a lista local precisou usar a ordem segura:", localProjectionError);
+    }
     tournamentsRef.current = optimisticTournaments;
     setTournaments(optimisticTournaments);
 
@@ -6144,23 +6172,17 @@ setNewPublicInfo({
   showCityState: true,
 });
     setCreateTournamentOpen(false);
-    showNotice("success", isMultiCategory ? "Torneios criados" : "Torneio criado", isMultiCategory ? "As categorias foram criadas como torneios separados dentro do mesmo evento." : "O torneio foi criado com sucesso.");
-
-    const createdIds = (createdTournaments || []).map((tournament) => tournament.id).filter(Boolean);
-    if (createdIds.length) {
-      setOpenTournamentIds((currentIds) => [...new Set([...currentIds, ...createdIds])].slice(-50));
-      const firstCreatedTournament = optimisticTournaments.find((tournament) => tournament.id === createdIds[0])
-        || createdTournaments[0];
-      const savedNavigation = openTournamentNavigationRef.current[firstCreatedTournament.id] || {};
-      updateAppUrl({
-        activePanel: "criar",
-        selectedTournamentId: firstCreatedTournament.id,
-        tournamentTab: savedNavigation.tournamentTab || DEFAULT_TOURNAMENT_NAVIGATION.tournamentTab,
-        matchesTab: savedNavigation.matchesTab || DEFAULT_TOURNAMENT_NAVIGATION.matchesTab,
-      });
-      setSelected(firstCreatedTournament);
-      queueScrollRestore(savedNavigation.scrollY || 0);
+    setSelected(null);
+    setTournamentSearch("");
+    if (confirmedCreatedTournaments[0]) {
+      setTournamentStatusFilter(getTournamentLifecycleStatus(confirmedCreatedTournaments[0]));
     }
+    updateAppUrl({ activePanel: "criar", selectedTournamentId: null });
+    saveUserAppState({ activePanel: "criar", selectedTournamentId: null });
+    showNotice("success", isMultiCategory ? "Torneios criados" : "Torneio criado", isMultiCategory ? "As categorias foram criadas como torneios separados dentro do mesmo evento." : "O torneio foi criado com sucesso.");
+    window.requestAnimationFrame(() => {
+      document.getElementById("historico-torneios")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
 
     void (async () => {
       let tournamentsForDirectory = optimisticTournaments;
