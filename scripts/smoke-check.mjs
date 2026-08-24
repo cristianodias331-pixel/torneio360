@@ -5192,12 +5192,17 @@ assert.equal(storyCoverHasNativeResolution(540, 960), false, "Fotos pequenas dei
 assert.ok(
   mainSource.includes("readStoryCoverFile")
     && mainSource.includes("StoryCoverEditor")
+    && mainSource.includes("createPortal(")
+    && mainSource.includes("document.body")
     && mainSource.includes("1080 × 1920 px (9:16)")
     && mainSource.includes("Foto do circuito")
     && !mainSource.includes('className="photoZoomButtons"')
     && storyCoverEditorSource.includes('canvas.toDataURL("image/jpeg", 0.88)')
     && storyCoverEditorSource.includes("handlePointerMove")
     && storyCoverEditorSource.includes("handleWheel")
+    && storyCoverEditorSource.includes('document.querySelectorAll(\'[aria-modal="true"]\')')
+    && storyCoverEditorSource.includes('body.style.position = "fixed"')
+    && storyCoverEditorSource.includes("dialog.inert = true")
     && mainSource.includes("PublicImageLightbox")
     && publicArenaPresentationSource.includes('organizer.photoUrl || "/torneio360-profile.png"')
     && publicArenaApiSource.includes("get_public_tournament_cover")
@@ -5210,6 +5215,8 @@ assert.ok(
     && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover")
     && styleSource.includes(".storyCoverEditorFrame")
     && styleSource.includes("aspect-ratio: 9 / 16")
+    && styleSource.includes("z-index: 110000")
+    && styleSource.includes(".storyCoverUnderlyingModalLocked")
     && styleSource.includes('html[data-theme="dark"] .tournamentCoverDropzone'),
   "As imagens públicas perderam o editor Stories, a moldura circular, o contraste noturno ou a ampliação."
 );

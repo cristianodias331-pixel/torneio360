@@ -8077,12 +8077,15 @@ setNewPublicInfo({
       ) : null}
 
       {coverImageEditor ? (
-        <StoryCoverEditor
-          sourceUrl={coverImageEditor.imageUrl}
-          fileName={coverImageEditor.fileName}
-          onCancel={cancelTournamentCoverEditor}
-          onApply={applyTournamentCover}
-        />
+        createPortal(
+          <StoryCoverEditor
+            sourceUrl={coverImageEditor.imageUrl}
+            fileName={coverImageEditor.fileName}
+            onCancel={cancelTournamentCoverEditor}
+            onApply={applyTournamentCover}
+          />,
+          document.body
+        )
       ) : null}
 
       {photoEditor ? (

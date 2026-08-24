@@ -18,6 +18,7 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
   const frameRef = useRef(null);
+  const overlayRef = useRef(null);
   const pointersRef = useRef(new Map());
   const lastDragRef = useRef(null);
   const lastPinchRef = useRef(null);
@@ -54,6 +55,73 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onCancel, processing]);
+
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    if (!overlay) return undefined;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollX = window.scrollX || 0;
+    const scrollY = window.scrollY || 0;
+    const previouslyFocused = document.activeElement;
+    const previousHtmlStyles = {
+      overflow: html.style.overflow,
+      overscrollBehavior: html.style.overscrollBehavior,
+    };
+    const previousBodyStyles = {
+      overflow: body.style.overflow,
+      overscrollBehavior: body.style.overscrollBehavior,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+    const underlyingDialogs = Array.from(document.querySelectorAll('[aria-modal="true"]'))
+      .filter((dialog) => dialog !== overlay && !dialog.contains(overlay))
+      .map((dialog) => ({
+        dialog,
+        ariaHidden: dialog.getAttribute("aria-hidden"),
+        inert: dialog.inert,
+        hadInertAttribute: dialog.hasAttribute("inert"),
+      }));
+
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.position = "fixed";
+    body.style.top = `${-scrollY}px`;
+    body.style.left = `${-scrollX}px`;
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.classList.add("storyCoverScrollLocked");
+
+    underlyingDialogs.forEach(({ dialog }) => {
+      dialog.inert = true;
+      dialog.setAttribute("aria-hidden", "true");
+      dialog.classList.add("storyCoverUnderlyingModalLocked");
+    });
+    overlay.focus({ preventScroll: true });
+
+    return () => {
+      underlyingDialogs.forEach(({ dialog, ariaHidden, inert, hadInertAttribute }) => {
+        dialog.classList.remove("storyCoverUnderlyingModalLocked");
+        dialog.inert = inert;
+        if (!hadInertAttribute) dialog.removeAttribute("inert");
+        if (ariaHidden === null) dialog.removeAttribute("aria-hidden");
+        else dialog.setAttribute("aria-hidden", ariaHidden);
+      });
+      Object.assign(html.style, previousHtmlStyles);
+      Object.assign(body.style, previousBodyStyles);
+      body.classList.remove("storyCoverScrollLocked");
+      window.scrollTo(scrollX, scrollY);
+      if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) {
+        previouslyFocused.focus({ preventScroll: true });
+      }
+    };
+  }, []);
 
   function drawCover(canvas, width, height) {
     const image = imageRef.current;
@@ -174,7 +242,15 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
     : false;
 
   return (
-    <div className="storyCoverEditorOverlay" role="dialog" aria-modal="true" aria-labelledby="story-cover-editor-title">
+    <div
+      ref={overlayRef}
+      className="storyCoverEditorOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="story-cover-editor-title"
+      tabIndex={-1}
+      onWheel={(event) => event.stopPropagation()}
+    >
       <section className="storyCoverEditorModal">
         <header>
           <div>

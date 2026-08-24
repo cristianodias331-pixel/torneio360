@@ -8246,13 +8246,33 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
 .storyCoverEditorOverlay {
   position: fixed;
   inset: 0;
-  z-index: 10100;
+  z-index: 110000;
   display: grid;
   padding: clamp(12px, 3vw, 30px);
   place-items: center;
   overflow-y: auto;
+  overscroll-behavior: none;
+  isolation: isolate;
   background: rgba(2, 9, 18, 0.82);
   backdrop-filter: blur(10px);
+}
+
+html[data-theme="dark"] .storyCoverEditorOverlay {
+  --ui-surface-raised: #18222f;
+  --ui-surface-muted: #141e2a;
+  --ui-text: #e7eef8;
+  --ui-text-strong: #f5f8fc;
+  --ui-muted: #aab6c5;
+  --ui-border: #2b3745;
+}
+
+html[data-theme="light"] .storyCoverEditorOverlay {
+  --ui-surface-raised: #ffffff;
+  --ui-surface-muted: #eef3f8;
+  --ui-text: #132033;
+  --ui-text-strong: #09182e;
+  --ui-muted: #59687b;
+  --ui-border: #cbd6e4;
 }
 
 .storyCoverEditorModal {
@@ -8260,11 +8280,21 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   max-height: 94dvh;
   padding: clamp(16px, 2.6vw, 26px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--ui-border, #dbe4ef);
   border-radius: 24px;
   background: var(--ui-surface-raised, #ffffff);
   color: var(--ui-text-strong, #0f172a);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+}
+
+body.storyCoverScrollLocked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.storyCoverUnderlyingModalLocked {
+  pointer-events: none !important;
 }
 
 .storyCoverEditorModal > header {
