@@ -350,6 +350,7 @@ import {
 } from "../src/domain/cupBracketConstruction.mjs";
 import { playRankingMainBracketPlans } from "../src/domain/cupBracketPlans.mjs";
 import { generatePlayRankingBrackets } from "../src/domain/cupBracketOrchestration.mjs";
+import { createCupPresentation } from "../src/domain/cupPresentation.mjs";
 import {
   getCopinhaHeadToHeadWinnerId,
   getCopinhaManualTieOrder,
@@ -2566,6 +2567,47 @@ assert.deepEqual(
   getCupQualified({ ...cup21Data, cupConfig: { teamCount: 21 } }),
   cup21Qualified,
   "Um torneio antigo de 21 duplas deixou de usar sua regra compatível."
+);
+const { calculateParallelRanking: calculateTestParallelRanking } = createCupPresentation({
+  getCupPlayTimeById: () => new Map(),
+});
+const [parallelFinalist1, parallelFinalist2] = cup21Qualified.repechage.map((row) => row.id);
+const pendingParallelFinalData = {
+  ...cup21Data,
+  brackets: [{
+    phase: "repechage",
+    roundName: "Final",
+    matchKey: "repechage_final_1",
+    ids1: [parallelFinalist1],
+    ids2: [parallelFinalist2],
+    s1: "",
+    s2: "",
+  }],
+};
+assert.deepEqual(
+  calculateTestParallelRanking(pendingParallelFinalData),
+  [],
+  "A Disputa Paralela exibiu campeão e vice antes da conclusão da final."
+);
+const finishedParallelRanking = calculateTestParallelRanking({
+  ...pendingParallelFinalData,
+  brackets: pendingParallelFinalData.brackets.map((game) => ({ ...game, s1: "4", s2: "2" })),
+});
+assert.equal(finishedParallelRanking[0]?.id, parallelFinalist1, "A final concluída não liberou a campeã da Disputa Paralela.");
+assert.equal(finishedParallelRanking[1]?.id, parallelFinalist2, "A final concluída não liberou a vice da Disputa Paralela.");
+const roundRobinParallelGames = generateParallelRoundRobin(cup18Qualified.repechage.map((row) => row.id));
+assert.deepEqual(
+  calculateTestParallelRanking({ ...cup18Data, brackets: roundRobinParallelGames }),
+  [],
+  "A Disputa Paralela todos contra todos exibiu ranking antes de todos os jogos."
+);
+assert.equal(
+  calculateTestParallelRanking({
+    ...cup18Data,
+    brackets: roundRobinParallelGames.map((game) => ({ ...game, s1: "4", s2: "2" })),
+  }).length,
+  4,
+  "A Disputa Paralela todos contra todos não liberou o ranking após todos os jogos."
 );
 const proportionalCampaignTwoGames = { id: 10, name: "Ana", groupId: 0, groupPosition: 1, played: 2, w: 2, bal: 6, pts: 12 };
 const proportionalCampaignThreeGames = { id: 20, name: "Bia", groupId: 1, groupPosition: 1, played: 3, w: 3, bal: 9, pts: 18 };
