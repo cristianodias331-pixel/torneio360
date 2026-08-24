@@ -8005,8 +8005,8 @@ setNewPublicInfo({
             </div>
 
             <div className="editTournamentActions eventGroupEditActions">
-              <button type="button" className="cancelBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn eventGroupSaveButton" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving || coverImageLoading}>
+              <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
+              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving || coverImageLoading}>
                 {coverImageLoading ? "Preparando foto..." : editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
               </button>
             </div>
