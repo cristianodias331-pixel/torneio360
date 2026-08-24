@@ -269,7 +269,11 @@ import {
   sortCircuitsForDisplay,
 } from "./domain/publicArenaData.mjs";
 import {
+  ARENA_DIRECTORY_FOCUS_MIN_AGE_MS,
+  ARENA_DIRECTORY_PAGE_SIZE,
   ARENA_DIRECTORY_REFRESH_INTERVAL_MS,
+  PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS,
+  PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS,
   readPublicArenaBundleCache,
   readPublicArenaDirectoryCache,
 } from "./domain/publicArenaCache.mjs";
@@ -466,6 +470,7 @@ const {
   fetchPublicCircuitDetail,
   fetchPublicTournamentCover,
   fetchPublicTournamentDetail,
+  refreshPublicTournamentDetail,
 } = createPublicArenaApi({ supabase });
 
 const {
@@ -1138,64 +1143,93 @@ function PublicArenaDirectorySection({ title = "Encontre uma arena", description
   const [arenas, setArenas] = useState(() => initialDirectoryCache || []);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(() => !initialDirectoryCache);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(() => (initialDirectoryCache || []).length >= ARENA_DIRECTORY_PAGE_SIZE);
+  const [nextCursor, setNextCursor] = useState(() => {
+    const lastArena = initialDirectoryCache?.[initialDirectoryCache.length - 1];
+    return lastArena ? {
+      id: lastArena.id,
+      sortName: lastArena.sort_name
+        || String(lastArena.arena_name || lastArena.name || "arena").trim().toLocaleLowerCase("pt-BR"),
+    } : null;
+  });
   const [error, setError] = useState("");
+  const [refreshToken, setRefreshToken] = useState(0);
+  const lastSuccessfulLoadAtRef = useRef(initialDirectoryCache ? Date.now() : 0);
+  const directoryRequestIdRef = useRef(0);
 
   useEffect(() => {
     let active = true;
-    let requestInFlight = false;
-    let hasSuccessfulLoad = Boolean(initialDirectoryCache);
+    const requestId = directoryRequestIdRef.current + 1;
+    directoryRequestIdRef.current = requestId;
+    const normalizedSearch = search.trim();
+    const waitMs = normalizedSearch ? 320 : 0;
+    const timer = window.setTimeout(async () => {
+      if (!initialDirectoryCache || normalizedSearch || refreshToken > 0) setLoading(true);
+      const result = await fetchPublicArenaDirectory({
+        search: normalizedSearch || null,
+        limit: ARENA_DIRECTORY_PAGE_SIZE,
+      });
+      if (!active || requestId !== directoryRequestIdRef.current) return;
 
-    async function loadArenas({ silent = false } = {}) {
-      if (requestInFlight) return;
-      requestInFlight = true;
-      if (!silent) setLoading(true);
-
-      try {
-        const result = await fetchPublicArenaDirectory({ limit: 250 });
-        if (!active) return;
-        if (result.error) {
-          if (!hasSuccessfulLoad) setError("Não foi possível carregar as arenas agora.");
-          return;
-        }
-
-        hasSuccessfulLoad = true;
+      if (result.error) {
+        if (arenas.length === 0 || normalizedSearch) setError("Não foi possível carregar as arenas agora.");
+      } else {
         setArenas((result.data || []).filter((arena) => arena?.id));
+        setNextCursor(result.nextCursor || null);
+        setHasMore(result.hasMore === true);
         setError("");
-      } finally {
-        requestInFlight = false;
-        if (active) setLoading(false);
+        lastSuccessfulLoadAtRef.current = Date.now();
       }
-    }
-
-    void loadArenas({ silent: Boolean(initialDirectoryCache) });
-
-    const refreshArenas = () => void loadArenas({ silent: true });
-    const refreshVisibleArenas = () => {
-      if (document.visibilityState === "visible") refreshArenas();
-    };
-    const handleVisibilityChange = () => {
-      refreshVisibleArenas();
-    };
-    const refreshTimer = window.setInterval(refreshVisibleArenas, ARENA_DIRECTORY_REFRESH_INTERVAL_MS);
-
-    window.addEventListener("focus", refreshArenas);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+      setLoading(false);
+    }, waitMs);
 
     return () => {
       active = false;
+      window.clearTimeout(timer);
+    };
+  }, [search, refreshToken]);
+
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastSuccessfulLoadAtRef.current < ARENA_DIRECTORY_FOCUS_MIN_AGE_MS) return;
+      setRefreshToken((current) => current + 1);
+    };
+    const refreshTimer = window.setInterval(
+      () => document.visibilityState === "visible" && setRefreshToken((current) => current + 1),
+      ARENA_DIRECTORY_REFRESH_INTERVAL_MS,
+    );
+    window.addEventListener("focus", refreshIfStale);
+    document.addEventListener("visibilitychange", refreshIfStale);
+    return () => {
       window.clearInterval(refreshTimer);
-      window.removeEventListener("focus", refreshArenas);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", refreshIfStale);
+      document.removeEventListener("visibilitychange", refreshIfStale);
     };
   }, []);
 
-  const filteredArenas = arenas.filter((arena) => {
-    const term = search.trim().toLocaleLowerCase("pt-BR");
-    if (!term) return true;
-    return [arena.arena_name, arena.name, arena.city, arena.state]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase("pt-BR").includes(term));
-  });
+  async function loadMoreArenas() {
+    if (loadingMore || !hasMore || !nextCursor) return;
+    setLoadingMore(true);
+    const result = await fetchPublicArenaDirectory({
+      search: search.trim() || null,
+      limit: ARENA_DIRECTORY_PAGE_SIZE,
+      cursor: nextCursor,
+    });
+    if (result.error) {
+      setError("Não foi possível carregar mais arenas agora.");
+    } else {
+      setArenas((current) => Array.from(
+        new Map([...current, ...(result.data || [])].map((arena) => [String(arena.id), arena])).values()
+      ));
+      setNextCursor(result.nextCursor || null);
+      setHasMore(result.hasMore === true);
+      setError("");
+      lastSuccessfulLoadAtRef.current = Date.now();
+    }
+    setLoadingMore(false);
+  }
 
 
   return (
@@ -1206,7 +1240,10 @@ function PublicArenaDirectorySection({ title = "Encontre uma arena", description
       onSearchChange={setSearch}
       loading={loading}
       error={error}
-      arenas={filteredArenas}
+      arenas={arenas}
+      hasMore={hasMore}
+      loadingMore={loadingMore}
+      onLoadMore={loadMoreArenas}
       onOpenArena={(arena) => window.location.assign(getArenaPublicUrl(arena.id))}
       ArenaPhoto={LazyArenaPhoto}
     />
@@ -2152,6 +2189,9 @@ function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile }) {
   const [trashTournaments, setTrashTournaments] = useState([]);
   const [trashCircuits, setTrashCircuits] = useState([]);
   const [publicArenaProfiles, setPublicArenaProfiles] = useState([]);
+  const [publicArenaProfilesCursor, setPublicArenaProfilesCursor] = useState(null);
+  const [publicArenaProfilesHasMore, setPublicArenaProfilesHasMore] = useState(false);
+  const [publicArenaProfilesLoadingMore, setPublicArenaProfilesLoadingMore] = useState(false);
   const [arenaProfileSearch, setArenaProfileSearch] = useState("");
   const [selectedArenaProfile, setSelectedArenaProfile] = useState(null);
   const [selectedArenaTournaments, setSelectedArenaTournaments] = useState([]);
@@ -2170,6 +2210,7 @@ function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile }) {
   const publicArenaProfilesInFlightRef = useRef(false);
   const publicArenaProfilesRequestRef = useRef(0);
   const publicArenaProfilesMountedRef = useRef(true);
+  const publicArenaProfilesLastLoadedAtRef = useRef(0);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("");
 const [newCategory, setNewCategory] = useState("");
@@ -5716,11 +5757,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setSelectedArenaTournaments([]);
   }
 
-  async function loadPublicArenaProfiles() {
+  async function loadPublicArenaProfiles({ searchTerm = arenaProfileSearch, append = false } = {}) {
     if (publicArenaProfilesInFlightRef.current) return;
     publicArenaProfilesInFlightRef.current = true;
+    if (append) setPublicArenaProfilesLoadingMore(true);
     const requestId = publicArenaProfilesRequestRef.current + 1;
     publicArenaProfilesRequestRef.current = requestId;
+    const normalizedSearch = String(searchTerm || "").trim();
 
     try {
       const currentArenaProfile = {
@@ -5739,7 +5782,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         is_public: true,
       };
 
-      const cachedProfiles = readPublicArenaDirectoryCache();
+      const cachedProfiles = !normalizedSearch && !append ? readPublicArenaDirectoryCache() : null;
       if (cachedProfiles && publicArenaProfilesMountedRef.current) {
         const cachedWithoutCurrent = cachedProfiles
           .filter((item) => item?.id && item.id !== user.id)
@@ -5747,7 +5790,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         setPublicArenaProfiles([currentArenaProfile, ...cachedWithoutCurrent]);
       }
 
-      const { data, error } = await fetchPublicArenaDirectory({ limit: 250 });
+      const { data, error, hasMore, nextCursor } = await fetchPublicArenaDirectory({
+        search: normalizedSearch || null,
+        limit: ARENA_DIRECTORY_PAGE_SIZE,
+        cursor: append ? publicArenaProfilesCursor : null,
+      });
       if (!publicArenaProfilesMountedRef.current || requestId !== publicArenaProfilesRequestRef.current) return;
 
       if (error) {
@@ -5762,10 +5809,28 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         .filter((item) => item?.id)
         .map((item) => ({ ...item, is_public: true }));
 
-      const withoutCurrent = profiles.filter((item) => item.id !== user.id);
-      setPublicArenaProfiles([currentArenaProfile, ...withoutCurrent]);
+      const currentSearchText = [
+        currentArenaProfile.arena_name,
+        currentArenaProfile.name,
+        currentArenaProfile.city,
+        currentArenaProfile.state,
+      ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
+      const includeCurrentProfile = !normalizedSearch
+        || currentSearchText.includes(normalizedSearch.toLocaleLowerCase("pt-BR"));
+
+      setPublicArenaProfiles((current) => {
+        const source = append ? [...current, ...profiles] : profiles;
+        const unique = Array.from(
+          new Map(source.filter((item) => item?.id).map((item) => [String(item.id), item])).values()
+        ).filter((item) => item.id !== user.id);
+        return includeCurrentProfile ? [currentArenaProfile, ...unique] : unique;
+      });
+      setPublicArenaProfilesCursor(nextCursor || null);
+      setPublicArenaProfilesHasMore(hasMore === true);
+      publicArenaProfilesLastLoadedAtRef.current = Date.now();
     } finally {
       publicArenaProfilesInFlightRef.current = false;
+      if (append) setPublicArenaProfilesLoadingMore(false);
     }
   }
 
@@ -6080,34 +6145,40 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return undefined;
     }
     let refreshInFlight = false;
+    const normalizedSearch = arenaProfileSearch.trim();
 
     const refreshProfiles = () => {
       if (refreshInFlight) return;
       refreshInFlight = true;
-      Promise.resolve(publicArenaProfilesLoaderRef.current?.())
+      Promise.resolve(publicArenaProfilesLoaderRef.current?.({ searchTerm: normalizedSearch, append: false }))
         .catch((error) => console.error("Erro ao atualizar diretório de arenas:", error))
         .finally(() => { refreshInFlight = false; });
     };
     const refreshVisibleProfiles = () => {
-      if (document.visibilityState === "visible") refreshProfiles();
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - publicArenaProfilesLastLoadedAtRef.current < ARENA_DIRECTORY_FOCUS_MIN_AGE_MS) return;
+      refreshProfiles();
     };
     const handleVisibilityChange = () => {
       refreshVisibleProfiles();
     };
-    const refreshTimer = window.setInterval(refreshVisibleProfiles, ARENA_DIRECTORY_REFRESH_INTERVAL_MS);
+    const initialRefreshTimer = window.setTimeout(refreshProfiles, normalizedSearch ? 320 : 0);
+    const refreshTimer = normalizedSearch
+      ? null
+      : window.setInterval(refreshVisibleProfiles, ARENA_DIRECTORY_REFRESH_INTERVAL_MS);
 
-    refreshProfiles();
-    window.addEventListener("focus", refreshProfiles);
+    window.addEventListener("focus", refreshVisibleProfiles);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       publicArenaProfilesMountedRef.current = false;
       publicArenaProfilesRequestRef.current += 1;
-      window.clearInterval(refreshTimer);
-      window.removeEventListener("focus", refreshProfiles);
+      window.clearTimeout(initialRefreshTimer);
+      if (refreshTimer) window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshVisibleProfiles);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activePanel, user.id]);
+  }, [activePanel, user.id, arenaProfileSearch]);
 
   async function createTournament() {
     if (!ensureCloudConnection("criar um novo torneio")) return;
@@ -8466,6 +8537,16 @@ setNewPublicInfo({
       </article>
     ))}
   </div>
+  {publicArenaProfilesHasMore ? (
+    <button
+      type="button"
+      className="publicArenaLoadMore"
+      disabled={publicArenaProfilesLoadingMore}
+      onClick={() => void loadPublicArenaProfiles({ searchTerm: arenaProfileSearch, append: true })}
+    >
+      {publicArenaProfilesLoadingMore ? "Carregando mais arenas..." : "Mostrar mais arenas"}
+    </button>
+  ) : null}
 </section>
 )}
 
@@ -13136,6 +13217,13 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const requestedCircuitCoversRef = useRef(new Set());
   const tournamentCoverCacheRef = useRef(new Map());
   const circuitCoverCacheRef = useRef(new Map());
+  const bundleRequestInFlightRef = useRef(false);
+  const lastBundleLoadAtRef = useRef(0);
+  const selectedPublicTournamentRef = useRef(null);
+
+  useEffect(() => {
+    selectedPublicTournamentRef.current = selectedTournament;
+  }, [selectedTournament]);
 
   function getTournamentCardCoverKey(tournament) {
     const details = tournament?.data || {};
@@ -13209,55 +13297,60 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   }
 
   async function loadBundle({ silent = false } = {}) {
+    if (bundleRequestInFlightRef.current) return;
+    bundleRequestInFlightRef.current = true;
     if (!silent) setLoading(true);
+    try {
+      const result = await fetchPublicArenaBundle({ arenaId, publicId });
 
-    const result = await fetchPublicArenaBundle({ arenaId, publicId });
-
-    if (result.error || !result.data?.profile) {
-      console.error(result.error);
-      if (!silent) {
-        setError("Não foi possível abrir o perfil desta arena.");
-        setBundle(null);
+      if (result.error || !result.data?.profile) {
+        console.error(result.error);
+        if (!silent) {
+          setError("Não foi possível abrir o perfil desta arena.");
+          setBundle(null);
+        }
+      } else {
+        const tournamentsWithCachedCovers = (result.data.tournaments || []).map((tournament) => {
+          const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
+          return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
+        });
+        const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
+          const cachedCover = circuitCoverCacheRef.current.get(String(circuit.id));
+          const circuitWithCover = cachedCover ? {
+            ...circuit,
+            coverImageUrl: cachedCover,
+            ranking_settings: { ...(circuit.ranking_settings || {}), coverImageUrl: cachedCover },
+          } : circuit;
+          return normalizePublicCircuitForDisplay(circuitWithCover, { directoryEntry: true });
+        });
+        const normalizedBundle = { ...result.data, tournaments: tournamentsWithCachedCovers, circuits: normalizedCircuits };
+        setBundle(normalizedBundle);
+        loadProfilePhotoInBackground(normalizedBundle.profile);
+        setSelectedTournament((current) => {
+          if (!current) return null;
+          const directoryItem = (normalizedBundle.tournaments || []).find((item) => item.id === current.id);
+          if (!directoryItem) return null;
+          if (current.directoryEntry !== true) {
+            return { ...directoryItem, ...current, data: current.data };
+          }
+          return directoryItem;
+        });
+        setSelectedCircuit((current) => {
+          if (!current) return null;
+          const directoryItem = normalizedCircuits.find((item) => String(item.id) === String(current.id));
+          if (!directoryItem) return null;
+          if (current.directoryEntry !== true) {
+            return { ...directoryItem, ...current };
+          }
+          return directoryItem;
+        });
+        setError("");
+        lastBundleLoadAtRef.current = Date.now();
       }
-    } else {
-      const tournamentsWithCachedCovers = (result.data.tournaments || []).map((tournament) => {
-        const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
-        return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
-      });
-      const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
-        const cachedCover = circuitCoverCacheRef.current.get(String(circuit.id));
-        const circuitWithCover = cachedCover ? {
-          ...circuit,
-          coverImageUrl: cachedCover,
-          ranking_settings: { ...(circuit.ranking_settings || {}), coverImageUrl: cachedCover },
-        } : circuit;
-        return normalizePublicCircuitForDisplay(circuitWithCover, { directoryEntry: true });
-      });
-      const normalizedBundle = { ...result.data, tournaments: tournamentsWithCachedCovers, circuits: normalizedCircuits };
-      setBundle(normalizedBundle);
-      loadProfilePhotoInBackground(normalizedBundle.profile);
-      setSelectedTournament((current) => {
-        if (!current) return null;
-        const directoryItem = (normalizedBundle.tournaments || []).find((item) => item.id === current.id);
-        if (!directoryItem) return null;
-        if (current.directoryEntry !== true) {
-          return { ...directoryItem, ...current, data: current.data };
-        }
-        return directoryItem;
-      });
-      setSelectedCircuit((current) => {
-        if (!current) return null;
-        const directoryItem = normalizedCircuits.find((item) => String(item.id) === String(current.id));
-        if (!directoryItem) return null;
-        if (current.directoryEntry !== true) {
-          return { ...directoryItem, ...current };
-        }
-        return directoryItem;
-      });
-      setError("");
+    } finally {
+      bundleRequestInFlightRef.current = false;
+      if (!silent) setLoading(false);
     }
-
-    if (!silent) setLoading(false);
   }
 
   useEffect(() => {
@@ -13276,12 +13369,53 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     } else {
       void loadBundle();
     }
-    const interval = window.setInterval(() => void loadBundle({ silent: true }), 20000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastBundleLoadAtRef.current < ARENA_DIRECTORY_FOCUS_MIN_AGE_MS) return;
+      void loadBundle({ silent: true });
+    };
+    const interval = window.setInterval(refreshWhenVisible, PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       window.clearTimeout(minimumLoadingTimer);
       window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [arenaId, publicId]);
+
+  useEffect(() => {
+    const selectedPublicId = String(selectedTournament?.public_id || "").trim();
+    if (!selectedPublicId || selectedTournament?.directoryEntry === true) return undefined;
+    let active = true;
+    let requestInFlight = false;
+
+    const refreshSelectedTournament = async () => {
+      if (!active || requestInFlight || document.visibilityState !== "visible") return;
+      const current = selectedPublicTournamentRef.current;
+      if (!current || String(current.public_id || "") !== selectedPublicId) return;
+      requestInFlight = true;
+      const result = await refreshPublicTournamentDetail(selectedPublicId, current.updated_at || null);
+      requestInFlight = false;
+      if (!active || result.error || !result.changed || !result.data) return;
+      setSelectedTournament((latest) => (
+        latest && String(latest.public_id || "") === selectedPublicId
+          ? { ...latest, ...result.data, directoryEntry: false }
+          : latest
+      ));
+    };
+
+    const interval = window.setInterval(refreshSelectedTournament, PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", refreshSelectedTournament);
+    document.addEventListener("visibilitychange", refreshSelectedTournament);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshSelectedTournament);
+      document.removeEventListener("visibilitychange", refreshSelectedTournament);
+    };
+  }, [selectedTournament?.public_id, selectedTournament?.directoryEntry]);
 
   useEffect(() => {
     setActiveStatusTab("active");

@@ -1,4 +1,5 @@
 import {
+  ARENA_DIRECTORY_PAGE_SIZE,
   ARENA_DIRECTORY_CACHE_KEY,
   ARENA_DIRECTORY_RETRY_DELAY_MS,
   PUBLIC_ARENA_REQUEST_TIMEOUT_MS,
@@ -15,6 +16,8 @@ import {
 
 export function createPublicArenaApi({ supabase }) {
   let directoryRequestInFlight = null;
+  let pagedDirectoryRpcAvailable = null;
+  const legacyDirectorySnapshots = new Map();
   const publicCoverCache = new Map();
   const publicCoverRequests = new Map();
 
@@ -51,27 +54,90 @@ export function createPublicArenaApi({ supabase }) {
     }
   }
 
-  async function fetchPublicArenaDirectory({ search = null, limit = 250 } = {}) {
+  async function fetchPublicArenaDirectory({ search = null, limit = ARENA_DIRECTORY_PAGE_SIZE, cursor = null } = {}) {
     const normalizedSearch = String(search || "").trim() || null;
-    const canShareRequest = !normalizedSearch && Number(limit) >= 250;
+    const normalizedLimit = Math.max(1, Math.min(Number(limit) || ARENA_DIRECTORY_PAGE_SIZE, 60));
+    const normalizedCursor = cursor?.id && cursor?.sortName
+      ? { id: String(cursor.id), sortName: String(cursor.sortName) }
+      : null;
+    const canShareRequest = !normalizedSearch && !normalizedCursor;
     if (canShareRequest && directoryRequestInFlight) {
       return directoryRequestInFlight;
     }
 
     const request = (async () => {
       let lastError = null;
+      const legacySnapshotKey = normalizedSearch || "__all__";
+
+      const getLegacyPage = (snapshot) => {
+        const rows = Array.isArray(snapshot) ? snapshot.filter((arena) => arena?.id) : [];
+        let startIndex = 0;
+        if (normalizedCursor) {
+          const cursorIndex = rows.findIndex((arena) => String(arena.id) === normalizedCursor.id);
+          startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+        }
+        const data = rows.slice(startIndex, startIndex + normalizedLimit);
+        const lastArena = data[data.length - 1];
+        return {
+          data,
+          error: null,
+          hasMore: startIndex + data.length < rows.length,
+          nextCursor: lastArena ? {
+            id: lastArena.id,
+            sortName: lastArena.sort_name
+              || String(lastArena.arena_name || lastArena.name || "arena").trim().toLocaleLowerCase("pt-BR"),
+          } : null,
+        };
+      };
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          const result = await supabase.rpc("list_public_arenas", {
-            p_search: normalizedSearch,
-            p_limit: limit,
-          });
+          if (pagedDirectoryRpcAvailable === false && legacyDirectorySnapshots.has(legacySnapshotKey)) {
+            return getLegacyPage(legacyDirectorySnapshots.get(legacySnapshotKey));
+          }
+
+          let result = pagedDirectoryRpcAvailable === false
+            ? { data: null, error: new Error("Paginação do diretório ainda não instalada.") }
+            : await supabase.rpc("list_public_arenas_page", {
+              p_search: normalizedSearch,
+              p_limit: normalizedLimit,
+              p_after_sort_name: normalizedCursor?.sortName || null,
+              p_after_id: normalizedCursor?.id || null,
+            });
+
+          const pageFunctionMissing = result.error && /list_public_arenas_page|function.*does not exist|schema cache/i.test(
+            `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+          );
+          if (pageFunctionMissing || pagedDirectoryRpcAvailable === false) {
+            pagedDirectoryRpcAvailable = false;
+            result = await supabase.rpc("list_public_arenas", {
+              p_search: normalizedSearch,
+              p_limit: 250,
+            });
+            if (!result.error) {
+              const snapshot = Array.isArray(result.data) ? result.data.filter((arena) => arena?.id) : [];
+              legacyDirectorySnapshots.set(legacySnapshotKey, snapshot);
+              const legacyPage = getLegacyPage(snapshot);
+              if (canShareRequest) writePublicArenaCache(ARENA_DIRECTORY_CACHE_KEY, legacyPage.data);
+              return legacyPage;
+            }
+          }
 
           if (!result.error) {
+            pagedDirectoryRpcAvailable = true;
             const data = Array.isArray(result.data) ? result.data.filter((arena) => arena?.id) : [];
             if (canShareRequest) writePublicArenaCache(ARENA_DIRECTORY_CACHE_KEY, data);
-            return { data, error: null };
+            const lastArena = data[data.length - 1];
+            return {
+              data,
+              error: null,
+              hasMore: data.length === normalizedLimit,
+              nextCursor: lastArena ? {
+                id: lastArena.id,
+                sortName: lastArena.sort_name
+                  || String(lastArena.arena_name || lastArena.name || "arena").trim().toLocaleLowerCase("pt-BR"),
+              } : null,
+            };
           }
 
           lastError = result.error;
@@ -84,7 +150,7 @@ export function createPublicArenaApi({ supabase }) {
         }
       }
 
-      return { data: [], error: lastError };
+      return { data: [], error: lastError, hasMore: false, nextCursor: null };
     })();
 
     if (canShareRequest) directoryRequestInFlight = request;
@@ -176,6 +242,40 @@ export function createPublicArenaApi({ supabase }) {
     }
 
     return { data: null, error: lastError, fromCache: false };
+  }
+
+  async function refreshPublicTournamentDetail(publicId, knownUpdatedAt = null) {
+    const normalizedPublicId = String(publicId || "").trim();
+    if (!normalizedPublicId) {
+      return { data: null, error: new Error("Identificador público do torneio não informado."), changed: false };
+    }
+
+    try {
+      let result = await supabase
+        .rpc("get_public_tournament_if_changed", {
+          p_public_id: normalizedPublicId,
+          p_known_updated_at: knownUpdatedAt || null,
+        })
+        .maybeSingle();
+
+      const conditionalFunctionMissing = result.error && /get_public_tournament_if_changed|function.*does not exist|schema cache/i.test(
+        `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+      );
+      if (conditionalFunctionMissing) {
+        result = await supabase
+          .rpc("get_public_tournament", { p_public_id: normalizedPublicId })
+          .maybeSingle();
+      }
+
+      if (result.error) return { data: null, error: result.error, changed: false };
+      if (!result.data) return { data: null, error: null, changed: false };
+
+      const changed = !knownUpdatedAt || result.data.updated_at !== knownUpdatedAt;
+      if (changed) writePublicTournamentDetailCache(normalizedPublicId, result.data);
+      return { data: changed ? result.data : null, error: null, changed };
+    } catch (error) {
+      return { data: null, error, changed: false };
+    }
   }
 
   async function fetchPublicCircuitDetail(circuitId) {
@@ -274,5 +374,6 @@ export function createPublicArenaApi({ supabase }) {
     fetchPublicCircuitDetail,
     fetchPublicTournamentCover,
     fetchPublicTournamentDetail,
+    refreshPublicTournamentDetail,
   };
 }

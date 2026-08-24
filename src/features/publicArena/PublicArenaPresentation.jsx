@@ -397,19 +397,12 @@ export function PublicArenaDirectoryView({
   loading,
   error,
   arenas,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
   onOpenArena,
   ArenaPhoto,
 }) {
-  const initialVisibleArenas = 18;
-  const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleArenas);
-
-  React.useEffect(() => {
-    setVisibleLimit(initialVisibleArenas);
-  }, [search]);
-
-  const displayedArenas = arenas.slice(0, visibleLimit);
-  const remainingArenas = Math.max(0, arenas.length - displayedArenas.length);
-
   return (
     <section id="arenas" className="publicArenaDirectorySection">
       <div className="publicDirectoryHeading">
@@ -436,7 +429,7 @@ export function PublicArenaDirectoryView({
         <div className="publicDirectoryState">Nenhuma arena encontrada.</div>
       ) : (
         <div className="publicArenaDirectoryGrid">
-          {displayedArenas.map((arena) => {
+          {arenas.map((arena) => {
             const arenaName = arena.arena_name || arena.name || "Arena Torneio360";
             return (
               <article className="publicArenaDirectoryCard" key={arena.id}>
@@ -455,13 +448,14 @@ export function PublicArenaDirectoryView({
               </article>
             );
           })}
-          {remainingArenas > 0 ? (
+          {hasMore && typeof onLoadMore === "function" ? (
             <button
               type="button"
               className="publicArenaLoadMore"
-              onClick={() => setVisibleLimit((current) => Math.min(current + initialVisibleArenas, arenas.length))}
+              onClick={onLoadMore}
+              disabled={loadingMore}
             >
-              Mostrar mais arenas <span>{remainingArenas}</span>
+              {loadingMore ? "Carregando mais arenas..." : "Mostrar mais arenas"}
             </button>
           ) : null}
         </div>

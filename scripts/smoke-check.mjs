@@ -128,6 +128,7 @@ import {
   writePublicCircuitDetailCache,
   writePublicTournamentDetailCache,
 } from "../src/domain/publicArenaCache.mjs";
+import { createPublicArenaApi } from "../src/services/publicArenaApi.mjs";
 import {
   generateCollaborationChangeId,
   generatePublicId,
@@ -475,6 +476,10 @@ const publicCoverThumbnailsMigrationSource = readFileSync(
 );
 const groupedEventGeneralCoverMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240003_grouped_event_general_cover.sql", root),
+  "utf8"
+);
+const platformTrafficScalingMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240004_platform_traffic_scaling.sql", root),
   "utf8"
 );
 const publicIdentifiersSource = readFileSync(
@@ -1132,7 +1137,7 @@ assert.deepEqual(
   [{ title: "Atletas cadastrados", names: [] }],
   "Um formato desconhecido não pode derrubar a visualização pública por causa da forma de players.",
 );
-assert.equal(ARENA_DIRECTORY_CACHE_KEY, "t360.public-arena-directory.v2", "A chave do cache público de arenas foi alterada.");
+assert.equal(ARENA_DIRECTORY_CACHE_KEY, "t360.public-arena-directory.v3", "A chave do cache público de arenas foi alterada.");
 assert.equal(getPublicArenaBundleCacheKey({ arenaId: "arena-1" }), "t360.public-arena-bundle.v2:arena-1", "A chave do perfil público em memória foi alterada.");
 writePublicArenaBundleCache({ arenaId: "arena-cache" }, { profile: { id: "arena-cache" } }, 1_000);
 assert.deepEqual(readPublicArenaBundleCache({ arenaId: "arena-cache" }, 1_001), { profile: { id: "arena-cache" } }, "Um perfil público válido deixou de ser recuperado do cache.");
@@ -1144,6 +1149,37 @@ assert.deepEqual(readPublicCircuitDetailCache("circuit-cache", 3_001), { id: "ci
 assert.deepEqual(readPublicArenaPhotoCache("arena-photo"), { found: false, data: "" }, "Uma foto ainda não consultada foi confundida com foto vazia em cache.");
 writePublicArenaPhotoCache("arena-photo", "");
 assert.deepEqual(readPublicArenaPhotoCache("arena-photo"), { found: true, data: "" }, "O cache deixou de lembrar que uma arena não possui foto.");
+
+const legacyArenaRows = Array.from({ length: 25 }, (_, index) => ({
+  id: `arena-${String(index + 1).padStart(2, "0")}`,
+  arena_name: `Arena ${String(index + 1).padStart(2, "0")}`,
+}));
+let legacyArenaDirectoryCalls = 0;
+const legacyPublicArenaApi = createPublicArenaApi({
+  supabase: {
+    async rpc(functionName) {
+      if (functionName === "list_public_arenas_page") {
+        return { data: null, error: { message: "function public.list_public_arenas_page does not exist" } };
+      }
+      if (functionName === "list_public_arenas") {
+        legacyArenaDirectoryCalls += 1;
+        return { data: legacyArenaRows, error: null };
+      }
+      throw new Error(`RPC inesperado no teste: ${functionName}`);
+    },
+  },
+});
+const legacyArenaPageOne = await legacyPublicArenaApi.fetchPublicArenaDirectory({ limit: 18 });
+const legacyArenaPageTwo = await legacyPublicArenaApi.fetchPublicArenaDirectory({
+  limit: 18,
+  cursor: legacyArenaPageOne.nextCursor,
+});
+assert.equal(legacyArenaPageOne.data.length, 18, "O diretório legado deixou de respeitar o tamanho da primeira página.");
+assert.equal(legacyArenaPageOne.hasMore, true, "O diretório legado não indicou a segunda página disponível.");
+assert.equal(legacyArenaPageTwo.data.length, 7, "A continuação do diretório legado perdeu arenas.");
+assert.equal(legacyArenaPageTwo.hasMore, false, "O diretório legado indicou páginas inexistentes.");
+assert.equal(legacyArenaDirectoryCalls, 1, "A paginação compatível repetiu a consulta completa ao Supabase.");
+
 assert.equal(generatePublicId(() => 35, () => 0.5), "tfbt_z_i", "O formato dos links públicos foi alterado.");
 assert.equal(
   generateCollaborationChangeId({ randomUUID: () => "change-id" }),
@@ -3212,19 +3248,31 @@ assert.ok(
 assert.ok(
   mainSource.includes("createPublicArenaApi({ supabase })")
     && publicArenaApiSource.includes("fetchPublicArenaDirectory")
+    && publicArenaApiSource.includes("list_public_arenas_page")
+    && publicArenaApiSource.includes("nextCursor")
+    && mainSource.includes("ARENA_DIRECTORY_PAGE_SIZE")
+    && mainSource.includes("ARENA_DIRECTORY_FOCUS_MIN_AGE_MS")
     && mainSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
     && publicArenaApiSource.includes("ARENA_DIRECTORY_CACHE_KEY")
     && mainSource.includes("readPublicArenaDirectoryCache")
     && publicArenaApiSource.includes("directoryRequestInFlight")
-    && mainSource.includes("hasSuccessfulLoad")
     && mainSource.includes("publicArenaProfilesInFlightRef")
-    && mainSource.includes("refreshVisibleArenas")
+    && mainSource.includes("loadMoreArenas")
     && mainSource.includes("refreshVisibleProfiles")
-    && mainSource.includes('window.addEventListener("focus", refreshArenas)')
-    && mainSource.includes('document.addEventListener("visibilitychange", handleVisibilityChange)')
+    && !mainSource.includes("fetchPublicArenaDirectory({ limit: 250 })")
     && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"')
     && mainSource.includes('className="arenaFeedOrganizer"'),
-  "O diretório de arenas não atualiza automaticamente ou não identifica o organizador nos cartões."
+  "O diretório de arenas perdeu a paginação, a busca escalável ou a identificação do organizador."
+);
+assert.ok(
+  platformTrafficScalingMigrationSource.includes("profiles_public_directory_search_trgm_idx")
+    && platformTrafficScalingMigrationSource.includes("create function public.list_public_arenas_page")
+    && platformTrafficScalingMigrationSource.includes("p_after_sort_name")
+    && platformTrafficScalingMigrationSource.includes("get_public_tournament_if_changed")
+    && publicArenaApiSource.includes("refreshPublicTournamentDetail")
+    && mainSource.includes("PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS")
+    && mainSource.includes("PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS"),
+  "A proteção de tráfego perdeu índices, paginação por cursor ou atualização pública condicional."
 );
 assert.ok(
   mainSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
