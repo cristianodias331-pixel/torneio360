@@ -5238,6 +5238,8 @@ assert.ok(
     && styleSource.includes("CAPAS RESPONSIVAS — REGRAS FINAIS DA HOMOLOGAÇÃO")
     && styleSource.includes("FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS")
     && styleSource.includes(".publicArenaEventCover.profile-photo")
+    && styleSource.includes(".publicArenaEventCover.profile-photo .publicImagePreviewButton")
+    && styleSource.includes("box-sizing: border-box !important")
     && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover")
     && styleSource.includes(".storyCoverEditorFrame")
     && styleSource.includes("aspect-ratio: 9 / 16")
