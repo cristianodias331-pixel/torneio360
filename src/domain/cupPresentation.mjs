@@ -24,6 +24,19 @@ export function createCupPresentation({ getCupPlayTimeById }) {
     );
 
     const winningScore = getWinningScore(data);
+    const finalGame = games.find((game) => game.roundName === "Final");
+
+    if (finalGame) {
+      const finalWinnerId = getGameWinnerId(finalGame, data);
+      const finalLoserId = getGameLoserId(finalGame, data);
+      if (finalWinnerId === null || finalLoserId === null) return [];
+    } else {
+      const playedGames = games.filter((game) => game.ids1?.length && game.ids2?.length);
+      const roundRobinFinished = playedGames.length > 0 && playedGames.every((game) => (
+        getScoreWinnerSide(game, winningScore) !== null
+      ));
+      if (!roundRobinFinished) return [];
+    }
 
     const qualified = getCupQualified(data);
     const baseIds = (qualified.repechage || []).map((item) => item.id);
@@ -84,7 +97,6 @@ export function createCupPresentation({ getCupPlayTimeById }) {
       if (win2) tableById[id2].w += 1;
     });
 
-    const finalGame = games.find((game) => game.roundName === "Final");
     const finalWinnerId = finalGame ? getGameWinnerId(finalGame, data) : null;
     const finalLoserId = finalGame ? getGameLoserId(finalGame, data) : null;
 
