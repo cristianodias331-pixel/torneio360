@@ -2,7 +2,11 @@ import {
   getGameCourtLabel,
   getGameCourtNumber,
 } from "./courtNumbers.mjs";
-import { isCampeonatoCearenseData } from "./cupFormat.mjs";
+import {
+  isCampeonatoCearenseData,
+  isCearenseSecondParallelEnabled,
+  isCearenseThirdParallelEnabled,
+} from "./cupFormat.mjs";
 import { getSharedGameParticipants } from "./gameParticipants.mjs";
 import {
   capExpiredMatchTimer,
@@ -16,12 +20,27 @@ import {
 import { resolveBracketGame } from "./bracketProgression.mjs";
 
 export function createTournamentOperations({ syncCupBracketScores = (data) => data } = {}) {
+  function isBracketPhaseEnabled(data, game) {
+    if (!isCampeonatoCearenseData(data)) return true;
+
+    const matchKey = String(game?.matchKey || "");
+    const phase = game?.phase
+      || (matchKey.startsWith("thirdParallel_") ? "thirdParallel" : "")
+      || (matchKey.startsWith("repechage_") ? "repechage" : "");
+
+    if (phase === "repechage") return isCearenseSecondParallelEnabled(data);
+    if (phase === "thirdParallel") return isCearenseThirdParallelEnabled(data);
+    return true;
+  }
+
   function getStoredTournamentGames(data = {}) {
     return [
       ...(Array.isArray(data.schedule) ? data.schedule.flatMap((round) => (
         Array.isArray(round) ? round : []
       )) : []),
-      ...(Array.isArray(data.brackets) ? data.brackets : []),
+      ...(Array.isArray(data.brackets)
+        ? data.brackets.filter((game) => isBracketPhaseEnabled(data, game))
+        : []),
     ];
   }
 
@@ -90,6 +109,8 @@ export function createTournamentOperations({ syncCupBracketScores = (data) => da
 
     const storedBrackets = Array.isArray(operationalData.brackets) ? operationalData.brackets : [];
     storedBrackets.forEach((storedGame) => {
+      if (!isBracketPhaseEnabled(operationalData, storedGame)) return;
+
       let game = storedGame;
       try {
         game = resolveBracketGame(storedGame, storedBrackets, operationalData);
