@@ -1,6 +1,7 @@
 import { buildReizinhoGames } from "../reizinhoSchedule.mjs";
 import { super12IndividualTemplate } from "../super12Schedule.mjs";
 import { super20MixedTemplate } from "../super20MixedSchedule.mjs";
+import { isFixedTeamType } from "./modalityClassification.mjs";
 import { modalityConfig } from "./modalityConfig.mjs";
 import { berger, optimizeCourts } from "./scheduleGeneration.mjs";
 import {
@@ -122,43 +123,9 @@ export function generateSchedule(type, players) {
     return optimizeCourts(schedule);
   }
 
-  if (config.type === "fixed16") {
+  if (isFixedTeamType(config)) {
     const teamNames = players.teams.map((team) => `${team.a} + ${team.b}`);
-    const schedule = berger(8).map((round) =>
-      round.map((game, index) => ({
-        court: index + 1,
-        team1: [teamNames[game[0]]],
-        ids1: [game[0]],
-        team2: [teamNames[game[1]]],
-        ids2: [game[1]],
-        s1: "",
-        s2: "",
-      }))
-    );
-
-    return optimizeCourts(schedule);
-  }
-
-  if (config.type === "fixed20") {
-    const teamNames = players.teams.map((team) => `${team.a} + ${team.b}`);
-    const schedule = berger(10).map((round) =>
-      round.map((game, index) => ({
-        court: index + 1,
-        team1: [teamNames[game[0]]],
-        ids1: [game[0]],
-        team2: [teamNames[game[1]]],
-        ids2: [game[1]],
-        s1: "",
-        s2: "",
-      }))
-    );
-
-    return optimizeCourts(schedule);
-  }
-
-  if (config.type === "fixed24") {
-    const teamNames = players.teams.map((team) => `${team.a} + ${team.b}`);
-    const schedule = berger(12).map((round) =>
+    const schedule = berger(config.teams).map((round) =>
       round.map((game, index) => ({
         court: index + 1,
         team1: [teamNames[game[0]]],

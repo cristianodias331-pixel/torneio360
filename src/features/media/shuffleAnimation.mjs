@@ -1,6 +1,7 @@
 import { getTeamName } from "../../domain/cupGroups.mjs";
 import {
   isCupType,
+  isFixedTeamType,
   isIndividualCupType,
   isMixedType,
 } from "../../domain/modalityClassification.mjs";
@@ -20,7 +21,7 @@ export function getShuffleNames(data, config) {
     return data.players.teams.map((participant) => participant.a);
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
+  if (isFixedTeamType(config) || isCupType(config)) {
     return data.players.teams.map((team, index) => `Dupla ${index + 1}: ${getTeamName(team)}`);
   }
 

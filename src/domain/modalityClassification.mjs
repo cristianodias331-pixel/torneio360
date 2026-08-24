@@ -1,5 +1,6 @@
 export function isCupType(config) {
-  return config?.type === "cup"
+  return (typeof config?.cupMode === "string" && config.cupMode.trim() !== "")
+    || config?.type === "cup"
     || config?.type === "cup18"
     || config?.type === "cup21"
     || config?.type === "copinha"
@@ -10,10 +11,11 @@ export function isCupType(config) {
 }
 
 export function isMixedType(config) {
-  return config?.type === "mixed10"
-    || config?.type === "mixed12"
-    || config?.type === "mixed16"
-    || config?.type === "mixed20";
+  return typeof config?.type === "string" && config.type.startsWith("mixed");
+}
+
+export function isFixedTeamType(config) {
+  return typeof config?.type === "string" && config.type.startsWith("fixed");
 }
 
 export function isFlexibleSimpleType(config) {

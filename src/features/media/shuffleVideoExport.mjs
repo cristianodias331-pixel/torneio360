@@ -1,5 +1,5 @@
 import { createCupGroups, getTeamName } from "../../domain/cupGroups.mjs";
-import { isCupType, isMixedType } from "../../domain/modalityClassification.mjs";
+import { isCupType, isFixedTeamType, isMixedType } from "../../domain/modalityClassification.mjs";
 import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
 import {
   TORNEIO360_LOGO,
@@ -40,7 +40,7 @@ export function createShuffleVideoSnapshot(data, config, tournament) {
       { title: "Masculino", entries: [...(data?.players?.men || [])] },
       { title: "Feminino", entries: [...(data?.players?.women || [])] },
     ];
-  } else if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
+  } else if (isFixedTeamType(config)) {
     kind = "teams";
     sections = [{
       title: "Duplas sorteadas",

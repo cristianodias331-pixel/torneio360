@@ -255,6 +255,7 @@ import {
 import { allowedByPlan, modalityConfig } from "../src/domain/modalityConfig.mjs";
 import {
   isCupType,
+  isFixedTeamType,
   isFlexibleSimpleType,
   isIndividualCupType,
   isMixedType,
@@ -826,10 +827,15 @@ for (const type of ["cup", "cup18", "cup21", "copinha", "cearense", "cearenseInd
   assert.equal(isCupType({ type }), true, `A modalidade ${type} deixou de ser reconhecida como copa.`);
 }
 assert.equal(isCupType({ type: "mixed20" }), false, "Uma modalidade mista não pode ser reconhecida como copa.");
-for (const type of ["mixed10", "mixed12", "mixed16", "mixed20"]) {
+assert.equal(isCupType({ type: "futureCup", cupMode: "future-cup" }), true, "Uma nova copa com cupMode deve ser reconhecida sem ampliar uma lista manual.");
+for (const type of ["mixed10", "mixed12", "mixed16", "mixed20", "mixed24"]) {
   assert.equal(isMixedType({ type }), true, `A modalidade ${type} deixou de ser reconhecida como mista.`);
 }
 assert.equal(isMixedType({ type: "super12" }), false, "O Super 12 individual não pode ser reconhecido como misto.");
+for (const type of ["fixed12", "fixed16", "fixed20", "fixed24", "fixed28"]) {
+  assert.equal(isFixedTeamType({ type }), true, `A modalidade ${type} deixou de ser reconhecida como dupla fixa.`);
+}
+assert.equal(isFixedTeamType({ type: "mixed20" }), false, "Uma modalidade mista não pode ser reconhecida como dupla fixa.");
 assert.equal(isFlexibleSimpleType({ type: "simple8" }), true, "A modalidade Simples deixou de ser reconhecida.");
 assert.equal(isReizinhoType({ type: "reizinho" }), true, "O Reizinho deixou de ser reconhecido.");
 assert.equal(isIndividualCupType({ type: "cearenseIndividual" }), true, "A copa individual deixou de ser reconhecida.");
@@ -1030,6 +1036,13 @@ assert.deepEqual(
   ["Bia", "Ana"],
   "O ranking público do circuito voltou a usar uma ordem fixa diferente da escolhida pelo organizador.",
 );
+for (const [type, config] of Object.entries(modalityConfig)) {
+  const publicSections = getRegisteredAthletesForPublic(createInitialData(type, config), config);
+  assert.ok(
+    Array.isArray(publicSections),
+    `A modalidade ${type} deixou de produzir uma lista pública válida de participantes.`,
+  );
+}
 assert.deepEqual(
   getRegisteredAthletesForPublic(
     { players: { teams: [{ a: "Ana", b: "Bia" }] } },
@@ -1037,6 +1050,40 @@ assert.deepEqual(
   ),
   [{ title: "Duplas cadastradas", names: ["1. Ana + Bia"] }],
   "A lista pública de duplas cadastradas foi alterada.",
+);
+for (const type of ["fixed20", "fixed24", "fixed28"]) {
+  assert.deepEqual(
+    getRegisteredAthletesForPublic(
+      { players: { teams: [{ a: "Ana", b: "Bia" }] } },
+      { type },
+    ),
+    [{ title: "Duplas cadastradas", names: ["1. Ana + Bia"] }],
+    `A lista pública de ${type} deixou de reconhecer o armazenamento por duplas.`,
+  );
+}
+assert.deepEqual(
+  getRegisteredAthletesForPublic(
+    { players: { teams: [{ a: "Ana", b: "Bia" }] } },
+    { type: "futureTeamFormat" },
+  ),
+  [{ title: "Duplas cadastradas", names: ["1. Ana + Bia"] }],
+  "A visualização pública deve reconhecer duplas pela forma dos dados mesmo antes de conhecer uma nova modalidade.",
+);
+assert.deepEqual(
+  getRegisteredAthletesForPublic(
+    { players: { men: ["André"], women: ["Bia"] } },
+    { type: "futureSocialFormat" },
+  ),
+  [
+    { title: "Masculino", names: ["André"] },
+    { title: "Feminino", names: ["Bia"] },
+  ],
+  "A visualização pública deve reconhecer grupos mistos pela forma dos dados mesmo antes de conhecer uma nova modalidade.",
+);
+assert.deepEqual(
+  getRegisteredAthletesForPublic({ players: {} }, { type: "unknown" }),
+  [{ title: "Atletas cadastrados", names: [] }],
+  "Um formato desconhecido não pode derrubar a visualização pública por causa da forma de players.",
 );
 assert.equal(ARENA_DIRECTORY_CACHE_KEY, "t360.public-arena-directory.v2", "A chave do cache público de arenas foi alterada.");
 assert.equal(getPublicArenaBundleCacheKey({ arenaId: "arena-1" }), "t360.public-arena-bundle.v2:arena-1", "A chave do perfil público em memória foi alterada.");
