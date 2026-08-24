@@ -5,7 +5,7 @@ import {
   normalizeCircuitRankingSettings,
 } from "./circuitRankingSettings.mjs";
 import { getTeamName } from "./cupGroups.mjs";
-import { isCupType, isMixedType } from "./modalityClassification.mjs";
+import { isCupType, isFixedTeamType, isMixedType } from "./modalityClassification.mjs";
 import { defaultRankingCriteria } from "./rankingCriteria.mjs";
 import { getScoreWinnerSide, getWinningScore } from "./scoreRules.mjs";
 import { calculateCircuitTournamentRankingRows } from "./tournamentRanking.mjs";
@@ -148,7 +148,7 @@ export function calculateRankPlacementRows({
       thirdPlaces: position === 3 ? 1 : 0,
     };
 
-    const isFixedTeam = config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24";
+    const isFixedTeam = isFixedTeamType(config);
     if (!isFixedTeam || normalizedSettings.identity === "team") return [base];
     const team = data.players?.teams?.[row.id];
     return [team?.a, team?.b].filter(Boolean).map((name, athleteIndex) => ({

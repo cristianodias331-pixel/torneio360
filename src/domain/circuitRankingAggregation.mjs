@@ -12,7 +12,12 @@ import {
   normalizeCircuitRankingSettings,
 } from "./circuitRankingSettings.mjs";
 import { calculateCircuitPlacementRowsByConfig } from "./circuitPlacement.mjs";
-import { isCupType, isIndividualCupType, isMixedType } from "./modalityClassification.mjs";
+import {
+  isCupType,
+  isFixedTeamType,
+  isIndividualCupType,
+  isMixedType,
+} from "./modalityClassification.mjs";
 import { formatParticipantName } from "./participantNames.mjs";
 import { defaultRankingCriteria } from "./rankingCriteria.mjs";
 import { calculateCircuitTournamentRankingRows } from "./tournamentRanking.mjs";
@@ -130,10 +135,7 @@ export function buildCircuitRankingGroups({
         });
       const teamRanking = (
         (isCupType(config) && !isIndividualCupType(config))
-        || config.type === "fixed12"
-        || config.type === "fixed16"
-        || config.type === "fixed20"
-        || config.type === "fixed24"
+        || isFixedTeamType(config)
       ) && (!placementMode || rankingSettings.identity === "team");
 
       rows.forEach((row) => {
@@ -352,10 +354,7 @@ export function buildCircuitTournamentRankingRecords({
 
     const teamRanking = (
       (isCupType(config) && !isIndividualCupType(config))
-      || config?.type === "fixed12"
-      || config?.type === "fixed16"
-      || config?.type === "fixed20"
-      || config?.type === "fixed24"
+      || isFixedTeamType(config)
     ) && (!placementMode || rankingSettings.identity === "team");
     const nameOccurrences = new Map();
 

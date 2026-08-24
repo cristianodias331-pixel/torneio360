@@ -1,5 +1,6 @@
 import {
   isCupType,
+  isFixedTeamType,
   isIndividualCupType,
   isMixedType,
 } from "./modalityClassification.mjs";
@@ -22,18 +23,20 @@ export function normalizeParticipantAttendance(config, players, attendance) {
 
   if (isIndividualCupType(config)) {
     const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
+    const teams = Array.isArray(players?.teams) ? players.teams : [];
     return {
-      teams: (players?.teams || []).map((_, index) => ({
+      teams: teams.map((_, index) => ({
         a: sourceTeams[index]?.a === true,
         b: false,
       })),
     };
   }
 
-  if (config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24" || isCupType(config)) {
+  if (isFixedTeamType(config) || isCupType(config)) {
     const sourceTeams = Array.isArray(source.teams) ? source.teams : [];
+    const teams = Array.isArray(players?.teams) ? players.teams : [];
     return {
-      teams: (players?.teams || []).map((_, index) => ({
+      teams: teams.map((_, index) => ({
         a: sourceTeams[index]?.a === true,
         b: sourceTeams[index]?.b === true,
       })),
@@ -69,7 +72,7 @@ export function getParticipantAttendanceEntries(config, data) {
     }));
   }
 
-  if (config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24" || isCupType(config)) {
+  if (isFixedTeamType(config) || isCupType(config)) {
     return (data.players?.teams || []).flatMap((team, index) => ([
       {
         path: { kind: "team", index, field: "a" },
@@ -84,7 +87,7 @@ export function getParticipantAttendanceEntries(config, data) {
     ]));
   }
 
-  return (data.players || []).map((name, index) => ({
+  return (Array.isArray(data.players) ? data.players : []).map((name, index) => ({
     path: { kind: "normal", index },
     name,
     confirmed: attendance[index] === true,

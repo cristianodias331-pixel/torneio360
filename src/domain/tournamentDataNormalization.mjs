@@ -6,6 +6,7 @@ import {
 import { modalityConfig } from "./modalityConfig.mjs";
 import {
   isCupType,
+  isFixedTeamType,
   isFlexibleSimpleType,
   isIndividualCupType,
   isMixedType,
@@ -171,7 +172,7 @@ export function createInitialData(type, config) {
     };
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
+  if (isFixedTeamType(config)) {
     return {
       ...base,
       players: {
@@ -409,7 +410,7 @@ export function normalizeTournamentData(type, rawData) {
     };
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
+  if (isFixedTeamType(config)) {
     const players = {
       teams: normalizeTeams(sourcePlayers.teams, config.teams),
     };
@@ -465,7 +466,7 @@ export function needsTournamentDataRepair(type, rawData) {
       || players.women.length !== config.women;
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24") {
+  if (isFixedTeamType(config)) {
     return !Array.isArray(players.teams) || players.teams.length !== config.teams;
   }
 

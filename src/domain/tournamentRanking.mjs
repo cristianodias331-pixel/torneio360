@@ -1,7 +1,7 @@
 import { resolveBracketGame } from "./bracketProgression.mjs";
 import { getCupQualified } from "./cupQualification.mjs";
 import { getTeamName } from "./cupGroups.mjs";
-import { isCupType, isMixedType } from "./modalityClassification.mjs";
+import { isCupType, isFixedTeamType, isMixedType } from "./modalityClassification.mjs";
 import {
   calculateScheduleRanking,
   calculateTeamGamesRanking,
@@ -28,7 +28,7 @@ export function calculateTournamentRanking({
 
   if (isMixedType(config)) {
     names = [...data.players.men, ...data.players.women];
-  } else if (config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24") {
+  } else if (isFixedTeamType(config)) {
     names = data.players.teams.map((team) => `${team.a} + ${team.b}`);
   } else {
     names = data.players;

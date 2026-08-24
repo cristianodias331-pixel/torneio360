@@ -14,6 +14,7 @@ import {
 } from "../../domain/participantGenderRegistry.mjs";
 import {
   isCupType,
+  isFixedTeamType,
   isIndividualCupType,
   isMixedType,
 } from "../../domain/modalityClassification.mjs";
@@ -23,7 +24,7 @@ function isMixedParticipantConfig(config) {
 }
 
 function isTeamParticipantConfig(config) {
-  return config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || (isCupType(config) && !isIndividualCupType(config));
+  return isFixedTeamType(config) || (isCupType(config) && !isIndividualCupType(config));
 }
 
 function stripParticipantEmojis(value) {
@@ -650,7 +651,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
     );
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
+  if (isTeamParticipantConfig(config)) {
     return (
       <div className="twoCols">
         {data.players.teams.map((team, i) => (

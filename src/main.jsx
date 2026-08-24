@@ -391,6 +391,7 @@ import {
 import { allowedByPlan, modalityConfig } from "./domain/modalityConfig.mjs";
 import {
   isCupType,
+  isFixedTeamType,
   isFlexibleSimpleType,
   isIndividualCupType,
   isMixedType,
@@ -10869,7 +10870,7 @@ function TournamentScreen({
         return ids.map((id) => allPlayers[id] || "");
       }
 
-      if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
+      if (isFixedTeamType(config) || isCupType(config)) {
         return ids.map((id) => getTeamName(nextData.players?.teams?.[id]));
       }
 
@@ -11421,7 +11422,7 @@ function TournamentScreen({
       copy.participantAttendance.men = menOrder.map((index) => copy.participantAttendance.men[index]);
       copy.players.women = womenOrder.map((index) => copy.players.women[index]);
       copy.participantAttendance.women = womenOrder.map((index) => copy.participantAttendance.women[index]);
-    } else if (config.type === "fixed12" || config.type === "fixed16" || config.type === "fixed20" || config.type === "fixed24" || isCupType(config)) {
+    } else if (isFixedTeamType(config) || isCupType(config)) {
       const teamOrder = shuffledIndexes(copy.players.teams.length);
       copy.players.teams = teamOrder.map((index) => copy.players.teams[index]);
       copy.participantAttendance.teams = teamOrder.map((index) => copy.participantAttendance.teams[index]);

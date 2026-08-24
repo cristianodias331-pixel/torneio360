@@ -1,7 +1,12 @@
 import { normalizeCircuitParticipantKey } from "../circuitNameIdentity.mjs";
 import { classifyParticipantGender } from "../fixedMixedTeamOrder.mjs";
 import { formatParticipantName } from "./participantNames.mjs";
-import { isCupType, isIndividualCupType, isMixedType } from "./modalityClassification.mjs";
+import {
+  isCupType,
+  isFixedTeamType,
+  isIndividualCupType,
+  isMixedType,
+} from "./modalityClassification.mjs";
 
 export const participantGenderValues = {
   masculine: "masculino",
@@ -249,7 +254,7 @@ export function collectTournamentGenderCandidates(tournament, config) {
     return candidates;
   }
 
-  if ((config?.type === "fixed12" || config?.type === "fixed16" || config?.type === "fixed20" || config?.type === "fixed24" || isCupType(config)) && !isIndividualCupType(config)) {
+  if ((isFixedTeamType(config) || isCupType(config)) && !isIndividualCupType(config)) {
     (data.players?.teams || []).forEach((team) => {
       add(team?.a, category, category !== participantGenderValues.unknown ? "category" : "position");
       add(team?.b, category, category !== participantGenderValues.unknown ? "category" : "position");

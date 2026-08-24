@@ -7,6 +7,7 @@ import {
 } from "./circuitRankingSettings.mjs";
 import {
   isCupType,
+  isFixedTeamType,
   isIndividualCupType,
   isMixedType,
 } from "./modalityClassification.mjs";
@@ -140,37 +141,40 @@ export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = tru
 }
 
 export function getRegisteredAthletesForPublic(data, config) {
-  if (!data?.players) return [];
+  const players = data?.players;
+  if (!players) return [];
 
-  if (isMixedType(config)) {
+  if (isMixedType(config) || Array.isArray(players.men) || Array.isArray(players.women)) {
     return [
       {
         title: "Masculino",
-        names: (data.players.men || []).filter(Boolean),
+        names: Array.isArray(players.men) ? players.men.filter(Boolean) : [],
       },
       {
         title: "Feminino",
-        names: (data.players.women || []).filter(Boolean),
+        names: Array.isArray(players.women) ? players.women.filter(Boolean) : [],
       },
     ];
   }
+
+  const teams = Array.isArray(players.teams) ? players.teams : [];
 
   if (isIndividualCupType(config)) {
     return [
       {
         title: "Jogadores cadastrados",
-        names: (data.players.teams || [])
+        names: teams
           .map((player, index) => `${index + 1}. ${player.a || `Jogador ${index + 1}`}`)
           .filter(Boolean),
       },
     ];
   }
 
-  if (config.type === "fixed12" || config.type === "fixed16" || isCupType(config)) {
+  if (isFixedTeamType(config) || isCupType(config) || teams.length > 0) {
     return [
       {
         title: "Duplas cadastradas",
-        names: (data.players.teams || [])
+        names: teams
           .map((team, index) => `${index + 1}. ${team.a || "Atleta 1"} + ${team.b || "Atleta 2"}`)
           .filter(Boolean),
       },
@@ -180,7 +184,7 @@ export function getRegisteredAthletesForPublic(data, config) {
   return [
     {
       title: "Atletas cadastrados",
-      names: (data.players || []).filter(Boolean),
+      names: Array.isArray(players) ? players.filter(Boolean) : [],
     },
   ];
 }
