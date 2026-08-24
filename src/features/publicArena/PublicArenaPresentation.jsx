@@ -9,11 +9,67 @@ import {
   Trophy,
   UserRound,
   Users,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import {
   BeachLogo,
   PlatformSupportLinks,
 } from "../appShell/EntryPresentation.jsx";
+
+export function PublicImageLightbox({ image, onClose }) {
+  React.useEffect(() => {
+    if (!image) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [image, onClose]);
+
+  if (!image?.src) return null;
+
+  return (
+    <div
+      className="publicImageLightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label={image.title || "Visualização ampliada da imagem"}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="publicImageLightboxPanel">
+        <button type="button" className="publicImageLightboxClose" onClick={onClose} aria-label="Fechar imagem ampliada">
+          <X aria-hidden="true" />
+        </button>
+        <img src={image.src} alt={image.alt || image.title || "Imagem ampliada"} />
+        {image.title ? <strong>{image.title}</strong> : null}
+      </div>
+    </div>
+  );
+}
+
+function PublicImagePreviewButton({ src, alt, title, variant, onPreview }) {
+  if (!src) return null;
+  return (
+    <button
+      type="button"
+      className={`publicImagePreviewButton ${variant || "event-cover"}`}
+      onClick={() => onPreview?.({ src, alt, title })}
+      aria-label={`Ampliar ${title || alt || "imagem"}`}
+      title="Clique para ampliar"
+    >
+      <img src={src} alt={alt} loading="lazy" decoding="async" />
+      <span className="publicImageZoomBadge" aria-hidden="true"><ZoomIn /></span>
+    </button>
+  );
+}
 
 export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWhatsAppUrl }) {
   if (!open) {
@@ -91,6 +147,8 @@ export function PublicArenaTournamentCardsView({
   formatDate,
   sortTournaments,
   RegistrationStatus,
+  onPreviewImage,
+  onRequestCover,
 }) {
   const groups = (items || []).reduce((result, tournament) => {
     const details = tournament.data || {};
@@ -103,18 +161,43 @@ export function PublicArenaTournamentCardsView({
     return result;
   }, []);
 
+  React.useEffect(() => {
+    if (!onRequestCover) return;
+    const requestedGroups = new Set();
+    (items || []).forEach((tournament) => {
+      const details = tournament.data || {};
+      if (details.eventCoverImageUrl || details.coverImageUrl || !tournament.public_id) return;
+      const groupKey = details.multiCategoryEvent === true && details.eventGroupKey
+        ? `group:${details.eventGroupKey}`
+        : `tournament:${tournament.id}`;
+      if (requestedGroups.has(groupKey)) return;
+      requestedGroups.add(groupKey);
+      onRequestCover(tournament);
+    });
+  }, [items, onRequestCover]);
+
   return groups.map((group) => {
     const first = group.items[0];
     const firstDetails = first.data || {};
     const isGroup = group.items.length > 1 || firstDetails.multiCategoryEvent === true;
     const title = isGroup ? firstDetails.eventName || first.name : first.name;
-    const coverImage = firstDetails.coverImageUrl || organizer.photoUrl;
+    const eventCoverImage = (isGroup ? firstDetails.eventCoverImageUrl : "") || firstDetails.coverImageUrl || "";
+    const coverImage = eventCoverImage || organizer.photoUrl;
+    const coverVariant = eventCoverImage ? "event-cover" : "profile-photo";
     const registrationOpen = group.items.some((item) => isRegistrationOpen(getRegistrationDeadline(item)));
 
     return (
       <article className={`card publicArenaEventCard publicArenaEventCardWithCover ${isGroup ? "publicArenaGroupedEvent" : ""}`} key={group.key}>
-        <div className="publicArenaEventCover">
-          {coverImage ? <img src={coverImage} alt={`Capa de ${title}`} loading="lazy" decoding="async" /> : <span><Trophy aria-hidden="true" /></span>}
+        <div className={`publicArenaEventCover ${coverVariant}`}>
+          {coverImage ? (
+            <PublicImagePreviewButton
+              src={coverImage}
+              alt={eventCoverImage ? `Foto de ${title}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+              title={eventCoverImage ? title : organizer.arenaName || "Perfil da arena"}
+              variant={coverVariant}
+              onPreview={onPreviewImage}
+            />
+          ) : <span><Trophy aria-hidden="true" /></span>}
         </div>
         <div className="publicArenaEventBody">
           <small>{isGroup ? `${group.items.length} ${group.items.length === 1 ? "categoria" : "categorias"}` : getModalityName(first.type)}</small>
@@ -167,9 +250,12 @@ export function PublicArenaPageView({
   getCircuitTournamentCount,
   HeroHeader,
   TournamentCards,
+  onRequestTournamentCover,
+  onRequestCircuitCover,
 }) {
   const initialVisibleItems = 8;
   const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
+  const [previewImage, setPreviewImage] = React.useState(null);
 
   React.useEffect(() => {
     setVisibleLimit(initialVisibleItems);
@@ -177,6 +263,14 @@ export function PublicArenaPageView({
 
   const displayedItems = visibleItems.slice(0, visibleLimit);
   const remainingItems = Math.max(0, visibleItems.length - displayedItems.length);
+
+  React.useEffect(() => {
+    if (activeArenaTab !== "circuits" || !onRequestCircuitCover) return;
+    displayedItems.forEach((item) => {
+      const coverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl;
+      if (!coverImage) onRequestCircuitCover(item);
+    });
+  }, [activeArenaTab, displayedItems, onRequestCircuitCover]);
 
   return (
     <div className={`publicPage publicArenaPage ${pageClassName}`.trim()}>
@@ -207,12 +301,25 @@ export function PublicArenaPageView({
           {visibleItems.length === 0 ? (
             <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
           ) : activeArenaTab === "tournaments" ? (
-            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} />
+            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} onPreviewImage={setPreviewImage} onRequestCover={onRequestTournamentCover} />
           ) : displayedItems.map((item) => {
             const circuitStatus = getCircuitStatus(item);
+            const circuitCoverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl || "";
+            const circuitImage = circuitCoverImage || organizer.photoUrl || "";
+            const circuitImageVariant = circuitCoverImage ? "event-cover" : "profile-photo";
             return (
-              <article className="card publicArenaEventCard publicArenaCircuitCard" key={item.id}>
-                <div className="publicArenaEventIcon"><GitBranch aria-hidden="true" /></div>
+              <article className={`card publicArenaEventCard publicArenaCircuitCard ${circuitImage ? "publicArenaEventCardWithCover" : ""}`} key={item.id}>
+                {circuitImage ? (
+                  <div className={`publicArenaEventCover ${circuitImageVariant}`}>
+                    <PublicImagePreviewButton
+                      src={circuitImage}
+                      alt={circuitCoverImage ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+                      title={circuitCoverImage ? item.name : organizer.arenaName || "Perfil da arena"}
+                      variant={circuitImageVariant}
+                      onPreview={setPreviewImage}
+                    />
+                  </div>
+                ) : <div className="publicArenaEventIcon"><GitBranch aria-hidden="true" /></div>}
                 <div>
                   <small>Circuito</small><h2>{item.name}</h2>
                   <span className={`publicCircuitStatus ${circuitStatus}`}>{circuitStatus === "closed" ? "Encerrado" : "Em andamento"}</span>
@@ -235,6 +342,7 @@ export function PublicArenaPageView({
           ) : null}
         </section>
       </main>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }

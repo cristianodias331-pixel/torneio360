@@ -36,6 +36,7 @@ export function getPublicTournamentDirectoryItem(tournament) {
       participantGenderMode: details.participantGenderMode || "",
       genderOther: details.genderOther || "",
       coverImageUrl: details.coverImageUrl || "",
+      eventCoverImageUrl: details.eventCoverImageUrl || "",
       registrationDeadline: details.registrationDeadline || "",
       eventName: details.eventName || "",
       eventGroupKey: details.eventGroupKey || "",

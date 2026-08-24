@@ -94,6 +94,7 @@ import ParticipantImportModalView, {
 import {
   PublicArenaDirectoryView,
   PublicArenaHeroHeaderView,
+  PublicImageLightbox,
   PublicArenaPageView,
   PublicRegistrationStatusView,
   PublicArenaTournamentCardsView,
@@ -455,7 +456,9 @@ const {
   fetchPublicArenaBundle,
   fetchPublicArenaDirectory,
   fetchPublicArenaPhoto,
+  fetchPublicCircuitCover,
   fetchPublicCircuitDetail,
+  fetchPublicTournamentCover,
   fetchPublicTournamentDetail,
 } = createPublicArenaApi({ supabase });
 
@@ -2264,6 +2267,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [circuitForm, setCircuitForm] = useState({
     id: null,
     name: "",
+    coverImageUrl: "",
     startDate: "",
     endDate: "",
     tournamentIds: [],
@@ -3005,6 +3009,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return {
       id: row.id,
       name: row.name || "",
+      coverImageUrl: rankingSettings.coverImageUrl,
       startDate: row.start_date || "",
       endDate: row.end_date || "",
       status: normalizeCircuitStatus(row.status),
@@ -3559,6 +3564,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuitForm({
       id: null,
       name: "",
+      coverImageUrl: "",
       startDate: "",
       endDate: "",
       tournamentIds: [],
@@ -3634,7 +3640,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const selectedTournamentIds = normalizeCircuitTournamentIds(form.tournamentIds);
     const comparableRankingSettings = (value) => {
       const normalized = normalizeCircuitRankingSettings(value);
-      return { ...normalized, genderRegistry: {}, rankingDivision: "general" };
+      return { ...normalized, coverImageUrl: "", genderRegistry: {}, rankingDivision: "general" };
     };
     const rankingCalculationChanged = !isEditing
       || JSON.stringify(selectedTournamentIds) !== JSON.stringify((previousCircuit?.tournamentIds || []).map(String))
@@ -3676,6 +3682,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       ranking_criteria_mode: "automatic",
       ranking_settings: normalizeCircuitRankingSettings({
         ...form.rankingSettings,
+        coverImageUrl: form.coverImageUrl,
         tournamentFormat: "",
         genderRegistry: mergeParticipantGenderRegistries(
           getArenaParticipantGenderRegistry(),
@@ -3890,6 +3897,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCircuitForm({
       id: null,
       name: "",
+      coverImageUrl: "",
       startDate,
       endDate,
       tournamentIds: [tournament.id],
@@ -3910,6 +3918,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       _baseCircuit: editableCircuit,
       id: editableCircuit.id,
       name: editableCircuit.name || "",
+      coverImageUrl: editableCircuit.coverImageUrl || editableCircuit.rankingSettings?.coverImageUrl || "",
       startDate: editableCircuit.startDate || "",
       endDate: editableCircuit.endDate || "",
       tournamentIds: normalizeCircuitTournamentIds(editableCircuit.tournamentIds),
@@ -4549,9 +4558,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     try {
       const imageUrl = await resizeImageFile(file, {
-        maxWidth: 1400,
-        maxHeight: 900,
-        quality: 0.82,
+        maxWidth: 1080,
+        maxHeight: 1440,
+        quality: 0.84,
       });
       applyImage(imageUrl);
     } catch (error) {
@@ -7724,7 +7733,7 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto do torneio</strong>
-                    <span>Esta imagem identifica o evento no perfil público da arena.</span>
+                    <span>Recomendado: 1080 × 1350 px (4:5). Também aceitamos 1:1 e 3:4 sem deformar.</span>
                   </div>
                   {editForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEditForm("coverImageUrl", "")}>Remover foto</button> : null}
                 </div>
@@ -7814,7 +7823,7 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto geral do evento</strong>
-                    <span>As categorias configuradas para usar a foto geral serão atualizadas juntas.</span>
+                    <span>Recomendado: 1080 × 1350 px (4:5). As categorias configuradas para usar esta foto serão atualizadas juntas.</span>
                   </div>
                   {editEventGroup.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEventGroupField("coverImageUrl", "")}>Remover foto</button> : null}
                 </div>
@@ -7961,6 +7970,19 @@ setNewPublicInfo({
                 <label>Nome do circuito</label>
                 <input value={circuitEditForm.name} onChange={(e) => setCircuitEditForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Ex: Circuito Verão" />
               </div>
+              <div className="formField fullField tournamentCoverField">
+                <div className="tournamentCoverIntro">
+                  <div>
+                    <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
+                    <span>Recomendado: 1080 × 1350 px (4:5). Também aceitamos 1:1 e 3:4 sem deformar.</span>
+                  </div>
+                  {circuitEditForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl: "" }))}>Remover foto</button> : null}
+                </div>
+                <label className={`tournamentCoverDropzone ${circuitEditForm.coverImageUrl ? "hasImage" : ""}`}>
+                  <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (coverImageUrl) => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl })))} />
+                  {circuitEditForm.coverImageUrl ? <img src={circuitEditForm.coverImageUrl} alt="Prévia da foto do circuito" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do circuito"}</span>}
+                </label>
+              </div>
               <div className="formField">
                 <label>Data inicial</label>
                 <input className="clickableDateInput" type="date" required value={circuitEditForm.startDate} onClick={openDatePicker} onFocus={openDatePicker} onChange={(e) => setCircuitEditForm((prev) => ({ ...prev, startDate: e.target.value }))} />
@@ -8025,7 +8047,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="secondaryBtn" onClick={() => setCircuitEditForm(null)}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" onClick={() => saveCircuit(circuitEditForm)}>Salvar alterações</button>
+              <button type="button" className="actionConfirmBtn" disabled={coverImageLoading} onClick={() => saveCircuit(circuitEditForm)}>{coverImageLoading ? "Preparando foto..." : "Salvar alterações"}</button>
             </div>
           </div>
         </div>
@@ -8462,7 +8484,7 @@ setNewPublicInfo({
     <div className="tournamentCoverIntro">
       <div>
         <strong><Camera aria-hidden="true" /> {newMultiCategoryEvent === "sim" ? "Foto geral do evento" : "Foto do torneio"}</strong>
-        <span>{newMultiCategoryEvent === "sim" ? "As categorias sem foto própria usarão esta imagem." : "Use uma foto específica do evento. Se não escolher, será usada a foto da arena."}</span>
+        <span>{newMultiCategoryEvent === "sim" ? "Use de preferência 1080 × 1350 px (4:5). As categorias sem foto própria usarão esta imagem." : "Use de preferência 1080 × 1350 px (4:5). Se não escolher, a foto redonda da arena será usada no cartão."}</span>
       </div>
       {newCoverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setNewCoverImageUrl("")}>Remover foto</button> : null}
     </div>
@@ -8777,6 +8799,19 @@ setNewPublicInfo({
         <label>Nome do circuito</label>
         <input value={circuitForm.name} onChange={(e) => setCircuitForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Ex: Circuito Verão" />
       </div>
+      <div className="formField fullField tournamentCoverField">
+        <div className="tournamentCoverIntro">
+          <div>
+            <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
+            <span>Recomendado: 1080 × 1350 px (4:5). Também aceitamos 1:1 e 3:4 sem deformar.</span>
+          </div>
+          {circuitForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitForm((prev) => ({ ...prev, coverImageUrl: "" }))}>Remover foto</button> : null}
+        </div>
+        <label className={`tournamentCoverDropzone ${circuitForm.coverImageUrl ? "hasImage" : ""}`}>
+          <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (coverImageUrl) => setCircuitForm((prev) => ({ ...prev, coverImageUrl })))} />
+          {circuitForm.coverImageUrl ? <img src={circuitForm.coverImageUrl} alt="Prévia da foto do circuito" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do circuito"}</span>}
+        </label>
+      </div>
       <div className="formField">
         <label>Data inicial</label>
         <input className="clickableDateInput" type="date" required value={circuitForm.startDate} onClick={openDatePicker} onFocus={openDatePicker} onChange={(e) => setCircuitForm((prev) => ({ ...prev, startDate: e.target.value }))} />
@@ -8836,7 +8871,7 @@ setNewPublicInfo({
     />
 
     <div className="circuitFormActions">
-      <button type="button" className="actionCreateBtn" onClick={() => saveCircuit()}>Criar circuito</button>
+      <button type="button" className="actionCreateBtn" disabled={coverImageLoading} onClick={() => saveCircuit()}>{coverImageLoading ? "Preparando foto..." : "Criar circuito"}</button>
     </div>
   </section>
   </div>
@@ -12808,6 +12843,65 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [selectedCircuit, setSelectedCircuit] = useState(null);
   const [openingPublicId, setOpeningPublicId] = useState(null);
   const [openingCircuitId, setOpeningCircuitId] = useState(null);
+  const requestedTournamentCoversRef = useRef(new Set());
+  const requestedCircuitCoversRef = useRef(new Set());
+  const tournamentCoverCacheRef = useRef(new Map());
+  const circuitCoverCacheRef = useRef(new Map());
+
+  function getTournamentCardCoverKey(tournament) {
+    const details = tournament?.data || {};
+    return details.multiCategoryEvent === true && details.eventGroupKey
+      ? `group:${details.eventGroupKey}`
+      : `tournament:${tournament?.id || tournament?.public_id || ""}`;
+  }
+
+  function applyTournamentCardCover(tournament, coverImageUrl) {
+    if (!coverImageUrl) return tournament;
+    const details = tournament?.data || {};
+    return {
+      ...tournament,
+      data: {
+        ...details,
+        ...(details.multiCategoryEvent === true
+          ? { eventCoverImageUrl: coverImageUrl }
+          : { coverImageUrl }),
+      },
+    };
+  }
+
+  const loadTournamentCardCover = React.useCallback(async (tournament) => {
+    const publicId = String(tournament?.public_id || "").trim();
+    const coverKey = getTournamentCardCoverKey(tournament);
+    if (!publicId || !coverKey || requestedTournamentCoversRef.current.has(coverKey)) return;
+    requestedTournamentCoversRef.current.add(coverKey);
+    const coverImageUrl = await fetchPublicTournamentCover(publicId);
+    if (!coverImageUrl) return;
+    tournamentCoverCacheRef.current.set(coverKey, coverImageUrl);
+    setBundle((current) => current ? {
+      ...current,
+      tournaments: (current.tournaments || []).map((item) => (
+        getTournamentCardCoverKey(item) === coverKey ? applyTournamentCardCover(item, coverImageUrl) : item
+      )),
+    } : current);
+  }, []);
+
+  const loadCircuitCardCover = React.useCallback(async (circuit) => {
+    const circuitId = String(circuit?.id || "").trim();
+    if (!circuitId || requestedCircuitCoversRef.current.has(circuitId)) return;
+    requestedCircuitCoversRef.current.add(circuitId);
+    const coverImageUrl = await fetchPublicCircuitCover(circuitId);
+    if (!coverImageUrl) return;
+    circuitCoverCacheRef.current.set(circuitId, coverImageUrl);
+    setBundle((current) => current ? {
+      ...current,
+      circuits: (current.circuits || []).map((item) => String(item.id) === circuitId ? {
+        ...item,
+        coverImageUrl,
+        ranking_settings: { ...(item.ranking_settings || {}), coverImageUrl },
+        rankingSettings: { ...(item.rankingSettings || {}), coverImageUrl },
+      } : item),
+    } : current);
+  }, []);
 
   function loadProfilePhotoInBackground(profile) {
     const profileId = String(profile?.id || "");
@@ -12837,10 +12931,20 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
         setBundle(null);
       }
     } else {
-      const normalizedCircuits = (result.data.circuits || []).map((circuit) => (
-        normalizePublicCircuitForDisplay(circuit, { directoryEntry: true })
-      ));
-      const normalizedBundle = { ...result.data, circuits: normalizedCircuits };
+      const tournamentsWithCachedCovers = (result.data.tournaments || []).map((tournament) => {
+        const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
+        return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
+      });
+      const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
+        const cachedCover = circuitCoverCacheRef.current.get(String(circuit.id));
+        const circuitWithCover = cachedCover ? {
+          ...circuit,
+          coverImageUrl: cachedCover,
+          ranking_settings: { ...(circuit.ranking_settings || {}), coverImageUrl: cachedCover },
+        } : circuit;
+        return normalizePublicCircuitForDisplay(circuitWithCover, { directoryEntry: true });
+      });
+      const normalizedBundle = { ...result.data, tournaments: tournamentsWithCachedCovers, circuits: normalizedCircuits };
       setBundle(normalizedBundle);
       loadProfilePhotoInBackground(normalizedBundle.profile);
       setSelectedTournament((current) => {
@@ -13007,6 +13111,8 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       onStatusTabChange={setActiveStatusTab}
       onOpenTournament={openPublicTournament}
       onOpenCircuit={openPublicCircuit}
+      onRequestTournamentCover={loadTournamentCardCover}
+      onRequestCircuitCover={loadCircuitCardCover}
       openingPublicId={openingPublicId}
       openingCircuitId={openingCircuitId}
       getWhatsAppUrl={getBrazilianWhatsAppUrl}
@@ -13246,10 +13352,12 @@ function PublicTournamentPage({ publicId }) {
 }
 
 function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBackToArena }) {
+  const [previewImage, setPreviewImage] = useState(null);
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [circuit?.id]);
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
+  const circuitCoverImage = rankingSettings.coverImageUrl || circuit?.coverImageUrl || "";
   const storedRankingGroups = Array.isArray(circuit?.ranking_groups)
     ? circuit.ranking_groups.filter((group) => Array.isArray(group?.rows) && group.rows.length > 0)
     : [];
@@ -13318,6 +13426,18 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
       </header>
 
       <main className="publicContent publicCircuitContent">
+        {circuitCoverImage ? (
+          <button
+            type="button"
+            className="publicTournamentCover publicCoverPreviewButton"
+            onClick={() => setPreviewImage({ src: circuitCoverImage, alt: `Foto do circuito ${circuit?.name || "Circuito"}`, title: circuit?.name || "Circuito" })}
+            aria-label={`Ampliar foto do circuito ${circuit?.name || "Circuito"}`}
+          >
+            <img src={circuitCoverImage} alt={`Foto do circuito ${circuit?.name || "Circuito"}`} />
+            <span>Ver foto maior</span>
+          </button>
+        ) : null}
+
         <section className="card publicCircuitIdentityCard">
           {organizer.photoUrl ? (
             <img src={organizer.photoUrl} alt={`Foto de ${arenaName}`} />
@@ -13399,6 +13519,7 @@ function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBack
           )}
         </section>
       </main>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }
@@ -13408,6 +13529,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
   const publicMatchesTabStorageKey = `publicTournamentMatchesTab:${tournament.public_id || tournament.id}`;
   const [activePublicTab, setActivePublicTabState] = useState(() => readPublicViewStorage(publicTabStorageKey, "participantes"));
   const [activePublicMatchesTab, setActivePublicMatchesTabState] = useState(() => readPublicViewStorage(publicMatchesTabStorageKey, "grupos"));
+  const [previewImage, setPreviewImage] = useState(null);
 
   function setActivePublicTab(tab) {
     savePublicViewStorage(publicTabStorageKey, tab);
@@ -13508,9 +13630,15 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
 
       <main className="publicContent">
         {data.coverImageUrl ? (
-          <figure className="publicTournamentCover">
+          <button
+            type="button"
+            className="publicTournamentCover publicCoverPreviewButton"
+            onClick={() => setPreviewImage({ src: data.coverImageUrl, alt: `Foto do torneio ${tournament.name}`, title: tournament.name })}
+            aria-label={`Ampliar foto do torneio ${tournament.name}`}
+          >
             <img src={data.coverImageUrl} alt={`Foto do torneio ${tournament.name}`} />
-          </figure>
+            <span>Ver foto maior</span>
+          </button>
         ) : null}
 
         <section className="card publicTournamentInfoCard">
@@ -13810,6 +13938,7 @@ function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, o
         </section>
 
       </main>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }

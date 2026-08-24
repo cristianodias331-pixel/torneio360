@@ -438,6 +438,10 @@ const publicArenaApiSource = readFileSync(
   new URL("src/services/publicArenaApi.mjs", root),
   "utf8"
 );
+const publicEventCoversMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240001_public_event_covers.sql", root),
+  "utf8"
+);
 const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
@@ -5143,6 +5147,35 @@ assert.ok(
     && styleSource.includes('html[data-theme="dark"] .participantOccupancyList li')
     && styleSource.includes("@media (max-width: 520px)"),
   "O aviso não bloqueante de participantes ocupados perdeu a confirmação, as chaves ou a adaptação visual."
+);
+
+assert.equal(
+  normalizeCircuitRankingSettings({ coverImageUrl: "data:image/jpeg;base64,capa" }).coverImageUrl,
+  "data:image/jpeg;base64,capa",
+  "A foto própria do circuito deixou de ser preservada nas configurações persistidas."
+);
+assert.equal(
+  getPublicTournamentDirectoryItem({
+    id: "evento-com-capa",
+    data: { eventCoverImageUrl: "data:image/jpeg;base64,evento" },
+  }).data.eventCoverImageUrl,
+  "data:image/jpeg;base64,evento",
+  "A foto geral do evento com várias categorias deixou de chegar ao perfil público."
+);
+assert.ok(
+  mainSource.includes("maxWidth: 1080")
+    && mainSource.includes("maxHeight: 1440")
+    && mainSource.includes("Foto do circuito")
+    && mainSource.includes("PublicImageLightbox")
+    && publicArenaApiSource.includes("get_public_tournament_cover")
+    && publicArenaApiSource.includes("get_public_circuit_cover")
+    && publicEventCoversMigrationSource.includes("create or replace function public.get_public_tournament_cover")
+    && publicEventCoversMigrationSource.includes("create or replace function public.get_public_circuit_cover")
+    && publicEventCoversMigrationSource.includes("- 'coverImageUrl'")
+    && styleSource.includes("FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS")
+    && styleSource.includes(".publicArenaEventCover.profile-photo")
+    && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover"),
+  "As imagens públicas perderam o formato do perfil, o padrão vertical ou a ampliação."
 );
 
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {
