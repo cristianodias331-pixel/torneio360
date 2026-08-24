@@ -143,9 +143,17 @@ export default function TournamentFormatInfoButton({
       teamCount,
       isPlayRanking,
       isIndividualCup,
-      isSunset ? data.cupConfig?.groupFormation : "automatic"
+      isSunset ? data.cupConfig?.groupFormation : "automatic",
+      data.cupConfig?.groupSizes,
     ),
-    [teamCount, isPlayRanking, isIndividualCup, isSunset, data.cupConfig?.groupFormation]
+    [
+      teamCount,
+      isPlayRanking,
+      isIndividualCup,
+      isSunset,
+      data.cupConfig?.groupFormation,
+      data.cupConfig?.groupSizes,
+    ]
   );
   const secondParallelEnabled = isPlayRanking || isCearenseSecondParallelEnabled(data);
   const thirdParallelEnabled = !isPlayRanking && isCearenseThirdParallelEnabled(data);

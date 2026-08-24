@@ -1729,6 +1729,21 @@ for (const [teamCount, expectedSizes] of expectedAutomaticGroupSizes) {
 assert.deepEqual(createCearenseGroups(16, "all-four").map((group) => group.teamIds.length), [4, 4, 4, 4], "A opção de quatro grupos de quatro foi alterada.");
 assert.deepEqual(createCearenseGroups(12, "all-four").map((group) => group.teamIds.length), [4, 4, 4], "A formação completa em grupos de quatro foi alterada.");
 assert.deepEqual(createCearenseGroups(10, "all-four").map((group) => group.teamIds.length), [4, 3, 3], "Uma quantidade incompatível com grupos de quatro deve preservar a formação automática.");
+const playRankingMasculinoPrincipianteGroups = createCearenseGroups(
+  13,
+  "automatic",
+  [3, 3, 4, 3]
+);
+assert.deepEqual(
+  playRankingMasculinoPrincipianteGroups.map((group) => group.teamIds),
+  [[0, 1, 2], [3, 4, 5], [6, 7, 8, 9], [10, 11, 12]],
+  "A composição específica do MASCULINO PRINCIPIANTE do PLAY RANKING® foi alterada."
+);
+assert.deepEqual(
+  createCearenseGroups(13, "automatic", [3, 4, 3]).map((group) => group.teamIds.length),
+  [4, 3, 3, 3],
+  "Uma composição específica inválida não pode alterar a formação automática de outros torneios."
+);
 assert.equal(describeCearenseGroupSizes(createCearenseGroups(10)), "2 grupos de 3 duplas e 1 grupo de 4 duplas", "A descrição da formação dos grupos foi alterada.");
 assert.equal(describeCearenseGroupSizes(createCearenseGroups(8), "jogadores"), "2 grupos de 4 jogadores", "A descrição da copa individual foi alterada.");
 assert.deepEqual(createCupGroups(18).map((group) => group.teamIds.length), [3, 3, 3, 3, 3, 3], "A Copa de 18 perdeu os grupos de três.");
@@ -1783,6 +1798,31 @@ assert.equal(cearenseGroupSchedule.flat().length, 9, "Os grupos de quatro e trê
 assert.equal(JSON.stringify(cearensePlayers), cearensePlayersSnapshot, "A geração da fase de grupos não pode alterar os participantes.");
 const sunsetGroupSchedule = generateCupGroupSchedule(createNamedTeams(16), { teamCount: 16, format: "sunset", groupFormation: "all-four" });
 assertGroupSchedule(sunsetGroupSchedule, 16, 3, [8, 8, 8], "Copa Sunset com grupos de quatro");
+const playRankingMasculinoPrincipianteSchedule = generateCupGroupSchedule(
+  createNamedTeams(13),
+  { teamCount: 13, format: "playranking", groupSizes: [3, 3, 4, 3] }
+);
+assertGroupSchedule(
+  playRankingMasculinoPrincipianteSchedule,
+  13,
+  3,
+  [5, 5, 5],
+  "MASCULINO PRINCIPIANTE do PLAY RANKING®"
+);
+const playRankingMasculinoPrincipianteGroupMembers = new Map();
+playRankingMasculinoPrincipianteSchedule.flat().forEach((game) => {
+  if (!playRankingMasculinoPrincipianteGroupMembers.has(game.groupId)) {
+    playRankingMasculinoPrincipianteGroupMembers.set(game.groupId, new Set());
+  }
+  [...game.ids1, ...game.ids2].forEach((id) => (
+    playRankingMasculinoPrincipianteGroupMembers.get(game.groupId).add(id)
+  ));
+});
+assert.deepEqual(
+  [...playRankingMasculinoPrincipianteGroupMembers.values()].map((ids) => [...ids].sort((a, b) => a - b)),
+  [[0, 1, 2], [3, 4, 5], [6, 7, 8, 9], [10, 11, 12]],
+  "As partidas específicas deixaram de respeitar os quatro grupos e os mesmos nomes da referência."
+);
 const cup18GroupSchedule = generateCupGroupSchedule(createNamedTeams(18), { teamCount: 18, format: "cup18" });
 assertGroupSchedule(cup18GroupSchedule, 18, 3, [6, 6, 6], "Copa de 18 duplas");
 assert.equal(getLargestPowerOfTwo(14), 8, "A maior chave completa antes de 14 foi alterada.");
