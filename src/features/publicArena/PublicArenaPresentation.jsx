@@ -182,7 +182,8 @@ export function PublicArenaTournamentCardsView({
     const isGroup = group.items.length > 1 || firstDetails.multiCategoryEvent === true;
     const title = isGroup ? firstDetails.eventName || first.name : first.name;
     const eventCoverImage = (isGroup ? firstDetails.eventCoverImageUrl : "") || firstDetails.coverImageUrl || "";
-    const coverImage = eventCoverImage || organizer.photoUrl;
+    const profileCoverImage = organizer.photoUrl || "/torneio360-profile.png";
+    const coverImage = eventCoverImage || profileCoverImage;
     const coverVariant = eventCoverImage ? "event-cover" : "profile-photo";
     const registrationOpen = group.items.some((item) => isRegistrationOpen(getRegistrationDeadline(item)));
 

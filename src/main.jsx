@@ -166,7 +166,8 @@ import {
   NoticeModal,
 } from "./features/dialogs/ConfirmationDialogs.jsx";
 import ShuffleVideoModal from "./features/media/ShuffleVideoModal.jsx";
-import { resizeImageFile } from "./features/media/imageResize.mjs";
+import StoryCoverEditor from "./features/media/StoryCoverEditor.jsx";
+import { readStoryCoverFile } from "./features/media/storyCoverCrop.mjs";
 import {
   createShuffleVideoFile,
   createShuffleVideoSnapshot,
@@ -2193,6 +2194,8 @@ const [newDay, setNewDay] = useState("");
 const [newLocation, setNewLocation] = useState("");
 const [newCoverImageUrl, setNewCoverImageUrl] = useState("");
 const [coverImageLoading, setCoverImageLoading] = useState(false);
+const [coverImageEditor, setCoverImageEditor] = useState(null);
+const coverImageApplyRef = useRef(null);
 const [newWinningScore, setNewWinningScore] = useState(4);
 const [newRankingCriteria, setNewRankingCriteria] = useState("");
 const [newPublicInfo, setNewPublicInfo] = useState({
@@ -4557,17 +4560,28 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCoverImageLoading(true);
 
     try {
-      const imageUrl = await resizeImageFile(file, {
-        maxWidth: 1080,
-        maxHeight: 1440,
-        quality: 0.84,
-      });
-      applyImage(imageUrl);
+      const imageUrl = await readStoryCoverFile(file);
+      coverImageApplyRef.current = applyImage;
+      setCoverImageEditor({ imageUrl, fileName: file.name || "" });
     } catch (error) {
-      showNotice("warning", "Foto não adicionada", error.message || "Escolha outra imagem.");
-    } finally {
+      coverImageApplyRef.current = null;
       setCoverImageLoading(false);
+      showNotice("warning", "Foto não adicionada", error.message || "Escolha outra imagem.");
     }
+  }
+
+  function cancelTournamentCoverEditor() {
+    coverImageApplyRef.current = null;
+    setCoverImageEditor(null);
+    setCoverImageLoading(false);
+  }
+
+  function applyTournamentCover(imageUrl) {
+    coverImageApplyRef.current?.(imageUrl);
+    coverImageApplyRef.current = null;
+    setCoverImageEditor(null);
+    setCoverImageLoading(false);
+    showNotice("info", "Foto enquadrada", "A capa foi preparada em 1080 × 1920 px. Salve as alterações para concluir.");
   }
 
   function buildOrganizerProfilePayload() {
@@ -4887,13 +4901,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setPhotoEditor((prev) => prev ? {
       ...prev,
       zoom: clampPhotoZoom((prev.zoom || 1) + direction),
-    } : prev);
-  }
-
-  function nudgePhotoZoom(amount) {
-    setPhotoEditor((prev) => prev ? {
-      ...prev,
-      zoom: clampPhotoZoom((prev.zoom || 1) + amount),
     } : prev);
   }
 
@@ -7733,7 +7740,7 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto do torneio</strong>
-                    <span>Recomendado: 1080 × 1350 px (4:5). Também aceitamos 1:1 e 3:4 sem deformar.</span>
+                    <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
                   </div>
                   {editForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEditForm("coverImageUrl", "")}>Remover foto</button> : null}
                 </div>
@@ -7741,7 +7748,11 @@ setNewPublicInfo({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (imageUrl) => updateEditForm("coverImageUrl", imageUrl))}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      void prepareTournamentCover(file, (imageUrl) => updateEditForm("coverImageUrl", imageUrl));
+                    }}
                   />
                   {editForm.coverImageUrl ? <img src={editForm.coverImageUrl} alt="Prévia da foto do torneio" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</span>}
                 </label>
@@ -7823,12 +7834,16 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto geral do evento</strong>
-                    <span>Recomendado: 1080 × 1350 px (4:5). As categorias configuradas para usar esta foto serão atualizadas juntas.</span>
+                    <span>Padrão Stories: 1080 × 1920 px (9:16). As categorias configuradas para usar esta foto serão atualizadas juntas.</span>
                   </div>
                   {editEventGroup.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => updateEventGroupField("coverImageUrl", "")}>Remover foto</button> : null}
                 </div>
                 <label className={`tournamentCoverDropzone ${editEventGroup.coverImageUrl ? "hasImage" : ""}`}>
-                  <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupField("coverImageUrl", value))} />
+                  <input type="file" accept="image/*" onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    void prepareTournamentCover(file, (value) => updateEventGroupField("coverImageUrl", value));
+                  }} />
                   {editEventGroup.coverImageUrl
                     ? <img src={editEventGroup.coverImageUrl} alt="Prévia da foto geral do evento" />
                     : <span><Camera aria-hidden="true" /> Escolher foto geral</span>}
@@ -7932,7 +7947,11 @@ setNewPublicInfo({
                         </label>
                         {!category.usesEventCover ? (
                           <label className={`categoryCoverPicker ${category.coverImageUrl ? "hasImage" : ""}`}>
-                            <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateEventGroupCategory(category.key, "coverImageUrl", value))} />
+                            <input type="file" accept="image/*" onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = "";
+                              void prepareTournamentCover(file, (value) => updateEventGroupCategory(category.key, "coverImageUrl", value));
+                            }} />
                             {category.coverImageUrl ? <img src={category.coverImageUrl} alt={`Foto de ${category.name || "categoria"}`} /> : <span><Camera aria-hidden="true" /> Escolher foto própria</span>}
                           </label>
                         ) : null}
@@ -7945,8 +7964,8 @@ setNewPublicInfo({
 
             <div className="editTournamentActions eventGroupEditActions">
               <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
-              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving}>
-                {editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
+              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving || coverImageLoading}>
+                {coverImageLoading ? "Preparando foto..." : editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
               </button>
             </div>
           </div>
@@ -7974,12 +7993,16 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
-                    <span>Recomendado: 1080 × 1350 px (4:5). Também aceitamos 1:1 e 3:4 sem deformar.</span>
+                    <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
                   </div>
                   {circuitEditForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl: "" }))}>Remover foto</button> : null}
                 </div>
                 <label className={`tournamentCoverDropzone ${circuitEditForm.coverImageUrl ? "hasImage" : ""}`}>
-                  <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (coverImageUrl) => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl })))} />
+                  <input type="file" accept="image/*" onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    void prepareTournamentCover(file, (coverImageUrl) => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl })));
+                  }} />
                   {circuitEditForm.coverImageUrl ? <img src={circuitEditForm.coverImageUrl} alt="Prévia da foto do circuito" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do circuito"}</span>}
                 </label>
               </div>
@@ -8053,6 +8076,15 @@ setNewPublicInfo({
         </div>
       ) : null}
 
+      {coverImageEditor ? (
+        <StoryCoverEditor
+          sourceUrl={coverImageEditor.imageUrl}
+          fileName={coverImageEditor.fileName}
+          onCancel={cancelTournamentCoverEditor}
+          onApply={applyTournamentCover}
+        />
+      ) : null}
+
       {photoEditor ? (
         <div className="photoEditorOverlay" role="dialog" aria-modal="true">
           <div className="photoEditorModal">
@@ -8070,11 +8102,6 @@ setNewPublicInfo({
               <canvas ref={photoCanvasRef} aria-label="Prévia da foto ajustada" />
             </div>
             <div className="photoEditorHint">Toque e arraste para mover • Pinça ou roda do mouse para zoom</div>
-            <div className="photoZoomButtons" aria-label="Controles de zoom">
-              <button type="button" className="secondaryBtn" onClick={() => nudgePhotoZoom(-0.12)}>−</button>
-              <span>{Math.round((photoEditor.zoom || 1) * 100)}%</span>
-              <button type="button" className="secondaryBtn" onClick={() => nudgePhotoZoom(0.12)}>+</button>
-            </div>
             <div className="photoEditorActions">
               <button type="button" className="cancelBtn" onClick={() => setPhotoEditor(null)}>Cancelar</button>
               <button type="button" onClick={applyEditedOrganizerPhoto}>Aplicar foto</button>
@@ -8373,7 +8400,11 @@ setNewPublicInfo({
           </div>
 
           <label className={`categoryCoverPicker ${item.coverImageUrl ? "hasImage" : ""}`}>
-            <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (value) => updateCategorySchedule(index, "coverImageUrl", value))} />
+            <input type="file" accept="image/*" onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              void prepareTournamentCover(file, (value) => updateCategorySchedule(index, "coverImageUrl", value));
+            }} />
             {item.coverImageUrl
               ? <img src={item.coverImageUrl} alt={`Foto de ${item.category || `categoria ${index + 1}`}`} />
               : <span><Camera aria-hidden="true" /> Foto própria</span>}
@@ -8484,7 +8515,7 @@ setNewPublicInfo({
     <div className="tournamentCoverIntro">
       <div>
         <strong><Camera aria-hidden="true" /> {newMultiCategoryEvent === "sim" ? "Foto geral do evento" : "Foto do torneio"}</strong>
-        <span>{newMultiCategoryEvent === "sim" ? "Use de preferência 1080 × 1350 px (4:5). As categorias sem foto própria usarão esta imagem." : "Use de preferência 1080 × 1350 px (4:5). Se não escolher, a foto redonda da arena será usada no cartão."}</span>
+        <span>{newMultiCategoryEvent === "sim" ? "Padrão Stories: 1080 × 1920 px (9:16). As categorias sem foto própria usarão esta imagem." : "Padrão Stories: 1080 × 1920 px (9:16). Se não escolher, a foto redonda da arena será usada no cartão."}</span>
       </div>
       {newCoverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setNewCoverImageUrl("")}>Remover foto</button> : null}
     </div>
@@ -8492,7 +8523,11 @@ setNewPublicInfo({
       <input
         type="file"
         accept="image/*"
-        onChange={(event) => void prepareTournamentCover(event.target.files?.[0], setNewCoverImageUrl)}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          void prepareTournamentCover(file, setNewCoverImageUrl);
+        }}
       />
       {newCoverImageUrl ? <img src={newCoverImageUrl} alt="Prévia da foto do torneio" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do evento"}</span>}
     </label>
@@ -8540,8 +8575,8 @@ setNewPublicInfo({
   </>
   )}
 
- <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving}>
-  {saving ? "Salvando..." : "Criar torneio"}
+ <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving || coverImageLoading}>
+  {coverImageLoading ? "Preparando foto..." : saving ? "Salvando..." : "Criar torneio"}
 </button>
       </section>
       </div>
@@ -8803,12 +8838,16 @@ setNewPublicInfo({
         <div className="tournamentCoverIntro">
           <div>
             <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
-            <span>Recomendado: 1080 × 1350 px (4:5). Também aceitamos 1:1 e 3:4 sem deformar.</span>
+            <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
           </div>
           {circuitForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitForm((prev) => ({ ...prev, coverImageUrl: "" }))}>Remover foto</button> : null}
         </div>
         <label className={`tournamentCoverDropzone ${circuitForm.coverImageUrl ? "hasImage" : ""}`}>
-          <input type="file" accept="image/*" onChange={(event) => void prepareTournamentCover(event.target.files?.[0], (coverImageUrl) => setCircuitForm((prev) => ({ ...prev, coverImageUrl })))} />
+          <input type="file" accept="image/*" onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            void prepareTournamentCover(file, (coverImageUrl) => setCircuitForm((prev) => ({ ...prev, coverImageUrl })));
+          }} />
           {circuitForm.coverImageUrl ? <img src={circuitForm.coverImageUrl} alt="Prévia da foto do circuito" /> : <span><Camera aria-hidden="true" /> {coverImageLoading ? "Preparando imagem..." : "Escolher foto do circuito"}</span>}
         </label>
       </div>

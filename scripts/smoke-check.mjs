@@ -186,6 +186,14 @@ import {
   moveShuffleAnimationItems,
 } from "../src/features/media/shuffleAnimation.mjs";
 import {
+  STORY_COVER_HEIGHT,
+  STORY_COVER_WIDTH,
+  clampStoryCoverTransform,
+  getStoryCoverBaseScale,
+  getStoryCoverRenderRect,
+  storyCoverHasNativeResolution,
+} from "../src/features/media/storyCoverCrop.mjs";
+import {
   applyCircuitDrawOrder,
   applyCircuitExtraPoints,
   applyCircuitManualParticipants,
@@ -446,10 +454,6 @@ const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
 );
-const imageResizeSource = readFileSync(
-  new URL("src/features/media/imageResize.mjs", root),
-  "utf8"
-);
 const rankingShareButtonSource = readFileSync(
   new URL("src/features/rankingShare/RankingShareButton.jsx", root),
   "utf8"
@@ -497,6 +501,14 @@ const participantManagementSource = readFileSync(
 );
 const publicArenaPresentationSource = readFileSync(
   new URL("src/features/publicArena/PublicArenaPresentation.jsx", root),
+  "utf8"
+);
+const storyCoverEditorSource = readFileSync(
+  new URL("src/features/media/StoryCoverEditor.jsx", root),
+  "utf8"
+);
+const storyCoverCropSource = readFileSync(
+  new URL("src/features/media/storyCoverCrop.mjs", root),
   "utf8"
 );
 const rankingTablesSource = readFileSync(
@@ -3914,9 +3926,9 @@ assert.ok(
 );
 assert.ok(
   publicIdentifiersSource.includes("export function generatePublicId")
-    && imageResizeSource.includes("export function resizeImageFile")
+    && storyCoverCropSource.includes("export function readStoryCoverFile")
     && mainSource.includes('from "./domain/publicIdentifiers.mjs"')
-    && mainSource.includes('from "./features/media/imageResize.mjs"'),
+    && mainSource.includes('from "./features/media/storyCoverCrop.mjs"'),
   "Os identificadores públicos ou o tratamento de imagens voltaram ao componente principal."
 );
 assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
@@ -5162,11 +5174,32 @@ assert.equal(
   "data:image/jpeg;base64,evento",
   "A foto geral do evento com várias categorias deixou de chegar ao perfil público."
 );
+assert.equal(STORY_COVER_WIDTH, 1080, "A largura padrão da capa Stories foi alterada.");
+assert.equal(STORY_COVER_HEIGHT, 1920, "A altura padrão da capa Stories foi alterada.");
+assert.equal(getStoryCoverBaseScale(3000, 2000), 0.96, "O recorte horizontal não cobre corretamente o quadro 9:16.");
+assert.deepEqual(
+  clampStoryCoverTransform({ sourceWidth: 3000, sourceHeight: 2000, zoom: 1, x: 9999, y: 9999 }),
+  { zoom: 1, x: 900, y: 0 },
+  "O arraste da capa permite revelar área vazia fora da fotografia."
+);
+assert.deepEqual(
+  getStoryCoverRenderRect({ sourceWidth: 1080, sourceHeight: 1920, zoom: 1, x: 0, y: 0 }),
+  { zoom: 1, x: 0, y: 0, width: 1080, height: 1920, left: 0, top: 0 },
+  "Uma foto Stories pronta deixou de preencher exatamente a saída."
+);
+assert.equal(storyCoverHasNativeResolution(2160, 3840), true, "Fotos grandes deixaram de ser reconhecidas como adequadas.");
+assert.equal(storyCoverHasNativeResolution(540, 960), false, "Fotos pequenas deixaram de receber o alerta de nitidez.");
 assert.ok(
-  mainSource.includes("maxWidth: 1080")
-    && mainSource.includes("maxHeight: 1440")
+  mainSource.includes("readStoryCoverFile")
+    && mainSource.includes("StoryCoverEditor")
+    && mainSource.includes("1080 × 1920 px (9:16)")
     && mainSource.includes("Foto do circuito")
+    && !mainSource.includes('className="photoZoomButtons"')
+    && storyCoverEditorSource.includes('canvas.toDataURL("image/jpeg", 0.88)')
+    && storyCoverEditorSource.includes("handlePointerMove")
+    && storyCoverEditorSource.includes("handleWheel")
     && mainSource.includes("PublicImageLightbox")
+    && publicArenaPresentationSource.includes('organizer.photoUrl || "/torneio360-profile.png"')
     && publicArenaApiSource.includes("get_public_tournament_cover")
     && publicArenaApiSource.includes("get_public_circuit_cover")
     && publicEventCoversMigrationSource.includes("create or replace function public.get_public_tournament_cover")
@@ -5174,8 +5207,11 @@ assert.ok(
     && publicEventCoversMigrationSource.includes("- 'coverImageUrl'")
     && styleSource.includes("FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS")
     && styleSource.includes(".publicArenaEventCover.profile-photo")
-    && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover"),
-  "As imagens públicas perderam o formato do perfil, o padrão vertical ou a ampliação."
+    && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover")
+    && styleSource.includes(".storyCoverEditorFrame")
+    && styleSource.includes("aspect-ratio: 9 / 16")
+    && styleSource.includes('html[data-theme="dark"] .tournamentCoverDropzone'),
+  "As imagens públicas perderam o editor Stories, a moldura circular, o contraste noturno ou a ampliação."
 );
 
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {

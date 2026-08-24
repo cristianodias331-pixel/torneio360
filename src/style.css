@@ -8242,6 +8242,396 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   }
 }
 
+/* Editor das capas 9:16 — homologação */
+.storyCoverEditorOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10100;
+  display: grid;
+  padding: clamp(12px, 3vw, 30px);
+  place-items: center;
+  overflow-y: auto;
+  background: rgba(2, 9, 18, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.storyCoverEditorModal {
+  width: min(880px, 96vw);
+  max-height: 94dvh;
+  padding: clamp(16px, 2.6vw, 26px);
+  overflow-y: auto;
+  border: 1px solid var(--ui-border, #dbe4ef);
+  border-radius: 24px;
+  background: var(--ui-surface-raised, #ffffff);
+  color: var(--ui-text-strong, #0f172a);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+}
+
+.storyCoverEditorModal > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.storyCoverEditorModal > header h2 {
+  margin: 3px 0 4px;
+  color: inherit;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+}
+
+.storyCoverEditorModal > header p {
+  margin: 0;
+  color: var(--ui-muted, #64748b);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.storyCoverEditorEyebrow {
+  color: #0ea5e9;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.storyCoverEditorBody {
+  display: grid;
+  grid-template-columns: minmax(160px, 300px) minmax(230px, 1fr);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 42px);
+}
+
+.storyCoverEditorFrame {
+  position: relative;
+  width: min(290px, 34vw, 33.75dvh);
+  aspect-ratio: 9 / 16;
+  justify-self: center;
+  overflow: hidden;
+  border: 3px solid #38bdf8;
+  border-radius: 20px;
+  background: #06111f;
+  box-shadow: 0 18px 44px rgba(8, 47, 73, 0.3);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.storyCoverEditorFrame:active {
+  cursor: grabbing;
+}
+
+.storyCoverEditorFrame canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.storyCoverEditorFrame > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.storyCoverSafeArea {
+  position: absolute;
+  inset: 5%;
+  border: 1px dashed rgba(255, 255, 255, 0.52);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.storyCoverEditorInfo {
+  display: grid;
+  gap: 9px;
+  align-content: center;
+}
+
+.storyCoverEditorInfo > strong {
+  font-size: 1.02rem;
+}
+
+.storyCoverEditorInfo > span,
+.storyCoverEditorInfo > small {
+  color: var(--ui-muted, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.storyCoverEditorInfo > small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storyCoverQuality {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 12px 13px;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.storyCoverQuality.warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.storyCoverQuality strong {
+  font-size: 0.83rem;
+}
+
+.storyCoverQuality span {
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.storyCoverGestureHint {
+  margin-top: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border, #dbe4ef);
+  border-radius: 12px;
+  background: var(--ui-surface-muted, #f1f5f9);
+  color: var(--ui-text, #334155);
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.storyCoverEditorError {
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.storyCoverEditorModal > footer {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(190px, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.storyCoverEditorModal > footer button {
+  min-height: 44px;
+}
+
+html[data-theme="dark"] .storyCoverQuality,
+.proDashboard.theme-dark .storyCoverQuality {
+  border-color: #166534;
+  background: #092d22;
+  color: #86efac;
+}
+
+html[data-theme="dark"] .storyCoverQuality.warning,
+.proDashboard.theme-dark .storyCoverQuality.warning {
+  border-color: #9a3412;
+  background: #32160a;
+  color: #fdba74;
+}
+
+@media (max-width: 720px) {
+  .storyCoverEditorOverlay {
+    align-items: start;
+    padding: 8px;
+  }
+
+  .storyCoverEditorModal {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .storyCoverEditorModal > header {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .storyCoverEditorModal > header p {
+    font-size: 0.75rem;
+  }
+
+  .storyCoverEditorModal > header button {
+    min-width: 70px;
+    padding: 8px 10px;
+  }
+
+  .storyCoverEditorBody {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .storyCoverEditorFrame {
+    width: min(185px, 46vw, 26dvh);
+    border-width: 2px;
+    border-radius: 14px;
+  }
+
+  .storyCoverEditorInfo {
+    gap: 5px;
+  }
+
+  .storyCoverEditorInfo > strong,
+  .storyCoverEditorInfo > span,
+  .storyCoverEditorInfo > small {
+    text-align: center;
+  }
+
+  .storyCoverQuality {
+    margin-top: 3px;
+    padding: 8px 10px;
+    text-align: left;
+  }
+
+  .storyCoverGestureHint {
+    margin-top: 3px;
+    padding: 7px 9px;
+  }
+
+  .storyCoverEditorModal > footer {
+    position: sticky;
+    bottom: -14px;
+    margin: 12px -4px -4px;
+    padding: 8px 4px 4px;
+    background: var(--ui-surface-raised, #ffffff);
+  }
+}
+
+@media (max-height: 620px) {
+  .storyCoverEditorModal > header p,
+  .storyCoverEditorInfo > span,
+  .storyCoverEditorInfo > small,
+  .storyCoverQuality span {
+    display: none;
+  }
+
+  .storyCoverEditorFrame {
+    width: min(150px, 24dvh);
+  }
+}
+
+/* Acabamento do editor de perfil e dos campos de capa no tema escuro */
+.publicPage .publicArenaEventCover.profile-photo {
+  background: transparent !important;
+}
+
+.publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton {
+  width: 116px !important;
+  height: 116px !important;
+  border-radius: 50% !important;
+}
+
+.publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+  width: 108px !important;
+  height: 108px !important;
+  max-width: 108px !important;
+  max-height: 108px !important;
+}
+
+.photoEditorModal {
+  border: 1px solid var(--ui-border, #dbe4ef) !important;
+  background: var(--ui-surface-raised, #ffffff) !important;
+  color: var(--ui-text-strong, #0f172a) !important;
+}
+
+.photoEditorModal h2 {
+  color: var(--ui-text-strong, #0f172a) !important;
+}
+
+.photoEditorModal p,
+.photoEditorHint {
+  color: var(--ui-muted, #64748b) !important;
+}
+
+.photoEditorPreview {
+  border-color: #38bdf8 !important;
+  background: #06111f !important;
+  box-shadow: 0 16px 36px rgba(14, 165, 233, 0.2) !important;
+}
+
+.photoZoomButtons {
+  display: none !important;
+}
+
+.photoEditorActions {
+  position: static !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
+  padding: 10px 0 0 !important;
+  border-top: 1px solid var(--ui-border, #dbe4ef) !important;
+  background: transparent !important;
+}
+
+.photoEditorActions button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+}
+
+.tournamentCoverDropzone {
+  border-color: color-mix(in srgb, var(--ui-accent, #38bdf8) 60%, transparent) !important;
+  background: var(--ui-surface-muted, #f1f5f9) !important;
+  color: var(--ui-text, #334155) !important;
+}
+
+.tournamentCoverDropzone > span {
+  color: inherit !important;
+  text-align: center;
+}
+
+html[data-theme="dark"] .tournamentCoverDropzone,
+.proDashboard.theme-dark .tournamentCoverDropzone {
+  border-color: #4f7198 !important;
+  background: #111d2c !important;
+  color: #dbeafe !important;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.05) !important;
+}
+
+html[data-theme="dark"] .tournamentCoverDropzone:hover,
+.proDashboard.theme-dark .tournamentCoverDropzone:hover {
+  border-color: #60a5fa !important;
+  background: #172a41 !important;
+}
+
+html[data-theme="dark"] .photoEditorActions,
+.proDashboard.theme-dark .photoEditorActions {
+  border-top-color: #344b65 !important;
+  background: transparent !important;
+}
+
+@media (max-width: 680px) {
+  .publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton {
+    width: 104px !important;
+    height: 104px !important;
+  }
+
+  .publicPage .publicArenaEventCover.profile-photo .publicImagePreviewButton > img {
+    width: 98px !important;
+    height: 98px !important;
+    max-width: 98px !important;
+    max-height: 98px !important;
+  }
+}
+
 /* =========================================================
    FOTOS PÚBLICAS DE EVENTOS E CIRCUITOS — HOMOLOGAÇÃO
    A foto herdada do perfil mantém formato circular. Capas
@@ -8321,15 +8711,15 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
 .publicCoverPreviewButton.publicTournamentCover {
   position: relative;
   display: grid;
-  width: min(100%, 520px) !important;
-  aspect-ratio: 4 / 5;
+  width: min(100%, 170px) !important;
+  aspect-ratio: 9 / 16;
   max-height: none !important;
-  margin: 0 auto 18px !important;
-  padding: 10px !important;
+  margin: 0 auto 14px !important;
+  padding: 6px !important;
   place-items: center;
   overflow: hidden;
   border: 1px solid rgba(104, 144, 187, 0.35) !important;
-  border-radius: 22px !important;
+  border-radius: 18px !important;
   background: linear-gradient(145deg, #081a2d, #102b47) !important;
   box-shadow: 0 18px 42px rgba(15, 42, 72, 0.18) !important;
   cursor: zoom-in;
@@ -8340,15 +8730,15 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   width: 100% !important;
   height: 100% !important;
   max-height: none !important;
-  border-radius: 14px;
+  border-radius: 12px;
   object-fit: contain !important;
 }
 
 .publicCoverPreviewButton.publicTournamentCover > span {
   position: absolute;
-  right: 22px;
-  bottom: 22px;
-  padding: 7px 11px;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 9px;
   border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: 999px;
   background: rgba(5, 20, 38, 0.86);
@@ -8423,9 +8813,9 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
 }
 
 .tournamentCoverDropzone {
-  width: min(100%, 360px) !important;
+  width: min(100%, 280px) !important;
   min-height: 0 !important;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 9 / 16;
   justify-self: start;
   padding: 8px;
   background: color-mix(in srgb, var(--surface, #ffffff) 92%, #dbeafe) !important;
@@ -8469,9 +8859,9 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   }
 
   .publicCoverPreviewButton.publicTournamentCover {
-    width: min(100%, 430px) !important;
-    padding: 6px !important;
-    border-radius: 16px !important;
+    width: min(38vw, 128px) !important;
+    padding: 4px !important;
+    border-radius: 14px !important;
   }
 
   .publicCoverPreviewButton.publicTournamentCover > img {
@@ -8479,12 +8869,13 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   }
 
   .publicCoverPreviewButton.publicTournamentCover > span {
-    right: 14px;
-    bottom: 14px;
+    right: 8px;
+    bottom: 8px;
+    font-size: 9px;
   }
 
   .tournamentCoverDropzone {
-    width: min(100%, 300px) !important;
+    width: min(100%, 220px) !important;
   }
 }
 
