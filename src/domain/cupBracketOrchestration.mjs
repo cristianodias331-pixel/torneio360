@@ -48,7 +48,11 @@ export function generatePlayRankingBrackets(data) {
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
   const repechageName = cupConfig.repechageName || "Disputa Paralela";
-  const groupCount = createCearenseGroups(cupConfig.teamCount || 4).length;
+  const groupCount = createCearenseGroups(
+    cupConfig.teamCount || 4,
+    "automatic",
+    cupConfig.groupSizes,
+  ).length;
   const bracketVersion = Number(cupConfig.playRankingBracketVersion) || 0;
   const mainPlan = bracketVersion >= 3
     ? playRankingMainBracketPlans[groupCount]
@@ -82,7 +86,11 @@ export function generateCearenseBrackets(data) {
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
   const repechageName = cupConfig.repechageName || "2ª Disputa Paralela";
   const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
-  const groupCount = createCearenseGroups(cupConfig.teamCount || 4).length;
+  const groupCount = createCearenseGroups(
+    cupConfig.teamCount || 4,
+    "automatic",
+    cupConfig.groupSizes,
+  ).length;
   const mainPlan = cearenseMainBracketPlans[groupCount];
   const mainRounds = mainPlan
     ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
@@ -117,7 +125,8 @@ export function generateSunsetBrackets(data) {
   const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
   const groupCount = createCearenseGroups(
     cupConfig.teamCount || 4,
-    cupConfig.groupFormation
+    cupConfig.groupFormation,
+    cupConfig.groupSizes,
   ).length;
   const mainPlan = cearenseMainBracketPlans[groupCount];
   const mainRounds = mainPlan

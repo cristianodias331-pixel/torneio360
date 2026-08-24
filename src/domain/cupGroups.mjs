@@ -16,11 +16,29 @@ export function getGroupLetter(index) {
   return String.fromCharCode(65 + index);
 }
 
-export function createCearenseGroups(teamCount, groupFormation = "automatic") {
+export function normalizeCearenseGroupSizes(teamCount, groupSizes) {
+  const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
+  if (!Array.isArray(groupSizes) || groupSizes.length === 0) return null;
+
+  const normalized = groupSizes.map(Number);
+  const valid = normalized.every((size) => Number.isInteger(size) && size >= 3 && size <= 4)
+    && normalized.reduce((total, size) => total + size, 0) === safeTeamCount;
+
+  return valid ? normalized : null;
+}
+
+export function createCearenseGroups(
+  teamCount,
+  groupFormation = "automatic",
+  customGroupSizes = null,
+) {
   const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
   const groupSizes = [];
+  const normalizedCustomGroupSizes = normalizeCearenseGroupSizes(safeTeamCount, customGroupSizes);
 
-  if (groupFormation === "all-four" && safeTeamCount % 4 === 0) {
+  if (normalizedCustomGroupSizes) {
+    groupSizes.push(...normalizedCustomGroupSizes);
+  } else if (groupFormation === "all-four" && safeTeamCount % 4 === 0) {
     groupSizes.push(...Array.from({ length: safeTeamCount / 4 }, () => 4));
   } else if (safeTeamCount <= 5) {
     groupSizes.push(safeTeamCount);
@@ -61,7 +79,11 @@ export function describeCearenseGroupSizes(groups, participantPlural = "duplas")
 
 export function createCupGroups(teamCount, format = "", cupConfig = {}) {
   if (format === "cearense" || format === "cearense-individual" || format === "playranking" || format === "sunset") {
-    return createCearenseGroups(teamCount, format === "sunset" ? cupConfig.groupFormation : "automatic");
+    return createCearenseGroups(
+      teamCount,
+      format === "sunset" ? cupConfig.groupFormation : "automatic",
+      cupConfig.groupSizes,
+    );
   }
 
   const groups = [];

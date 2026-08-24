@@ -10,9 +10,10 @@ export function getCearenseFormatSummary(
   playRanking = false,
   individual = false,
   groupFormation = "automatic",
+  customGroupSizes = null,
 ) {
   const safeTeamCount = Math.max(4, Math.min(32, Number(teamCount) || 4));
-  const groups = createCearenseGroups(safeTeamCount, groupFormation);
+  const groups = createCearenseGroups(safeTeamCount, groupFormation, customGroupSizes);
   const groupSizes = groups.map((group) => group.teamIds.length);
   const gamesPerTeam = [...new Set(groupSizes.map((size) => size - 1))].sort((a, b) => a - b);
   const groupMatches = groupSizes.reduce((total, size) => total + (size * (size - 1)) / 2, 0);
