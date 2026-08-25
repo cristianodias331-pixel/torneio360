@@ -342,17 +342,19 @@ export default function ScheduleView({
     <div className={`schedule ${readOnly ? "readOnlySchedule publicSchedule" : ""}`}>
       {!readOnly ? (
         <div className="scheduleOverviewToolbar" aria-label="Controles e resumo dos jogos">
-          {statusData ? <MatchStatusSummary data={statusData} /> : null}
-          <label className="scheduleSearch">
-            <Search aria-hidden="true" />
-            <input
-              type="search"
-              value={scheduleSearchValue}
-              onChange={(event) => setScheduleSearchValue(event.target.value)}
-              placeholder="Nome, rodada ou quadra"
-              aria-label="Pesquisar jogos por nome, rodada, grupo, quadra ou estado"
-            />
-          </label>
+          <div className="scheduleOverviewPrimary">
+            {statusData ? <MatchStatusSummary data={statusData} /> : null}
+            <label className="scheduleSearch">
+              <Search aria-hidden="true" />
+              <input
+                type="search"
+                value={scheduleSearchValue}
+                onChange={(event) => setScheduleSearchValue(event.target.value)}
+                placeholder="Nome, rodada ou quadra"
+                aria-label="Pesquisar jogos por nome, rodada, grupo, quadra ou estado"
+              />
+            </label>
+          </div>
           <VoiceRepeatSelector
             voiceRepeat={voiceRepeat}
             setVoiceRepeat={setVoiceRepeat}

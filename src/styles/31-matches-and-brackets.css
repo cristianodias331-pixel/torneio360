@@ -3,14 +3,22 @@
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   min-width: 0;
   min-height: 42px;
   padding: 5px 8px;
   border: 1px solid #d7e3f1;
   border-radius: 11px;
   background: #f8fbff;
+}
+
+.scheduleOverviewPrimary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .scheduleOverviewToolbar .tournamentMatchStatusSummary {
@@ -25,6 +33,7 @@
 .scheduleOverviewToolbar .voiceRepeatBox {
   flex: 0 0 auto;
   margin: 0;
+  margin-left: auto;
   border: 0;
   background: transparent;
 }
@@ -33,9 +42,9 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  flex: 1 1 230px;
-  width: min(340px, 100%);
-  max-width: 340px;
+  flex: 0 1 300px;
+  width: min(300px, 100%);
+  max-width: 300px;
   min-width: 170px;
   min-height: 32px;
   padding: 0 9px;
@@ -43,6 +52,7 @@
   border-radius: 9px;
   background: #fff;
   color: #60748c;
+  align-self: center;
 }
 
 .scheduleSearch:focus-within {
@@ -259,6 +269,14 @@ html[data-theme="dark"] .scheduleGroupSection .matchCardPhase,
   }
 
   .scheduleOverviewToolbar .voiceRepeatBox {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .scheduleOverviewPrimary {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
     width: 100%;
   }
 
