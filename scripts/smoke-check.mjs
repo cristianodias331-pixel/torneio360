@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { orderFixedMixedPair } from "../src/fixedMixedTeamOrder.mjs";
 import { super12IndividualTemplate } from "../src/super12Schedule.mjs";
@@ -461,16 +461,13 @@ assert.ok(
     && mainSource.match(/function migrateReferenceProfilePlayRankingTournaments[\s\S]*?\.eq\("user_id", PLAY_RANKING_RETROACTIVE_PROFILE_ID\)/),
   "A atualização retroativa deixou de estar isolada ao perfil PLAY RANKING® e à sua modalidade Modelo Torneio 360."
 );
-function readCssBundleSource(entryUrl, visited = new Set()) {
-  if (visited.has(entryUrl.href)) return "";
-  visited.add(entryUrl.href);
-  const source = readFileSync(entryUrl, "utf8");
-  const imports = [...source.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/g)]
-    .map((match) => readCssBundleSource(new URL(match[1], entryUrl), visited));
-  return [source, ...imports].join("\n");
-}
-
-const styleSource = readCssBundleSource(new URL("src/style.css", root));
+const styleSource = [
+  readFileSync(new URL("src/style.css", root), "utf8"),
+  ...readdirSync(new URL("src/styles/", root))
+    .filter((fileName) => fileName.endsWith(".css"))
+    .sort()
+    .map((fileName) => readFileSync(new URL(`src/styles/${fileName}`, root), "utf8")),
+].join("\n");
 const authValidationSource = readFileSync(
   new URL("src/domain/authValidation.mjs", root),
   "utf8"

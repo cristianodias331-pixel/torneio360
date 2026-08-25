@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "../../styles/41-responsive-public-covers.css";
 import { PublicArenaPageView } from "./PublicArenaPresentation.jsx";
 import { getBrazilianWhatsAppUrl } from "../../domain/contactLinks.mjs";
 import { formatDateBR } from "../../domain/dateTime.mjs";

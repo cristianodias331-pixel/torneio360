@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import "../../styles/31-matches-and-brackets.css";
 import { getGameCourtLabel } from "../../domain/courtNumbers.mjs";
 import {
   formatMatchDuration,

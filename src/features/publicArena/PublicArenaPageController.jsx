@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import "../../styles/41-responsive-public-covers.css";
 import { BeachLogo } from "../appShell/EntryPresentation.jsx";
 import { PublicArenaPageView } from "./PublicArenaPresentation.jsx";
 import { getBrazilianWhatsAppUrl } from "../../domain/contactLinks.mjs";

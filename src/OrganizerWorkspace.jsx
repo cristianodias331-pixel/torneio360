@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import "./styles/30-organizer-event-management.css";
+import "./styles/40-organizer-data-and-navigation.css";
+import "./styles/41-responsive-public-covers.css";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   AtSign,
