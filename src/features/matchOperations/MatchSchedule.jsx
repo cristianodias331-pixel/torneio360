@@ -309,6 +309,7 @@ export default function ScheduleView({
 }) {
   const [scheduleSearchValue, setScheduleSearchValue] = useState("");
   const [scheduleStatusFilter, setScheduleStatusFilter] = useState("all");
+  const [scheduleFilterSnapshot, setScheduleFilterSnapshot] = useState(null);
   const normalizedScheduleSearch = normalizeScheduleSearch(scheduleSearchValue);
   const scheduleSummary = useMemo(() => schedule.reduce((summary, round) => {
     round.forEach((game) => {
@@ -320,14 +321,24 @@ export default function ScheduleView({
     });
     return summary;
   }, { total: 0, inProgress: 0, finished: 0, waiting: 0 }), [schedule, winningScore]);
+  const frozenFilterGameKeys = useMemo(
+    () => new Set(scheduleFilterSnapshot?.gameKeys || []),
+    [scheduleFilterSnapshot]
+  );
+  const displayedScheduleSummary = scheduleStatusFilter !== "all"
+    && scheduleFilterSnapshot?.filter === scheduleStatusFilter
+    ? scheduleFilterSnapshot.summary
+    : scheduleSummary;
   const visibleSchedule = useMemo(() => schedule
     .map((round, roundIndex) => ({
       roundIndex,
       games: round
         .map((game, gameIndex) => ({ game, gameIndex }))
-        .filter(({ game }) => (
+        .filter(({ game, gameIndex }) => (
           (scheduleStatusFilter === "all"
-            || getScheduleGameStatus(game, winningScore) === scheduleStatusFilter)
+            || (scheduleFilterSnapshot?.filter === scheduleStatusFilter
+              ? frozenFilterGameKeys.has(`${roundIndex}:${gameIndex}`)
+              : getScheduleGameStatus(game, winningScore) === scheduleStatusFilter))
           && (!normalizedScheduleSearch
             || getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)
               .includes(normalizedScheduleSearch))
@@ -335,8 +346,10 @@ export default function ScheduleView({
     }))
     .filter(({ games }) => games.length > 0), [
       courtNumbers,
+      frozenFilterGameKeys,
       normalizedScheduleSearch,
       schedule,
+      scheduleFilterSnapshot?.filter,
       scheduleStatusFilter,
       winningScore,
     ]);
@@ -366,7 +379,25 @@ export default function ScheduleView({
   }, [showGroupName, visibleSchedule]);
   const selectScheduleStatusFilter = (nextFilter) => {
     setScheduleStatusFilter(nextFilter);
-    if (nextFilter === "all") setScheduleSearchValue("");
+    if (nextFilter === "all") {
+      setScheduleFilterSnapshot(null);
+      setScheduleSearchValue("");
+      return;
+    }
+
+    const gameKeys = [];
+    schedule.forEach((round, roundIndex) => {
+      round.forEach((game, gameIndex) => {
+        if (getScheduleGameStatus(game, winningScore) === nextFilter) {
+          gameKeys.push(`${roundIndex}:${gameIndex}`);
+        }
+      });
+    });
+    setScheduleFilterSnapshot({
+      filter: nextFilter,
+      gameKeys,
+      summary: { ...scheduleSummary },
+    });
   };
 
   const renderGame = (game, roundIndex, gameIndex, key = gameIndex) => (
@@ -396,7 +427,7 @@ export default function ScheduleView({
         <div className="scheduleOverviewToolbar" aria-label="Controles e resumo dos jogos">
           <div className="scheduleOverviewPrimary">
             <ScheduleStatusFilters
-              summary={scheduleSummary}
+              summary={displayedScheduleSummary}
               value={scheduleStatusFilter}
               onChange={selectScheduleStatusFilter}
             />
