@@ -30,7 +30,7 @@ export function ProfileUnavailable({ onRetry, onLogout }) {
         </p>
 
         <div className="authStatusActions">
-          <button type="button" onClick={handleRetry} disabled={retrying}>
+          <button type="button" onClick={handleRetry} disabled={retrying} aria-busy={retrying}>
             {retrying ? "Conferindo..." : "Tentar novamente"}
           </button>
         </div>
@@ -71,7 +71,7 @@ export function AccessPreparing({ onRetry, onLogout }) {
         <h1>Estamos finalizando seu acesso</h1>
         <p>Estamos concluindo a criação do seu perfil. Tentamos atualizar automaticamente; se necessário, você também pode conferir o status abaixo.</p>
         <div className="accessPreparingActions">
-          <button type="button" onClick={handleRetry} disabled={retrying}>
+          <button type="button" onClick={handleRetry} disabled={retrying} aria-busy={retrying}>
             {retrying ? "Conferindo..." : "Atualizar status"}
           </button>
           <button type="button" className="linkBtn" onClick={onLogout}>Sair</button>

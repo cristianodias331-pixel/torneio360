@@ -91,7 +91,7 @@ export function ConfirmTrashPermanentDeleteModal({ action, busy, onCancel, onCon
         {isCircuit ? <p>Os torneios vinculados continuarão salvos.</p> : null}
         <div className="confirmActions">
           <button type="button" className="secondaryBtn" disabled={busy} onClick={onCancel}>Cancelar</button>
-          <button type="button" className="deleteBtn" disabled={busy} onClick={onConfirm}>
+          <button type="button" className="deleteBtn" disabled={busy} aria-busy={busy} onClick={onConfirm}>
             {busy ? "Excluindo..." : "Excluir definitivamente"}
           </button>
         </div>
@@ -185,7 +185,7 @@ export function ConfirmModalityChangeModal({ confirmation, busy = false, onCance
         <p>A mudança pode alterar participantes, rodadas e placares da competição.</p>
         <div className="confirmActions">
           <button type="button" className="secondaryBtn" disabled={busy} onClick={onCancel}>Cancelar</button>
-          <button type="button" className="regenerationConfirmBtn" disabled={busy} onClick={onConfirm}>
+          <button type="button" className="regenerationConfirmBtn" disabled={busy} aria-busy={busy} onClick={onConfirm}>
             {busy ? "Salvando..." : "Confirmar alteração"}
           </button>
         </div>

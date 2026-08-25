@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import "../../styles/41-responsive-public-covers.css";
 import {
   STORY_COVER_HEIGHT,
   STORY_COVER_WIDTH,

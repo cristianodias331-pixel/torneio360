@@ -287,7 +287,7 @@ export default function TournamentWorkspaceTabs({
                       <span>{getModalityDisplayName(tournament.type)}{[...new Set([tournament.data?.category, tournament.data?.gender].filter(Boolean))].map((label) => ` · ${label}`).join("")}</span>
                     </div>
                     {isOpen ? <span className="tournamentTabsOpenBadge">{isActive ? "Em uso" : "Aberto"}</span> : null}
-                    <button type="button" onClick={() => selectTournament(tournament)} disabled={isBusy || isActive}>
+                    <button type="button" onClick={() => selectTournament(tournament)} disabled={isBusy || isActive} aria-busy={isBusy}>
                       {isBusy ? "Abrindo..." : isActive ? "Atual" : isOpen ? "Trocar" : "Adicionar"}
                     </button>
                   </article>
@@ -317,7 +317,7 @@ export default function TournamentWorkspaceTabs({
             </p>
             <div className="tournamentTabCloseActions">
               <button type="button" onClick={() => setCloseTarget(null)}>Cancelar</button>
-              <button type="button" className="confirm" onClick={confirmCloseTournament} disabled={Boolean(busyTournamentId)}>
+              <button type="button" className="confirm" onClick={confirmCloseTournament} disabled={Boolean(busyTournamentId)} aria-busy={Boolean(busyTournamentId)}>
                 {busyTournamentId ? "Salvando..." : "Remover da barra"}
               </button>
             </div>

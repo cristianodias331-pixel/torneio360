@@ -42,6 +42,52 @@ function resolveCircuitRowGroup({ row, tournament, config, rankingSettings }) {
     : "geral";
 }
 
+export function buildUniqueCombinedCircuitSourceSlices({ circuit, circuits = [] } = {}) {
+  const circuitById = new Map(
+    (Array.isArray(circuits) ? circuits : []).map((item) => [String(item?.id || ""), item])
+  );
+  const visitedCircuitIds = new Set();
+  const countedTournamentIds = new Set();
+  const slices = [];
+
+  function addSourceCircuit(sourceId) {
+    const normalizedSourceId = String(sourceId || "");
+    if (!normalizedSourceId || visitedCircuitIds.has(normalizedSourceId)) return;
+    visitedCircuitIds.add(normalizedSourceId);
+
+    const sourceCircuit = circuitById.get(normalizedSourceId);
+    if (!sourceCircuit) return;
+    const sourceSettings = normalizeCircuitRankingSettings(
+      sourceCircuit.ranking_settings || sourceCircuit.rankingSettings
+    );
+    if (sourceSettings.sourceCircuitIds.length > 0) {
+      sourceSettings.sourceCircuitIds.forEach(addSourceCircuit);
+      return;
+    }
+
+    const uniqueTournamentIds = [];
+    const sourceTournamentIds = sourceCircuit.tournament_ids || sourceCircuit.tournamentIds || [];
+    [...new Set(sourceTournamentIds.map((id) => String(id || "")).filter(Boolean))].forEach((tournamentId) => {
+      if (countedTournamentIds.has(tournamentId)) return;
+      countedTournamentIds.add(tournamentId);
+      uniqueTournamentIds.push(tournamentId);
+    });
+    if (uniqueTournamentIds.length === 0) return;
+
+    slices.push({
+      ...sourceCircuit,
+      tournament_ids: uniqueTournamentIds,
+      tournamentIds: uniqueTournamentIds,
+    });
+  }
+
+  const combinedSettings = normalizeCircuitRankingSettings(
+    circuit?.ranking_settings || circuit?.rankingSettings
+  );
+  combinedSettings.sourceCircuitIds.forEach(addSourceCircuit);
+  return slices;
+}
+
 export function buildCircuitRankingGroups({
   circuit,
   tournaments = [],

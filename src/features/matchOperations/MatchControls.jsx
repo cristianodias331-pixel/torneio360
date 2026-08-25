@@ -5,13 +5,14 @@ import { normalizeCourtNumberValue } from "../../domain/courtNumbers.mjs";
 export function VoiceRepeatSelector({ voiceRepeat, setVoiceRepeat }) {
   return (
     <div className="voiceRepeatBox">
-      <span>🔊 Chamada de Jogos</span>
+      <span>Repetir chamada</span>
 
       <select
         value={voiceRepeat}
         onChange={(e) => setVoiceRepeat(Number(e.target.value))}
+        aria-label="Quantidade de repetições da chamada"
       >
-        <option value={1}>Apenas 1 vez</option>
+        <option value={1}>1 vez</option>
         <option value={2}>2 vezes</option>
       </select>
     </div>
