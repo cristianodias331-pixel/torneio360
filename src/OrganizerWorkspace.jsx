@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import "./styles/30-organizer-event-management.css";
 import "./styles/40-organizer-data-and-navigation.css";
 import "./styles/41-responsive-public-covers.css";
+import "./styles/42-workspace-density-and-courts.css";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   AtSign,
@@ -11090,6 +11091,7 @@ return (
               <button type="button" className={activeOrganizationTab === "formato" ? "active" : ""} onClick={() => setActiveOrganizationTab("formato")}>Formato do torneio</button>
             ) : null}
             <button type="button" className={activeOrganizationTab === "participantes" ? "active" : ""} onClick={() => setActiveOrganizationTab("participantes")}>Participantes</button>
+            <button type="button" className="organizationCourtCenterShortcut" onClick={onOpenCourtCenter}><Grid3X3 aria-hidden="true" /> Quadras</button>
           </nav>
 
           <div className="organizationPanel" style={{ display: activeOrganizationTab === "formato" ? undefined : "none" }}>

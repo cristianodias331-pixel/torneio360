@@ -1,0 +1,210 @@
+/* Ajustes finais de proporção do espaço operacional.
+   Esta camada é somente visual; não altera partidas, placares ou quadras. */
+
+/* Cabeçalho e navegação principal com a mesma altura quando os detalhes estão fechados. */
+@media (min-width: 901px) {
+  .proDashboard .tournamentWorkspaceHeader:not(.detailsOpen) {
+    min-height: 44px !important;
+    align-items: center !important;
+    padding: 4px 8px !important;
+  }
+
+  .proDashboard .tournamentWorkspaceHeader:not(.detailsOpen) .tournamentHeaderTitleRow h1 {
+    font-size: clamp(22px, 2vw, 27px) !important;
+    line-height: 1 !important;
+  }
+
+  .proDashboard .tournamentWorkspaceHeader:not(.detailsOpen) .tournamentHeaderActions,
+  .proDashboard .tournamentWorkspaceHeader:not(.detailsOpen) > div:first-child {
+    align-self: center !important;
+  }
+
+  .proDashboard .tournamentWorkspaceHeader:not(.detailsOpen) .tournamentHeaderActions button {
+    min-height: 34px !important;
+    padding-block: 5px !important;
+  }
+}
+
+/* A área das abas acompanha a altura já usada pelo conjunto Adicionar + Quadras. */
+@media (min-width: 701px) {
+  .proDashboard .openTournamentTabsViewport,
+  .proDashboard .openTournamentTabsTrack {
+    min-height: 96px;
+  }
+
+  .proDashboard .openTournamentTabsTrack {
+    align-items: stretch;
+  }
+
+  .proDashboard .openTournamentTab {
+    min-height: 91px;
+  }
+
+  .proDashboard.playAppShell button.openTournamentTabMain {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    gap: 9px !important;
+    padding: 10px 25px 11px 13px !important;
+  }
+
+  .proDashboard .openTournamentTab .tournamentMatchStatusSummary.is-vertical {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, max-content));
+    justify-content: start;
+  }
+}
+
+/* Filtros, pesquisa e repetição permanecem no mesmo eixo horizontal. */
+@media (min-width: 761px) {
+  .proDashboard .scheduleOverviewToolbar {
+    align-items: center !important;
+  }
+
+  .proDashboard .scheduleOverviewPrimary {
+    display: grid !important;
+    grid-template-columns: max-content minmax(230px, 360px) !important;
+    align-items: center !important;
+    align-self: center !important;
+    gap: 12px !important;
+  }
+
+  .proDashboard .scheduleStatusFilters,
+  .proDashboard .scheduleSearch {
+    align-self: center !important;
+    margin-block: 0 !important;
+  }
+
+  .proDashboard .scheduleSearch {
+    width: 100% !important;
+    max-width: 360px !important;
+  }
+}
+
+/* Rodada, quadra e chamada passam a ter a mesma escala visual. */
+.proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchCardPhase {
+  min-height: 27px !important;
+  padding: 4px 9px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+}
+
+/* Aumenta somente a tipografia dos atletas, preservando a caixa da partida. */
+.proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamRow {
+  min-height: 42px !important;
+  height: 42px !important;
+  max-height: 42px !important;
+}
+
+.proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamName {
+  font-size: 18px !important;
+  line-height: 1.05 !important;
+  -webkit-line-clamp: 1 !important;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+/* Atalho da Central de Quadras dentro de Organização. */
+.organizationSubTabs {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.proDashboard.playAppShell .organizationSubTabs button.organizationCourtCenterShortcut {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  border-color: #f3b27f !important;
+  color: #a6400d !important;
+  -webkit-text-fill-color: #a6400d !important;
+  background: #fff8f1 !important;
+}
+
+.organizationCourtCenterShortcut svg {
+  width: 16px;
+  height: 16px;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell .organizationSubTabs button.organizationCourtCenterShortcut,
+.proDashboard.theme-dark.playAppShell .organizationSubTabs button.organizationCourtCenterShortcut {
+  border-color: #a95627 !important;
+  color: #fdba74 !important;
+  -webkit-text-fill-color: #fdba74 !important;
+  background: #2f1d13 !important;
+}
+
+/* Quantidade de quadras: título em primeiro plano e controles proporcionais. */
+.courtCenterCapacityRow > label {
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+}
+
+.courtCenterCapacityRow > div {
+  width: min(100%, 570px);
+  grid-template-columns: 112px 140px minmax(210px, 1fr) !important;
+}
+
+.courtCenterCapacityRow > div > span {
+  font-size: 11px !important;
+}
+
+.courtCenterCapacityRow input {
+  min-height: 48px !important;
+  font-size: 17px !important;
+}
+
+.courtCenterCapacityRow button {
+  min-height: 48px !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+}
+
+/* Mais presença para a distribuição inicial, sem perder a largura útil. */
+.courtCenterPreferenceItem {
+  min-height: 76px;
+  padding: 15px 16px !important;
+}
+
+.courtCenterPreferenceName strong {
+  font-size: 14px !important;
+}
+
+.courtCenterPreferenceName small {
+  font-size: 10px !important;
+}
+
+.courtCenterPreferenceOptions button {
+  min-height: 38px !important;
+  padding: 8px 11px !important;
+  font-size: 10.5px !important;
+}
+
+@media (max-width: 760px) {
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamName {
+    font-size: 15px !important;
+  }
+
+  .organizationSubTabs {
+    grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)) !important;
+  }
+
+  .courtCenterCapacityRow > label {
+    font-size: 14px !important;
+  }
+
+  .courtCenterCapacityRow > div {
+    width: 100%;
+    grid-template-columns: 88px minmax(68px, 1fr) auto !important;
+  }
+
+  .courtCenterCapacityRow button {
+    min-height: 46px !important;
+    padding-inline: 10px !important;
+    font-size: 10px !important;
+  }
+
+  .courtCenterPreferenceItem {
+    min-height: 72px;
+    padding: 13px !important;
+  }
+}
