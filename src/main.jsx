@@ -279,6 +279,10 @@ import {
 } from "./domain/publicArenaCache.mjs";
 import { createPublicArenaApi } from "./services/publicArenaApi.mjs";
 import {
+  uploadPreparedImagePair,
+  uploadProfilePhoto,
+} from "./services/mediaStorage.mjs";
+import {
   DEFAULT_TOURNAMENT_NAVIGATION,
   TOURNAMENT_DRAFT_CHANGED_EVENT,
   clearTournamentDraft,
@@ -4631,12 +4635,24 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCoverImageLoading(false);
   }
 
-  function applyTournamentCover(images) {
-    coverImageApplyRef.current?.(images);
-    coverImageApplyRef.current = null;
-    setCoverImageEditor(null);
-    setCoverImageLoading(false);
-    showNotice("info", "Foto enquadrada", "A capa foi preparada em 1080 × 1920 px. Salve as alterações para concluir.");
+  async function applyTournamentCover(images) {
+    try {
+      const uploadedImages = await uploadPreparedImagePair({
+        supabase,
+        userId: user.id,
+        imageUrl: images?.imageUrl,
+        thumbnailUrl: images?.thumbnailUrl,
+      });
+      coverImageApplyRef.current?.(uploadedImages);
+      coverImageApplyRef.current = null;
+      setCoverImageEditor(null);
+      showNotice("info", "Foto enquadrada", "A capa foi preparada e enviada. Salve as alterações para concluir.");
+    } catch (error) {
+      console.error("Erro ao enviar a capa para o armazenamento:", error);
+      throw new Error("Não foi possível enviar a imagem agora. Confira a conexão e tente novamente.");
+    } finally {
+      setCoverImageLoading(false);
+    }
   }
 
   function buildOrganizerProfilePayload() {
@@ -4663,7 +4679,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     if (profileSaveSuccessTimerRef.current) clearTimeout(profileSaveSuccessTimerRef.current);
     setProfileSaving(true);
 
-    const publicProfileData = buildOrganizerProfilePayload();
+    let publicProfileData = buildOrganizerProfilePayload();
+    if (/^data:image\//i.test(publicProfileData.photo_url)) {
+      try {
+        const uploadedPhotoUrl = await uploadProfilePhoto({
+          supabase,
+          userId: user.id,
+          photoUrl: publicProfileData.photo_url,
+        });
+        publicProfileData = { ...publicProfileData, photo_url: uploadedPhotoUrl };
+      } catch (error) {
+        console.error("Erro ao enviar a foto do perfil:", error);
+        setProfileSaving(false);
+        showNotice("error", "Foto não enviada", "Não foi possível enviar a foto agora. Confira a conexão e tente novamente.");
+        return;
+      }
+    }
     const baseProfile = organizerProfileBaseRef.current;
     const basePublicProfileData = {
       name: baseProfile.organizerName || profile.name || user.email || "Organizador",
@@ -5559,10 +5590,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const currentRows = [...tournamentsRef.current, ...trashTournamentsRef.current];
     const currentRowsById = new Map(currentRows.map((item) => [String(item.id), item]));
-    const retainedFullIds = new Set([
-      ...openTournamentIds.slice(-12).map(String),
-      ...(selectedRef.current?.id ? [String(selectedRef.current.id)] : []),
-    ]);
+    // Abas antigas continuam visíveis como resumos e são hidratadas somente
+    // quando o organizador volta a abri-las. Pré-carregar até 12 JSONs completos
+    // fazia perfis grandes transferirem megabytes antes de qualquer ação.
+    const retainedFullIds = new Set(
+      selectedRef.current?.id ? [String(selectedRef.current.id)] : []
+    );
     const allTournaments = (data || []).map((item) => {
       const incoming = loadedAsSummaries ? normalizeTournamentSummaryRow(item) : item;
       const current = currentRowsById.get(String(incoming.id));
@@ -9840,8 +9873,8 @@ setNewPublicInfo({
         const details = t.data || {};
         return (
           <article className="profileTournamentPost tournamentItem" key={t.id}>
-            {details.coverImageUrl ? (
-              <img className="profileTournamentCover" src={details.coverImageUrl} alt={`Foto de ${t.name}`} />
+            {details.coverImageThumbnailUrl || details.coverImageUrl ? (
+              <img className="profileTournamentCover" src={details.coverImageThumbnailUrl || details.coverImageUrl} alt={`Foto de ${t.name}`} />
             ) : null}
             <div className="tournamentInfo">
               <div className="tournamentTitleRow">

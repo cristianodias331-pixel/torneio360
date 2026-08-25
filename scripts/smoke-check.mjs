@@ -130,6 +130,15 @@ import {
 } from "../src/domain/publicArenaCache.mjs";
 import { createPublicArenaApi } from "../src/services/publicArenaApi.mjs";
 import {
+  EVENT_MEDIA_BUCKET,
+  uploadPreparedImagePair,
+  uploadProfilePhoto,
+} from "../src/services/mediaStorage.mjs";
+import {
+  normalizeTournamentSummaryRow,
+  tournamentSummarySelect,
+} from "../src/domain/tournamentSummary.mjs";
+import {
   generateCollaborationChangeId,
   generatePublicId,
   getArenaPublicShareMessage,
@@ -407,6 +416,7 @@ import {
 
 const root = new URL("../", import.meta.url);
 const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
+const viteConfigSource = readFileSync(new URL("vite.config.mjs", root), "utf8");
 assert.ok(
   mainSource.includes('"Você está sem internet"')
     && !mainSource.includes('"Dados ainda não sincronizados"'),
@@ -480,6 +490,14 @@ const groupedEventGeneralCoverMigrationSource = readFileSync(
 );
 const platformTrafficScalingMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240004_platform_traffic_scaling.sql", root),
+  "utf8"
+);
+const eventMediaStorageMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240005_event_media_storage.sql", root),
+  "utf8"
+);
+const publicArenaSnapshotCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240006_public_arena_snapshot_cache.sql", root),
   "utf8"
 );
 const publicIdentifiersSource = readFileSync(
@@ -1179,6 +1197,100 @@ assert.equal(legacyArenaPageOne.hasMore, true, "O diretório legado não indicou
 assert.equal(legacyArenaPageTwo.data.length, 7, "A continuação do diretório legado perdeu arenas.");
 assert.equal(legacyArenaPageTwo.hasMore, false, "O diretório legado indicou páginas inexistentes.");
 assert.equal(legacyArenaDirectoryCalls, 1, "A paginação compatível repetiu a consulta completa ao Supabase.");
+
+assert.equal(
+  tournamentSummarySelect.includes("data->>coverImageUrl") || tournamentSummarySelect.includes("data->>eventCoverImageUrl"),
+  false,
+  "A listagem leve voltou a transportar a capa completa em Base64.",
+);
+assert.equal(
+  tournamentSummarySelect.includes("data->>coverImageThumbnailUrl")
+    && tournamentSummarySelect.includes("data->>eventCoverImageThumbnailUrl"),
+  true,
+  "A listagem leve deixou de solicitar as miniaturas das capas.",
+);
+assert.deepEqual(
+  normalizeTournamentSummaryRow({
+    id: "summary-1",
+    summary_cover_image_thumbnail_url: "data:image/jpeg;base64,mini",
+    summary_event_cover_image_thumbnail_url: "data:image/jpeg;base64,event-mini",
+  }).data,
+  {
+    coverImageThumbnailUrl: "data:image/jpeg;base64,mini",
+    eventCoverImageThumbnailUrl: "data:image/jpeg;base64,event-mini",
+  },
+  "A normalização do resumo perdeu as miniaturas das capas.",
+);
+assert.equal(
+  mainSource.includes("openTournamentIds.slice(-12)"),
+  false,
+  "O painel voltou a pré-carregar em massa os JSONs completos das abas antigas.",
+);
+
+const uploadedMediaObjects = [];
+const fakeMediaStorage = {
+  storage: {
+    from(bucket) {
+      assert.equal(bucket, EVENT_MEDIA_BUCKET, "O upload usou um bucket inesperado.");
+      return {
+        async upload(path, file, options) {
+          uploadedMediaObjects.push({ path, file, options });
+          return { data: { path }, error: null };
+        },
+        getPublicUrl(path) {
+          return { data: { publicUrl: `https://media.example/${path}` } };
+        },
+        async remove() {
+          return { data: [], error: null };
+        },
+      };
+    },
+  },
+};
+const uploadedCoverPair = await uploadPreparedImagePair({
+  supabase: fakeMediaStorage,
+  userId: "owner-1",
+  imageUrl: "data:image/jpeg;base64,Y2FwYQ==",
+  thumbnailUrl: "data:image/jpeg;base64,bWluaQ==",
+});
+const uploadedProfilePhoto = await uploadProfilePhoto({
+  supabase: fakeMediaStorage,
+  userId: "owner-1",
+  photoUrl: "data:image/png;base64,cGVyZmls",
+});
+assert.equal(uploadedMediaObjects.length, 3, "O armazenamento deixou de receber a capa, a miniatura ou a foto do perfil.");
+assert.equal(uploadedMediaObjects.every((item) => item.path.startsWith("owner-1/")), true, "Uma imagem foi enviada fora da pasta do proprietário.");
+assert.equal(uploadedMediaObjects.every((item) => item.options.cacheControl === "31536000"), true, "As imagens deixaram de usar cache imutável longo.");
+assert.equal(uploadedCoverPair.imageUrl.startsWith("https://media.example/owner-1/"), true, "A capa salva não retornou URL pública.");
+assert.equal(uploadedProfilePhoto.startsWith("https://media.example/owner-1/"), true, "A foto do perfil não retornou URL pública.");
+assert.equal(
+  eventMediaStorageMigrationSource.includes("insert into storage.buckets")
+    && eventMediaStorageMigrationSource.includes("event_media_owner_insert")
+    && eventMediaStorageMigrationSource.includes("auth.uid()::text"),
+  true,
+  "O bucket de mídia deixou de proteger os uploads pela pasta do proprietário.",
+);
+assert.equal(
+  viteConfigSource.includes('name: "vendor-react"')
+    && viteConfigSource.includes('name: "vendor-supabase"')
+    && viteConfigSource.includes('name: "vendor-icons"')
+    && viteConfigSource.includes("codeSplitting"),
+  true,
+  "O build deixou de separar dependências estáveis do código principal.",
+);
+assert.equal(
+  publicArenaSnapshotCacheMigrationSource.includes("create table if not exists public.public_arena_snapshots")
+    && publicArenaSnapshotCacheMigrationSource.includes("refresh_public_arena_snapshot")
+    && publicArenaSnapshotCacheMigrationSource.includes("t360_public_tournament_directory_fingerprint")
+    && publicArenaSnapshotCacheMigrationSource.includes("old.ranking_settings is not distinct from new.ranking_settings"),
+  true,
+  "O perfil público deixou de usar snapshot ou voltou a reconstruí-lo após qualquer placar.",
+);
+assert.equal(
+  existsSync(new URL("scripts/public-load-check.mjs", root)),
+  true,
+  "O teste concorrente do perfil público foi removido.",
+);
 
 assert.equal(generatePublicId(() => 35, () => 0.5), "tfbt_z_i", "O formato dos links públicos foi alterado.");
 assert.equal(

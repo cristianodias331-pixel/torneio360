@@ -11,6 +11,7 @@
     "build:homologation": "vite build --mode homologation",
     "preview": "vite preview",
     "test": "node scripts/smoke-check.mjs",
+    "test:load:public": "node scripts/public-load-check.mjs",
     "check": "pnpm test && pnpm build"
   },
   "dependencies": {
