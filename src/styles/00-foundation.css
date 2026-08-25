@@ -1743,7 +1743,6 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 }
 
 .landingPage {
-  min-height: 100vh;
   background:
     radial-gradient(circle at top left, rgba(34, 197, 94, 0.16), transparent 30%),
     radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 28%),
@@ -2774,7 +2773,6 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 /* deixa rodadas/fase de grupos em grade compacta */
 .schedule {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
-  gap: 12px !important;
 }
 
 /* =========================================================

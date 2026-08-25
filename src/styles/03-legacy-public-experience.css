@@ -109,7 +109,6 @@
 
 /* Lista de categorias quando o evento tem várias categorias/dias */
 .categoryScheduleList {
-  display: grid;
   gap: 12px;
   margin-bottom: 12px;
 }

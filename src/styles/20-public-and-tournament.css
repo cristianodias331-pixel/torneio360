@@ -7358,7 +7358,6 @@ html[data-theme="dark"] .proDashboard.playAppShell button.mobileTournamentSwitch
 }
 
 .publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
-  min-height: 40px !important;
   margin-right: 14px !important;
   padding: 9px 14px !important;
   border-radius: 12px !important;
