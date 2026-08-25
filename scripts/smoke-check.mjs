@@ -70,6 +70,16 @@ import {
   normalizeCircuitStatus,
 } from "../src/domain/statusFormatting.mjs";
 import {
+  HOMOLOGATION_LOAD_CIRCUIT_COUNT,
+  HOMOLOGATION_LOAD_MARKER,
+  HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT,
+  HOMOLOGATION_LOAD_TOURNAMENT_COUNT,
+  assertHomologationLoadTarget,
+  buildHomologationCircuitHistoryRows,
+  buildHomologationCircuitRows,
+  buildHomologationTournamentRows,
+} from "../src/domain/homologationLoadData.mjs";
+import {
   getMaxScore,
   getScoreWinnerSide,
   getWinningScore,
@@ -5971,6 +5981,67 @@ assert.ok(
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {
   assert.ok(existsSync(fileURLToPath(new URL(logoPath, root))), `Asset obrigatório ausente: ${logoPath}`);
 }
+
+assert.deepEqual(
+  assertHomologationLoadTarget({
+    mode: "homologation",
+    supabaseUrl: "https://vcixhzvytkrautotinpi.supabase.co",
+    userEmail: "torneio360@gmail.com",
+  }),
+  { projectRef: "vcixhzvytkrautotinpi", email: "torneio360@gmail.com" },
+  "A trava do laboratório deixou de reconhecer o banco isolado de homologação."
+);
+assert.throws(
+  () => assertHomologationLoadTarget({
+    mode: "homologation",
+    supabaseUrl: "https://dttutybojealkvuywszt.supabase.co",
+    userEmail: "torneio360@gmail.com",
+  }),
+  /banco oficial/i,
+  "O laboratório deixou de recusar explicitamente o banco oficial."
+);
+const loadTestBatchId = "11111111-2222-4333-8444-555555555555";
+const loadTestUserId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const loadTestNow = new Date("2026-08-25T12:00:00.000Z");
+const loadTestTournaments = buildHomologationTournamentRows({
+  userId: loadTestUserId,
+  batchId: loadTestBatchId,
+  now: loadTestNow,
+});
+assert.equal(loadTestTournaments.length, HOMOLOGATION_LOAD_TOURNAMENT_COUNT, "A massa não gera mais os 50 torneios previstos.");
+assert.equal(loadTestTournaments.filter((row) => row.status === "finished").length, 35, "A proporção de torneios finalizados da massa foi alterada.");
+assert.ok(
+  loadTestTournaments.every((row) => row.data.loadTestMarker === HOMOLOGATION_LOAD_MARKER && row.data.schedule.length > 0),
+  "Algum torneio de carga perdeu a identificação ou as partidas."
+);
+assert.ok(
+  loadTestTournaments.filter((row) => row.status === "finished").every((row) => (
+    row.data.schedule.flat().every((game) => game.s1 !== "" && game.s2 !== "")
+  )),
+  "Os torneios finalizados do laboratório deixaram de receber todos os placares."
+);
+const insertedLoadTournaments = loadTestTournaments.map((row, index) => ({
+  ...row,
+  id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+}));
+const loadTestCircuits = buildHomologationCircuitRows({
+  userId: loadTestUserId,
+  batchId: loadTestBatchId,
+  tournaments: insertedLoadTournaments,
+  now: loadTestNow,
+});
+assert.equal(loadTestCircuits.length, HOMOLOGATION_LOAD_CIRCUIT_COUNT, "A massa não gera mais os oito circuitos previstos.");
+assert.ok(loadTestCircuits.every((row) => row.tournament_ids.length === 10), "Os circuitos de carga perderam suas dez etapas.");
+const loadTestHistory = buildHomologationCircuitHistoryRows({
+  circuit: { ...loadTestCircuits[0], id: "99999999-9999-4999-8999-999999999999" },
+  now: loadTestNow,
+});
+assert.equal(
+  loadTestHistory.length,
+  HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT,
+  "O ranking do circuito de carga não gera mais as 500 linhas previstas."
+);
+assert.equal(new Set(loadTestHistory.map((row) => row.player_key)).size, loadTestHistory.length, "O ranking de carga possui chaves duplicadas.");
 
 for (const iconPath of [
   "public/torneio360-profile.png",

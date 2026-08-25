@@ -377,6 +377,10 @@ import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { createTournamentRuntimeAdapters } from "./features/tournamentWorkspace/TournamentRuntimeAdapters.jsx";
 import LazyArenaPhotoView from "./features/publicArena/LazyArenaPhoto.jsx";
 
+const HomologationLoadLab = import.meta.env.MODE === "homologation"
+  ? React.lazy(() => import("./features/testing/HomologationLoadLab.jsx"))
+  : null;
+
 export function createOrganizerWorkspace(runtime) {
   const { supabase } = runtime;
   const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
@@ -8407,6 +8411,14 @@ setNewPublicInfo({
 
         <PlatformSupportLinks />
       </section>
+
+      {HomologationLoadLab
+        && import.meta.env.MODE === "homologation"
+        && String(user.email || "").trim().toLowerCase() === "torneio360@gmail.com" ? (
+        <React.Suspense fallback={<section className="card"><p>Carregando laboratório de homologação...</p></section>}>
+          <HomologationLoadLab supabase={supabase} user={user} />
+        </React.Suspense>
+      ) : null}
     </div>
   ) : null}
 </>
