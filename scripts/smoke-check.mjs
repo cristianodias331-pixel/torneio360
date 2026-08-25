@@ -10,6 +10,7 @@ import {
   normalizeCircuitParticipantKey,
 } from "../src/circuitNameIdentity.mjs";
 import {
+  compactCircuitRowsForDashboardCache,
   mergeConcurrentTournamentData,
   preservesTournamentCriticalData,
 } from "../src/offlineDataStore.mjs";
@@ -71,8 +72,10 @@ import {
 } from "../src/domain/statusFormatting.mjs";
 import {
   HOMOLOGATION_LOAD_CIRCUIT_COUNT,
+  HOMOLOGATION_LOAD_LAYOUT_VERSION,
   HOMOLOGATION_LOAD_MARKER,
   HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT,
+  HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT,
   HOMOLOGATION_LOAD_TOURNAMENT_COUNT,
   HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT,
   assertHomologationLoadTarget,
@@ -6173,6 +6176,24 @@ assert.ok(
   loadTestCircuits.every((row) => row.tournament_ids.length === HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT),
   "Os circuitos de carga perderam a quantidade ampliada de etapas."
 );
+const summableLoadTestCircuits = loadTestCircuits.filter((row) => row.ranking_settings.loadTestRole === "summable");
+const overlapLoadTestCircuits = loadTestCircuits.filter((row) => row.ranking_settings.loadTestRole === "overlap");
+assert.equal(summableLoadTestCircuits.length, HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT, "A massa perdeu os circuitos próprios para testar soma.");
+assert.equal(overlapLoadTestCircuits.length, HOMOLOGATION_LOAD_CIRCUIT_COUNT - HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT, "A massa perdeu os circuitos próprios para testar sobreposição.");
+assert.ok(
+  loadTestCircuits.every((row) => row.ranking_settings.loadTestLayoutVersion === HOMOLOGATION_LOAD_LAYOUT_VERSION),
+  "Algum circuito foi criado com a organização antiga do laboratório."
+);
+const summableTournamentIds = summableLoadTestCircuits.flatMap((row) => row.tournament_ids);
+assert.equal(
+  new Set(summableTournamentIds).size,
+  summableTournamentIds.length,
+  "Os circuitos marcados como somáveis ainda compartilham etapas."
+);
+assert.ok(
+  overlapLoadTestCircuits.some((row, index) => index > 0 && row.tournament_ids.some((id) => overlapLoadTestCircuits[index - 1].tournament_ids.includes(id))),
+  "Os circuitos de sobreposição deixaram de exercitar o bloqueio de etapa repetida."
+);
 const loadTestHistory = buildHomologationCircuitHistoryRows({
   circuit: { ...loadTestCircuits[0], id: "99999999-9999-4999-8999-999999999999" },
   now: loadTestNow,
@@ -6183,6 +6204,14 @@ assert.equal(
   "O ranking do circuito de carga não gera mais as 500 linhas previstas."
 );
 assert.equal(new Set(loadTestHistory.map((row) => row.player_key)).size, loadTestHistory.length, "O ranking de carga possui chaves duplicadas.");
+const compactedCircuitCache = compactCircuitRowsForDashboardCache([
+  { id: "circuit-1", name: "Circuito grande", rankingHistory: { atleta: { points: 100 } } },
+]);
+assert.deepEqual(
+  compactedCircuitCache,
+  [{ id: "circuit-1", name: "Circuito grande" }],
+  "O cache offline voltou a copiar o ranking completo dos circuitos."
+);
 
 for (const iconPath of [
   "public/torneio360-profile.png",

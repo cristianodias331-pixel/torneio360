@@ -3,8 +3,10 @@ import "../../styles/50-homologation-load-lab.css";
 import {
   HOMOLOGATION_LOAD_CIRCUIT_COUNT,
   HOMOLOGATION_LOAD_EMAIL,
+  HOMOLOGATION_LOAD_LAYOUT_VERSION,
   HOMOLOGATION_LOAD_MARKER,
   HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT,
+  HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT,
   HOMOLOGATION_LOAD_TOURNAMENT_COUNT,
   assertHomologationLoadTarget,
   buildHomologationCircuitHistoryRows,
@@ -72,6 +74,11 @@ async function loadCurrentCounts(supabase, userId) {
     participantEntries: tournaments.reduce((sum, tournament) => (
       sum + Number(tournament.data?.loadTestParticipantEntries || countTournamentParticipantEntries(tournament.data))
     ), 0),
+    summableCircuits: circuits.filter((circuit) => circuit.ranking_settings?.loadTestRole === "summable").length,
+    overlapCircuits: circuits.filter((circuit) => circuit.ranking_settings?.loadTestRole === "overlap").length,
+    layoutReady: circuits.length > 0 && circuits.every((circuit) => (
+      Number(circuit.ranking_settings?.loadTestLayoutVersion) === HOMOLOGATION_LOAD_LAYOUT_VERSION
+    )),
   };
 }
 
@@ -94,7 +101,15 @@ export default function HomologationLoadLab({ supabase, user }) {
       return false;
     }
   }, [supabase, user?.email]);
-  const [counts, setCounts] = useState({ tournaments: 0, circuits: 0, rankingRows: 0, participantEntries: 0 });
+  const [counts, setCounts] = useState({
+    tournaments: 0,
+    circuits: 0,
+    rankingRows: 0,
+    participantEntries: 0,
+    summableCircuits: 0,
+    overlapCircuits: 0,
+    layoutReady: false,
+  });
   const [busy, setBusy] = useState(false);
   const [busyAction, setBusyAction] = useState("");
   const busyRef = useRef(false);
@@ -242,7 +257,10 @@ export default function HomologationLoadLab({ supabase, user }) {
   const targetRankingRows = HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT * HOMOLOGATION_LOAD_CIRCUIT_COUNT;
   const loadDataMatchesTarget = counts.tournaments === HOMOLOGATION_LOAD_TOURNAMENT_COUNT
     && counts.circuits === HOMOLOGATION_LOAD_CIRCUIT_COUNT
-    && counts.rankingRows === targetRankingRows;
+    && counts.rankingRows === targetRankingRows
+    && counts.layoutReady
+    && counts.summableCircuits === HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT
+    && counts.overlapCircuits === HOMOLOGATION_LOAD_CIRCUIT_COUNT - HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT;
 
   return (
     <section className="card homologationLoadLab">
@@ -261,6 +279,7 @@ export default function HomologationLoadLab({ supabase, user }) {
 
       <p className="homologationLoadDescription">
         Configuração ampliada: {HOMOLOGATION_LOAD_TOURNAMENT_COUNT} torneios, {HOMOLOGATION_LOAD_CIRCUIT_COUNT} circuitos, {HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT} nomes por circuito e {targetRankingRows} linhas de ranking.
+        {" "}{HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT} circuitos têm etapas exclusivas para testar a soma; os demais mantêm sobreposições identificadas para validar o bloqueio de duplicidade.
       </p>
 
       {progress ? <div className="homologationLoadProgress" role="status">{progress}</div> : null}
@@ -279,7 +298,7 @@ export default function HomologationLoadLab({ supabase, user }) {
             : loadDataMatchesTarget
               ? "Massa ampliada pronta"
               : hasLoadData
-                ? "Ampliar massa de teste"
+                ? "Reorganizar massa de teste"
                 : "Criar massa ampliada"}
         </button>
         <button type="button" className="deleteBtn" disabled={busy || !hasLoadData} aria-busy={busyAction === "remove"} onClick={removeLoadData}>

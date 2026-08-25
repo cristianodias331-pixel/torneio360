@@ -1924,10 +1924,44 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     const isEditing = Boolean(form.id);
-    const previousCircuit = isEditing
-      ? (form._baseCircuit || circuitsRef.current.find((item) => String(item.id) === String(form.id)))
+    const latestCircuit = isEditing
+      ? circuitsRef.current.find((item) => String(item.id) === String(form.id))
       : null;
+    const previousCircuit = isEditing
+      ? (form._baseCircuit || latestCircuit)
+      : null;
+    const comparisonCircuit = latestCircuit || previousCircuit;
     const selectedTournamentIds = normalizeCircuitTournamentIds(form.tournamentIds);
+    const nextRankingSettings = normalizeCircuitRankingSettings({
+      ...form.rankingSettings,
+      coverImageUrl: form.coverImageUrl,
+      coverImageThumbnailUrl: form.coverImageThumbnailUrl,
+      tournamentFormat: "",
+      genderRegistry: mergeParticipantGenderRegistries(
+        getArenaParticipantGenderRegistry(),
+        form.rankingSettings?.genderRegistry
+      ),
+    });
+    const nextStatus = getAutomaticEventStatus(form.endDate);
+    const nextRankingCriteria = defaultRankingCriteria;
+    const nextRankingCriteriaMode = "automatic";
+    const circuitAlreadyMatches = isEditing
+      && form.name.trim() === String(comparisonCircuit?.name || "").trim()
+      && form.startDate === (comparisonCircuit?.startDate || "")
+      && form.endDate === (comparisonCircuit?.endDate || "")
+      && nextStatus === comparisonCircuit?.status
+      && JSON.stringify(selectedTournamentIds) === JSON.stringify(normalizeCircuitTournamentIds(comparisonCircuit?.tournamentIds))
+      && nextRankingCriteria === comparisonCircuit?.rankingCriteria
+      && nextRankingCriteriaMode === (comparisonCircuit?.rankingCriteriaMode === "manual" ? "manual" : "automatic")
+      && JSON.stringify(nextRankingSettings) === JSON.stringify(normalizeCircuitRankingSettings(comparisonCircuit?.rankingSettings));
+
+    if (circuitAlreadyMatches) {
+      if (closeEditor) setCircuitEditForm(null);
+      if (!silentSuccess) {
+        showNotice("success", "Circuito já está atualizado", "Nenhuma alteração precisava ser enviada novamente.");
+      }
+      return true;
+    }
     const comparableRankingSettings = (value) => {
       const normalized = normalizeCircuitRankingSettings(value);
       return { ...normalized, coverImageUrl: "", coverImageThumbnailUrl: "", genderRegistry: {}, rankingDivision: "general" };
@@ -1966,20 +2000,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       name: form.name.trim(),
       start_date: form.startDate || null,
       end_date: form.endDate || null,
-      status: getAutomaticEventStatus(form.endDate),
+      status: nextStatus,
       tournament_ids: selectedTournamentIds,
-      ranking_criteria: defaultRankingCriteria,
-      ranking_criteria_mode: "automatic",
-      ranking_settings: normalizeCircuitRankingSettings({
-        ...form.rankingSettings,
-        coverImageUrl: form.coverImageUrl,
-        coverImageThumbnailUrl: form.coverImageThumbnailUrl,
-        tournamentFormat: "",
-        genderRegistry: mergeParticipantGenderRegistries(
-          getArenaParticipantGenderRegistry(),
-          form.rankingSettings?.genderRegistry
-        ),
-      }),
+      ranking_criteria: nextRankingCriteria,
+      ranking_criteria_mode: nextRankingCriteriaMode,
+      ranking_settings: nextRankingSettings,
       updated_at: new Date().toISOString(),
     };
 
@@ -2099,7 +2124,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         getCircuitSelectedTournaments(finalPayload, effectiveTournamentSource)
       );
     }
-    await syncPublicArenaDirectory(tournaments, nextCircuits);
+    void syncPublicArenaDirectory(tournamentsRef.current, nextCircuits, { updateLocalState: false })
+      .catch((directoryError) => console.warn("Não foi possível conferir o diretório público em segundo plano:", directoryError));
     if (isEditing) {
       if (closeEditor) setCircuitEditForm(null);
     } else {
@@ -2287,7 +2313,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
     const synchronizedCircuits = nextCircuits.map((item) => item.id === circuit.id ? savedCircuit : item);
     saveCircuits(synchronizedCircuits);
-    await syncPublicArenaDirectory(tournaments, synchronizedCircuits);
+    void syncPublicArenaDirectory(tournamentsRef.current, synchronizedCircuits, { updateLocalState: false })
+      .catch((directoryError) => console.warn("Não foi possível conferir o diretório público em segundo plano:", directoryError));
   }
 
   async function updateCircuitRankingSettings(circuit, rankingSettings) {
@@ -2319,7 +2346,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
     const savedCircuits = nextCircuits.map((item) => item.id === circuit.id ? normalizedCircuit : item);
     saveCircuits(savedCircuits);
-    await syncPublicArenaDirectory(tournamentsRef.current, savedCircuits);
+    void syncPublicArenaDirectory(tournamentsRef.current, savedCircuits, { updateLocalState: false })
+      .catch((directoryError) => console.warn("Não foi possível conferir o diretório público em segundo plano:", directoryError));
     return true;
   }
 
@@ -2352,7 +2380,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       for (const tournamentId of source.tournamentIds || []) {
         const key = String(tournamentId);
         if (tournamentOwners.has(key)) {
-          showNotice("warning", "Etapa repetida", `O mesmo torneio aparece em ${tournamentOwners.get(key)} e ${source.name}. Retire a duplicidade antes de somar.`);
+          const repeatedTournament = tournamentsRef.current.find((tournament) => String(tournament.id) === key);
+          const repeatedTournamentName = repeatedTournament?.name
+            || repeatedTournament?.data?.eventName
+            || `Torneio ${key}`;
+          showNotice(
+            "warning",
+            "Etapa repetida",
+            `A etapa ${repeatedTournamentName} aparece nos circuitos ${tournamentOwners.get(key)} e ${source.name}. Retire essa etapa de um deles antes de somar.`
+          );
           return;
         }
         tournamentOwners.set(key, source.name);

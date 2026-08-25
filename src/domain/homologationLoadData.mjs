@@ -11,6 +11,8 @@ export const HOMOLOGATION_LOAD_TOURNAMENT_COUNT = 200;
 export const HOMOLOGATION_LOAD_CIRCUIT_COUNT = 30;
 export const HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT = 1500;
 export const HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT = 20;
+export const HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT = 10;
+export const HOMOLOGATION_LOAD_LAYOUT_VERSION = 2;
 export const HOMOLOGATION_LOAD_CIRCUIT_PREFIX = "[TESTE DE CARGA]";
 
 const LOAD_MODALITIES = [
@@ -211,9 +213,19 @@ export function buildHomologationCircuitRows({
   }
 
   const baseDate = new Date(now);
+  const summableCircuitCount = Math.min(
+    HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT,
+    Math.floor(tournaments.length / HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT),
+    count
+  );
   return Array.from({ length: count }, (_, index) => {
+    const isSummable = index < summableCircuitCount;
+    const overlapIndex = Math.max(0, index - summableCircuitCount);
+    const firstTournamentIndex = isSummable
+      ? index * HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT
+      : overlapIndex * 6;
     const linked = Array.from({ length: HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT }, (_, offset) => (
-      tournaments[(index * 6 + offset) % tournaments.length]
+      tournaments[(firstTournamentIndex + offset) % tournaments.length]
     ));
     const finished = index < Math.round(count * 0.75);
     const startDate = addDays(baseDate, -(150 - index * 7));
@@ -226,7 +238,7 @@ export function buildHomologationCircuitRows({
 
     return {
       user_id: userId,
-      name: `${HOMOLOGATION_LOAD_CIRCUIT_PREFIX} Circuito ${String(index + 1).padStart(2, "0")}`,
+      name: `${HOMOLOGATION_LOAD_CIRCUIT_PREFIX} ${isSummable ? "Somável" : "Sobreposição"} ${String(isSummable ? index + 1 : overlapIndex + 1).padStart(2, "0")}`,
       start_date: startDate,
       end_date: endDate,
       status: finished ? "finished" : "active",
@@ -238,6 +250,8 @@ export function buildHomologationCircuitRows({
         loadTestMarker: HOMOLOGATION_LOAD_MARKER,
         loadTestBatchId: batchId,
         loadTestSequence: index + 1,
+        loadTestRole: isSummable ? "summable" : "overlap",
+        loadTestLayoutVersion: HOMOLOGATION_LOAD_LAYOUT_VERSION,
       },
     };
   });

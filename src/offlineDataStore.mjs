@@ -288,6 +288,14 @@ export async function requestDurableOfflineStorage() {
   }
 }
 
+export function compactCircuitRowsForDashboardCache(circuits = []) {
+  return (Array.isArray(circuits) ? circuits : []).map((circuit) => {
+    if (!isPlainRecord(circuit)) return circuit;
+    const { rankingHistory: _derivedRankingHistory, ...directoryFields } = circuit;
+    return directoryFields;
+  });
+}
+
 export async function saveDashboardCache(userId, payload) {
   if (!userId || !payload) return false;
 
@@ -296,7 +304,11 @@ export async function saveDashboardCache(userId, payload) {
       userId,
       tournaments: Array.isArray(payload.tournaments) ? payload.tournaments : [],
       trashTournaments: Array.isArray(payload.trashTournaments) ? payload.trashTournaments : [],
-      circuits: Array.isArray(payload.circuits) ? payload.circuits : [],
+      // O ranking completo pode ter milhares de linhas por circuito. Ele é
+      // derivado e recarregado sob demanda, portanto não deve bloquear o
+      // painel ao ser clonado para o IndexedDB em cada atualização realtime.
+      circuits: compactCircuitRowsForDashboardCache(payload.circuits),
+      trashCircuits: compactCircuitRowsForDashboardCache(payload.trashCircuits),
       savedAt: new Date().toISOString(),
     });
     return true;
