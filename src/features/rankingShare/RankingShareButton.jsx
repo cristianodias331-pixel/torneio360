@@ -15,6 +15,12 @@ export default function RankingShareButton({ config }) {
   const [exportFiles, setExportFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [workbookStatus, setWorkbookStatus] = useState("idle");
+  const [resolvedConfig, setResolvedConfig] = useState(null);
+  const activeConfig = resolvedConfig || config;
+
+  useEffect(() => {
+    setResolvedConfig(null);
+  }, [config?.cacheKey]);
 
   useEffect(() => {
     if (exportFiles.length === 0) {
@@ -33,6 +39,7 @@ export default function RankingShareButton({ config }) {
     setExportFiles([]);
     setStatus("idle");
     setWorkbookStatus("idle");
+    setResolvedConfig(null);
   }
 
   async function handleShare() {
@@ -40,7 +47,14 @@ export default function RankingShareButton({ config }) {
     setStatus("loading");
 
     try {
-      const result = await shareRankingImages(config);
+      const nextConfig = typeof config.loadFullConfig === "function"
+        ? await config.loadFullConfig()
+        : config;
+      if (!nextConfig?.groups?.some((group) => group?.rows?.length)) {
+        throw new Error("O ranking completo não pôde ser carregado para compartilhamento.");
+      }
+      setResolvedConfig(nextConfig);
+      const result = await shareRankingImages(nextConfig);
       setStatus(result.status);
       if (result.files?.length) {
         setExportFiles(result.files);
@@ -92,7 +106,7 @@ export default function RankingShareButton({ config }) {
             <header>
               <div>
                 <span>{exportFiles.length === 1 ? "Ranking preparado" : `${exportFiles.length} páginas preparadas`}</span>
-                <h2>{config.title || "Ranking Torneio360"}</h2>
+                <h2>{activeConfig.title || "Ranking Torneio360"}</h2>
               </div>
               <button type="button" className="rankingExportClose" onClick={closeExportDialog} aria-label="Fechar">
                 <X aria-hidden="true" />
@@ -130,7 +144,7 @@ export default function RankingShareButton({ config }) {
                   type="button"
                   onClick={async () => {
                     try {
-                      await nativeShareRankingFiles(exportFiles, config);
+                      await nativeShareRankingFiles(exportFiles, activeConfig);
                       setStatus("shared");
                     } catch (error) {
                       if (error?.name !== "AbortError") setStatus("error");
@@ -143,7 +157,7 @@ export default function RankingShareButton({ config }) {
               <button
                 type="button"
                 onClick={() => {
-                  if (!printRankingDocument(config)) setStatus("error");
+                  if (!printRankingDocument(activeConfig)) setStatus("error");
                 }}
               >
                 <Printer aria-hidden="true" /> Imprimir / salvar PDF multipágina
@@ -158,7 +172,7 @@ export default function RankingShareButton({ config }) {
               >
                 <Download aria-hidden="true" /> Baixar {exportFiles.length > 1 ? `${exportFiles.length} PNGs` : "PNG"}
               </button>
-              {config.editableWorkbook ? (
+              {activeConfig.editableWorkbook ? (
                 <button
                   type="button"
                   className="workbook"
@@ -166,7 +180,7 @@ export default function RankingShareButton({ config }) {
                   onClick={async () => {
                     setWorkbookStatus("loading");
                     try {
-                      await downloadRankingWorkbook(config);
+                      await downloadRankingWorkbook(activeConfig);
                       setWorkbookStatus("downloaded");
                     } catch (error) {
                       console.error("Erro ao gerar planilha do ranking:", error);

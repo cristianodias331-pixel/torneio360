@@ -42,6 +42,21 @@ Data da medição: 25/08/2026
 
 O p95 indica que 95% das medições terminaram naquele tempo ou mais rápido. Esta referência cobre o tráfego público de leitura; operações autenticadas de administração e renderização completa em navegadores reais devem ser avaliadas separadamente quando houver dados e usuários de homologação representativos.
 
+## Circuitos com rankings muito grandes
+
+O laboratório foi ampliado para 200 torneios, 30 circuitos e 45.000 linhas de ranking — 1.500 nomes em cada circuito. O ranking público agora abre com 30 nomes, carrega as páginas seguintes sob demanda e pesquisa no conjunto completo sem perder a posição global. A exportação continua completa, mas só busca todas as páginas quando o visitante pede para compartilhar ou baixar.
+
+O payload inicial do circuito medido caiu de aproximadamente 356.879 bytes para 24.923 bytes, redução de cerca de 93%. A integridade foi conferida percorrendo os 1.500 nomes em seis páginas de 250, sem repetição ou quebra de posição.
+
+| Concorrência | Cenário | Sucessos | Erros | p50 | p95 | Payload médio |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 100 | Circuito público paginado | 100 | 0 | 563 ms | 867 ms | 24.923 bytes |
+| 100 | Página de 30 nomes do ranking | 100 | 0 | 415 ms | 571 ms | 7.557 bytes |
+| 200 | Circuito público paginado | 200 | 0 | 925 ms | 1.715 ms | 24.923 bytes |
+| 200 | Página de 30 nomes do ranking | 200 | 0 | 509 ms | 734 ms | 7.557 bytes |
+
+No navegador, a abertura mostrou `30 de 1500`, o carregamento adicional mostrou `60 de 1500` e a busca encontrou corretamente um nome na posição global 976. Em viewport de 390 × 844, a página não apresentou estouro horizontal; apenas a tabela manteve sua rolagem interna intencional.
+
 ## Carregamento inicial da interface
 
 O commit `4676907` passou a carregar sob demanda as áreas pesadas de chaves, partidas, ranking, participantes, circuitos, diálogos, mídia e configurações. A alteração não modifica regras, placares, confrontos, persistência ou dados salvos.
@@ -80,5 +95,7 @@ O conteúdo e a maior pintura aparecem rapidamente, mas o perfil só é liberado
 ## Como repetir
 
 O utilitário `scripts/public-load-check.mjs` aceita `LOAD_CONCURRENCY` entre 1 e 200. As variáveis `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `EXPECTED_SUPABASE_PROJECT_REF` devem apontar explicitamente para a homologação antes da execução de `pnpm test:load:public`.
+
+Para conferir todas as páginas, posições e busca de um circuito grande, execute `pnpm test:pagination:circuit` com as mesmas variáveis e, opcionalmente, `LOAD_ARENA_ID`.
 
 Para repetir a medição de navegador sem abrir uma janela, defina `PERFORMANCE_URL` e, opcionalmente, `PERFORMANCE_DEVICE=mobile`, antes de executar `pnpm test:browser:public`.

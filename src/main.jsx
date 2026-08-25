@@ -106,6 +106,8 @@ const {
   fetchPublicArenaPhoto,
   fetchPublicCircuitCover,
   fetchPublicCircuitDetail,
+  fetchPublicCircuitRankingAll,
+  fetchPublicCircuitRankingPage,
   fetchPublicTournamentCover,
   fetchPublicTournamentDetail,
   refreshPublicTournamentDetail,
@@ -630,6 +632,8 @@ function PublicTournamentPage(props) {
 const publicCircuitScreenRuntime = {
   RankingTable,
   buildPublicCircuitRankingGroups,
+  fetchPublicCircuitRankingAll,
+  fetchPublicCircuitRankingPage,
   tagline: TORNEIO360_TAGLINE,
 };
 

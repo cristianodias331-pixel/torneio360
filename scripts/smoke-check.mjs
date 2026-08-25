@@ -589,12 +589,24 @@ const publicArenaInitialViewCacheFixMigrationSource = readFileSync(
   new URL("supabase/migrations/202608250010_public_arena_initial_view_cache_fix.sql", root),
   "utf8"
 );
+const publicCircuitRankingPaginationMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250011_public_circuit_ranking_pagination.sql", root),
+  "utf8"
+);
+const publicCircuitRankingPageCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250012_public_circuit_ranking_page_cache.sql", root),
+  "utf8"
+);
 const organizerScaleCheckSource = readFileSync(
   new URL("scripts/organizer-scale-check.sql", root),
   "utf8"
 );
 const browserPerformanceCheckSource = readFileSync(
   new URL("scripts/browser-performance-check.mjs", root),
+  "utf8"
+);
+const publicCircuitPaginationCheckSource = readFileSync(
+  new URL("scripts/public-circuit-pagination-check.mjs", root),
   "utf8"
 );
 const latestEntitySignalProcessorSource = readFileSync(
@@ -1606,6 +1618,13 @@ assert.equal(
     && publicArenaInitialViewCacheMigrationSource.includes("tournaments_invalidate_public_arena_initial_snapshot")
     && publicArenaInitialViewCacheFixMigrationSource.includes("requested_limit integer")
     && !publicArenaInitialViewCacheFixMigrationSource.includes("snapshot.page_limit = page_limit")
+    && publicCircuitRankingPaginationMigrationSource.includes("list_public_circuit_ranking_page")
+    && publicCircuitRankingPaginationMigrationSource.includes("'rankPosition', page_rows.global_position")
+    && publicCircuitRankingPaginationMigrationSource.includes("'ranking_pagination', jsonb_build_object")
+    && publicCircuitRankingPageCacheMigrationSource.includes("create table if not exists public.public_circuit_ranking_rows")
+    && publicCircuitRankingPageCacheMigrationSource.includes("ensure_public_circuit_snapshot")
+    && publicCircuitRankingPageCacheMigrationSource.includes("refresh_public_circuit_ranking_rows")
+    && publicCircuitRankingPageCacheMigrationSource.includes("from public.public_circuit_ranking_rows ranking")
     && organizerScaleCheckSource.trimStart().startsWith("begin;")
     && organizerScaleCheckSource.includes("cross join generate_series(1, 1000)")
     && organizerScaleCheckSource.includes("cross join generate_series(1, 250)")
@@ -1613,10 +1632,14 @@ assert.equal(
     && browserPerformanceCheckSource.includes("--headless=new")
     && browserPerformanceCheckSource.includes(".publicPage.publicArenaPage")
     && browserPerformanceCheckSource.includes("profileVisibleMs")
+    && publicCircuitPaginationCheckSource.includes("list_public_circuit_ranking_page")
+    && publicCircuitPaginationCheckSource.includes("posição global")
     && publicArenaApiSource.includes("fetchPublicArenaEventsPage")
     && publicArenaApiSource.includes("fetchPublicArenaInitialView")
     && publicArenaApiSource.includes('rpc("get_public_arena_initial_view"')
     && publicArenaApiSource.includes('rpc("list_public_arena_events_page"')
+    && publicArenaApiSource.includes('rpc("list_public_circuit_ranking_page"')
+    && publicArenaApiSource.includes("fetchPublicCircuitRankingAll")
     && publicArenaPageControllerSource.includes("PUBLIC_ARENA_EVENT_PAGE_SIZE")
     && publicArenaPageControllerSource.includes("fetchPublicArenaInitialView({ arenaId, publicId })")
     && publicArenaPageControllerSource.includes("loadPublicEventPage")
@@ -4429,6 +4452,15 @@ assert.ok(
 );
 assert.ok(publicCircuitScreenSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
 assert.ok(
+  publicCircuitScreenSource.includes("remotePagination={getRemotePagination")
+    && publicCircuitScreenSource.includes("loadFullConfig: async () =>")
+    && rankingTablesSource.includes("p.rankPosition || p.rank_position")
+    && rankingTablesSource.includes("onClick={remotePagination.onLoadMore}")
+    && rankingShareButtonSource.includes('typeof config.loadFullConfig === "function"')
+    && rankingShareButtonSource.includes("downloadRankingWorkbook(activeConfig)"),
+  "O ranking público do circuito perdeu paginação no servidor, posição global ou exportação completa sob demanda."
+);
+assert.ok(
   !circuitRankingSettingsPanelSource.includes("function CircuitTournamentFormatSelector")
     && !mainSource.includes("getCircuitCompatibleTournaments")
     && publicCircuitScreenSource.includes("Torneios do circuito")
@@ -4488,14 +4520,14 @@ assert.ok(
   rankingShareButtonSource.includes('className="rankingExportDialog"')
     && rankingShareButtonSource.includes('Imprimir / salvar PDF multipágina')
     && rankingShareButtonSource.includes('downloadRankingFiles(exportFiles)')
-    && rankingShareButtonSource.includes('shareRankingImages(config)')
+    && rankingShareButtonSource.includes('shareRankingImages(nextConfig)')
     && rankingShareExportSource.includes('paginateRankingGroups(normalizedGroups')
     && styleSource.includes('.rankingExportOverlay'),
   "O ranking não apresenta exportação paginada para imagem, impressão e download."
 );
 assert.ok(
   rankingShareButtonSource.includes("Baixar planilha editável (.xlsx)")
-    && rankingShareButtonSource.includes("downloadRankingWorkbook(config)")
+    && rankingShareButtonSource.includes("downloadRankingWorkbook(activeConfig)")
     && rankingWorkbookExportSource.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     && rankingWorkbookExportSource.includes("TORNEIO360_LOGO")
     && rankingWorkbookExportSource.includes("workbookGroups")

@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test": "node scripts/smoke-check.mjs",
     "test:load:public": "node scripts/public-load-check.mjs",
+    "test:pagination:circuit": "node scripts/public-circuit-pagination-check.mjs",
     "test:browser:public": "node scripts/browser-performance-check.mjs",
     "check": "pnpm test && pnpm build"
   },

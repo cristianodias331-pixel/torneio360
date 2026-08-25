@@ -186,14 +186,51 @@ if (firstArenaId) {
     ? circuitPage.data.items.find((circuit) => circuit?.id)?.id || null
     : null;
   if (firstCircuitId) {
-    await rpc("get_public_circuit_with_tournaments", { p_circuit_id: firstCircuitId });
+    const warmCircuit = await rpc("get_public_circuit_with_tournaments", { p_circuit_id: firstCircuitId });
+    const warmRankingGroups = Array.isArray(warmCircuit.data?.ranking_groups)
+      ? warmCircuit.data.ranking_groups
+      : [];
+    const firstRankingGroup = warmRankingGroups.find((group) => group?.key) || warmRankingGroups[0] || null;
+    const warmRankingRows = Array.isArray(firstRankingGroup?.rows) ? firstRankingGroup.rows : [];
+    if (warmCircuit.data?.ranking_pagination?.enabled !== true) {
+      throw new Error("O circuito público não informou que a paginação do ranking está ativa.");
+    }
+    if (warmRankingRows.length > 30) {
+      throw new Error(`O circuito público trouxe ${warmRankingRows.length} nomes no carregamento inicial; o limite é 30.`);
+    }
+    if (Number(firstRankingGroup?.all_total || 0) < warmRankingRows.length) {
+      throw new Error("O total completo do ranking ficou menor do que a página inicial.");
+    }
     const publicCircuit = await runScenario(
-      "Circuito público completo",
+      "Circuito público paginado",
       concurrency,
       () => rpc("get_public_circuit_with_tournaments", { p_circuit_id: firstCircuitId }),
       { maxP95Ms: 5000 },
     );
     scenarios.push(publicCircuit.summary);
+
+    if (firstRankingGroup) {
+      const rankingPageBody = {
+        p_circuit_id: firstCircuitId,
+        p_group_key: firstRankingGroup.key || "geral",
+        p_limit: 30,
+        p_offset: 0,
+        p_search: null,
+      };
+      const warmRankingPage = await rpc("list_public_circuit_ranking_page", rankingPageBody);
+      const pageItems = Array.isArray(warmRankingPage.data?.items) ? warmRankingPage.data.items : [];
+      if (pageItems.length > 30 || pageItems.some((row, index) => Number(row?.rankPosition) !== index + 1)) {
+        throw new Error("A primeira página do ranking perdeu o limite ou a posição global dos nomes.");
+      }
+      await waitForScenarioCooldown();
+      const rankingPage = await runScenario(
+        "Página do ranking do circuito",
+        concurrency,
+        () => rpc("list_public_circuit_ranking_page", rankingPageBody),
+        { maxP95Ms: 5000 },
+      );
+      scenarios.push(rankingPage.summary);
+    }
   }
 }
 

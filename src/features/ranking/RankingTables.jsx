@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { isMixedType } from "../../domain/modalityClassification.mjs";
 import {
@@ -67,11 +67,16 @@ export function RankingTable({
   progressive = false,
   initialRowCount = 30,
   searchPlaceholder = "Pesquisar atleta ou dupla",
+  remotePagination = null,
 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const pageSize = Math.max(10, Number(initialRowCount) || 30);
   const [rankingSearch, setRankingSearch] = useState("");
   const [visibleRowCount, setVisibleRowCount] = useState(pageSize);
+  const lastRemoteSearchRef = useRef("");
+  const remoteSearchHandlerRef = useRef(remotePagination?.onSearch);
+  remoteSearchHandlerRef.current = remotePagination?.onSearch;
+  const remoteMode = remotePagination?.enabled === true;
   const criteria = getRankingCriteria(rankingCriteria);
   const baseColumns = Array.isArray(columns) && columns.length
     ? columns
@@ -94,20 +99,36 @@ export function RankingTable({
     [safeRows]
   );
   const filteredRows = useMemo(() => {
+    if (remoteMode) return indexedRows;
     const normalizedSearch = rankingSearch.trim().toLocaleLowerCase("pt-BR");
     if (!normalizedSearch) return indexedRows;
     return indexedRows.filter(({ row }) => (
       String(row?.name || "").toLocaleLowerCase("pt-BR").includes(normalizedSearch)
     ));
-  }, [indexedRows, rankingSearch]);
-  const renderedRows = progressive
+  }, [indexedRows, rankingSearch, remoteMode]);
+  const renderedRows = progressive && !remoteMode
     ? filteredRows.slice(0, visibleRowCount)
     : filteredRows;
-  const showProgressiveControls = progressive && safeRows.length > pageSize;
+  const remoteTotal = Math.max(0, Number(remotePagination?.total) || 0);
+  const remoteAllTotal = Math.max(remoteTotal, Number(remotePagination?.allTotal) || 0);
+  const showProgressiveControls = remoteMode
+    ? remoteAllTotal > pageSize || Boolean(rankingSearch) || remotePagination?.loading === true
+    : progressive && safeRows.length > pageSize;
 
   useEffect(() => {
     setVisibleRowCount(pageSize);
   }, [pageSize, rankingSearch, safeRows]);
+
+  useEffect(() => {
+    if (!remoteMode || typeof remoteSearchHandlerRef.current !== "function") return undefined;
+    const normalizedSearch = rankingSearch.trim();
+    if (normalizedSearch === lastRemoteSearchRef.current) return undefined;
+    const timer = window.setTimeout(() => {
+      lastRemoteSearchRef.current = normalizedSearch;
+      remoteSearchHandlerRef.current(normalizedSearch);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [rankingSearch, remoteMode]);
 
   return (
     <div className="rankingTablePanel">
@@ -130,8 +151,14 @@ export function RankingTable({
               placeholder={searchPlaceholder}
             />
           </label>
-          <small>Exibindo {renderedRows.length} de {filteredRows.length}</small>
+          <small>{remoteMode && remotePagination?.loading
+            ? "Atualizando ranking…"
+            : `Exibindo ${renderedRows.length} de ${remoteMode ? remoteTotal : filteredRows.length}`}</small>
         </div>
+      ) : null}
+
+      {remoteMode && remotePagination?.error ? (
+        <p className="rankingProgressiveError" role="alert">{remotePagination.error}</p>
       ) : null}
 
       <p className="rankingScrollHint" aria-hidden="true">Deslize a tabela para ver todos os dados →</p>
@@ -153,16 +180,20 @@ export function RankingTable({
           </thead>
 
           <tbody>
-            {renderedRows.map(({ row: p, rankingIndex }) => (
-              <tr key={p.id || `${p.name}-${rankingIndex}`}>
-                <td className="rankingRankCell">{showPodium ? podium(rankingIndex) : rankingIndex + 1}</td>
+            {renderedRows.map(({ row: p, rankingIndex }) => {
+              const storedPosition = Number(p.rankPosition || p.rank_position || 0);
+              const displayIndex = storedPosition > 0 ? storedPosition - 1 : rankingIndex;
+              return (
+              <tr key={p.id || `${p.name}-${displayIndex}`}>
+                <td className="rankingRankCell">{showPodium ? podium(displayIndex) : displayIndex + 1}</td>
                 <td className="rankingNameCell">{p.name}</td>
                 {visibleColumns.map(({ key }) => (
                   <td className="rankingStatCell" key={key}>{formatRankingMetricValue(key, p[key])}</td>
                 ))}
                 {showGames ? <td className="rankingStatCell">{p.played}</td> : null}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -173,6 +204,18 @@ export function RankingTable({
           onClick={() => setVisibleRowCount((current) => current + pageSize)}
         >
           Carregar mais {Math.min(pageSize, filteredRows.length - visibleRowCount)} nome(s)
+        </button>
+      ) : null}
+      {remoteMode && remotePagination?.hasMore ? (
+        <button
+          type="button"
+          className="rankingLoadMoreButton"
+          onClick={remotePagination.onLoadMore}
+          disabled={remotePagination.loading === true}
+        >
+          {remotePagination.loading
+            ? "Carregando nomes…"
+            : `Carregar mais ${Math.min(pageSize, Math.max(0, remoteTotal - renderedRows.length))} nome(s)`}
         </button>
       ) : null}
     </div>

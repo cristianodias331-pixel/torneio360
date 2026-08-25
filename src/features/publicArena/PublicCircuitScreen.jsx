@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { BeachLogo } from "../appShell/EntryPresentation.jsx";
 import { PublicImageLightbox } from "./PublicArenaPresentation.jsx";
@@ -27,18 +27,95 @@ export default function PublicCircuitScreenView({
   const {
     RankingTable,
     buildPublicCircuitRankingGroups,
+    fetchPublicCircuitRankingAll,
+    fetchPublicCircuitRankingPage,
     tagline,
   } = runtime;
   const [previewImage, setPreviewImage] = useState(null);
+  const [pagedRankingGroups, setPagedRankingGroups] = useState(() => circuit?.ranking_groups || []);
+  const [rankingRequestState, setRankingRequestState] = useState({});
+  const rankingRequestSequenceRef = useRef({});
+  const rankingPaginationEnabled = circuit?.ranking_pagination?.enabled === true
+    && typeof fetchPublicCircuitRankingPage === "function";
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [circuit?.id]);
+  useEffect(() => {
+    setPagedRankingGroups(Array.isArray(circuit?.ranking_groups) ? circuit.ranking_groups : []);
+    setRankingRequestState({});
+    rankingRequestSequenceRef.current = {};
+  }, [circuit?.id, circuit?.updated_at]);
+
+  const requestRankingPage = useCallback(async ({
+    groupKey,
+    offset = 0,
+    search = "",
+    replace = false,
+  }) => {
+    if (!rankingPaginationEnabled) return;
+    const normalizedGroupKey = String(groupKey || "geral");
+    const sequence = Number(rankingRequestSequenceRef.current[normalizedGroupKey] || 0) + 1;
+    rankingRequestSequenceRef.current[normalizedGroupKey] = sequence;
+    setRankingRequestState((current) => ({
+      ...current,
+      [normalizedGroupKey]: { loading: true, error: "" },
+    }));
+
+    const result = await fetchPublicCircuitRankingPage({
+      circuitId: circuit?.id,
+      groupKey: normalizedGroupKey,
+      limit: Number(circuit?.ranking_pagination?.page_size) || 30,
+      offset,
+      search,
+    });
+    if (rankingRequestSequenceRef.current[normalizedGroupKey] !== sequence) return;
+
+    if (result.error || !result.data) {
+      setRankingRequestState((current) => ({
+        ...current,
+        [normalizedGroupKey]: {
+          loading: false,
+          error: "Não foi possível carregar esta parte do ranking. Tente novamente.",
+        },
+      }));
+      return;
+    }
+
+    const nextRows = Array.isArray(result.data.items) ? result.data.items : [];
+    setPagedRankingGroups((current) => current.map((group) => {
+      if (String(group?.key || "geral") !== normalizedGroupKey) return group;
+      const rows = replace ? nextRows : Array.from(new Map([
+        ...(Array.isArray(group.rows) ? group.rows : []),
+        ...nextRows,
+      ].map((row) => [String(row?.id || row?.name || ""), row])).values());
+      return {
+        ...group,
+        rows,
+        total: Number(result.data.total) || 0,
+        all_total: Number(result.data.all_total) || 0,
+        has_more: result.data.has_more === true,
+        next_offset: Number(result.data.next_offset) || rows.length,
+        search: String(result.data.search || ""),
+        server_pagination: true,
+      };
+    }));
+    setRankingRequestState((current) => ({
+      ...current,
+      [normalizedGroupKey]: { loading: false, error: "" },
+    }));
+  }, [circuit?.id, circuit?.ranking_pagination?.page_size, fetchPublicCircuitRankingPage, rankingPaginationEnabled]);
+
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
   const circuitCoverImage = rankingSettings.coverImageUrl || circuit?.coverImageUrl || "";
   const circuitCoverThumbnail = rankingSettings.coverImageThumbnailUrl || circuit?.coverImageThumbnailUrl || "";
   const circuitCoverDisplay = circuitCoverThumbnail || circuitCoverImage;
-  const storedRankingGroups = Array.isArray(circuit?.ranking_groups)
-    ? circuit.ranking_groups.filter((group) => Array.isArray(group?.rows) && group.rows.length > 0)
+  const sourceRankingGroups = rankingPaginationEnabled ? pagedRankingGroups : circuit?.ranking_groups;
+  const storedRankingGroups = Array.isArray(sourceRankingGroups)
+    ? sourceRankingGroups.filter((group) => (
+      rankingPaginationEnabled
+        ? group?.server_pagination === true
+        : Array.isArray(group?.rows) && group.rows.length > 0
+    ))
     : [];
   const storedRankingNeedsGenderRepair = rankingSettings.rankingDivision === "gender"
     && storedRankingGroups.some((group) => (group.key || "geral") === "geral");
@@ -62,25 +139,71 @@ export default function PublicCircuitScreenView({
   const circuitTournaments = sortTournamentsChronologically(
     tournaments.filter((tournament) => selectedTournamentIds.has(String(tournament.id)))
   );
-  const getPublicCircuitGroupShareConfig = (group) => ({
-    title: circuit?.name || "Ranking do circuito",
-    subtitle: group.title,
-    arenaName,
-    arenaPhotoUrl: organizer.photoUrl || "",
-    rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria,
-    columns: circuitExportColumns,
-    criteriaLabel: circuitCriteriaLabel,
-    groups: [group],
-    editableWorkbook: true,
-    workbookTitle: `${circuit?.name || "Ranking do circuito"} - ${group.title}`,
-    workbookGroups: [group],
-    workbookColumns: circuitExportColumns,
-    buttonLabel: group.key === "masculino"
-      ? "Compartilhar masculino"
-      : group.key === "feminino"
-        ? "Compartilhar feminino"
-        : "Compartilhar ranking",
-  });
+  const getPublicCircuitGroupShareConfig = (group) => {
+    const baseConfig = {
+      cacheKey: `${circuit?.id || "circuito"}:${group.key || "geral"}`,
+      title: circuit?.name || "Ranking do circuito",
+      subtitle: group.title,
+      arenaName,
+      arenaPhotoUrl: organizer.photoUrl || "",
+      rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria,
+      columns: circuitExportColumns,
+      criteriaLabel: circuitCriteriaLabel,
+      groups: [group],
+      editableWorkbook: true,
+      workbookTitle: `${circuit?.name || "Ranking do circuito"} - ${group.title}`,
+      workbookGroups: [group],
+      workbookColumns: circuitExportColumns,
+      buttonLabel: group.key === "masculino"
+        ? "Compartilhar masculino"
+        : group.key === "feminino"
+          ? "Compartilhar feminino"
+          : "Compartilhar ranking",
+    };
+    if (!rankingPaginationEnabled || typeof fetchPublicCircuitRankingAll !== "function") return baseConfig;
+    return {
+      ...baseConfig,
+      loadFullConfig: async () => {
+        const result = await fetchPublicCircuitRankingAll({
+          circuitId: circuit?.id,
+          groupKey: group.key || "geral",
+        });
+        if (result.error || !result.data) throw result.error || new Error("Ranking completo indisponível.");
+        const fullGroup = { ...group, ...result.data };
+        return {
+          ...baseConfig,
+          groups: [fullGroup],
+          workbookGroups: [fullGroup],
+        };
+      },
+    };
+  };
+
+  const getRemotePagination = (group) => {
+    if (!rankingPaginationEnabled) return null;
+    const groupKey = String(group?.key || "geral");
+    const requestState = rankingRequestState[groupKey] || {};
+    return {
+      enabled: true,
+      total: Number(group?.total) || 0,
+      allTotal: Number(group?.all_total) || Number(group?.total) || 0,
+      hasMore: group?.has_more === true,
+      loading: requestState.loading === true,
+      error: requestState.error || "",
+      onLoadMore: () => requestRankingPage({
+        groupKey,
+        offset: Number(group?.next_offset) || (group?.rows || []).length,
+        search: group?.search || "",
+        replace: false,
+      }),
+      onSearch: (search) => requestRankingPage({
+        groupKey,
+        offset: 0,
+        search,
+        replace: true,
+      }),
+    };
+  };
 
   return (
     <div className="publicPage publicCircuitPage">
@@ -175,28 +298,31 @@ export default function PublicCircuitScreenView({
             </div>
           ) : rankingGroups.length === 1 ? (
             <RankingTable
+              key={`${circuit?.id || "circuito"}:${circuit?.updated_at || ""}:${rankingGroups[0].key || "geral"}`}
               title={rankingGroups[0].title}
               rows={rankingGroups[0].rows}
               rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
               columns={circuitDisplayColumns}
               showGames={!placementMode}
               shareConfig={getPublicCircuitGroupShareConfig(rankingGroups[0])}
-              progressive
+              progressive={!rankingPaginationEnabled}
               initialRowCount={30}
+              remotePagination={getRemotePagination(rankingGroups[0])}
             />
           ) : (
             <div className="twoCols publicCircuitRankingTables">
               {rankingGroups.map((group) => (
                 <RankingTable
-                  key={group.key || group.title}
+                  key={`${circuit?.id || "circuito"}:${circuit?.updated_at || ""}:${group.key || group.title}`}
                   title={group.title}
                   rows={group.rows}
                   rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
                   columns={circuitDisplayColumns}
                   showGames={!placementMode}
                   shareConfig={getPublicCircuitGroupShareConfig(group)}
-                  progressive
+                  progressive={!rankingPaginationEnabled}
                   initialRowCount={30}
+                  remotePagination={getRemotePagination(group)}
                 />
               ))}
             </div>

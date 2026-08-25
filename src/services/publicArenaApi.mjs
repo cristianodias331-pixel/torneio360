@@ -462,6 +462,106 @@ export function createPublicArenaApi({ supabase }) {
     return { data: null, error: lastError, fromCache: false };
   }
 
+  async function fetchPublicCircuitRankingPage({
+    circuitId,
+    groupKey = "geral",
+    limit = 30,
+    offset = 0,
+    search = "",
+  } = {}) {
+    const normalizedCircuitId = String(circuitId || "").trim();
+    const normalizedGroupKey = ["masculino", "feminino"].includes(String(groupKey || "").toLowerCase())
+      ? String(groupKey).toLowerCase()
+      : "geral";
+    const normalizedLimit = Math.max(1, Math.min(Number(limit) || 30, 250));
+    const normalizedOffset = Math.max(0, Number(offset) || 0);
+    const normalizedSearch = String(search || "").trim();
+    if (!normalizedCircuitId) {
+      return { data: null, error: new Error("Identificador público do circuito não informado.") };
+    }
+
+    try {
+      const result = await supabase.rpc("list_public_circuit_ranking_page", {
+        p_circuit_id: normalizedCircuitId,
+        p_group_key: normalizedGroupKey,
+        p_limit: normalizedLimit,
+        p_offset: normalizedOffset,
+        p_search: normalizedSearch || null,
+      });
+      if (!result.error) return { data: result.data, error: null };
+
+      const functionMissing = /list_public_circuit_ranking_page|function.*does not exist|schema cache/i.test(
+        `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+      );
+      if (!functionMissing) return { data: null, error: result.error };
+
+      const detail = await fetchPublicCircuitDetail(normalizedCircuitId);
+      if (detail.error || !detail.data) return { data: null, error: detail.error };
+      const group = (detail.data.ranking_groups || []).find((item) => (
+        String(item?.key || "geral") === normalizedGroupKey
+      ));
+      const allRows = Array.isArray(group?.rows) ? group.rows : [];
+      const filteredRows = normalizedSearch
+        ? allRows.filter((row) => String(row?.name || "").toLocaleLowerCase("pt-BR").includes(
+          normalizedSearch.toLocaleLowerCase("pt-BR")
+        ))
+        : allRows;
+      const items = filteredRows.slice(normalizedOffset, normalizedOffset + normalizedLimit);
+      return {
+        data: {
+          group_key: normalizedGroupKey,
+          title: group?.title || "Ranking geral acumulado",
+          items,
+          total: filteredRows.length,
+          all_total: allRows.length,
+          has_more: normalizedOffset + items.length < filteredRows.length,
+          next_offset: normalizedOffset + items.length,
+          limit: normalizedLimit,
+          offset: normalizedOffset,
+          search: normalizedSearch,
+        },
+        error: null,
+      };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  async function fetchPublicCircuitRankingAll({ circuitId, groupKey = "geral" } = {}) {
+    const rows = [];
+    let offset = 0;
+    let hasMore = true;
+    let pageCount = 0;
+    let title = "Ranking geral acumulado";
+
+    while (hasMore && pageCount < 40) {
+      const result = await fetchPublicCircuitRankingPage({
+        circuitId,
+        groupKey,
+        limit: 250,
+        offset,
+        search: "",
+      });
+      if (result.error || !result.data) return { data: null, error: result.error };
+      title = result.data.title || title;
+      const pageRows = Array.isArray(result.data.items) ? result.data.items : [];
+      rows.push(...pageRows);
+      hasMore = result.data.has_more === true;
+      offset = Number(result.data.next_offset) || (offset + pageRows.length);
+      pageCount += 1;
+      if (pageRows.length === 0) hasMore = false;
+    }
+
+    return {
+      data: {
+        key: String(groupKey || "geral"),
+        title,
+        rows: Array.from(new Map(rows.map((row) => [String(row?.id || row?.name || ""), row])).values()),
+      },
+      error: hasMore ? new Error("O ranking completo excedeu o limite seguro de páginas.") : null,
+    };
+  }
+
   async function fetchPublicArenaPhoto(arenaId) {
     const normalizedArenaId = String(arenaId || "").trim();
     if (!normalizedArenaId) return "";
@@ -517,6 +617,8 @@ export function createPublicArenaApi({ supabase }) {
     fetchPublicArenaPhoto,
     fetchPublicCircuitCover,
     fetchPublicCircuitDetail,
+    fetchPublicCircuitRankingAll,
+    fetchPublicCircuitRankingPage,
     fetchPublicTournamentCover,
     fetchPublicTournamentDetail,
     refreshPublicTournamentDetail,

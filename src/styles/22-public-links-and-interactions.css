@@ -321,6 +321,18 @@ html body .proDashboard.playAppShell .circuitRankingLoadingState button {
   font-weight: 800;
 }
 
+.rankingProgressiveError {
+  margin: -2px 0 10px;
+  color: #b91c1c;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+html[data-theme="dark"] .rankingProgressiveError,
+.proDashboard.theme-dark .rankingProgressiveError {
+  color: #fca5a5;
+}
+
 html body button.rankingLoadMoreButton,
 html body .proDashboard.playAppShell button.rankingLoadMoreButton {
   display: flex;
