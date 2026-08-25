@@ -18,9 +18,9 @@ export function TournamentTimingSummaryView({ summary, compact = false, formatDu
 export function TournamentMatchStatusSummaryView({ summary, compact = false, vertical = false }) {
   return (
     <div className={`tournamentMatchStatusSummary ${compact ? "is-compact" : ""} ${vertical ? "is-vertical" : ""}`} aria-label="Resumo dos jogos">
-      <span className="summaryStatus is-in-progress"><i aria-hidden="true" />Em andamento <strong>{summary.inProgress}</strong></span>
+      <span className="summaryStatus is-in-progress"><i aria-hidden="true" />Em jogo <strong>{summary.inProgress}</strong></span>
       <span className="summaryStatus is-finished"><i aria-hidden="true" />Finalizados <strong>{summary.finished}</strong></span>
-      <span className="summaryStatus is-waiting"><i aria-hidden="true" />Aguardando chamada <strong>{summary.waiting}</strong></span>
+      <span className="summaryStatus is-waiting"><i aria-hidden="true" />A chamar <strong>{summary.waiting}</strong></span>
     </div>
   );
 }

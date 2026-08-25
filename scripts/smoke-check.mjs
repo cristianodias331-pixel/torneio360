@@ -4691,9 +4691,9 @@ assert.ok(
 assert.ok(
   mainSource.includes('function toggleScheduleGameStatus(roundIndex, gameIndex)')
     && mainSource.includes('function toggleBracketGameStatus(matchKey)')
-    && matchScheduleSource.includes('Jogo em andamento')
+    && matchScheduleSource.includes('Em jogo')
     && matchScheduleSource.includes('is-in-progress'),
-  "O status persistente de jogo em andamento está ausente."
+  "O status persistente de jogo em curso está ausente."
 );
 assert.ok(
     matchScheduleSource.includes('<MatchStatusSummary data={statusData} />')

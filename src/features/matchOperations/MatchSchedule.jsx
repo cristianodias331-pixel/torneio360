@@ -71,8 +71,8 @@ export function UniversalMatchCard({
       : blocked
         ? "Aguardando definição"
         : isInProgress
-          ? "Jogo em andamento"
-          : "Aguardando chamada";
+          ? "Em jogo"
+          : "A chamar";
   const statusClassName = `matchCardStatus ${
     isBye
       ? "is-bye"
@@ -183,7 +183,7 @@ export function UniversalMatchCard({
             className={statusClassName}
             onClick={onStatusToggle}
             aria-pressed={isInProgress}
-            title={isInProgress ? "Clique para voltar a Aguardando chamada" : "Clique para informar que o jogo começou"}
+            title={isInProgress ? "Clique para marcar como A chamar" : "Clique para informar que o jogo começou"}
           >
             <span className="matchStatusIndicator" aria-hidden="true">{isInProgress ? "●" : "▷"}</span>
             <span>{statusLabel}</span>
