@@ -37,6 +37,8 @@
   }
 
   .proDashboard .openTournamentTab {
+    width: clamp(270px, 21vw, 292px);
+    min-width: 270px;
     min-height: 91px;
   }
 
@@ -56,6 +58,7 @@
   }
 
   .proDashboard .openTournamentTabName {
+    font-size: 15.6px;
     text-align: center;
   }
 
