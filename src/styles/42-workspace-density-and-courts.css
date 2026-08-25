@@ -132,23 +132,11 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 7px !important;
-  border-color: #f3b27f !important;
-  color: #a6400d !important;
-  -webkit-text-fill-color: #a6400d !important;
-  background: #fff8f1 !important;
 }
 
 .organizationCourtCenterShortcut svg {
   width: 16px;
   height: 16px;
-}
-
-html[data-theme="dark"] .proDashboard.playAppShell .organizationSubTabs button.organizationCourtCenterShortcut,
-.proDashboard.theme-dark.playAppShell .organizationSubTabs button.organizationCourtCenterShortcut {
-  border-color: #a95627 !important;
-  color: #fdba74 !important;
-  -webkit-text-fill-color: #fdba74 !important;
-  background: #2f1d13 !important;
 }
 
 /* Quantidade de quadras: título em primeiro plano e controles proporcionais. */

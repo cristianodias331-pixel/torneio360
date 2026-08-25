@@ -204,13 +204,36 @@ export function createTournamentOperations({ syncCupBracketScores = (data) => da
       return true;
     });
 
-    return operationalGames.reduce((summary, item) => {
-      if (isGameFinished(item.game, winningScore)) summary.finished += 1;
-      else if (item.storedGame?.inProgress === true || item.game?.inProgress === true) summary.inProgress += 1;
-      else summary.waiting += 1;
-      summary.total += 1;
-      return summary;
+    // Nas copas, as partidas das fases seguintes já fazem parte do torneio
+    // mesmo enquanto aguardam a definição de um ou dos dois classificados.
+    // Elas entram em "A chamar", mas continuam fora das operações de quadra,
+    // cronômetro e chamada até que os dois lados estejam definidos.
+    const futureBracketGames = scope === "schedule"
+      ? []
+      : (Array.isArray(data.brackets) ? data.brackets : []).filter((storedGame) => {
+          if (storedGame?.isBye || !isBracketPhaseEnabled(data, storedGame)) return false;
+          if (allowedBracketMatchKeys && !allowedBracketMatchKeys.has(storedGame?.matchKey)) return false;
+
+          let resolvedGame = storedGame;
+          try {
+            resolvedGame = resolveBracketGame(storedGame, data.brackets, data);
+          } catch {
+            // Uma chave antiga incompleta ainda representa uma partida futura.
+          }
+          return !hasPlayableGameSides(resolvedGame);
+        });
+
+    const summary = operationalGames.reduce((result, item) => {
+      if (isGameFinished(item.game, winningScore)) result.finished += 1;
+      else if (item.storedGame?.inProgress === true || item.game?.inProgress === true) result.inProgress += 1;
+      else result.waiting += 1;
+      result.total += 1;
+      return result;
     }, { waiting: 0, inProgress: 0, finished: 0, total: 0 });
+
+    summary.waiting += futureBracketGames.length;
+    summary.total += futureBracketGames.length;
+    return summary;
   }
 
   function getTournamentActiveCourtUsages(tournament, data = tournament?.data || {}) {
