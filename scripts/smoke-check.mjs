@@ -291,6 +291,7 @@ import {
   buildCircuitRankingGroups,
   buildCircuitRankingGroupsFromRecords,
   buildCircuitTournamentRankingRecords,
+  buildUniqueCombinedCircuitSourceSlices,
 } from "../src/domain/circuitRankingAggregation.mjs";
 import {
   getModalityDisplayName,
@@ -6192,7 +6193,19 @@ assert.equal(
 );
 assert.ok(
   overlapLoadTestCircuits.some((row, index) => index > 0 && row.tournament_ids.some((id) => overlapLoadTestCircuits[index - 1].tournament_ids.includes(id))),
-  "Os circuitos de sobreposição deixaram de exercitar o bloqueio de etapa repetida."
+  "Os circuitos de sobreposição deixaram de exercitar o aviso e a contagem única de etapa repetida."
+);
+const uniqueCombinedSlices = buildUniqueCombinedCircuitSourceSlices({
+  circuit: { rankingSettings: { sourceCircuitIds: ["circuit-a", "circuit-b"] } },
+  circuits: [
+    { id: "circuit-a", tournamentIds: ["stage-1", "stage-2"], rankingSettings: {} },
+    { id: "circuit-b", tournamentIds: ["stage-2", "stage-3"], rankingSettings: {} },
+  ],
+});
+assert.deepEqual(
+  uniqueCombinedSlices.map((slice) => slice.tournamentIds),
+  [["stage-1", "stage-2"], ["stage-3"]],
+  "O circuito somado voltou a contar uma etapa compartilhada mais de uma vez."
 );
 const loadTestHistory = buildHomologationCircuitHistoryRows({
   circuit: { ...loadTestCircuits[0], id: "99999999-9999-4999-8999-999999999999" },

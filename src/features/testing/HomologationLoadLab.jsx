@@ -279,7 +279,7 @@ export default function HomologationLoadLab({ supabase, user }) {
 
       <p className="homologationLoadDescription">
         Configuração ampliada: {HOMOLOGATION_LOAD_TOURNAMENT_COUNT} torneios, {HOMOLOGATION_LOAD_CIRCUIT_COUNT} circuitos, {HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT} nomes por circuito e {targetRankingRows} linhas de ranking.
-        {" "}{HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT} circuitos têm etapas exclusivas para testar a soma; os demais mantêm sobreposições identificadas para validar o bloqueio de duplicidade.
+        {" "}{HOMOLOGATION_LOAD_SUMMABLE_CIRCUIT_COUNT} circuitos têm etapas exclusivas para testar a soma; os demais mantêm sobreposições identificadas para validar o aviso e a contagem única.
       </p>
 
       {progress ? <div className="homologationLoadProgress" role="status">{progress}</div> : null}

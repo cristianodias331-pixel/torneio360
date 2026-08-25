@@ -308,6 +308,7 @@ import {
 import {
   buildCircuitRankingGroupsFromRecords,
   buildCircuitTournamentRankingRecords,
+  buildUniqueCombinedCircuitSourceSlices,
 } from "./domain/circuitRankingAggregation.mjs";
 import {
   getModalityDisplayName,
@@ -2376,6 +2377,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
     const sourceSettings = selectedSources.map((source) => normalizeCircuitRankingSettings(source.rankingSettings));
     const tournamentOwners = new Map();
+    const repeatedStages = new Map();
     for (const source of selectedSources) {
       for (const tournamentId of source.tournamentIds || []) {
         const key = String(tournamentId);
@@ -2384,12 +2386,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           const repeatedTournamentName = repeatedTournament?.name
             || repeatedTournament?.data?.eventName
             || `Torneio ${key}`;
-          showNotice(
-            "warning",
-            "Etapa repetida",
-            `A etapa ${repeatedTournamentName} aparece nos circuitos ${tournamentOwners.get(key)} e ${source.name}. Retire essa etapa de um deles antes de somar.`
-          );
-          return;
+          const repeated = repeatedStages.get(key) || {
+            name: repeatedTournamentName,
+            circuitNames: new Set([tournamentOwners.get(key)]),
+          };
+          repeated.circuitNames.add(source.name);
+          repeatedStages.set(key, repeated);
+          continue;
         }
         tournamentOwners.set(key, source.name);
       }
@@ -2433,10 +2436,20 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           extraPoints: [],
           manualParticipants: [],
         }),
-      });
+      }, { silentSuccess: true });
       if (created) {
         setCombinedCircuitForm({ name: "", sourceCircuitIds: [] });
         setCombineCircuitsOpen(false);
+        if (repeatedStages.size > 0) {
+          const repeatedExamples = [...repeatedStages.values()].slice(0, 2).map((stage) => stage.name).join(" e ");
+          showNotice(
+            "warning",
+            "Circuitos somados com etapa compartilhada",
+            `${repeatedStages.size} etapa(s) apareciam em mais de um circuito e foram contadas apenas uma vez${repeatedExamples ? `: ${repeatedExamples}` : ""}. Para essas etapas, vale a regra do primeiro circuito selecionado.`
+          );
+        } else {
+          showNotice("success", "Circuito somado criado", "Os circuitos foram consolidados com sucesso.");
+        }
       }
     } finally {
       combinedCircuitSavingRef.current = false;
@@ -2587,9 +2600,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const rankingSettings = getEffectiveCircuitRankingSettings(circuit?.rankingSettings);
 
     if (rankingSettings.sourceCircuitIds.length > 0) {
-      rankingSettings.sourceCircuitIds.forEach((sourceId) => {
-        const sourceCircuit = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
-        if (!sourceCircuit) return;
+      buildUniqueCombinedCircuitSourceSlices({ circuit, circuits: circuitsRef.current }).forEach((sourceCircuit) => {
         const sourceIsTeam = normalizeCircuitRankingSettings(sourceCircuit.rankingSettings).identity === "team";
         getCircuitRanking(sourceCircuit, getCircuitEffectiveCriteria(sourceCircuit), tournamentSource).forEach((group) => {
           (group.rows || []).forEach((row, rowIndex) => {
@@ -2642,9 +2653,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const records = [];
 
     if (rankingSettings.sourceCircuitIds.length > 0) {
-      rankingSettings.sourceCircuitIds.forEach((sourceId) => {
-        const sourceCircuit = circuitsRef.current.find((item) => String(item.id) === String(sourceId));
-        if (!sourceCircuit) return;
+      buildUniqueCombinedCircuitSourceSlices({ circuit, circuits: circuitsRef.current }).forEach((sourceCircuit) => {
         const sourceIsTeam = normalizeCircuitRankingSettings(sourceCircuit.rankingSettings).identity === "team";
         getCircuitRanking(sourceCircuit, getCircuitEffectiveCriteria(sourceCircuit), tournamentSource).forEach((group) => {
           (group.rows || []).forEach((row) => records.push({
@@ -7488,7 +7497,7 @@ setNewPublicInfo({
           <button type="button" className="secondaryBtn" onClick={() => setCombineCircuitsOpen(false)}>Fechar</button>
         </div>
         <label className="formField"><span>Nome do novo circuito</span><input value={combinedCircuitForm.name} onChange={(event) => setCombinedCircuitForm((previous) => ({ ...previous, name: event.target.value }))} placeholder="Ex: Ranking geral da temporada" /></label>
-        <div className="combinedCircuitNotice"><CircleHelp aria-hidden="true" /><span>Os circuitos originais permanecem independentes. Uma mesma etapa não pode ser contada duas vezes.</span></div>
+        <div className="combinedCircuitNotice"><CircleHelp aria-hidden="true" /><span>Os circuitos originais permanecem independentes. Se uma etapa estiver repetida, ela entrará uma única vez pela regra do primeiro circuito selecionado e você receberá um aviso.</span></div>
         <div className="circuitTournamentPicker">
           <div className="circuitPickerTitle"><strong>Circuitos de origem</strong><span>{combinedCircuitForm.sourceCircuitIds.length} selecionado(s)</span></div>
           <div className="circuitTournamentList combinedCircuitList">
