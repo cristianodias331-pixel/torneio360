@@ -593,6 +593,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [circuitEditForm, setCircuitEditForm] = useState(null);
   const [combinedCircuitForm, setCombinedCircuitForm] = useState({ name: "", sourceCircuitIds: [] });
   const [combinedCircuitSaving, setCombinedCircuitSaving] = useState(false);
+  const [circuitSaving, setCircuitSaving] = useState(false);
+  const circuitSavingRef = useRef(false);
+  const combinedCircuitSavingRef = useRef(false);
   const [circuitDeleteTarget, setCircuitDeleteTarget] = useState(null);
   const [trashCategory, setTrashCategory] = useState("tournaments");
   const [trashSearch, setTrashSearch] = useState("");
@@ -1891,7 +1894,19 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     });
   }
 
-  async function saveCircuit(form = circuitForm, { silentSuccess = false, closeEditor = true } = {}) {
+  async function saveCircuit(form = circuitForm, options = {}) {
+    if (circuitSavingRef.current) return false;
+    circuitSavingRef.current = true;
+    setCircuitSaving(true);
+    try {
+      return await persistCircuit(form, options);
+    } finally {
+      circuitSavingRef.current = false;
+      setCircuitSaving(false);
+    }
+  }
+
+  async function persistCircuit(form = circuitForm, { silentSuccess = false, closeEditor = true } = {}) {
     if (!ensureCloudConnection("salvar o circuito")) return;
     if (!form?.name.trim()) {
       showNotice("warning", "Nome obrigatório", "Digite um nome para o circuito.");
@@ -2319,7 +2334,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function saveCombinedCircuit() {
-    if (combinedCircuitSaving) return;
+    if (combinedCircuitSavingRef.current) return;
     const selectedSources = normalizeCircuitTournamentIds(combinedCircuitForm.sourceCircuitIds)
       .map((id) => circuitsRef.current.find((circuit) => String(circuit.id) === String(id)))
       .filter(Boolean);
@@ -2361,6 +2376,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       ...sourceSettings.map((settings) => settings.genderRegistry)
     );
 
+    combinedCircuitSavingRef.current = true;
     setCombinedCircuitSaving(true);
     try {
       const created = await saveCircuit({
@@ -2387,6 +2403,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         setCombineCircuitsOpen(false);
       }
     } finally {
+      combinedCircuitSavingRef.current = false;
       setCombinedCircuitSaving(false);
     }
   }
@@ -4513,6 +4530,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }, [activePanel, user.id, arenaProfileSearch]);
 
   async function createTournament() {
+    if (saving) return;
     if (!ensureCloudConnection("criar um novo torneio")) return;
     if (!ensureArenaProfileReadyForPublication()) return;
     const isMultiCategory = newMultiCategoryEvent === "sim";
@@ -6402,7 +6420,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="cancelBtn" disabled={editTournamentSaving} onClick={() => { setEditTarget(null); setEditForm(null); }}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" disabled={editTournamentSaving || coverImageLoading} onClick={() => void saveEditedTournament()}>
+              <button type="button" className="actionConfirmBtn" disabled={editTournamentSaving || coverImageLoading} aria-busy={editTournamentSaving || coverImageLoading} onClick={() => void saveEditedTournament()}>
                 {coverImageLoading ? "Preparando foto..." : editTournamentSaving ? "Salvando..." : "Salvar alterações"}
               </button>
             </div>
@@ -6571,7 +6589,7 @@ setNewPublicInfo({
 
             <div className="editTournamentActions eventGroupEditActions">
               <button type="button" className="secondaryBtn" onClick={() => setEditEventGroup(null)} disabled={editEventGroupSaving}>Cancelar</button>
-              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving || coverImageLoading}>
+              <button type="button" onClick={() => void saveEditedEventGroup()} disabled={editEventGroupSaving || coverImageLoading} aria-busy={editEventGroupSaving || coverImageLoading}>
                 {coverImageLoading ? "Preparando foto..." : editEventGroupSaving ? "Salvando conjunto..." : "Salvar evento completo"}
               </button>
             </div>
@@ -6681,7 +6699,15 @@ setNewPublicInfo({
 
             <div className="editTournamentActions">
               <button type="button" className="secondaryBtn" onClick={() => setCircuitEditForm(null)}>Cancelar</button>
-              <button type="button" className="actionConfirmBtn" disabled={coverImageLoading} onClick={() => saveCircuit(circuitEditForm)}>{coverImageLoading ? "Preparando foto..." : "Salvar alterações"}</button>
+              <button
+                type="button"
+                className="actionConfirmBtn"
+                disabled={circuitSaving || coverImageLoading}
+                aria-busy={circuitSaving || coverImageLoading}
+                onClick={() => saveCircuit(circuitEditForm)}
+              >
+                {coverImageLoading ? "Preparando foto..." : circuitSaving ? "Salvando circuito..." : "Salvar alterações"}
+              </button>
             </div>
           </div>
         </div>
@@ -7206,7 +7232,7 @@ setNewPublicInfo({
   </>
   )}
 
- <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving || coverImageLoading}>
+ <button type="button" className="actionCreateBtn" onClick={createTournament} disabled={saving || coverImageLoading} aria-busy={saving || coverImageLoading}>
   {coverImageLoading ? "Preparando foto..." : saving ? "Salvando..." : "Criar torneio"}
 </button>
       </section>
@@ -7444,7 +7470,7 @@ setNewPublicInfo({
             })}
           </div>
         </div>
-        <div className="circuitFormActions"><button type="button" className="combineCircuitsButton" disabled={combinedCircuitSaving} onClick={() => void saveCombinedCircuit()}>{combinedCircuitSaving ? "Somando circuitos..." : "Criar circuito somado"}</button></div>
+        <div className="circuitFormActions"><button type="button" className="combineCircuitsButton" disabled={combinedCircuitSaving} aria-busy={combinedCircuitSaving} onClick={() => void saveCombinedCircuit()}>{combinedCircuitSaving ? "Somando circuitos..." : "Criar circuito somado"}</button></div>
       </section>
     </div>
   ) : null}
@@ -7545,7 +7571,15 @@ setNewPublicInfo({
     />
 
     <div className="circuitFormActions">
-      <button type="button" className="actionCreateBtn" disabled={coverImageLoading} onClick={() => saveCircuit()}>{coverImageLoading ? "Preparando foto..." : "Criar circuito"}</button>
+      <button
+        type="button"
+        className="actionCreateBtn"
+        disabled={circuitSaving || coverImageLoading}
+        aria-busy={circuitSaving || coverImageLoading}
+        onClick={() => saveCircuit()}
+      >
+        {coverImageLoading ? "Preparando foto..." : circuitSaving ? "Criando circuito..." : "Criar circuito"}
+      </button>
     </div>
   </section>
   </div>
@@ -8366,7 +8400,7 @@ setNewPublicInfo({
 
     </div>
 
-    <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+    <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving} aria-busy={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
     {profileSaveSuccess ? (
       <div className="profileSaveMiniNotice" role="status" aria-live="polite">
         ✅ Alterado com sucesso

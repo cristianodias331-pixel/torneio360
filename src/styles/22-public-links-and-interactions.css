@@ -1705,6 +1705,37 @@ a.publicRegistrationStatus.open:hover {
   }
 }
 
+/* Retorno visual único para ações assíncronas. O próprio botão continua com
+   sua cor e seu texto de contexto, mas fica bloqueado até a operação terminar. */
+@keyframes asyncActionIndicatorSpin {
+  to { transform: rotate(360deg); }
+}
+
+button[aria-busy="true"] {
+  cursor: progress !important;
+  pointer-events: none !important;
+}
+
+button[aria-busy="true"]::after {
+  content: "" !important;
+  display: inline-block !important;
+  width: .82em !important;
+  height: .82em !important;
+  flex: 0 0 .82em !important;
+  margin-left: .5em !important;
+  border: 2px solid currentColor !important;
+  border-right-color: transparent !important;
+  border-radius: 50% !important;
+  vertical-align: -.12em !important;
+  animation: asyncActionIndicatorSpin .7s linear infinite !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button[aria-busy="true"]::after {
+    animation-duration: 1.4s !important;
+  }
+}
+
 /* =========================================================
    QUADRAS PERSONALIZADAS — AGOSTO 2026
    O número interno permanece estável; estes elementos alteram

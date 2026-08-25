@@ -770,6 +770,10 @@ const tournamentCircuitManagerSource = readFileSync(
   new URL("src/features/circuitManagement/TournamentCircuitManager.jsx", root),
   "utf8"
 );
+const homologationLoadLabSource = readFileSync(
+  new URL("src/features/testing/HomologationLoadLab.jsx", root),
+  "utf8"
+);
 const confirmationDialogsSource = readFileSync(
   new URL("src/features/dialogs/ConfirmationDialogs.jsx", root),
   "utf8"
@@ -779,6 +783,24 @@ const indexSource = readFileSync(new URL("index.html", root), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("package.json", root), "utf8"));
 const manifest = JSON.parse(readFileSync(new URL("public/manifest.webmanifest", root), "utf8"));
 const appVersion = JSON.parse(readFileSync(new URL("public/app-version.json", root), "utf8"));
+assert.ok(
+  styleSource.includes('@keyframes asyncActionIndicatorSpin')
+    && styleSource.includes('button[aria-busy="true"]::after')
+    && organizerWorkspaceSource.includes("if (circuitSavingRef.current) return false;")
+    && organizerWorkspaceSource.includes("return await persistCircuit(form, options);")
+    && organizerWorkspaceSource.includes('aria-busy={circuitSaving || coverImageLoading}')
+    && publicArenaPresentationSource.includes('aria-busy={openingPublicId === tournament.public_id}')
+    && publicArenaPresentationSource.includes('aria-busy={openingCircuitId === item.id}')
+    && rankingTablesSource.includes('aria-busy={remotePagination.loading === true}')
+    && rankingShareButtonSource.includes('aria-busy={status === "loading"}')
+    && accessStatusViewsSource.includes('aria-busy={retrying}')
+    && homologationLoadLabSource.includes("if (busyRef.current) return;")
+    && homologationLoadLabSource.includes('aria-busy={busyAction === "remove"}')
+    && tournamentCircuitManagerSource.includes("if (!changed || savingRef.current) return;")
+    && circuitExtraPointsPanelSource.includes('aria-busy={extraSaving}')
+    && tournamentWorkspaceTabsSource.includes('aria-busy={isBusy}'),
+  "As ações demoradas perderam o indicador visual ou voltaram a aceitar cliques repetidos."
+);
 const publicArenaMigrationUrl = new URL("supabase/migrations/202608030001_public_arena_platform.sql", root);
 assert.ok(existsSync(fileURLToPath(publicArenaMigrationUrl)), "A migração segura da plataforma pública está ausente.");
 const publicArenaMigration = readFileSync(publicArenaMigrationUrl, "utf8");

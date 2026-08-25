@@ -212,6 +212,7 @@ export function RankingTable({
           className="rankingLoadMoreButton"
           onClick={remotePagination.onLoadMore}
           disabled={remotePagination.loading === true}
+          aria-busy={remotePagination.loading === true}
         >
           {remotePagination.loading
             ? "Carregando nomes…"

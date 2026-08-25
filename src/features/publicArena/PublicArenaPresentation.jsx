@@ -227,7 +227,7 @@ export function PublicArenaTournamentCardsView({
           <RegistrationStatus open={registrationOpen} whatsapp={organizer.whatsapp} eventName={tournament.name} />
         </div>
 
-        <button type="button" onClick={() => onOpen(tournament)} disabled={openingPublicId === tournament.public_id}>
+        <button type="button" onClick={() => onOpen(tournament)} disabled={openingPublicId === tournament.public_id} aria-busy={openingPublicId === tournament.public_id}>
           {openingPublicId === tournament.public_id ? "Abrindo..." : "Ver torneio"}
         </button>
       </article>
@@ -376,7 +376,7 @@ export function PublicArenaPageView({
                   <span className={`publicCircuitStatus ${circuitStatus}`}>{circuitStatus === "closed" ? "Encerrado" : "Em andamento"}</span>
                   <p>{getCircuitDateLabel(item) ? <span><CalendarDays aria-hidden="true" /> {getCircuitDateLabel(item)}</span> : null}<span>{getCircuitTournamentCount(item)} torneio(s)</span></p>
                 </div>
-                <button type="button" onClick={() => onOpenCircuit(item)} disabled={openingCircuitId === item.id}>
+                <button type="button" onClick={() => onOpenCircuit(item)} disabled={openingCircuitId === item.id} aria-busy={openingCircuitId === item.id}>
                   {openingCircuitId === item.id ? "Abrindo..." : "Ver circuito"}
                 </button>
               </article>
@@ -390,6 +390,7 @@ export function PublicArenaPageView({
                 ? serverPagination.onLoadMore
                 : () => setVisibleLimit((current) => Math.min(current + initialVisibleItems, visibleItems.length))}
               disabled={serverPagination?.loading === true}
+              aria-busy={serverPagination?.loading === true}
             >
               {serverPagination?.loading ? "Carregando mais eventos..." : "Mostrar mais eventos"} <span>{remainingItems}</span>
             </button>
@@ -466,6 +467,7 @@ export function PublicArenaDirectoryView({
               className="publicArenaLoadMore"
               onClick={onLoadMore}
               disabled={loadingMore}
+              aria-busy={loadingMore}
             >
               {loadingMore ? "Carregando mais arenas..." : "Mostrar mais arenas"}
             </button>

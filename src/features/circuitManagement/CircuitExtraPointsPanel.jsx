@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Gift, Trash2, UserRound } from "lucide-react";
 import { formatParticipantName } from "../../domain/participantNames.mjs";
@@ -27,8 +27,13 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
   const [manualConfirm, setManualConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
+  const [extraSaving, setExtraSaving] = useState(false);
+  const deletingRef = useRef(false);
+  const manualSavingRef = useRef(false);
+  const extraSavingRef = useRef(false);
 
   async function addExtraPoint() {
+    if (extraSavingRef.current) return;
     const target = targets.find((item) => item.id === form.targetId);
     const points = normalizeCircuitPointValue(form.points);
     if (!target || !form.label.trim() || points <= 0) return;
@@ -42,17 +47,26 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
       points,
       createdAt: new Date().toISOString(),
     };
-    const saved = await onSave({ ...settings, extraPoints: [...settings.extraPoints, nextEntry] });
-    if (saved) setForm({ targetId: "", label: "", points: "", note: "" });
+    extraSavingRef.current = true;
+    setExtraSaving(true);
+    try {
+      const saved = await onSave({ ...settings, extraPoints: [...settings.extraPoints, nextEntry] });
+      if (saved) setForm({ targetId: "", label: "", points: "", note: "" });
+    } finally {
+      extraSavingRef.current = false;
+      setExtraSaving(false);
+    }
   }
 
   async function removeExtraPoint() {
-    if (!deleteId || deleting) return;
+    if (!deleteId || deletingRef.current) return;
+    deletingRef.current = true;
     setDeleting(true);
     try {
       const saved = await onSave({ ...settings, extraPoints: settings.extraPoints.filter((entry) => entry.id !== deleteId) });
       if (saved) setDeleteId("");
     } finally {
+      deletingRef.current = false;
       setDeleting(false);
     }
   }
@@ -76,7 +90,8 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
   }
 
   async function persistManualParticipant(payload) {
-    if (!payload || manualSaving) return;
+    if (!payload || manualSavingRef.current) return;
+    manualSavingRef.current = true;
     setManualSaving(true);
     try {
       const nextManualParticipants = manualForm.id
@@ -88,6 +103,7 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
         setManualConfirm(null);
       }
     } finally {
+      manualSavingRef.current = false;
       setManualSaving(false);
     }
   }
@@ -132,7 +148,8 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
   }
 
   async function removeManualParticipant() {
-    if (!manualDeleteId || deleting) return;
+    if (!manualDeleteId || deletingRef.current) return;
+    deletingRef.current = true;
     setDeleting(true);
     try {
       const saved = await onSave({ ...settings, manualParticipants: settings.manualParticipants.filter((entry) => entry.id !== manualDeleteId) });
@@ -141,6 +158,7 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
         if (manualForm.id === manualDeleteId) setManualForm(emptyManualForm);
       }
     } finally {
+      deletingRef.current = false;
       setDeleting(false);
     }
   }
@@ -182,7 +200,7 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
         <label><span>Saldo</span><input type="number" step="1" value={manualForm.balance} onChange={(event) => setManualForm((previous) => ({ ...previous, balance: event.target.value }))} /></label>
         <label><span>Jogos</span><input type="number" min="0" step="1" value={manualForm.played} onChange={(event) => setManualForm((previous) => ({ ...previous, played: event.target.value }))} /></label>
         <label className="manualNoteField"><span>Observação opcional</span><input value={manualForm.note} onChange={(event) => setManualForm((previous) => ({ ...previous, note: event.target.value }))} placeholder="Ex: Pontuação transferida" /></label>
-        <div className="manualFormActions">{manualForm.id ? <button type="button" className="secondaryBtn" onClick={() => setManualForm(emptyManualForm)}>Cancelar edição</button> : null}<button type="button" className="circuitManualSave" disabled={!manualForm.name.trim() || manualSaving} onClick={requestManualSave}>{manualSaving ? "Salvando..." : manualForm.id ? "Salvar alterações" : "Adicionar ao ranking"}</button></div>
+        <div className="manualFormActions">{manualForm.id ? <button type="button" className="secondaryBtn" onClick={() => setManualForm(emptyManualForm)}>Cancelar edição</button> : null}<button type="button" className="circuitManualSave" disabled={!manualForm.name.trim() || manualSaving} aria-busy={manualSaving} onClick={requestManualSave}>{manualSaving ? "Salvando..." : manualForm.id ? "Salvar alterações" : "Adicionar ao ranking"}</button></div>
       </div>
       {settings.manualParticipants.length ? <div className="circuitManualHistory"><strong>Cadastros manuais</strong>{settings.manualParticipants.map((entry) => <article key={entry.id}><div><b>{entry.name}</b><span>{usesCircuitPoints ? `${entry.points} pts · ` : ""}{entry.wins} vit. · {entry.totalGames} games · saldo {entry.balance} · {entry.played} jogo(s){entry.note ? ` — ${entry.note}` : ""}</span></div><div className="circuitManualHistoryActions"><button type="button" className="manualEditButton" onClick={() => editManualParticipant(entry)}>Editar</button><button type="button" className="manualDeleteButton" onClick={() => setManualDeleteId(entry.id)}>Excluir</button></div></article>)}</div> : <p className="circuitExtraEmpty">Nenhum {participantLabel} incluído manualmente.</p>}
     </div> : null}
@@ -193,7 +211,7 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
         <label><span>Motivo</span><input value={form.label} onChange={(event) => setForm((previous) => ({ ...previous, label: event.target.value }))} placeholder="Ex: Bônus da etapa" /></label>
         <label><span>Pontos</span><input type="number" min="1" step="1" value={form.points} onChange={(event) => setForm((previous) => ({ ...previous, points: event.target.value }))} /></label>
         <label className="circuitExtraNote"><span>Observação opcional</span><input value={form.note} onChange={(event) => setForm((previous) => ({ ...previous, note: event.target.value }))} /></label>
-        <button type="button" className="circuitExtraSave" disabled={!form.targetId || !form.label.trim() || normalizeCircuitPointValue(form.points) <= 0} onClick={() => void addExtraPoint()}>Somar ao total</button>
+        <button type="button" className="circuitExtraSave" disabled={extraSaving || !form.targetId || !form.label.trim() || normalizeCircuitPointValue(form.points) <= 0} aria-busy={extraSaving} onClick={() => void addExtraPoint()}>{extraSaving ? "Salvando pontuação..." : "Somar ao total"}</button>
       </div>
       {settings.extraPoints.length ? <div className="circuitExtraHistory"><strong>Histórico</strong>{settings.extraPoints.map((entry) => <article key={entry.id}><div><b>+{entry.points} · {entry.targetName}</b><span>{entry.label}{entry.note ? ` — ${entry.note}` : ""}</span></div><button type="button" onClick={() => setDeleteId(entry.id)}>Excluir</button></article>)}</div> : <p className="circuitExtraEmpty">Nenhuma pontuação extra adicionada.</p>}
     </div> : null}
@@ -206,17 +224,17 @@ export default function CircuitExtraPointsPanel({ circuit, rankingGroups, onSave
           <p>O valor será retirado do total do participante e o ranking será recalculado imediatamente.</p>
           <div className="confirmActions">
             <button type="button" className="secondaryBtn" disabled={deleting} onClick={() => setDeleteId("")}>Cancelar</button>
-            <button type="button" className="deleteBtn" disabled={deleting} onClick={() => void removeExtraPoint()}>{deleting ? "Excluindo..." : "Sim, excluir"}</button>
+            <button type="button" className="deleteBtn" disabled={deleting} aria-busy={deleting} onClick={() => void removeExtraPoint()}>{deleting ? "Excluindo..." : "Sim, excluir"}</button>
           </div>
         </div>
       </div>,
       document.body
     ) : null}
     {manualDeleteId ? createPortal(
-      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="manual-participant-delete-title"><div className="confirmBox extraPointDeleteConfirmBox"><div className="confirmIcon" aria-hidden="true"><Trash2 /></div><span className="confirmEyebrow">Cadastro manual</span><h2 id="manual-participant-delete-title">Excluir este atleta do ranking?</h2><p>Todos os valores inseridos manualmente serão retirados. Resultados conquistados em torneios continuarão preservados.</p><div className="confirmActions"><button type="button" className="secondaryBtn" disabled={deleting} onClick={() => setManualDeleteId("")}>Cancelar</button><button type="button" className="deleteBtn" disabled={deleting} onClick={() => void removeManualParticipant()}>{deleting ? "Excluindo..." : "Sim, excluir"}</button></div></div></div>, document.body
+      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="manual-participant-delete-title"><div className="confirmBox extraPointDeleteConfirmBox"><div className="confirmIcon" aria-hidden="true"><Trash2 /></div><span className="confirmEyebrow">Cadastro manual</span><h2 id="manual-participant-delete-title">Excluir este atleta do ranking?</h2><p>Todos os valores inseridos manualmente serão retirados. Resultados conquistados em torneios continuarão preservados.</p><div className="confirmActions"><button type="button" className="secondaryBtn" disabled={deleting} onClick={() => setManualDeleteId("")}>Cancelar</button><button type="button" className="deleteBtn" disabled={deleting} aria-busy={deleting} onClick={() => void removeManualParticipant()}>{deleting ? "Excluindo..." : "Sim, excluir"}</button></div></div></div>, document.body
     ) : null}
     {manualConfirm ? createPortal(
-      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="manual-participant-confirm-title"><div className="confirmBox manualParticipantConfirmBox"><div className="confirmIcon" aria-hidden="true"><UserRound /></div><span className="confirmEyebrow">Inclusão manual</span><h2 id="manual-participant-confirm-title">{manualConfirm.kind === "duplicate" ? "Este cadastro manual já existe" : "Somar ao atleta existente?"}</h2><p>{manualConfirm.kind === "duplicate" ? `${manualConfirm.name} já possui um cadastro manual. Use o botão Editar no histórico para evitar valores duplicados.` : `${manualConfirm.name} já aparece no ranking. Os valores manuais serão somados aos resultados que ele já conquistou.`}</p><div className="confirmActions"><button type="button" className="secondaryBtn" disabled={manualSaving} onClick={() => setManualConfirm(null)}>{manualConfirm.kind === "duplicate" ? "Entendi" : "Cancelar"}</button>{manualConfirm.kind === "existing" ? <button type="button" className="confirmBtn" disabled={manualSaving} onClick={() => void persistManualParticipant(manualConfirm.payload)}>{manualSaving ? "Salvando..." : "Sim, somar valores"}</button> : null}</div></div></div>, document.body
+      <div className="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="manual-participant-confirm-title"><div className="confirmBox manualParticipantConfirmBox"><div className="confirmIcon" aria-hidden="true"><UserRound /></div><span className="confirmEyebrow">Inclusão manual</span><h2 id="manual-participant-confirm-title">{manualConfirm.kind === "duplicate" ? "Este cadastro manual já existe" : "Somar ao atleta existente?"}</h2><p>{manualConfirm.kind === "duplicate" ? `${manualConfirm.name} já possui um cadastro manual. Use o botão Editar no histórico para evitar valores duplicados.` : `${manualConfirm.name} já aparece no ranking. Os valores manuais serão somados aos resultados que ele já conquistou.`}</p><div className="confirmActions"><button type="button" className="secondaryBtn" disabled={manualSaving} onClick={() => setManualConfirm(null)}>{manualConfirm.kind === "duplicate" ? "Entendi" : "Cancelar"}</button>{manualConfirm.kind === "existing" ? <button type="button" className="confirmBtn" disabled={manualSaving} aria-busy={manualSaving} onClick={() => void persistManualParticipant(manualConfirm.payload)}>{manualSaving ? "Salvando..." : "Sim, somar valores"}</button> : null}</div></div></div>, document.body
     ) : null}
   </div>;
 }

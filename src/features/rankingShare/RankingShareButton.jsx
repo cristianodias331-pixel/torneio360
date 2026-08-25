@@ -90,7 +90,7 @@ export default function RankingShareButton({ config }) {
 
   return (
     <>
-      <button type="button" className="rankingShareButton" onClick={handleShare} disabled={status === "loading"}>
+      <button type="button" className="rankingShareButton" onClick={handleShare} disabled={status === "loading"} aria-busy={status === "loading"}>
         <Share2 aria-hidden="true" /> {label}
       </button>
 
@@ -177,6 +177,7 @@ export default function RankingShareButton({ config }) {
                   type="button"
                   className="workbook"
                   disabled={workbookStatus === "loading"}
+                  aria-busy={workbookStatus === "loading"}
                   onClick={async () => {
                     setWorkbookStatus("loading");
                     try {

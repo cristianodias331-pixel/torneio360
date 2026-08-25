@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../../styles/50-homologation-load-lab.css";
 import {
   HOMOLOGATION_LOAD_CIRCUIT_COUNT,
@@ -96,6 +96,8 @@ export default function HomologationLoadLab({ supabase, user }) {
   }, [supabase, user?.email]);
   const [counts, setCounts] = useState({ tournaments: 0, circuits: 0, rankingRows: 0, participantEntries: 0 });
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
+  const busyRef = useRef(false);
   const [progress, setProgress] = useState("");
   const [message, setMessage] = useState(null);
 
@@ -130,7 +132,9 @@ export default function HomologationLoadLab({ supabase, user }) {
   }
 
   async function createLoadData({ replaceExisting = false } = {}) {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusyAction("create");
     setBusy(true);
     setMessage(null);
 
@@ -200,12 +204,16 @@ export default function HomologationLoadLab({ supabase, user }) {
       setProgress("");
       await refreshCounts().catch(() => {});
     } finally {
+      busyRef.current = false;
+      setBusyAction("");
       setBusy(false);
     }
   }
 
   async function removeLoadData() {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusyAction("remove");
     setBusy(true);
     setMessage(null);
 
@@ -222,6 +230,8 @@ export default function HomologationLoadLab({ supabase, user }) {
       setProgress("");
       await refreshCounts().catch(() => {});
     } finally {
+      busyRef.current = false;
+      setBusyAction("");
       setBusy(false);
     }
   }
@@ -261,9 +271,10 @@ export default function HomologationLoadLab({ supabase, user }) {
           type="button"
           className="actionConfirmBtn"
           disabled={busy || loadDataMatchesTarget}
+          aria-busy={busyAction === "create"}
           onClick={() => createLoadData({ replaceExisting: hasLoadData })}
         >
-          {busy
+          {busyAction === "create"
             ? "Gerando massa ampliada..."
             : loadDataMatchesTarget
               ? "Massa ampliada pronta"
@@ -271,8 +282,8 @@ export default function HomologationLoadLab({ supabase, user }) {
                 ? "Ampliar massa de teste"
                 : "Criar massa ampliada"}
         </button>
-        <button type="button" className="deleteBtn" disabled={busy || !hasLoadData} onClick={removeLoadData}>
-          Remover massa de teste
+        <button type="button" className="deleteBtn" disabled={busy || !hasLoadData} aria-busy={busyAction === "remove"} onClick={removeLoadData}>
+          {busyAction === "remove" ? "Removendo massa..." : "Remover massa de teste"}
         </button>
         <button type="button" className="secondaryBtn" disabled={busy} onClick={() => window.location.reload()}>
           Recarregar painel
