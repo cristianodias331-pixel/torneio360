@@ -3914,7 +3914,6 @@ html[data-theme="dark"] .participantOccupancyModal > p.participantOccupancyHint,
     width: 74px !important;
     height: 132px !important;
     min-height: 132px !important;
-    padding: 2px !important;
     border-radius: 11px !important;
   }
 
@@ -3949,10 +3948,6 @@ html[data-theme="dark"] .participantOccupancyModal > p.participantOccupancyHint,
     border-width: 2px !important;
     border-radius: 50% !important;
     object-fit: cover !important;
-  }
-
-  .publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
-    grid-column: 1 / -1 !important;
   }
 }
 

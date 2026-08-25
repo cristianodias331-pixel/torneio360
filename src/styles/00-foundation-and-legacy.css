@@ -509,15 +509,10 @@ label {
 }
 
 .tournamentList {
-  display: grid;
   gap: 12px;
 }
 
 .tournamentItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   border: 1px solid #e5e7eb;
   background: #f8fafc;
   border-radius: 22px;
@@ -572,8 +567,6 @@ label {
    ========================= */
 
 .schedule {
-  display: flex !important;
-  flex-direction: column !important;
   gap: 24px !important;
 }
 
@@ -1572,14 +1565,11 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 /* Correção botão Voltar dentro do torneio */
 
 .appPage header .actions {
-  position: relative;
   z-index: 50;
 }
 
 .appPage header .actions button {
-  position: relative;
   z-index: 60;
-  pointer-events: auto;
 }
 
 /* Correções do salvamento automático e botão voltar */
@@ -2766,7 +2756,6 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 .roundHeader h3,
 .roundCard > h3 {
   font-size: 14px !important;
-  margin: 0 !important;
 }
 
 .card {
@@ -2784,10 +2773,8 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 
 /* deixa rodadas/fase de grupos em grade compacta */
 .schedule {
-  display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
   gap: 12px !important;
-  align-items: start !important;
 }
 
 /* =========================================================
@@ -3147,19 +3134,13 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 }
 
 .tournamentMeta span {
-  display: inline-flex;
-  align-items: center;
   width: fit-content;
   padding: 6px 10px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: #334155;
   font-size: 12px;
   font-weight: 800;
 }
 
 .tournamentItem {
-  align-items: center;
   gap: 14px;
 }
 
@@ -3265,8 +3246,6 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 }
 
 .grid .modality {
-  display: flex;
-  align-items: center;
   gap: 10px;
   min-height: 58px;
   padding: 14px 16px;
@@ -3274,16 +3253,13 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
   border-radius: 16px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
-  color: #0f172a;
   font-size: 0.92rem;
   font-weight: 800;
-  line-height: 1.25;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .grid .modality:hover {
-  transform: translateY(-2px);
   border-color: rgba(14, 165, 233, 0.28);
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
 }
@@ -3293,7 +3269,6 @@ html[data-theme="dark"] .confirmActions .secondaryBtn {
 }
 
 .card > .grid {
-  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
@@ -3531,8 +3506,6 @@ body {
   margin: 8px 0;
   padding: 8px 4px;
   border-radius: 8px;
-  background: transparent !important;
-  color: #111827 !important;
   box-shadow: none !important;
   border: 2px solid transparent;
   display: grid;
@@ -3544,7 +3517,6 @@ body {
 .playNavItem.active {
   color: #2563eb !important;
   border-color: #2563eb;
-  background: #fff !important;
   box-shadow: 0 8px 18px rgba(37,99,235,.12) !important;
 }
 
@@ -3560,7 +3532,7 @@ body {
   box-shadow: 0 5px 18px rgba(37, 99, 235, .20);
 }
 .playUserBox { display:flex; align-items:center; gap: 14px; font-weight: 900; font-size: 13px; }
-.playUserBox button { padding: 9px 14px; border-radius: 999px; background: rgba(255,255,255,.18) !important; box-shadow: none !important; }
+.playUserBox button { padding: 9px 14px; border-radius: 999px; }
 
 .playContent {
   width: min(1120px, calc(100% - 56px));
@@ -3603,13 +3575,11 @@ body {
   box-shadow: 0 10px 26px rgba(15, 23, 42, .06);
 }
 .playTabs button {
-  background: transparent !important;
   color: #475569 !important;
-  box-shadow: none !important;
   border-radius: 10px;
   padding: 13px;
 }
-.playTabs button.active { background: #2563eb !important; color: #fff !important; }
+.playTabs button.active { background: #2563eb !important; }
 .playStatsGrid {
   display:grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3635,7 +3605,6 @@ body {
 }
 .playAppShell .card::before { display:none !important; }
 .playAppShell .card h2 {
-  font-size: 22px !important;
   letter-spacing: -.035em !important;
   margin-bottom: 16px !important;
 }
@@ -3704,7 +3673,7 @@ body {
   .playAppShell { grid-template-columns: 1fr; }
   .playSidebar { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: 72px; display:flex; justify-content:space-around; padding: 6px; border-right:0; border-top:1px solid #dbe7ff; }
   .playNavItem { margin:0; }
-  .playContent { width: min(100% - 28px, 760px); padding-bottom: 96px; }
+  .playContent { padding-bottom: 96px; }
   .playTopbar { height:auto; padding: 12px 16px; }
   .playStatsGrid, .playAppShell .tournamentList, .playCreateCard { grid-template-columns: 1fr; }
   .playTitleBlock { flex-direction: column; }
@@ -3787,15 +3756,11 @@ body {
 
 .playTitleBlock h1 {
   font-size: clamp(34px, 3.2vw, 46px) !important;
-  font-weight: 900 !important;
-  letter-spacing: -0.055em !important;
   line-height: 0.98 !important;
   text-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
 }
 
 .playTitleBlock p {
-  font-size: 15px !important;
-  line-height: 1.45 !important;
   font-weight: 650 !important;
   color: rgba(255, 255, 255, 0.78) !important;
   letter-spacing: -0.015em;
@@ -3806,11 +3771,6 @@ body {
 .playSideLogo strong,
 .playNavItem small {
   letter-spacing: -0.02em;
-}
-
-.playTabs {
-  border-radius: 18px !important;
-  padding: 7px !important;
 }
 
 .playTabs button {
@@ -3830,34 +3790,25 @@ body {
 }
 
 .playStatsGrid strong {
-  font-size: 28px !important;
-  font-weight: 900 !important;
-  letter-spacing: -0.055em !important;
   line-height: 1;
 }
 
 .playStatsGrid span {
   display: block;
   margin-top: 8px;
-  font-size: 12.5px !important;
-  font-weight: 800 !important;
-  color: #64748b !important;
   letter-spacing: -0.012em;
 }
 
 .playAppShell .card {
   border-radius: 22px !important;
-  padding: 26px !important;
   background: rgba(255, 255, 255, 0.96) !important;
 }
 
 .playAppShell .card h2 {
   font-size: 24px !important;
-  font-weight: 900 !important;
   letter-spacing: -0.05em !important;
   line-height: 1.08 !important;
   color: #020617 !important;
-  margin-bottom: 20px !important;
 }
 
 .playCreateCard {
@@ -3866,7 +3817,6 @@ body {
 
 .playCreateCard .formField label,
 .playAppShell label {
-  font-size: 13px !important;
   font-weight: 850 !important;
   color: #0f172a !important;
   letter-spacing: -0.018em !important;
@@ -3878,9 +3828,6 @@ body {
 .playCreateCard .dateInputClickArea {
   min-height: 48px !important;
   border-radius: 13px !important;
-  border: 1px solid #cbd5e1 !important;
-  background: #ffffff !important;
-  font-size: 14px !important;
   font-weight: 650 !important;
   color: #0f172a !important;
   letter-spacing: -0.018em !important;
@@ -3909,21 +3856,11 @@ body {
   border-radius: 13px !important;
 }
 
-.playNavItem {
-  border-radius: 14px !important;
-}
-
-.playNavItem span {
-  font-size: 21px !important;
-}
-
 .playNavItem small {
-  font-size: 10.5px !important;
   font-weight: 850 !important;
 }
 
 .playPlanPill {
-  font-size: 13px !important;
   font-weight: 900 !important;
   letter-spacing: -0.02em !important;
   box-shadow: 0 16px 38px rgba(2, 6, 23, 0.16) !important;
@@ -3979,16 +3916,12 @@ body {
   padding: 6px 12px !important;
   border-radius: 999px !important;
   background: rgba(255,255,255,.18) !important;
-  color: #fff !important;
 }
 
 .playSidebar {
   top: 44px !important;
   height: calc(100vh - 44px) !important;
-  width: 76px !important;
   padding: 18px 7px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%) !important;
-  border-right: 1px solid #dce6f5 !important;
   box-shadow: 8px 0 30px rgba(15, 23, 42, .08) !important;
 }
 
@@ -4008,14 +3941,12 @@ body {
 
 .playNavItem span { font-size: 23px !important; }
 .playNavItem small {
-  font-size: 11px !important;
   font-weight: 750 !important;
   letter-spacing: -0.02em !important;
 }
 
 .playContent {
   width: min(1100px, calc(100% - 82px)) !important;
-  padding-top: 28px !important;
 }
 
 .playTitleBlock {
@@ -4024,11 +3955,9 @@ body {
 }
 
 .playTitleBlock h1 {
-  color: #111827 !important;
   font-size: 34px !important;
   line-height: 1.02 !important;
   font-weight: 900 !important;
-  letter-spacing: -0.055em !important;
 }
 
 .playTitleBlock p {
@@ -4043,7 +3972,6 @@ body {
   background: #fff !important;
   color: var(--play-blue) !important;
   border: 1px solid #dce6f5 !important;
-  border-radius: 999px !important;
   font-size: 13px !important;
   box-shadow: 0 6px 18px rgba(15,23,42,.06) !important;
 }
@@ -4052,7 +3980,6 @@ body {
   background: rgba(255,255,255,.92) !important;
   border: 1px solid #dce6f5 !important;
   border-radius: 16px !important;
-  padding: 7px !important;
   box-shadow: 0 8px 20px rgba(15, 23, 42, .06) !important;
 }
 
@@ -4062,7 +3989,6 @@ body {
   color: #4b5563 !important;
   font-size: 12.5px !important;
   font-weight: 800 !important;
-  background: transparent !important;
 }
 
 .playTabs button.active {
@@ -4116,7 +4042,6 @@ body {
   border-radius: 10px !important;
   min-height: 42px !important;
   color: #111827 !important;
-  font-size: 14px !important;
   font-weight: 500 !important;
   box-shadow: none !important;
 }
@@ -4138,20 +4063,15 @@ body {
 }
 
 /* Acabamento profissional: menos desenho, menos cor, logo visível */
-.playTopbar {
-  background: #1553d8 !important;
-}
 
 .playSidebar {
   padding-top: 10px !important;
 }
 
 .playSideLogo .beachLogo {
-  display: block !important;
   width: 34px !important;
   height: 34px !important;
   border-radius: 10px !important;
-  box-shadow: none !important;
   background: linear-gradient(135deg, #38bdf8, #2563eb) !important;
 }
 
@@ -4169,10 +4089,8 @@ body {
 }
 
 .playAppShell .tournamentItem {
-  min-height: 220px !important;
   border-radius: 14px !important;
   border: 1px solid #dbe4f0 !important;
-  background: #ffffff !important;
   box-shadow: 0 8px 22px rgba(15, 23, 42, .08) !important;
 }
 
@@ -4211,7 +4129,6 @@ body {
   border-radius: 999px !important;
   background: #f1f5f9 !important;
   color: #334155 !important;
-  font-size: 12px !important;
   font-weight: 750 !important;
 }
 
@@ -4228,8 +4145,6 @@ body {
 }
 
 .playAppShell button:not(.playNavItem):not(.moveLineBtn) {
-  background: #f8fafc !important;
-  color: #24364d !important;
   border-color: #cbd5e1 !important;
 }
 
@@ -4247,17 +4162,10 @@ body {
 }
 
 .playTopbar {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
   height: 52px !important;
   z-index: 100 !important;
   padding: 0 24px 0 96px !important;
   background: #1553d8 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.14) !important;
 }
 
@@ -4276,7 +4184,6 @@ body {
 
 .playMain {
   grid-column: 1 / -1 !important;
-  min-height: 100vh !important;
   padding-top: 52px !important;
   padding-left: 76px !important;
 }
@@ -4304,21 +4211,14 @@ body {
   }
 
   .playSidebar {
-    top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: auto !important;
     height: 74px !important;
   }
 
   .playMain {
-    padding-left: 0 !important;
     padding-top: 52px !important;
   }
 
   .playContent {
-    width: min(100% - 28px, 760px) !important;
     padding-bottom: 98px !important;
   }
 }
@@ -4349,7 +4249,7 @@ body {
   filter: none !important;
 }
 .playNavItem.active .navIcon { background: #1553d8 !important; }
-.playAppShell .tournamentMeta span { background: transparent !important; padding: 0 !important; border-radius: 0 !important; }
+.playAppShell .tournamentMeta span { padding: 0 !important; border-radius: 0 !important; }
 .playAppShell .tournamentItem::before { background: #e5e7eb !important; height: 0 !important; margin: 0 !important; border: 0 !important; }
 .playAppShell .tournamentItem { min-height: auto !important; }
 
@@ -4431,7 +4331,6 @@ body {
   top: 56px !important;
   width: 82px !important;
   height: calc(100vh - 56px) !important;
-  padding: 14px 10px !important;
   background: rgba(255, 255, 255, 0.92) !important;
   backdrop-filter: blur(18px) !important;
   border-right: 1px solid var(--pro-line) !important;
@@ -4707,7 +4606,7 @@ body {
 
 @media (max-width: 900px) {
   .playTopbar { height: 56px !important; padding: 0 16px !important; }
-  .playMain { padding-left: 0 !important; padding-top: 56px !important; }
+  .playMain { padding-top: 56px !important; }
   .playContent { width: min(100% - 28px, 760px) !important; padding-bottom: 104px !important; }
   .playTabs, .playStatsGrid, .playAppShell .tournamentList, .playCreateCard { grid-template-columns: 1fr !important; }
 }
@@ -5218,7 +5117,6 @@ body {
     "court court action" !important;
   column-gap: 12px !important;
   row-gap: 10px !important;
-  align-items: center !important;
   padding: 14px 16px !important;
 }
 
@@ -5239,9 +5137,7 @@ body {
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  font-size: 12px !important;
   line-height: 1.2 !important;
-  text-align: center !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -6285,15 +6181,9 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   .playSidebar {
     height: 84px !important;
     min-height: 84px !important;
-    display: grid !important;
     grid-template-columns: repeat(5, minmax(54px, 1fr)) !important;
-    align-items: center !important;
-    justify-content: stretch !important;
     gap: 4px !important;
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom)) !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
   }
 
   .playSidebar .playSideLogo {
@@ -6305,18 +6195,15 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
     min-width: 54px !important;
     height: 64px !important;
     min-height: 64px !important;
-    margin: 0 !important;
     padding: 6px 4px !important;
     border-radius: 14px !important;
   }
 
   .playNavItem span:not(.navIcon) {
     font-size: 19px !important;
-    line-height: 1 !important;
   }
 
   .playNavItem small {
-    display: block !important;
     font-size: 9px !important;
     line-height: 1.1 !important;
     white-space: nowrap !important;
@@ -6336,8 +6223,6 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
 
 /* Editor de foto moderno: arrastar, pinça e mouse */
 .photoEditorPreview {
-  width: 220px !important;
-  height: 220px !important;
   cursor: grab !important;
   touch-action: none !important;
   user-select: none !important;
@@ -8050,16 +7935,12 @@ button.mapsMiniBtn:hover {
 }
 .profileVisibilitySwitch.public,
 button.profileVisibilitySwitch.public {
-  background: #dcfce7 !important;
-  color: #166534 !important;
   border-color: #bbf7d0;
 }
 .profileVisibilitySwitch.public .switchTrack { background: #22c55e; }
 .profileVisibilitySwitch.public .switchThumb { transform: translateX(18px); }
 .profileVisibilitySwitch.private,
 button.profileVisibilitySwitch.private {
-  background: #ffedd5 !important;
-  color: #9a3412 !important;
   border-color: #fed7aa;
 }
 .profileVisibilitySwitch.private .switchTrack { background: #f97316; }
@@ -8140,7 +8021,6 @@ button.profileVisibilitySwitch.private strong {
   background: transparent !important;
   color: #475569 !important;
   font-weight: 900;
-  box-shadow: none !important;
   cursor: pointer;
 }
 
@@ -8214,7 +8094,6 @@ button.profileVisibilitySwitch.private strong {
 /* Página completa do perfil público da arena */
 .arenaPublicPage {
   padding: clamp(18px, 4vw, 34px) !important;
-  border-radius: 28px !important;
 }
 
 .arenaPublicBackBtn {
@@ -8229,7 +8108,6 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .arenaPublicHero {
-  display: grid;
   grid-template-columns: 180px 1fr;
   gap: 24px;
   align-items: center;
@@ -8286,7 +8164,6 @@ button.profileVisibilitySwitch.private strong {
 
 .arenaPublicDetailsGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 22px;
 }
@@ -8399,7 +8276,6 @@ button.profileVisibilitySwitch.private strong {
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, .08) !important;
   border-radius: 34px !important;
-  background: #ffffff !important;
   box-shadow: 0 24px 70px rgba(15, 23, 42, .10) !important;
 }
 
@@ -8417,7 +8293,6 @@ button.profileVisibilitySwitch.private strong {
   z-index: 3;
   margin: 24px 0 0 24px !important;
   background: rgba(255, 255, 255, .92) !important;
-  color: #075985 !important;
   border: 1px solid rgba(255,255,255,.55) !important;
   backdrop-filter: blur(10px);
   box-shadow: 0 14px 30px rgba(15, 23, 42, .16) !important;
@@ -8616,7 +8491,6 @@ button.profileVisibilitySwitch.private strong {
   top: 22px !important;
   left: 24px !important;
   margin: 0 !important;
-  z-index: 5 !important;
 }
 
 .arenaPublicHero {
@@ -8635,15 +8509,7 @@ button.profileVisibilitySwitch.private strong {
   width: 154px !important;
   height: 154px !important;
   border-radius: 32px !important;
-  border: 7px solid #ffffff !important;
-  overflow: hidden !important;
   box-shadow: 0 18px 42px rgba(15, 23, 42, .22) !important;
-}
-
-.arenaPublicPhoto img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
 }
 
 .arenaPublicInfo {
@@ -8679,14 +8545,11 @@ button.profileVisibilitySwitch.private strong {
 
   .arenaPublicHero {
     margin: -44px 20px 0 !important;
-    grid-template-columns: 1fr !important;
     gap: 14px !important;
     align-items: start !important;
   }
 
   .arenaPublicPhoto {
-    width: 132px !important;
-    height: 132px !important;
     border-radius: 28px !important;
   }
 
@@ -8707,9 +8570,6 @@ button.profileVisibilitySwitch.private strong {
 
 /* Correção final: botão voltar fora da logo e título dos links */
 .arenaPublicBackBtn {
-  position: relative !important;
-  top: auto !important;
-  left: auto !important;
   margin: 18px 0 0 24px !important;
   z-index: 6 !important;
   width: max-content !important;
@@ -8721,7 +8581,6 @@ button.profileVisibilitySwitch.private strong {
 
 .arenaPublicHero {
   margin-top: -28px !important;
-  align-items: center !important;
 }
 
 .arenaPublicPhoto {
@@ -8748,7 +8607,6 @@ button.profileVisibilitySwitch.private strong {
 
 @media (max-width: 760px) {
   .arenaPublicBackBtn {
-    margin-left: 20px !important;
     margin-top: 14px !important;
   }
 
@@ -9135,7 +8993,6 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .publicPage .publicScore {
-  width: max-content !important;
   min-width: 110px !important;
   justify-self: center !important;
   padding: 9px 14px !important;
@@ -9193,8 +9050,6 @@ button.profileVisibilitySwitch.private strong {
   }
 
   .publicPage .roundCard {
-    padding: 12px !important;
-    border-radius: 18px !important;
     margin-bottom: 12px !important;
   }
 
@@ -9240,7 +9095,6 @@ button.profileVisibilitySwitch.private strong {
 
   .publicPage .publicScore {
     justify-self: stretch !important;
-    width: 100% !important;
     text-align: center !important;
     margin: 0 !important;
   }
@@ -9305,17 +9159,10 @@ button.profileVisibilitySwitch.private strong {
 
 
 /* Correção urgente: desfazer layout quebrado dos jogos públicos */
-.publicPage .schedule {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 18px !important;
-  overflow: visible !important;
-}
 
 .publicPage .roundCard {
   width: 100% !important;
   max-width: 100% !important;
-  overflow: visible !important;
 }
 
 .publicPage .roundCard > h3,
@@ -9627,7 +9474,6 @@ button.profileVisibilitySwitch.private strong {
 .publicPage .schedule {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(360px, 1fr)) !important;
-  gap: 18px !important;
   align-items: start !important;
 }
 
@@ -9664,33 +9510,18 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .publicPage .publicGameCard .gameTopLine {
-  display: flex !important;
-  align-items: center !important;
   justify-content: space-between !important;
   margin-bottom: 12px !important;
 }
 
 .publicPage .publicGameCard .gameTopLine strong {
-  display: inline-flex !important;
   width: auto !important;
   max-width: max-content !important;
-  margin: 0 !important;
-  padding: 7px 12px !important;
-  border-radius: 999px !important;
-  background: #e0f2fe !important;
-  color: #0369a1 !important;
-  font-size: 12px !important;
-  font-weight: 950 !important;
-  text-transform: uppercase !important;
 }
 
 .publicPage .publicGameCard .gameTeams {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr) !important;
   gap: 10px !important;
   margin-top: 10px !important;
-  align-items: center !important;
-  width: 100% !important;
 }
 
 .publicPage .publicGameCard .gameTeams div {
@@ -9732,32 +9563,17 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .publicPage .publicReadOnlyScoreRow.scoreRow {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
   margin-top: 12px !important;
 }
 
 .publicPage .publicReadOnlyScoreRow input {
   width: 86px !important;
-  height: 36px !important;
-  padding: 6px 8px !important;
   border-radius: 14px !important;
-  border: 1px solid #cbd5e1 !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
-  font-size: 15px !important;
   font-weight: 900 !important;
-  text-align: center !important;
-  opacity: 1 !important;
-  -webkit-text-fill-color: #0f172a !important;
 }
 
 .publicPage .publicReadOnlyScoreRow span {
-  font-size: 20px !important;
   font-weight: 900 !important;
-  color: #0f172a !important;
 }
 
 @media (max-width: 760px) {
@@ -9779,18 +9595,11 @@ button.profileVisibilitySwitch.private strong {
 
 /* ESPELHO REAL DA TELA DO ORGANIZADOR NO LINK PÚBLICO */
 .publicPage .schedule {
-  display: flex !important;
-  flex-direction: column !important;
   gap: 22px !important;
-  width: 100% !important;
   overflow: visible !important;
 }
 
 .publicPage .schedule > .roundCard {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(320px, 1fr)) !important;
-  gap: 18px !important;
-  width: 100% !important;
   padding: 18px !important;
   border-radius: 22px !important;
   margin: 0 0 18px !important;
@@ -9802,9 +9611,7 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .publicPage .schedule > .roundCard > h3 {
-  grid-column: 1 / -1 !important;
   display: inline-flex !important;
-  width: max-content !important;
   max-width: 100% !important;
   margin: 0 0 4px !important;
   padding: 12px 18px !important;
@@ -9834,9 +9641,7 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .publicPage .publicGameCard .gameTopLine {
-  display: flex !important;
   align-items: center !important;
-  justify-content: flex-start !important;
   width: 100% !important;
   margin: 0 !important;
 }
@@ -9970,9 +9775,7 @@ button.profileVisibilitySwitch.private strong {
 
 /* CORREÇÃO DEFINITIVA DO LINK PÚBLICO - classes próprias sem conflito */
 .publicPage .schedule > .roundCard {
-  display: grid !important;
   grid-template-columns: repeat(2, minmax(360px, 1fr)) !important;
-  gap: 18px !important;
   align-items: start !important;
 }
 .publicPage .schedule > .roundCard > h3 {
@@ -10155,14 +9958,6 @@ button.profileVisibilitySwitch.private strong {
   width: 100% !important;
 }
 
-.publicPage .readOnlyRoundCard .gameTeams > div {
-  min-width: 0 !important;
-  width: 100% !important;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
-  text-align: center !important;
-}
-
 .publicPage .readOnlyRoundCard .gameTeams > span {
   width: 36px !important;
   min-width: 36px !important;
@@ -10250,14 +10045,6 @@ button.profileVisibilitySwitch.private strong {
   overflow-wrap: anywhere !important;
   position: static !important;
   transform: none !important;
-}
-
-.publicPage .readOnlyRoundCard .gameTeams > div:first-child {
-  grid-area: team1 !important;
-}
-
-.publicPage .readOnlyRoundCard .gameTeams > div:last-child {
-  grid-area: team2 !important;
 }
 
 .publicPage .readOnlyRoundCard .gameTeams > span {
@@ -10467,25 +10254,13 @@ button.profileVisibilitySwitch.private strong {
   display: none !important;
 }
 
-.playTopbar .playTopBrand {
-  display: flex !important;
-  align-items: center !important;
-  gap: 14px !important;
-  min-width: 0 !important;
-}
-
 .playTopbar .playTopBrand .torneio360Logo {
   width: 190px !important;
   height: 74px !important;
   border-radius: 0 !important;
-  overflow: visible !important;
-  flex: 0 0 auto !important;
 }
 
 .playTopbar .playTopBrand .torneio360Logo img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28)) !important;
 }
 
@@ -10494,18 +10269,12 @@ button.profileVisibilitySwitch.private strong {
   color: rgba(255, 255, 255, 0.86) !important;
   font-size: 13px !important;
   font-weight: 800 !important;
-  line-height: 1.2 !important;
-  white-space: nowrap !important;
 }
 
 @media (max-width: 760px) {
-  .playTopbar .playTopBrand {
-    gap: 8px !important;
-  }
 
   .playTopbar .playTopBrand .torneio360Logo {
     width: 138px !important;
-    height: 54px !important;
   }
 }
 
@@ -10514,24 +10283,12 @@ button.profileVisibilitySwitch.private strong {
   min-height: 104px !important;
   height: auto !important;
   padding: 14px 24px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  overflow: hidden !important;
-  box-sizing: border-box !important;
   position: sticky !important;
-  top: 0 !important;
   z-index: 20 !important;
 }
 
 .playTopbar .playTopBrand {
   height: 76px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 14px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  transform: none !important;
   overflow: visible !important;
   min-width: 0 !important;
 }
@@ -10539,7 +10296,6 @@ button.profileVisibilitySwitch.private strong {
 .playTopbar .playTopBrand .torneio360Logo {
   width: 172px !important;
   height: 68px !important;
-  margin: 0 !important;
   padding: 0 !important;
   flex: 0 0 auto !important;
   align-self: center !important;
@@ -10554,9 +10310,6 @@ button.profileVisibilitySwitch.private strong {
 }
 
 .playTopbar .playTopBrand .brandTaglineOnly {
-  padding: 0 !important;
-  margin: 0 !important;
-  align-self: center !important;
   justify-content: center !important;
   display: flex !important;
 }
@@ -10582,8 +10335,6 @@ button.profileVisibilitySwitch.private strong {
 
 .playContent {
   flex: 1 1 auto !important;
-  padding-top: 28px !important;
-  margin-top: 0 !important;
   position: relative !important;
   z-index: 1 !important;
 }
@@ -10601,17 +10352,14 @@ button.profileVisibilitySwitch.private strong {
 
   .playTopbar .playTopBrand {
     height: 64px !important;
-    gap: 8px !important;
   }
 
   .playTopbar .playTopBrand .torneio360Logo {
     width: 132px !important;
-    height: 54px !important;
   }
 
   .playTopbar .playTopBrand .brandTaglineOnly span {
     font-size: 10px !important;
-    white-space: normal !important;
   }
 
   .playUserBox span {
@@ -10904,17 +10652,6 @@ button.profileVisibilitySwitch.private strong {
 
 
 /* PADRÃO FINAL DAS SUBABAS DO PERFIL - IGUAL ÀS ABAS DO TORNEIO, COM BORDA PRETA */
-.profileSubtabs {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 10px !important;
-  width: 100% !important;
-  margin-top: 22px !important;
-  padding: 8px !important;
-  background: #ffffff !important;
-  border-radius: 18px !important;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
-}
 
 .profileSubtabs button {
   flex: 1 1 0 !important;
@@ -11442,8 +11179,8 @@ button.danger:disabled,
 .circuitItemMain h3 { margin:0; color:#0f172a; font-size:18px; }
 .circuitItemMain p { margin:0; color:#334155; font-weight:750; }
 .circuitItemMain small { color:#64748b; font-weight:650; line-height:1.35; }
-.circuitItemActions .editBtn { background:linear-gradient(135deg,#7c3aed,#a855f7) !important; color:#fff !important; border:0 !important; }
-.circuitItemActions .deleteBtn { background:linear-gradient(135deg,#dc2626,#ef4444) !important; color:#fff !important; border:0 !important; }
+.circuitItemActions .editBtn { background:linear-gradient(135deg,#7c3aed,#a855f7) !important; }
+.circuitItemActions .deleteBtn { background:linear-gradient(135deg,#dc2626,#ef4444) !important; }
 
 @media (max-width: 760px) {
   .circuitsHeader { display:grid; }
@@ -11614,7 +11351,6 @@ button.danger:disabled,
 
 /* Circuito em aba suspensa */
 .circuitItem {
-  display: grid !important;
   gap: 14px !important;
   align-items: stretch !important;
 }
@@ -11637,7 +11373,6 @@ button.danger:disabled,
 }
 
 .circuitItem.expanded {
-  border-color: #bfdbfe !important;
   box-shadow: 0 18px 38px rgba(37, 99, 235, .10) !important;
 }
 
@@ -11653,19 +11388,14 @@ button.danger:disabled,
 }
 
 .circuitItem {
-  width: 100% !important;
   display: grid !important;
   gap: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
   border: 1px solid #dbe4f0 !important;
   border-radius: 18px !important;
-  background: #ffffff !important;
   box-shadow: 0 10px 26px rgba(15, 23, 42, .06) !important;
 }
 
 .circuitItemSummary {
-  width: 100% !important;
   min-height: 82px !important;
   display: grid !important;
   grid-template-columns: 66px minmax(0, 1fr) auto !important;
@@ -11707,7 +11437,6 @@ button.danger:disabled,
   padding: 4px 9px !important;
   border-radius: 999px !important;
   background: #f5f3ff !important;
-  color: #7c3aed !important;
   font-size: 11px !important;
   font-weight: 950 !important;
   line-height: 1 !important;
@@ -11799,7 +11528,6 @@ button.danger:disabled,
 
 /* Ajuste final: circuito ocupando largura, texto branco e botões com respiro */
 .circuitItemSummary {
-  width: 100% !important;
   grid-template-columns: 66px minmax(0, 1fr) 42px !important;
   background: linear-gradient(135deg, #1557b7, #06b6d4) !important;
   border-radius: 16px !important;
@@ -11901,9 +11629,6 @@ button.danger:disabled,
     width: 70px !important;
     min-width: 70px !important;
     max-width: 70px !important;
-    min-height: 62px !important;
-    height: 62px !important;
-    margin: 0 !important;
     padding: 7px 4px 6px !important;
     gap: 4px !important;
   }
@@ -11916,8 +11641,6 @@ button.danger:disabled,
     max-width: 64px !important;
     font-size: 9.5px !important;
     line-height: 1.05 !important;
-    white-space: normal !important;
-    overflow: visible !important;
   }
 
   .playContent {

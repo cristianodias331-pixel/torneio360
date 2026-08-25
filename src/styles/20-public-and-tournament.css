@@ -1694,20 +1694,12 @@ html[data-theme="dark"] .rankingExportNotice.warning {
   }
 
   .publicArenaRealPage .publicArenaHeader > .publicBrandRow {
-    display: grid !important;
     grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr) !important;
-    grid-template-areas: "back logo access" !important;
-    align-items: center !important;
     gap: 7px !important;
   }
 
   .publicArenaRealPage .publicBrandRow .publicBackToPlatform {
     grid-area: back !important;
-  }
-
-  .publicArenaRealPage .publicBrandRow .beachLogo,
-  .publicArenaRealPage .publicBrandRow .torneio360Logo {
-    grid-area: logo !important;
   }
 
   .publicArenaRealPage .publicBrandRow .publicOrganizerAccess {
@@ -1716,13 +1708,9 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 
   .publicArenaRealPage .publicBackToPlatform,
   .publicArenaRealPage .publicOrganizerAccess {
-    width: 100% !important;
-    min-width: 0 !important;
     min-height: 42px !important;
     padding: 6px 7px !important;
     font-size: 10px !important;
-    line-height: 1.15 !important;
-    white-space: normal !important;
     text-align: center !important;
   }
 
@@ -1818,8 +1806,6 @@ html[data-theme="dark"] .rankingExportNotice.warning {
 
 .proDashboard .tournamentWorkspaceContent .roundHeader h3 {
   border: 1px solid color-mix(in srgb, var(--ui-active-accent) 34%, var(--ui-border)) !important;
-  background: var(--ui-active-bg) !important;
-  color: var(--ui-text-strong) !important;
   text-shadow: none !important;
 }
 
