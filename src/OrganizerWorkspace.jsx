@@ -11213,7 +11213,7 @@ return (
           </section>
         )}
 
-        <section className="card" style={{ display: activeTournamentTab === "partidas" ? undefined : "none" }}>
+        <section className="card tournamentMatchesSection" style={{ display: activeTournamentTab === "partidas" ? undefined : "none" }}>
           <div className="cardTitleRow">
             <h2>{isCupType(config) ? "Partidas" : "Rodadas"}</h2>
             <SavingStatusBadge />
