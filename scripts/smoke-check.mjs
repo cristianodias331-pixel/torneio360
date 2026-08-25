@@ -508,6 +508,10 @@ const publicArenaEventPaginationMigrationSource = readFileSync(
   new URL("supabase/migrations/202608250001_public_arena_event_pagination.sql", root),
   "utf8"
 );
+const publicArenaLegacyCompatibilityMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250002_public_arena_legacy_bundle_compatibility.sql", root),
+  "utf8"
+);
 const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
@@ -1323,6 +1327,12 @@ assert.equal(
     && publicArenaPresentationSource.includes("serverPagination.onLoadMore"),
   true,
   "O perfil público deixou de paginar eventos no servidor ou perdeu as etapas dos circuitos.",
+);
+assert.equal(
+  publicArenaLegacyCompatibilityMigrationSource.includes("public.build_public_arena_bundle_uncached")
+    && publicArenaLegacyCompatibilityMigrationSource.includes("grant execute on function public.get_public_arena_bundle"),
+  true,
+  "Uma versão anterior do front-end pode perder os eventos durante a transição para a paginação.",
 );
 
 assert.equal(generatePublicId(() => 35, () => 0.5), "tfbt_z_i", "O formato dos links públicos foi alterado.");
