@@ -5897,6 +5897,19 @@ assert.deepEqual(
   { waiting: 1, inProgress: 1, finished: 1, total: 3 },
   "O resumo operacional deixou de separar jogos aguardando, em andamento e finalizados."
 );
+assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary({
+    cupConfig: { format: "playranking" },
+    brackets: [
+      { phase: "main", matchKey: "main_semifinal_1", ids1: [1], team1: ["Ana"], ids2: [2], team2: ["Bia"], s1: "", s2: "" },
+      { phase: "main", matchKey: "main_semifinal_2", ids1: [3], team1: ["Carla"], ids2: [4], team2: ["Dora"], s1: 4, s2: 2 },
+      { phase: "main", matchKey: "main_final_1", source1: "main_semifinal_1", source2: "main_semifinal_2", ids1: [], ids2: [], team1: null, team2: null, s1: "", s2: "" },
+      { phase: "main", matchKey: "main_bye_1", ids1: [5], team1: ["Eva"], ids2: [], team2: ["BYE"], s1: "", s2: "", isBye: true },
+    ],
+  }),
+  { waiting: 2, inProgress: 0, finished: 1, total: 3 },
+  "Uma partida futura da copa deixou de entrar em A chamar ou um BYE voltou a ser contado."
+);
 const disabledCearenseParallelData = {
   cupConfig: {
     format: "cearense",
