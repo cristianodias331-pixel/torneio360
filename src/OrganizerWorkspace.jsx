@@ -111,7 +111,10 @@ import {
   getEffectiveTournamentGenderMode,
   getGenderCompatibleTournamentTypes,
   getStoredTournamentGenderFields,
+  getTournamentListGenderFilter,
   getTournamentClassificationLabels,
+  matchesTournamentListGenderFilter,
+  tournamentListGenderFilters,
 } from "./domain/tournamentGenderConfig.mjs";
 import {
   tournamentMutationWasApplied,
@@ -534,6 +537,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [dragOverTournamentId, setDragOverTournamentId] = useState(null);
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
   const [tournamentStatusFilter, setTournamentStatusFilter] = useState("active");
+  const [tournamentGenderFilter, setTournamentGenderFilter] = useState(tournamentListGenderFilters.all);
   const [tournamentSearch, setTournamentSearch] = useState("");
   const [createCircuitOpen, setCreateCircuitOpen] = useState(false);
   const [circuitTournamentTarget, setCircuitTournamentTarget] = useState(null);
@@ -1244,9 +1248,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     counts[status] = (counts[status] || 0) + 1;
     return counts;
   }, { active: 0, upcoming: 0, finished: 0 });
+  const tournamentGenderCounts = tournaments.reduce((counts, item) => {
+    if (getTournamentLifecycleStatus(item) !== tournamentStatusFilter) return counts;
+    counts[tournamentListGenderFilters.all] += 1;
+    const genderFilter = getTournamentListGenderFilter(item.type, item.data || {});
+    if (genderFilter) counts[genderFilter] += 1;
+    return counts;
+  }, {
+    [tournamentListGenderFilters.all]: 0,
+    [tournamentListGenderFilters.masculine]: 0,
+    [tournamentListGenderFilters.feminine]: 0,
+    [tournamentListGenderFilters.mixed]: 0,
+  });
   const normalizedTournamentSearch = normalizeModalitySearch(tournamentSearch);
   const organizerVisibleTournaments = tournaments.filter((item) => {
     if (getTournamentLifecycleStatus(item) !== tournamentStatusFilter) return false;
+    if (!matchesTournamentListGenderFilter(item.type, item.data || {}, tournamentGenderFilter)) return false;
     if (!normalizedTournamentSearch) return true;
 
     const details = item.data || {};
@@ -7308,11 +7325,32 @@ setNewPublicInfo({
       {tournamentSearch ? <button type="button" aria-label="Limpar pesquisa de torneios" onClick={() => setTournamentSearch("")}><X aria-hidden="true" /></button> : null}
     </label>
   </div>
+  <div className="tournamentGenderSubtabs" aria-label="Filtrar torneios por gênero">
+    <span className="tournamentGenderSubtabsLabel">Gênero</span>
+    {[
+      { value: tournamentListGenderFilters.all, label: "Todos" },
+      { value: tournamentListGenderFilters.masculine, label: "Masculino" },
+      { value: tournamentListGenderFilters.feminine, label: "Feminino" },
+      { value: tournamentListGenderFilters.mixed, label: "Misto/Livre" },
+    ].map((option) => (
+      <button
+        type="button"
+        key={option.value}
+        className={tournamentGenderFilter === option.value ? "selected" : ""}
+        aria-pressed={tournamentGenderFilter === option.value}
+        onClick={() => setTournamentGenderFilter(option.value)}
+      >
+        {option.label} <strong>{tournamentGenderCounts[option.value]}</strong>
+      </button>
+    ))}
+  </div>
 
   {tournaments.length === 0 ? (
     <p>Nenhum torneio criado ainda.</p>
   ) : organizerVisibleTournaments.length === 0 ? (
-    <p className="eventStatusEmpty">{tournamentSearch.trim() ? `Nenhum torneio encontrado para “${tournamentSearch.trim()}”.` : `Nenhum torneio ${tournamentStatusFilter === "active" ? "em andamento" : tournamentStatusFilter === "upcoming" ? "próximo" : "encerrado"}.`}</p>
+    <p className="eventStatusEmpty">{tournamentSearch.trim()
+      ? `Nenhum torneio encontrado para “${tournamentSearch.trim()}” nos filtros selecionados.`
+      : `Nenhum torneio ${tournamentStatusFilter === "active" ? "em andamento" : tournamentStatusFilter === "upcoming" ? "próximo" : "encerrado"}${tournamentGenderFilter === tournamentListGenderFilters.all ? "" : ` em ${tournamentGenderFilter === tournamentListGenderFilters.masculine ? "Masculino" : tournamentGenderFilter === tournamentListGenderFilters.feminine ? "Feminino" : "Misto/Livre"}`}.`}</p>
   ) : (
     <div className="eventGroupList">
       {isolatedTournaments.length > 0 && (

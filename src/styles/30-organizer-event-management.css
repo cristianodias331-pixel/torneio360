@@ -110,6 +110,59 @@
 .proDashboard.playAppShell .tournamentStatusSummary > button.upcoming:not(.selected) { color: #166534 !important; background: #dcfce7 !important; border-color: #86efac !important; }
 .proDashboard.playAppShell .tournamentStatusSummary > button.finished:not(.selected) { color: #c2410c !important; background: #ffedd5 !important; border-color: #fdba74 !important; }
 .proDashboard.playAppShell .tournamentStatusSummary > button.combined:not(.selected) { color: #1d4ed8 !important; background: #dbeafe !important; border-color: #93c5fd !important; }
+.tournamentGenderSubtabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin: -8px 0 20px;
+  padding: 8px;
+  border: 1px solid #dbe7f5;
+  border-radius: 14px;
+  background: #f5f8fc;
+}
+.tournamentGenderSubtabsLabel {
+  padding: 0 6px;
+  color: #64748b;
+  font-size: .72rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.proDashboard.playAppShell .tournamentGenderSubtabs > button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+  border: 1px solid #cbd8e8 !important;
+  border-radius: 10px !important;
+  background: #eaf0f7 !important;
+  color: #334155 !important;
+  box-shadow: none !important;
+  font-size: .76rem !important;
+  font-weight: 900 !important;
+}
+.proDashboard.playAppShell .tournamentGenderSubtabs > button strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  min-height: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(71, 85, 105, .12);
+  font-size: .69rem;
+}
+.proDashboard.playAppShell .tournamentGenderSubtabs > button.selected {
+  border-color: #2563eb !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 7px 16px rgba(37, 99, 235, .2) !important;
+}
+.proDashboard.playAppShell .tournamentGenderSubtabs > button.selected strong { background: rgba(255, 255, 255, .2); }
 .eventStatusEmpty { margin: 18px 0 4px; padding: 16px; border: 1px dashed #cbd5e1; border-radius: 14px; color: #64748b; text-align: center; }
 .proDashboard .tournamentTitleRow { align-items: center; }
 .proDashboard .tournamentLifecycleBadge { width: max-content; min-height: 25px; padding: 4px 8px; font-size: .66rem; }
@@ -310,6 +363,16 @@ html[data-theme="dark"] .tournamentStatusSummary button.finished:not(.selected),
 .proDashboard.theme-dark .tournamentStatusSummary button.finished:not(.selected) { color: #fed7aa !important; background: rgba(251, 146, 60, .17) !important; border-color: #ea580c !important; }
 html[data-theme="dark"] .tournamentStatusSummary button.combined:not(.selected),
 .proDashboard.theme-dark .tournamentStatusSummary button.combined:not(.selected) { color: #bfdbfe !important; background: rgba(37, 99, 235, .2) !important; border-color: #3b82f6 !important; }
+html[data-theme="dark"] .tournamentGenderSubtabs,
+.proDashboard.theme-dark .tournamentGenderSubtabs { border-color: #34485f; background: #0f1a28; }
+html[data-theme="dark"] .tournamentGenderSubtabsLabel,
+.proDashboard.theme-dark .tournamentGenderSubtabsLabel { color: #9dafc4; }
+html[data-theme="dark"] body .proDashboard.playAppShell .tournamentGenderSubtabs > button:not(.selected),
+html body .proDashboard.theme-dark.playAppShell .tournamentGenderSubtabs > button:not(.selected) {
+  border-color: #40556e !important;
+  background: #172536 !important;
+  color: #d7e2ef !important;
+}
 html[data-theme="dark"] .eventStatusEmpty,
 .proDashboard.theme-dark .eventStatusEmpty { border-color: #3b5069; color: #aebed2; }
 html[data-theme="dark"] .categoryScheduleItem.categoryTournamentCard,
@@ -408,6 +471,9 @@ html[data-theme="dark"] .circuitOpenAction,
   .categoryScheduleActions button { flex: 1; }
   .tournamentStatusSummary { display: grid; grid-template-columns: 1fr 1fr; }
   .tournamentStatusSummary .finished { grid-column: 1 / -1; justify-content: center; }
+  .tournamentGenderSubtabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tournamentGenderSubtabsLabel { grid-column: 1 / -1; }
+  .proDashboard.playAppShell .tournamentGenderSubtabs > button { width: 100% !important; }
   .circuitStatusSummary .finished,
   .circuitStatusSummary .combined { grid-column: auto; justify-content: center; }
   .proDashboard.playAppShell .circuitListOpenButton {

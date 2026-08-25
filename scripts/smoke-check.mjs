@@ -199,7 +199,10 @@ import {
   getEffectiveTournamentGenderMode,
   getGenderCompatibleTournamentTypes,
   getStoredTournamentGenderFields,
+  getTournamentListGenderFilter,
   getTournamentClassificationLabels,
+  matchesTournamentListGenderFilter,
+  tournamentListGenderFilters,
 } from "../src/domain/tournamentGenderConfig.mjs";
 import {
   getGameSideAttendanceParticipants,
@@ -1268,6 +1271,26 @@ assert.deepEqual(
   normalizedPublicCircuitByTotalGames.ranking_groups[0].rows.map((row) => row.name),
   ["Bia", "Ana"],
   "O ranking público do circuito voltou a usar uma ordem fixa diferente da escolhida pelo organizador.",
+);
+assert.equal(
+  getTournamentListGenderFilter("Super 8", { participantGenderMode: tournamentGenderModes.masculine }),
+  tournamentListGenderFilters.masculine,
+  "O filtro da lista deixou de reconhecer torneios masculinos."
+);
+assert.equal(
+  getTournamentListGenderFilter("Super 8", { participantGenderMode: tournamentGenderModes.open }),
+  tournamentListGenderFilters.mixed,
+  "O filtro da lista deixou de reunir Livre com Misto."
+);
+assert.equal(
+  getTournamentListGenderFilter("Super 12 Mista (Dupla Aleatória)", {}),
+  tournamentListGenderFilters.mixed,
+  "Uma modalidade mista sem metadado legado deixou de aparecer em Misto/Livre."
+);
+assert.equal(
+  matchesTournamentListGenderFilter("Super 8", { participantGenderMode: tournamentGenderModes.feminine }, tournamentListGenderFilters.masculine),
+  false,
+  "O filtro masculino passou a exibir torneios femininos."
 );
 const legacyGeneralCircuitGroup = [{ key: "geral", title: "Ranking geral acumulado", rows: [{ name: "Ana" }] }];
 assert.deepEqual(
