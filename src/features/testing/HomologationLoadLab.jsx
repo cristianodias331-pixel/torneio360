@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../../styles/50-homologation-load-lab.css";
 import {
   HOMOLOGATION_LOAD_CIRCUIT_COUNT,
-  HOMOLOGATION_LOAD_CIRCUIT_PREFIX,
   HOMOLOGATION_LOAD_EMAIL,
   HOMOLOGATION_LOAD_MARKER,
   HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT,
@@ -12,9 +11,10 @@ import {
   buildHomologationCircuitRows,
   buildHomologationTournamentRows,
   countTournamentParticipantEntries,
+  isHomologationLoadCircuit,
 } from "../../domain/homologationLoadData.mjs";
 
-const TOURNAMENT_INSERT_BATCH_SIZE = 5;
+const TOURNAMENT_INSERT_BATCH_SIZE = 10;
 
 async function validateAuthenticatedTarget({ supabase, user }) {
   assertHomologationLoadTarget({
@@ -30,7 +30,7 @@ async function validateAuthenticatedTarget({ supabase, user }) {
   return data.user;
 }
 
-async function loadCurrentCounts(supabase, userId) {
+async function findLoadDataRows(supabase, userId) {
   const { data: tournaments, error: tournamentError } = await supabase
     .from("tournaments")
     .select("id,data")
@@ -38,12 +38,21 @@ async function loadCurrentCounts(supabase, userId) {
     .contains("data", { loadTestMarker: HOMOLOGATION_LOAD_MARKER });
   if (tournamentError) throw tournamentError;
 
-  const { data: circuits, error: circuitError } = await supabase
+  const loadTournamentIds = new Set((tournaments || []).map((tournament) => String(tournament.id)));
+  const { data: circuitCandidates, error: circuitError } = await supabase
     .from("circuits")
-    .select("id")
-    .eq("user_id", userId)
-    .like("name", `${HOMOLOGATION_LOAD_CIRCUIT_PREFIX}%`);
+    .select("id,name,tournament_ids,ranking_settings")
+    .eq("user_id", userId);
   if (circuitError) throw circuitError;
+  const circuits = (circuitCandidates || []).filter((circuit) => (
+    isHomologationLoadCircuit(circuit, loadTournamentIds)
+  ));
+
+  return { tournaments: tournaments || [], circuits };
+}
+
+async function loadCurrentCounts(supabase, userId) {
+  const { tournaments, circuits } = await findLoadDataRows(supabase, userId);
 
   let rankingRows = 0;
   if (circuits?.length) {
@@ -57,10 +66,10 @@ async function loadCurrentCounts(supabase, userId) {
   }
 
   return {
-    tournaments: tournaments?.length || 0,
-    circuits: circuits?.length || 0,
+    tournaments: tournaments.length,
+    circuits: circuits.length,
     rankingRows,
-    participantEntries: (tournaments || []).reduce((sum, tournament) => (
+    participantEntries: tournaments.reduce((sum, tournament) => (
       sum + Number(tournament.data?.loadTestParticipantEntries || countTournamentParticipantEntries(tournament.data))
     ), 0),
   };
@@ -104,7 +113,23 @@ export default function HomologationLoadLab({ supabase, user }) {
     });
   }, [eligible, user?.id]);
 
-  async function createLoadData() {
+  async function purgeLoadDataRows() {
+    setProgress("Localizando circuitos do laboratório...");
+    const { tournaments, circuits } = await findLoadDataRows(supabase, user.id);
+
+    await deleteRowsInBatches(
+      (ids) => supabase.from("circuits").delete().eq("user_id", user.id).in("id", ids),
+      circuits.map((circuit) => circuit.id)
+    );
+
+    setProgress("Removendo torneios do laboratório...");
+    await deleteRowsInBatches(
+      (ids) => supabase.from("tournaments").delete().eq("user_id", user.id).in("id", ids),
+      tournaments.map((tournament) => tournament.id)
+    );
+  }
+
+  async function createLoadData({ replaceExisting = false } = {}) {
     if (busy) return;
     setBusy(true);
     setMessage(null);
@@ -113,7 +138,11 @@ export default function HomologationLoadLab({ supabase, user }) {
       await validateAuthenticatedTarget({ supabase, user });
       const current = await loadCurrentCounts(supabase, user.id);
       if (current.tournaments || current.circuits || current.rankingRows) {
-        throw new Error("Já existe uma massa de carga. Remova o lote atual antes de gerar outro.");
+        if (!replaceExisting) {
+          throw new Error("Já existe uma massa de carga. Use a ampliação controlada ou remova o lote atual.");
+        }
+        setProgress("Substituindo somente a massa anterior do laboratório...");
+        await purgeLoadDataRows();
       }
 
       const batchId = crypto.randomUUID();
@@ -182,31 +211,7 @@ export default function HomologationLoadLab({ supabase, user }) {
 
     try {
       await validateAuthenticatedTarget({ supabase, user });
-      setProgress("Localizando circuitos do laboratório...");
-      const { data: circuits, error: circuitError } = await supabase
-        .from("circuits")
-        .select("id")
-        .eq("user_id", user.id)
-        .like("name", `${HOMOLOGATION_LOAD_CIRCUIT_PREFIX}%`);
-      if (circuitError) throw circuitError;
-
-      await deleteRowsInBatches(
-        (ids) => supabase.from("circuits").delete().eq("user_id", user.id).in("id", ids),
-        (circuits || []).map((circuit) => circuit.id)
-      );
-
-      setProgress("Removendo torneios do laboratório...");
-      const { data: tournaments, error: tournamentError } = await supabase
-        .from("tournaments")
-        .select("id")
-        .eq("user_id", user.id)
-        .contains("data", { loadTestMarker: HOMOLOGATION_LOAD_MARKER });
-      if (tournamentError) throw tournamentError;
-
-      await deleteRowsInBatches(
-        (ids) => supabase.from("tournaments").delete().eq("user_id", user.id).in("id", ids),
-        (tournaments || []).map((tournament) => tournament.id)
-      );
+      await purgeLoadDataRows();
 
       await refreshCounts();
       setMessage({ type: "success", text: "A massa de teste foi removida sem alterar seus outros dados." });
@@ -224,6 +229,10 @@ export default function HomologationLoadLab({ supabase, user }) {
   if (!eligible) return null;
 
   const hasLoadData = counts.tournaments > 0 || counts.circuits > 0 || counts.rankingRows > 0;
+  const targetRankingRows = HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT * HOMOLOGATION_LOAD_CIRCUIT_COUNT;
+  const loadDataMatchesTarget = counts.tournaments === HOMOLOGATION_LOAD_TOURNAMENT_COUNT
+    && counts.circuits === HOMOLOGATION_LOAD_CIRCUIT_COUNT
+    && counts.rankingRows === targetRankingRows;
 
   return (
     <section className="card homologationLoadLab">
@@ -241,15 +250,26 @@ export default function HomologationLoadLab({ supabase, user }) {
       </div>
 
       <p className="homologationLoadDescription">
-        Configuração do lote: {HOMOLOGATION_LOAD_TOURNAMENT_COUNT} torneios, {HOMOLOGATION_LOAD_CIRCUIT_COUNT} circuitos e {HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT * HOMOLOGATION_LOAD_CIRCUIT_COUNT} linhas de ranking.
+        Configuração ampliada: {HOMOLOGATION_LOAD_TOURNAMENT_COUNT} torneios, {HOMOLOGATION_LOAD_CIRCUIT_COUNT} circuitos, {HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT} nomes por circuito e {targetRankingRows} linhas de ranking.
       </p>
 
       {progress ? <div className="homologationLoadProgress" role="status">{progress}</div> : null}
       {message ? <div className={`homologationLoadMessage ${message.type}`} role="status">{message.text}</div> : null}
 
       <div className="homologationLoadActions">
-        <button type="button" className="actionConfirmBtn" disabled={busy || hasLoadData} onClick={createLoadData}>
-          {busy && !hasLoadData ? "Gerando..." : "Criar massa de teste"}
+        <button
+          type="button"
+          className="actionConfirmBtn"
+          disabled={busy || loadDataMatchesTarget}
+          onClick={() => createLoadData({ replaceExisting: hasLoadData })}
+        >
+          {busy
+            ? "Gerando massa ampliada..."
+            : loadDataMatchesTarget
+              ? "Massa ampliada pronta"
+              : hasLoadData
+                ? "Ampliar massa de teste"
+                : "Criar massa ampliada"}
         </button>
         <button type="button" className="deleteBtn" disabled={busy || !hasLoadData} onClick={removeLoadData}>
           Remover massa de teste

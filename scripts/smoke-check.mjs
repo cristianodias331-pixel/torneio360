@@ -74,10 +74,12 @@ import {
   HOMOLOGATION_LOAD_MARKER,
   HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT,
   HOMOLOGATION_LOAD_TOURNAMENT_COUNT,
+  HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT,
   assertHomologationLoadTarget,
   buildHomologationCircuitHistoryRows,
   buildHomologationCircuitRows,
   buildHomologationTournamentRows,
+  isHomologationLoadCircuit,
 } from "../src/domain/homologationLoadData.mjs";
 import {
   getMaxScore,
@@ -6021,6 +6023,30 @@ assert.throws(
   /banco oficial/i,
   "O laboratório deixou de recusar explicitamente o banco oficial."
 );
+assert.equal(
+  isHomologationLoadCircuit(
+    { name: "Circuito normal", ranking_settings: { loadTestMarker: HOMOLOGATION_LOAD_MARKER } },
+    []
+  ),
+  true,
+  "Um circuito explicitamente marcado deixou de ser reconhecido como massa de teste."
+);
+assert.equal(
+  isHomologationLoadCircuit(
+    { name: "[TESTE DE CARGA] Legado", tournament_ids: ["load-1", "load-2"] },
+    new Set(["load-1", "load-2"])
+  ),
+  true,
+  "Um circuito legado ligado somente a torneios de teste deixou de ser removível."
+);
+assert.equal(
+  isHomologationLoadCircuit(
+    { name: "[TESTE DE CARGA] Não apagar", tournament_ids: ["load-1", "real-1"] },
+    new Set(["load-1"])
+  ),
+  false,
+  "A remoção do laboratório passou a alcançar um circuito ligado a dados reais."
+);
 const loadTestBatchId = "11111111-2222-4333-8444-555555555555";
 const loadTestUserId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 const loadTestNow = new Date("2026-08-25T12:00:00.000Z");
@@ -6029,8 +6055,12 @@ const loadTestTournaments = buildHomologationTournamentRows({
   batchId: loadTestBatchId,
   now: loadTestNow,
 });
-assert.equal(loadTestTournaments.length, HOMOLOGATION_LOAD_TOURNAMENT_COUNT, "A massa não gera mais os 50 torneios previstos.");
-assert.equal(loadTestTournaments.filter((row) => row.status === "finished").length, 35, "A proporção de torneios finalizados da massa foi alterada.");
+assert.equal(loadTestTournaments.length, HOMOLOGATION_LOAD_TOURNAMENT_COUNT, "A massa não gera mais a quantidade ampliada de torneios prevista.");
+assert.equal(
+  loadTestTournaments.filter((row) => row.status === "finished").length,
+  Math.round(HOMOLOGATION_LOAD_TOURNAMENT_COUNT * 0.7),
+  "A proporção de torneios finalizados da massa foi alterada."
+);
 assert.ok(
   loadTestTournaments.every((row) => row.data.loadTestMarker === HOMOLOGATION_LOAD_MARKER && row.data.schedule.length > 0),
   "Algum torneio de carga perdeu a identificação ou as partidas."
@@ -6051,8 +6081,11 @@ const loadTestCircuits = buildHomologationCircuitRows({
   tournaments: insertedLoadTournaments,
   now: loadTestNow,
 });
-assert.equal(loadTestCircuits.length, HOMOLOGATION_LOAD_CIRCUIT_COUNT, "A massa não gera mais os oito circuitos previstos.");
-assert.ok(loadTestCircuits.every((row) => row.tournament_ids.length === 10), "Os circuitos de carga perderam suas dez etapas.");
+assert.equal(loadTestCircuits.length, HOMOLOGATION_LOAD_CIRCUIT_COUNT, "A massa não gera mais a quantidade ampliada de circuitos prevista.");
+assert.ok(
+  loadTestCircuits.every((row) => row.tournament_ids.length === HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT),
+  "Os circuitos de carga perderam a quantidade ampliada de etapas."
+);
 const loadTestHistory = buildHomologationCircuitHistoryRows({
   circuit: { ...loadTestCircuits[0], id: "99999999-9999-4999-8999-999999999999" },
   now: loadTestNow,

@@ -7,9 +7,10 @@ export const HOMOLOGATION_PROJECT_REF = "vcixhzvytkrautotinpi";
 export const OFFICIAL_PROJECT_REF = "dttutybojealkvuywszt";
 export const HOMOLOGATION_LOAD_EMAIL = "torneio360@gmail.com";
 export const HOMOLOGATION_LOAD_MARKER = "torneio360-organizer-load-lab-v1";
-export const HOMOLOGATION_LOAD_TOURNAMENT_COUNT = 50;
-export const HOMOLOGATION_LOAD_CIRCUIT_COUNT = 8;
-export const HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT = 500;
+export const HOMOLOGATION_LOAD_TOURNAMENT_COUNT = 200;
+export const HOMOLOGATION_LOAD_CIRCUIT_COUNT = 30;
+export const HOMOLOGATION_LOAD_RANKING_ROWS_PER_CIRCUIT = 1500;
+export const HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT = 20;
 export const HOMOLOGATION_LOAD_CIRCUIT_PREFIX = "[TESTE DE CARGA]";
 
 const LOAD_MODALITIES = [
@@ -61,6 +62,19 @@ export function assertHomologationLoadTarget({ supabaseUrl, userEmail }) {
   }
 
   return { projectRef, email: normalizedEmail };
+}
+
+export function isHomologationLoadCircuit(circuit, tournamentIds = []) {
+  if (circuit?.ranking_settings?.loadTestMarker === HOMOLOGATION_LOAD_MARKER) return true;
+  const loadTournamentIds = tournamentIds instanceof Set
+    ? tournamentIds
+    : new Set((Array.isArray(tournamentIds) ? tournamentIds : []).map((id) => String(id)));
+  const linkedIds = Array.isArray(circuit?.tournament_ids)
+    ? circuit.tournament_ids.map((id) => String(id))
+    : [];
+  return String(circuit?.name || "").startsWith(HOMOLOGATION_LOAD_CIRCUIT_PREFIX)
+    && linkedIds.length > 0
+    && linkedIds.every((id) => loadTournamentIds.has(id));
 }
 
 function addDays(date, days) {
@@ -198,7 +212,7 @@ export function buildHomologationCircuitRows({
 
   const baseDate = new Date(now);
   return Array.from({ length: count }, (_, index) => {
-    const linked = Array.from({ length: 10 }, (_, offset) => (
+    const linked = Array.from({ length: HOMOLOGATION_LOAD_TOURNAMENTS_PER_CIRCUIT }, (_, offset) => (
       tournaments[(index * 6 + offset) % tournaments.length]
     ));
     const finished = index < Math.round(count * 0.75);
