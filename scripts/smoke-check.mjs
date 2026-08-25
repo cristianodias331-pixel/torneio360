@@ -4599,6 +4599,7 @@ assert.ok(
 assert.ok(
   tournamentWorkspaceTabsSource.includes("export default function TournamentWorkspaceTabs")
     && tournamentWorkspaceTabsSource.includes("MatchStatusSummary")
+    && tournamentWorkspaceTabsSource.includes('<MatchStatusSummary data={tournament.data} compact vertical />')
     && tournamentWorkspaceTabsSource.includes('className="desktopTournamentTabs"')
     && tournamentWorkspaceTabsSource.includes('className="mobileTournamentWorkspaceActions"')
     && tournamentWorkspaceTabsSource.includes("Central de torneios")
@@ -4698,9 +4699,10 @@ assert.ok(
 assert.ok(
     matchScheduleSource.includes('<ScheduleStatusFilters')
     && cupBracketViewSource.includes('<MatchStatusSummary')
-    && !cupBracketViewSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
+    && cupBracketViewSource.includes('scope="bracket"')
+    && cupBracketViewSource.includes('bracketMatchKeys={currentPhaseMatchKeys}')
     && tournamentOperationsSource.includes('scope !== "all" && item.scope !== scope'),
-  "O resumo interno deixou de usar a mesma visão geral exibida na aba do torneio."
+  "A fase de grupos ou o resumo isolado da chave aberta está ausente."
 );
 assert.ok(
   matchScheduleSource.includes('className="scheduleSearch"')
@@ -6003,6 +6005,17 @@ assert.deepEqual(
   }),
   { waiting: 1, inProgress: 1, finished: 1, total: 3 },
   "As fases próprias dos outros modelos de copa não podem ser ocultadas pelas opções exclusivas do Cearense."
+);
+assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary({
+    ...disabledCearenseParallelData,
+    cupConfig: { format: "playranking" },
+  }, {
+    scope: "bracket",
+    bracketMatchKeys: ["repechage_sf_1"],
+  }),
+  { waiting: 0, inProgress: 1, finished: 0, total: 1 },
+  "O resumo de uma disputa eliminatória deve contar somente os jogos da chave aberta."
 );
 assert.deepEqual(
   tournamentOperationsForTest.getTournamentTimingSummary({
