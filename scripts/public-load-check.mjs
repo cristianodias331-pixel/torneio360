@@ -4,6 +4,7 @@ const supabaseUrl = String(process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "
 const anonKey = String(process.env.VITE_SUPABASE_ANON_KEY || "");
 const expectedProjectRef = String(process.env.EXPECTED_SUPABASE_PROJECT_REF || "");
 const concurrency = Number(process.env.LOAD_CONCURRENCY || 40);
+const scenarioCooldownMs = Math.max(0, Number(process.env.LOAD_SCENARIO_COOLDOWN_MS || 1500));
 
 if (!supabaseUrl || !anonKey) {
   throw new Error("Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para executar o teste de carga.");
@@ -13,6 +14,12 @@ if (expectedProjectRef && !supabaseUrl.includes(expectedProjectRef)) {
 }
 if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 200) {
   throw new Error("LOAD_CONCURRENCY deve ser um número inteiro entre 1 e 200.");
+}
+
+function waitForScenarioCooldown() {
+  return scenarioCooldownMs > 0
+    ? new Promise((resolve) => setTimeout(resolve, scenarioCooldownMs))
+    : Promise.resolve();
 }
 
 const headers = {
@@ -105,6 +112,7 @@ const firstArenaId = directory.results
 
 const scenarios = [directory.summary];
 if (firstArenaId) {
+  await waitForScenarioCooldown();
   await rpc("get_public_arena_overview", {
     p_organizer_id: firstArenaId,
     p_public_id: null,
@@ -120,6 +128,7 @@ if (firstArenaId) {
   );
   scenarios.push(arenaOverview.summary);
 
+  await waitForScenarioCooldown();
   await rpc("list_public_arena_events_page", {
     p_organizer_id: firstArenaId,
     p_public_id: null,
@@ -143,33 +152,26 @@ if (firstArenaId) {
   );
   scenarios.push(arenaEventsPage.summary);
 
+  await waitForScenarioCooldown();
+  await rpc("get_public_arena_initial_view", {
+    p_organizer_id: firstArenaId,
+    p_public_id: null,
+    p_limit: 8,
+  });
   const initialPublicProfile = await runScenario(
     "Acesso inicial completo ao perfil",
     concurrency,
-    async () => {
-      const startedAt = performance.now();
-      const overview = await rpc("get_public_arena_overview", {
-        p_organizer_id: firstArenaId,
-        p_public_id: null,
-      });
-      const events = await rpc("list_public_arena_events_page", {
-        p_organizer_id: firstArenaId,
-        p_public_id: null,
-        p_kind: "tournaments",
-        p_status: "active",
-        p_limit: 8,
-        p_offset: 0,
-      });
-      return {
-        elapsedMs: performance.now() - startedAt,
-        bytes: overview.bytes + events.bytes,
-      };
-    },
-    { maxP95Ms: 5000 },
+    () => rpc("get_public_arena_initial_view", {
+      p_organizer_id: firstArenaId,
+      p_public_id: null,
+      p_limit: 8,
+    }),
+    { maxP95Ms: 3000 },
   );
   scenarios.push(initialPublicProfile.summary);
 }
 
+await waitForScenarioCooldown();
 await rpc("get_public_tournament_if_changed", {
   p_public_id: "__performance_missing__",
   p_known_updated_at: null,

@@ -568,6 +568,7 @@ const {
   fetchPublicArenaBundle,
   fetchPublicArenaDirectory,
   fetchPublicArenaEventsPage,
+  fetchPublicArenaInitialView,
   fetchPublicArenaPhoto,
   fetchPublicCircuitCover,
   fetchPublicCircuitDetail,
@@ -13596,7 +13597,10 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     bundleRequestInFlightRef.current = true;
     if (!silent) setLoading(true);
     try {
-      const result = await fetchPublicArenaBundle({ arenaId, publicId });
+      const initialView = silent
+        ? null
+        : await fetchPublicArenaInitialView({ arenaId, publicId });
+      const result = initialView?.bundle || await fetchPublicArenaBundle({ arenaId, publicId });
 
       if (result.error || !result.data?.profile) {
         console.error(result.error);
@@ -13606,7 +13610,11 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
         }
       } else {
         const usesServerPagination = result.data.pagination?.enabled === true;
-        const tournamentsWithCachedCovers = (result.data.tournaments || []).map((tournament) => {
+        const initialActiveTournaments = usesServerPagination && initialView?.activeTournaments?.data
+          ? initialView.activeTournaments.data
+          : null;
+        const initialTournamentRows = initialActiveTournaments?.items || result.data.tournaments || [];
+        const tournamentsWithCachedCovers = initialTournamentRows.map((tournament) => {
           const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
           return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
         });
@@ -13639,6 +13647,17 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
                 };
               });
             });
+            if (initialActiveTournaments) {
+              next.tournaments.active = {
+                ...next.tournaments.active,
+                loaded: true,
+                loading: false,
+                error: "",
+                total: initialActiveTournaments.total,
+                hasMore: initialActiveTournaments.hasMore,
+                nextOffset: initialActiveTournaments.nextOffset,
+              };
+            }
             return next;
           });
         } else {

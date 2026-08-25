@@ -20,6 +20,7 @@ export function createPublicArenaApi({ supabase }) {
   let pagedDirectoryRpcAvailable = null;
   let arenaOverviewRpcAvailable = null;
   let arenaEventPaginationRpcAvailable = null;
+  let arenaInitialViewRpcAvailable = null;
   const legacyDirectorySnapshots = new Map();
   const publicCoverCache = new Map();
   const publicCoverRequests = new Map();
@@ -277,6 +278,65 @@ export function createPublicArenaApi({ supabase }) {
     }
   }
 
+  async function fetchPublicArenaInitialView({ arenaId = null, publicId = null } = {}) {
+    if (arenaInitialViewRpcAvailable !== false) {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
+      try {
+        const result = await supabase.rpc("get_public_arena_initial_view", {
+          p_organizer_id: arenaId || null,
+          p_public_id: publicId || null,
+          p_limit: PUBLIC_ARENA_EVENT_PAGE_SIZE,
+        }).abortSignal(controller.signal);
+        const functionMissing = result.error && /get_public_arena_initial_view|function.*does not exist|schema cache/i.test(
+          `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+        );
+
+        if (functionMissing) {
+          arenaInitialViewRpcAvailable = false;
+        } else if (!result.error && result.data?.bundle) {
+          arenaInitialViewRpcAvailable = true;
+          arenaOverviewRpcAvailable = true;
+          arenaEventPaginationRpcAvailable = true;
+          const bundleData = result.data.bundle;
+          const page = result.data.active_tournaments || {};
+          if (bundleData?.profile) writePublicArenaBundleCache({ arenaId, publicId }, bundleData);
+          return {
+            bundle: { data: bundleData, error: null, fromCache: false },
+            activeTournaments: {
+              data: {
+                items: Array.isArray(page.items) ? page.items.filter((item) => item?.id) : [],
+                total: Math.max(0, Number(page.total) || 0),
+                hasMore: page.has_more === true,
+                nextOffset: Math.max(0, Number(page.next_offset) || 0),
+              },
+              error: null,
+              available: true,
+            },
+          };
+        }
+      } catch (error) {
+        // A leitura antiga abaixo mantém o perfil disponível durante falhas transitórias.
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+
+    const bundle = await fetchPublicArenaBundle({ arenaId, publicId });
+    const activeTournaments = bundle.error || !bundle.data?.profile
+      ? { data: null, error: bundle.error, available: arenaEventPaginationRpcAvailable !== false }
+      : await fetchPublicArenaEventsPage({
+        arenaId,
+        publicId,
+        kind: "tournaments",
+        status: "active",
+        limit: PUBLIC_ARENA_EVENT_PAGE_SIZE,
+        offset: 0,
+      });
+
+    return { bundle, activeTournaments };
+  }
+
   async function fetchPublicTournamentDetail(publicId) {
     const normalizedPublicId = String(publicId || "").trim();
     if (!normalizedPublicId) {
@@ -453,6 +513,7 @@ export function createPublicArenaApi({ supabase }) {
     fetchPublicArenaBundle,
     fetchPublicArenaDirectory,
     fetchPublicArenaEventsPage,
+    fetchPublicArenaInitialView,
     fetchPublicArenaPhoto,
     fetchPublicCircuitCover,
     fetchPublicCircuitDetail,

@@ -528,6 +528,22 @@ const circuitChangeFeedMigrationSource = readFileSync(
   new URL("supabase/migrations/202608250003_circuit_change_feed.sql", root),
   "utf8"
 );
+const publicArenaInitialViewMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250004_public_arena_initial_view.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewOptimizedMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250005_public_arena_initial_view_optimized.sql", root),
+  "utf8"
+);
+const organizerScaleCheckSource = readFileSync(
+  new URL("scripts/organizer-scale-check.sql", root),
+  "utf8"
+);
+const browserPerformanceCheckSource = readFileSync(
+  new URL("scripts/browser-performance-check.mjs", root),
+  "utf8"
+);
 const latestEntitySignalProcessorSource = readFileSync(
   new URL("src/services/latestEntitySignalProcessor.mjs", root),
   "utf8"
@@ -1473,9 +1489,24 @@ assert.equal(
     && publicArenaEventPaginationMigrationSource.includes("create or replace function public.list_public_arena_events_page")
     && publicArenaEventPaginationMigrationSource.includes("drop trigger if exists tournaments_refresh_public_arena_snapshot")
     && publicArenaEventPaginationMigrationSource.includes("get_public_circuit_with_tournaments")
+    && publicArenaInitialViewMigrationSource.includes("create or replace function public.get_public_arena_initial_view")
+    && publicArenaInitialViewMigrationSource.includes("public.get_public_arena_overview(owner_id, null)")
+    && publicArenaInitialViewMigrationSource.includes("public.list_public_arena_events_page(")
+    && publicArenaInitialViewOptimizedMigrationSource.includes("with candidates as materialized")
+    && publicArenaInitialViewOptimizedMigrationSource.includes("from counts cross join page_payload")
+    && organizerScaleCheckSource.trimStart().startsWith("begin;")
+    && organizerScaleCheckSource.includes("cross join generate_series(1, 1000)")
+    && organizerScaleCheckSource.includes("cross join generate_series(1, 250)")
+    && organizerScaleCheckSource.trimEnd().endsWith("rollback;")
+    && browserPerformanceCheckSource.includes("--headless=new")
+    && browserPerformanceCheckSource.includes(".publicPage.publicArenaPage")
+    && browserPerformanceCheckSource.includes("profileVisibleMs")
     && publicArenaApiSource.includes("fetchPublicArenaEventsPage")
+    && publicArenaApiSource.includes("fetchPublicArenaInitialView")
+    && publicArenaApiSource.includes('rpc("get_public_arena_initial_view"')
     && publicArenaApiSource.includes('rpc("list_public_arena_events_page"')
     && mainSource.includes("PUBLIC_ARENA_EVENT_PAGE_SIZE")
+    && mainSource.includes("fetchPublicArenaInitialView({ arenaId, publicId })")
     && mainSource.includes("loadPublicEventPage")
     && publicArenaPresentationSource.includes("serverPagination")
     && publicArenaPresentationSource.includes("serverPagination.onLoadMore"),
