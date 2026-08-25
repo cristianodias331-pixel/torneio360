@@ -11032,16 +11032,8 @@ return (
         <div>
           <div className="tournamentHeaderTitleRow">
             <h1>{tournament.name}</h1>
-            <button
-              type="button"
-              className="tournamentHeaderDetailsToggle"
-              onClick={() => setHeaderDetailsOpen((open) => !open)}
-              aria-expanded={headerDetailsOpen}
-            >
-              Informações <ChevronDown aria-hidden="true" />
-            </button>
           </div>
-          <div className="tournamentHeaderMeta">
+          <div className="tournamentHeaderMeta" id="tournament-header-details">
             <span><Trophy aria-hidden="true" /> {getModalityDisplayName(tournament.type)}</span>
             {data.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> Várias categorias</span> : null}
             {getTournamentClassificationLabels(data).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
@@ -11058,6 +11050,15 @@ return (
         </div>
 
         <div className="actions tournamentHeaderActions">
+          <button
+            type="button"
+            className="tournamentHeaderDetailsToggle"
+            onClick={() => setHeaderDetailsOpen((open) => !open)}
+            aria-controls="tournament-header-details"
+            aria-expanded={headerDetailsOpen}
+          >
+            Informações <ChevronDown aria-hidden="true" />
+          </button>
           <button
             type="button"
             className="tournamentHeaderShareButton"

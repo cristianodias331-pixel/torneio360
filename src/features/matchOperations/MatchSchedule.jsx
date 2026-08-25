@@ -290,13 +290,14 @@ export default function ScheduleView({
   return (
     <div className={`schedule ${readOnly ? "readOnlySchedule publicSchedule" : ""}`}>
       {!readOnly ? (
-        <VoiceRepeatSelector
-          voiceRepeat={voiceRepeat}
-          setVoiceRepeat={setVoiceRepeat}
-        />
+        <div className="scheduleOverviewToolbar" aria-label="Controles e resumo dos jogos">
+          {statusData ? <MatchStatusSummary data={statusData} /> : null}
+          <VoiceRepeatSelector
+            voiceRepeat={voiceRepeat}
+            setVoiceRepeat={setVoiceRepeat}
+          />
+        </div>
       ) : null}
-
-      {!readOnly && statusData ? <MatchStatusSummary data={statusData} /> : null}
 
       {showGroupName ? (
         <>

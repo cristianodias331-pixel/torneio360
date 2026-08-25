@@ -1301,15 +1301,6 @@ html[data-theme="dark"] .summaryStatus.is-waiting i,
   transform: none;
 }
 
-@media (hover: hover) and (min-width: 1025px) {
-  .tournamentWorkspaceHeader:hover .tournamentHeaderMeta {
-    max-height: 220px;
-    margin-top: 10px;
-    opacity: 1;
-    transform: none;
-  }
-}
-
 .tournamentHeaderActions {
   display: flex !important;
   flex-wrap: nowrap !important;
@@ -1383,19 +1374,21 @@ html[data-theme="dark"] .summaryStatus.is-waiting i,
   font-size: 20px !important;
 }
 
-.tournamentMatchesSection .voiceRepeatBox {
-  min-height: 42px;
+.tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox {
+  min-height: 32px;
   margin-bottom: 0;
-  padding: 5px 8px;
-  border-radius: 11px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
-.tournamentMatchesSection .voiceRepeatBox span {
+.tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox span {
   font-size: 11.5px;
   font-weight: 650;
 }
 
-.tournamentMatchesSection .voiceRepeatBox select {
+.tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox select {
   min-height: 32px;
   padding-block: 5px;
   font-size: 11px;
