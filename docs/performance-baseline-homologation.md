@@ -40,6 +40,19 @@ Data da medição: 25/08/2026
 
 O p95 indica que 95% das medições terminaram naquele tempo ou mais rápido. Esta referência cobre o tráfego público de leitura; operações autenticadas de administração e renderização completa em navegadores reais devem ser avaliadas separadamente quando houver dados e usuários de homologação representativos.
 
+## Carregamento inicial da interface
+
+O commit `4676907` passou a carregar sob demanda as áreas pesadas de chaves, partidas, ranking, participantes, circuitos, diálogos, mídia e configurações. A alteração não modifica regras, placares, confrontos, persistência ou dados salvos.
+
+| Pacote inicial | Antes | Depois | Redução |
+| --- | ---: | ---: | ---: |
+| JavaScript | 711,39 kB | 499,56 kB | 29,8% |
+| JavaScript compactado | 185,97 kB | 129,61 kB | 30,3% |
+| CSS | 672,52 kB | 672,53 kB | sem alteração relevante |
+| CSS compactado | 102,54 kB | 102,80 kB | sem alteração relevante |
+
+O CSS foi preservado nesta etapa porque a folha atual é fortemente compartilhada entre as telas. Dividi-la agora aumentaria o risco visual sem ganho significativo, já que sua transferência compactada está próxima de 103 kB. A validação local cobriu início, perfil público, torneio público, partidas, ranking, autenticação e largura móvel de 390 px, sem erro de carregamento.
+
 ## Como repetir
 
 O utilitário `scripts/public-load-check.mjs` aceita `LOAD_CONCURRENCY` entre 1 e 200. As variáveis `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `EXPECTED_SUPABASE_PROJECT_REF` devem apontar explicitamente para a homologação antes da execução de `pnpm test:load:public`.
