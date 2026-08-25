@@ -569,6 +569,26 @@ const publicArenaInitialViewOptimizedMigrationSource = readFileSync(
   new URL("supabase/migrations/202608250005_public_arena_initial_view_optimized.sql", root),
   "utf8"
 );
+const publicCircuitRankingPerformanceMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250006_public_circuit_ranking_performance.sql", root),
+  "utf8"
+);
+const publicCircuitSnapshotCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250007_public_circuit_snapshot_cache.sql", root),
+  "utf8"
+);
+const publicCircuitCacheWriteModeMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250008_public_circuit_cache_write_mode.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250009_public_arena_initial_view_cache.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewCacheFixMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250010_public_arena_initial_view_cache_fix.sql", root),
+  "utf8"
+);
 const organizerScaleCheckSource = readFileSync(
   new URL("scripts/organizer-scale-check.sql", root),
   "utf8"
@@ -1573,6 +1593,19 @@ assert.equal(
     && publicArenaInitialViewMigrationSource.includes("public.list_public_arena_events_page(")
     && publicArenaInitialViewOptimizedMigrationSource.includes("with candidates as materialized")
     && publicArenaInitialViewOptimizedMigrationSource.includes("from counts cross join page_payload")
+    && publicCircuitRankingPerformanceMigrationSource.includes("valid_tournaments as materialized")
+    && publicCircuitRankingPerformanceMigrationSource.includes("circuit_ranking_history_public_read_idx")
+    && publicCircuitSnapshotCacheMigrationSource.includes("create table if not exists public.public_circuit_snapshots")
+    && publicCircuitSnapshotCacheMigrationSource.includes("pg_advisory_xact_lock")
+    && publicCircuitSnapshotCacheMigrationSource.includes("referencing new table as inserted_rows")
+    && publicCircuitSnapshotCacheMigrationSource.includes("refresh_public_circuit_snapshot")
+    && publicCircuitCacheWriteModeMigrationSource.includes("get_public_circuit_with_tournaments(uuid) volatile")
+    && publicArenaInitialViewCacheMigrationSource.includes("create table if not exists public.public_arena_initial_snapshots")
+    && publicArenaInitialViewCacheMigrationSource.includes("date_trunc('minute', statement_timestamp())")
+    && publicArenaInitialViewCacheMigrationSource.includes("pg_advisory_xact_lock")
+    && publicArenaInitialViewCacheMigrationSource.includes("tournaments_invalidate_public_arena_initial_snapshot")
+    && publicArenaInitialViewCacheFixMigrationSource.includes("requested_limit integer")
+    && !publicArenaInitialViewCacheFixMigrationSource.includes("snapshot.page_limit = page_limit")
     && organizerScaleCheckSource.trimStart().startsWith("begin;")
     && organizerScaleCheckSource.includes("cross join generate_series(1, 1000)")
     && organizerScaleCheckSource.includes("cross join generate_series(1, 250)")

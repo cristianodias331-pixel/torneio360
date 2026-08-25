@@ -6,6 +6,7 @@ const expectedProjectRef = String(process.env.EXPECTED_SUPABASE_PROJECT_REF || "
 const configuredArenaId = String(process.env.LOAD_ARENA_ID || "").trim() || null;
 const concurrency = Number(process.env.LOAD_CONCURRENCY || 40);
 const scenarioCooldownMs = Math.max(0, Number(process.env.LOAD_SCENARIO_COOLDOWN_MS || 1500));
+const diagnosticMaxP95Ms = Math.max(0, Number(process.env.LOAD_DIAGNOSTIC_MAX_P95_MS || 0));
 
 if (!supabaseUrl || !anonKey) {
   throw new Error("Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para executar o teste de carga.");
@@ -84,8 +85,9 @@ async function runScenario(name, requests, requestFactory, { maxP95Ms = 3000 } =
     const firstError = errors[0] instanceof Error ? errors[0].message : String(errors[0]);
     throw new Error(`${name}: ${errors.length}/${requests} requisições falharam. Primeira falha: ${firstError}`);
   }
-  if (summary.p95Ms > maxP95Ms) {
-    throw new Error(`${name}: p95 de ${summary.p95Ms} ms ultrapassou o limite de ${maxP95Ms} ms.`);
+  const effectiveMaxP95Ms = diagnosticMaxP95Ms || maxP95Ms;
+  if (summary.p95Ms > effectiveMaxP95Ms) {
+    throw new Error(`${name}: p95 de ${summary.p95Ms} ms ultrapassou o limite de ${effectiveMaxP95Ms} ms.`);
   }
   return { summary, results };
 }
