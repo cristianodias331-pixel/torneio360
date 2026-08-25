@@ -19,14 +19,16 @@ export function ParallelDisputeChoice({
   FormatExplanationButton,
 }) {
   const isSecond = kind === "second";
-  const ordinal = isSecond ? "2ª" : "3ª";
+  // Os nomes internos foram mantidos para compatibilidade com torneios salvos.
+  // Na interface do Cearense, eles representam a 1ª e a 2ª disputas paralelas.
+  const ordinal = isSecond ? "1ª" : "2ª";
   const summary = getCearenseFormatSummary(teamCount, false, individual);
   const participantPlural = individual ? "jogadores" : "duplas";
   const thirdSummary = summary.thirdParallel;
   const helpSections = isSecond ? [
     {
       title: `Quem participa com ${summary.teamCount} ${participantPlural}`,
-      content: <><p>Depois que todos os jogos dos grupos terminarem, o <strong>1º e o 2º lugar de cada grupo</strong> seguem exclusivamente para a Eliminatória Principal.</p><p>As demais posições — 3º, 4º e seguintes — formam esta disputa. Com a quantidade escolhida, serão <strong>{summary.initialParallelCount} participantes na 2ª disputa paralela</strong>.</p></>,
+      content: <><p>Depois que todos os jogos dos grupos terminarem, o <strong>1º e o 2º lugar de cada grupo</strong> seguem exclusivamente para a Eliminatória Principal.</p><p>As demais posições — 3º, 4º e seguintes — formam esta disputa. Com a quantidade escolhida, serão <strong>{summary.initialParallelCount} participantes na 1ª disputa paralela</strong>.</p></>,
     },
     {
       title: "Como os participantes são ordenados",
@@ -38,7 +40,7 @@ export function ParallelDisputeChoice({
     },
     {
       title: "Independência da disputa",
-      content: <p>Os confrontos e placares desta chave são separados da Eliminatória Principal e da 3ª disputa paralela. Um resultado aqui não altera nenhuma das outras chaves.</p>,
+      content: <p>Os confrontos e placares desta chave são separados da Eliminatória Principal e da 2ª disputa paralela. Um resultado aqui não altera nenhuma das outras chaves.</p>,
     },
     {
       title: "O que acontece ao escolher Sim ou Não",
@@ -49,7 +51,7 @@ export function ParallelDisputeChoice({
       title: `Origem dos participantes com ${summary.teamCount} ${participantPlural}`,
       content: thirdSummary.eligibleCount > 0
         ? <><p>Esta disputa não recebe participantes eliminados na fase de grupos. Ela recebe <strong>{thirdSummary.eligibleCount} participantes</strong>: os derrotados nas quartas de final e, quando existir, também os derrotados na fase imediatamente anterior.</p><p>Nesta quantidade, as fases de origem são: <strong>{thirdSummary.sourceRound}</strong>. Se não houver quartas, entram os dois derrotados das semifinais.</p></>
-        : <p>Com {summary.teamCount} {participantPlural}, a Eliminatória Principal possui apenas uma final. Por isso, <strong>não existem participantes derrotados suficientes para formar a 3ª disputa paralela</strong>.</p>,
+        : <p>Com {summary.teamCount} {participantPlural}, a Eliminatória Principal possui apenas uma final. Por isso, <strong>não existem participantes derrotados suficientes para formar a 2ª disputa paralela</strong>.</p>,
     },
     {
       title: "Como a chave será montada",
@@ -59,7 +61,7 @@ export function ParallelDisputeChoice({
     },
     {
       title: "O que esta disputa não altera",
-      content: <p>Ela é independente da Eliminatória Principal e da 2ª disputa paralela. Seus jogos têm placares, campeão e vice-campeão próprios. Nenhum resultado desta chave muda os confrontos das outras duas.</p>,
+      content: <p>Ela é independente da Eliminatória Principal e da 1ª disputa paralela. Seus jogos têm placares, campeão e vice-campeão próprios. Nenhum resultado desta chave muda os confrontos das outras duas.</p>,
     },
     {
       title: "O que acontece ao escolher Sim ou Não",
@@ -159,14 +161,14 @@ export default function TournamentFormatInfoButton({
   const thirdParallelEnabled = !isPlayRanking && isCearenseThirdParallelEnabled(data);
   const visibleBracketNames = isSunset ? [
     "a Eliminatória Principal",
-    `a ${data.cupConfig?.repechageName || "1ª Disputa Paralela"}`,
-    `a ${data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}`,
-    `a ${data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}`,
+    `a ${data.cupConfig?.repechageName || "Consolation"}`,
+    `a ${data.cupConfig?.secondParallelName || "Caridade"}`,
+    `a ${data.cupConfig?.thirdRepechageName || "Também Ganhei"}`,
     `a ${data.cupConfig?.sunsetBracketName || "Etapa Sunset"}`,
   ] : [
     "a Eliminatória Principal",
-    ...(secondParallelEnabled ? [isPlayRanking ? "a Disputa Paralela" : `a ${data.cupConfig?.repechageName || "2ª Disputa Paralela"}`] : []),
-    ...(thirdParallelEnabled ? [`a ${data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}`] : []),
+    ...(secondParallelEnabled ? [`a ${data.cupConfig?.repechageName || (isPlayRanking ? "Consolation" : "1ª Disputa Paralela")}`] : []),
+    ...(thirdParallelEnabled ? [`a ${data.cupConfig?.thirdRepechageName || "2ª Disputa Paralela"}`] : []),
   ];
   const criteriaStepNumber = isSunset
     ? 8
@@ -236,7 +238,7 @@ export default function TournamentFormatInfoButton({
               <div><strong>{summary.mainCount}</strong><span>na principal</span></div>
               {secondParallelEnabled ? <div><strong>{summary.initialParallelCount}</strong><span>na paralela após os grupos</span></div> : null}
               {isPlayRanking ? <div><strong>+{summary.transferredCount}</strong><span>vindas da primeira fase</span></div> : null}
-              {thirdParallelEnabled && !isSunset ? <div><strong>{summary.thirdParallel.eligibleCount}</strong><span>na 3ª paralela</span></div> : null}
+              {thirdParallelEnabled && !isSunset ? <div><strong>{summary.thirdParallel.eligibleCount}</strong><span>na 2ª paralela</span></div> : null}
               {isSunset ? <div><strong>Até 4</strong><span>campeãs na etapa Sunset</span></div> : null}
             </div>
 
@@ -259,7 +261,7 @@ export default function TournamentFormatInfoButton({
                   <h3>Destino depois dos grupos</h3>
                   <p>O 1º e o 2º lugar de cada grupo avançam. Assim, <strong>{summary.mainCount} participantes</strong> entram na Eliminatória Principal.</p>
                   {secondParallelEnabled ? (
-                    <p>Os outros <strong>{summary.initialParallelCount} participantes</strong> entram na {isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}.</p>
+                    <p>Os outros <strong>{summary.initialParallelCount} participantes</strong> entram na {data.cupConfig?.repechageName || (isPlayRanking ? "Consolation" : "1ª Disputa Paralela")}.</p>
                   ) : (
                     <p>Os participantes abaixo do 2º lugar não participam de uma disputa paralela visível neste evento.</p>
                   )}
@@ -295,7 +297,7 @@ export default function TournamentFormatInfoButton({
                 <article>
                   <span className="formatInfoStep">{isPlayRanking ? 5 : 4}</span>
                   <div>
-                    <h3>{isPlayRanking ? "Disputa Paralela" : (data.cupConfig?.repechageName || "2ª Disputa Paralela")}</h3>
+                    <h3>{data.cupConfig?.repechageName || (isPlayRanking ? "Consolation" : "1ª Disputa Paralela")}</h3>
                     {isPlayRanking ? (
                       <>
                         <p>A chave terá <strong>{summary.finalParallelCount} duplas</strong>: {summary.initialParallelCount} vindas dos grupos e {summary.transferredCount} da primeira fase da Principal.</p>
@@ -316,7 +318,7 @@ export default function TournamentFormatInfoButton({
                 <article>
                   <span className="formatInfoStep">{secondParallelEnabled ? 5 : 4}</span>
                   <div>
-                    <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
+                    <h3>{data.cupConfig?.thirdRepechageName || "2ª Disputa Paralela"}</h3>
                     {summary.thirdParallel.eligibleCount > 0 ? (
                       <>
                         <p>Entram <strong>{summary.thirdParallel.eligibleCount} participantes</strong> derrotados em {summary.thirdParallel.sourceRound}: os eliminados nas quartas e, quando existir, também os eliminados na fase imediatamente anterior.</p>
@@ -334,7 +336,7 @@ export default function TournamentFormatInfoButton({
                   <article>
                     <span className="formatInfoStep">5</span>
                     <div>
-                      <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
+                      <h3>{data.cupConfig?.secondParallelName || "Caridade"}</h3>
                       <p>Recebe exclusivamente as duplas derrotadas na fase de oitavas da Eliminatória Principal. Quando a abertura da chave de 16 tiver BYEs, entram apenas as derrotadas nos confrontos realmente disputados.</p>
                       <p>Quando não houver eliminadas suficientes nas oitavas para formar esta chave, a dupla vice-campeã da Eliminatória Principal será considerada automaticamente a vencedora da 2ª disputa paralela.</p>
                     </div>
@@ -342,7 +344,7 @@ export default function TournamentFormatInfoButton({
                   <article>
                     <span className="formatInfoStep">6</span>
                     <div>
-                      <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
+                      <h3>{data.cupConfig?.thirdRepechageName || "Também Ganhei"}</h3>
                       <p>Recebe exclusivamente as quatro — ou menos, quando houver BYEs — duplas derrotadas nas quartas de final da Eliminatória Principal.</p>
                       <p>Com duas participantes, haverá final direta; com quatro, semifinais e final.</p>
                     </div>

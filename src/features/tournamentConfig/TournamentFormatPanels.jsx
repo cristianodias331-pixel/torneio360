@@ -160,11 +160,11 @@ export default function CupConfigPanel({
           />
         ) : (
           <div>
-            <label>{isCopinha ? "Nome da consolação" : isSunset ? "Nome da 1ª disputa paralela" : isCearenseFamily || isCup18 || isCup21 ? "Nome da disputa paralela" : "Nome da repescagem"}</label>
+            <label>{isCopinha ? "Nome da consolação" : isSunset || isPlayRanking ? "Nome da 1ª disputa paralela" : isCearenseFamily || isCup18 || isCup21 ? "Nome da disputa paralela" : "Nome da repescagem"}</label>
             <input
               value={cupConfig.repechageName || config.defaultRepechageName}
               onChange={(event) => updateCupConfig("repechageName", event.target.value)}
-              placeholder={isCopinha ? "Consolação" : isCearenseFamily || isCup18 || isCup21 ? "Disputa Paralela" : "Repescagem"}
+              placeholder={isCopinha ? "Consolação" : isSunset || isPlayRanking ? "Consolation" : isCearenseFamily || isCup18 || isCup21 ? "Disputa Paralela" : "Repescagem"}
             />
           </div>
         )}
@@ -188,7 +188,7 @@ export default function CupConfigPanel({
               <input
                 value={cupConfig.secondParallelName || config.defaultSecondParallelName}
                 onChange={(event) => updateCupConfig("secondParallelName", event.target.value)}
-                placeholder="2ª Disputa Paralela"
+                placeholder="Caridade"
               />
             </div>
             <div>
@@ -196,7 +196,7 @@ export default function CupConfigPanel({
               <input
                 value={cupConfig.thirdRepechageName || config.defaultThirdRepechageName}
                 onChange={(event) => updateCupConfig("thirdRepechageName", event.target.value)}
-                placeholder="3ª Disputa Paralela"
+                placeholder="Também Ganhei"
               />
             </div>
             <div>
