@@ -427,7 +427,9 @@ import {
 } from "../src/domain/cupQualification.mjs";
 
 const root = new URL("../", import.meta.url);
-const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
+const mainEntrySource = readFileSync(new URL("src/main.jsx", root), "utf8");
+const organizerWorkspaceSource = readFileSync(new URL("src/OrganizerWorkspace.jsx", root), "utf8");
+const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}`;
 const lazyFeaturesSource = readFileSync(
   new URL("src/features/appShell/lazyFeatures.jsx", root),
   "utf8"
@@ -4724,7 +4726,7 @@ assert.ok(
 );
 assert.ok(
   cupPresentationSource.includes('.filter((game) => game.phase === "main")')
-    && mainSource.includes("function calculateCircuitPlacementRows")
+    && circuitRankingAggregationSource.includes("calculateCircuitPlacementRowsByConfig")
     && circuitRankingSettingsPanelSource.includes("function CircuitRankingSettingsEditor")
     && circuitRankingSettingsPanelSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
     && circuitRankingSettingsPanelSource.includes("getCircuitTieBreakLabel(settings)")

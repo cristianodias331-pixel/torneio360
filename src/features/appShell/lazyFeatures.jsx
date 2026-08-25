@@ -28,6 +28,9 @@ export const PublicTournamentScreenView = React.lazy(
 export const PublicPlatformHomeController = React.lazy(
   () => import("../publicArena/PublicPlatformHomeController.jsx")
 );
+export const OrganizerWorkspaceDashboard = React.lazy(
+  () => import("../../OrganizerWorkspace.jsx")
+);
 export const LoginScreen = React.lazy(() => import("../auth/LoginScreen.jsx"));
 export const EmailConfirmationPendingScreen = lazyNamed(
   () => import("../auth/LoginScreen.jsx"),
