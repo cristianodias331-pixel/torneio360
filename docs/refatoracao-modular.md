@@ -69,6 +69,7 @@ src/
     cearenseThirdParallel.mjs # origens e cruzamentos da 3ª disputa paralela
     circuitRankingAggregation.mjs # reunião e ordenação final dos rankings dos circuitos
     circuitPlacement.mjs # classificação final e pontos por fase dos circuitos
+    circuitDirectory.mjs # campos leves, normalização e consultas da listagem de circuitos
     circuitRankingSettings.mjs # pontos, desempates e inclusões manuais dos circuitos
     courtNumbers.mjs  # numeração e apresentação lógica das quadras
     cupBracketConstruction.mjs # planos fixos, preliminares e BYEs visuais das Copas
@@ -94,6 +95,9 @@ src/
     scoreRules.mjs    # validação de placares e identificação do vencedor
     sunsetBracket.mjs # paralelas e confronto final entre campeões da Copa Sunset
     tournamentRanking.mjs # cálculo do ranking diário e acumulado por torneio
+  services/
+    latestEntitySignalProcessor.mjs # reúne sinais repetidos da mesma entidade antes da reconciliação
+    userAppStateCloudQueue.mjs # controla deduplicação e frequência do estado de navegação na nuvem
   main.jsx            # composição atual da aplicação, reduzida por etapas
 ```
 

@@ -146,9 +146,11 @@ import {
   tournamentSummarySelect,
 } from "./domain/tournamentSummary.mjs";
 import {
-  getUserAppStateCloudDelay,
-  getUserAppStateSyncSignature,
-} from "./domain/userAppStateSync.mjs";
+  circuitDirectorySelect,
+  circuitHistorySelect,
+  normalizeCircuitRow,
+  normalizeCircuitTournamentIds,
+} from "./domain/circuitDirectory.mjs";
 import CircuitExtraPointsPanel from "./features/circuitManagement/CircuitExtraPointsPanel.jsx";
 import {
   CircuitGenderRegistryPanel,
@@ -283,10 +285,12 @@ import {
   readPublicArenaDirectoryCache,
 } from "./domain/publicArenaCache.mjs";
 import { createPublicArenaApi } from "./services/publicArenaApi.mjs";
+import { createLatestEntitySignalProcessor } from "./services/latestEntitySignalProcessor.mjs";
 import {
   uploadPreparedImagePair,
   uploadProfilePhoto,
 } from "./services/mediaStorage.mjs";
+import { createUserAppStateCloudQueue } from "./services/userAppStateCloudQueue.mjs";
 import {
   DEFAULT_TOURNAMENT_NAVIGATION,
   TOURNAMENT_DRAFT_CHANGED_EVENT,
@@ -2322,7 +2326,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const tournamentRealtimeEpochRef = useRef(0);
   const tournamentSignalLoadStateRef = useRef(new Map());
   const circuitRealtimeEpochRef = useRef(0);
-  const circuitSignalLoadStateRef = useRef(new Map());
   const circuitHistoryLoadedIdsRef = useRef(new Set());
   const circuitHistoryLoadPromisesRef = useRef(new Map());
   const circuitRankingViewCacheRef = useRef(new Map());
@@ -2357,11 +2360,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [restoredTournamentId, setRestoredTournamentId] = useState(null);
   const circuitPersistenceQueueRef = useRef(Promise.resolve());
   const appStateSaveTimerRef = useRef(null);
-  const appStateCloudSaveTimerRef = useRef(null);
-  const appStateCloudWriteInFlightRef = useRef(false);
-  const appStatePendingCloudPayloadRef = useRef(null);
-  const appStateLastCloudSignatureRef = useRef("");
-  const appStateLastCloudSaveAtRef = useRef(0);
+  const appStateCloudQueueRef = useRef(null);
   const restoredAppStateRef = useRef(false);
   const appStateRestoreReadyRef = useRef(false);
   const pendingScrollRestoreRef = useRef(null);
@@ -2773,8 +2772,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           .single();
 
         if (cancelled || error || !data?.last_url) return;
-        appStateLastCloudSignatureRef.current = getUserAppStateSyncSignature(data);
-        appStateLastCloudSaveAtRef.current = Date.now();
+        getAppStateCloudQueue().seed(data);
 
         // A cópia local é síncrona e costuma ser a mais recente ao voltar para
         // a mesma aba. O Supabase continua como recuperação entre dispositivos.
@@ -2822,9 +2820,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       window.removeEventListener("blur", saveNow);
       window.removeEventListener("scroll", saveAfterScroll);
       document.removeEventListener("visibilitychange", saveWhenHidden);
-      if (appStateCloudSaveTimerRef.current) clearTimeout(appStateCloudSaveTimerRef.current);
     };
   }, [activePanel, selected?.id, expandedCircuitId, profileSubtab, user.id]);
+
+  useEffect(() => () => {
+    appStateCloudQueueRef.current?.dispose();
+    appStateCloudQueueRef.current = null;
+  }, [user.id]);
 
   useEffect(() => {
     applyPendingScrollRestore();
@@ -2845,65 +2847,20 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     void loadCircuitRankingHistory(expandedCircuitId);
   }, [activePanel, expandedCircuitId, circuits.length]);
 
-  async function flushPendingUserAppStateToCloud() {
-    if (appStateCloudWriteInFlightRef.current || isBrowserOffline()) return;
-    const payload = appStatePendingCloudPayloadRef.current;
-    if (!payload) return;
-
-    const signature = getUserAppStateSyncSignature(payload);
-    if (signature === appStateLastCloudSignatureRef.current) {
-      appStatePendingCloudPayloadRef.current = null;
-      return;
+  function getAppStateCloudQueue() {
+    if (!appStateCloudQueueRef.current) {
+      appStateCloudQueueRef.current = createUserAppStateCloudQueue({
+        isOffline: isBrowserOffline,
+        savePayload: async (payload) => {
+          const { error } = await supabase
+            .from("user_app_state")
+            .upsert(payload, { onConflict: "user_id" });
+          if (error) throw error;
+        },
+        onError: (error) => console.error("Erro ao salvar posição do usuário", error),
+      });
     }
-
-    appStatePendingCloudPayloadRef.current = null;
-    appStateCloudWriteInFlightRef.current = true;
-    try {
-      const { error } = await supabase.from("user_app_state").upsert(payload, { onConflict: "user_id" });
-      if (error) {
-        console.error("Erro ao salvar posição do usuário", error);
-        appStatePendingCloudPayloadRef.current = payload;
-        appStateLastCloudSaveAtRef.current = Date.now();
-        return;
-      }
-      appStateLastCloudSignatureRef.current = signature;
-      appStateLastCloudSaveAtRef.current = Date.now();
-    } catch (error) {
-      console.error("Erro ao salvar posição do usuário", error);
-      appStatePendingCloudPayloadRef.current = payload;
-      appStateLastCloudSaveAtRef.current = Date.now();
-    } finally {
-      appStateCloudWriteInFlightRef.current = false;
-      if (appStatePendingCloudPayloadRef.current) {
-        queueUserAppStateCloudSave(appStatePendingCloudPayloadRef.current);
-      }
-    }
-  }
-
-  function queueUserAppStateCloudSave(payload, { force = false } = {}) {
-    appStatePendingCloudPayloadRef.current = payload;
-    const delay = getUserAppStateCloudDelay({
-      payload,
-      lastSignature: appStateLastCloudSignatureRef.current,
-      lastSavedAt: appStateLastCloudSaveAtRef.current,
-      force,
-    });
-    if (delay === null) {
-      appStatePendingCloudPayloadRef.current = null;
-      return;
-    }
-
-    if (appStateCloudSaveTimerRef.current) clearTimeout(appStateCloudSaveTimerRef.current);
-    if (delay === 0) {
-      appStateCloudSaveTimerRef.current = null;
-      void flushPendingUserAppStateToCloud();
-      return;
-    }
-
-    appStateCloudSaveTimerRef.current = setTimeout(() => {
-      appStateCloudSaveTimerRef.current = null;
-      void flushPendingUserAppStateToCloud();
-    }, delay);
+    return appStateCloudQueueRef.current;
   }
 
   async function saveUserAppState(extra = {}, { forceCloud = false } = {}) {
@@ -2930,7 +2887,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
 
     saveLocalUserAppState(user.id, payload);
-    queueUserAppStateCloudSave(payload, { force: forceCloud });
+    getAppStateCloudQueue().queue(payload, { force: forceCloud });
   }
 
   function scheduleUserAppStateSave(extra = {}) {
@@ -3124,66 +3081,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(term));
   });
-
-  function normalizeCircuitTournamentIds(tournamentIds = []) {
-    return [...new Set(
-      (Array.isArray(tournamentIds) ? tournamentIds : [])
-        .map((id) => String(id || "").trim())
-        .filter(Boolean)
-    )];
-  }
-
-  function normalizeCircuitRow(row) {
-    const rankingSettings = normalizeCircuitRankingSettings(row.ranking_settings || row.rankingSettings);
-    return {
-      id: row.id,
-      name: row.name || "",
-      coverImageUrl: rankingSettings.coverImageUrl,
-      coverImageThumbnailUrl: rankingSettings.coverImageThumbnailUrl,
-      startDate: row.start_date || "",
-      endDate: row.end_date || "",
-      status: normalizeCircuitStatus(row.status),
-      tournamentIds: normalizeCircuitTournamentIds(row.tournament_ids),
-      rankingCriteria: row.ranking_criteria || defaultRankingCriteria,
-      rankingCriteriaMode: row.ranking_criteria_mode === "manual" ? "manual" : "automatic",
-      rankingSettings,
-      deletedAt: rankingSettings.deletedAt,
-      rankingHistory: row.rankingHistory || {},
-      updatedAt: row.updated_at,
-      revision: getCollaborationRevision(row),
-    };
-  }
-
-  const circuitDirectorySelect = [
-    "id",
-    "name",
-    "start_date",
-    "end_date",
-    "status",
-    "tournament_ids",
-    "ranking_criteria",
-    "ranking_criteria_mode",
-    "ranking_settings",
-    "updated_at",
-    "revision",
-  ].join(",");
-
-  const circuitHistorySelect = [
-    "tournament_id",
-    "group_key",
-    "player_key",
-    "player_name",
-    "pts",
-    "w",
-    "bal",
-    "played",
-    "circuit_points",
-    "placement_key",
-    "placement_label",
-    "titles",
-    "runner_ups",
-    "third_places",
-  ].join(",");
 
   async function loadCircuits({ silentError = false, retryAfterRealtime = true } = {}) {
     const realtimeEpoch = circuitRealtimeEpochRef.current;
@@ -6198,56 +6095,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     cacheCurrentDashboard();
   }
 
-  function applyRemoteCircuitSignal(payload) {
-    const signal = payload?.new || payload?.old;
-    const circuitId = signal?.circuit_id;
-    if (!circuitId) return;
-
-    const signalKey = String(circuitId);
-    const runningState = circuitSignalLoadStateRef.current.get(signalKey);
-    if (runningState) {
-      runningState.latestSignal = signal;
-      runningState.pending = true;
-      return;
-    }
-
-    const loadState = { latestSignal: signal, pending: false };
-    circuitSignalLoadStateRef.current.set(signalKey, loadState);
-
-    const reconcileSignal = async () => {
-      do {
-        loadState.pending = false;
-        const latestSignal = loadState.latestSignal;
-        if (latestSignal.deleted) {
-          applyRemoteCircuitChange({ eventType: "DELETE", old: { id: circuitId } });
-          continue;
-        }
-
-        const { data, error } = await supabase
-          .from("circuits")
-          .select(circuitDirectorySelect)
-          .eq("id", circuitId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.warn("Não foi possível reconciliar a atualização leve do circuito.", error);
-          continue;
-        }
-        if (!data) {
-          applyRemoteCircuitChange({ eventType: "DELETE", old: { id: circuitId } });
-          continue;
-        }
-
-        applyRemoteCircuitChange({ eventType: "UPDATE", new: data });
-      } while (loadState.pending);
-    };
-
-    void reconcileSignal()
-      .catch((error) => console.warn("Falha ao processar sinal de atualização do circuito.", error))
-      .finally(() => circuitSignalLoadStateRef.current.delete(signalKey));
-  }
-
   function applyRemoteProfileChange(payload) {
     if (payload?.eventType === "DELETE" || !payload?.new?.id) return;
     const remoteRow = payload.new;
@@ -6309,6 +6156,29 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }, [user.id]);
 
   useEffect(() => {
+    const circuitSignalProcessor = createLatestEntitySignalProcessor({
+      getEntityId: (signal) => signal?.circuit_id,
+      isDeleted: (signal) => Boolean(signal?.deleted),
+      loadEntity: async (circuitId) => {
+        const { data, error } = await supabase
+          .from("circuits")
+          .select(circuitDirectorySelect)
+          .eq("id", circuitId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      },
+      onDelete: (circuitId) => {
+        applyRemoteCircuitChange({ eventType: "DELETE", old: { id: circuitId } });
+      },
+      onUpdate: (row) => {
+        applyRemoteCircuitChange({ eventType: "UPDATE", new: row });
+      },
+      onError: (error) => {
+        console.warn("Não foi possível reconciliar a atualização leve do circuito.", error);
+      },
+    });
     const channel = supabase
       .channel(`torneio360-collaboration-${user.id}`)
       .on(
@@ -6319,7 +6189,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "circuit_change_feed", filter: `user_id=eq.${user.id}` },
-        applyRemoteCircuitSignal
+        circuitSignalProcessor.handle
       )
       .on(
         "postgres_changes",
@@ -6344,6 +6214,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return () => {
       window.clearInterval(refreshInterval);
       window.removeEventListener("focus", refreshWhenVisible);
+      circuitSignalProcessor.dispose();
       void supabase.removeChannel(channel);
     };
   }, [user.id]);

@@ -143,6 +143,14 @@ import {
   getUserAppStateSyncSignature,
 } from "../src/domain/userAppStateSync.mjs";
 import {
+  circuitDirectorySelect,
+  circuitHistorySelect,
+  normalizeCircuitRow,
+  normalizeCircuitTournamentIds,
+} from "../src/domain/circuitDirectory.mjs";
+import { createLatestEntitySignalProcessor } from "../src/services/latestEntitySignalProcessor.mjs";
+import { createUserAppStateCloudQueue } from "../src/services/userAppStateCloudQueue.mjs";
+import {
   generateCollaborationChangeId,
   generatePublicId,
   getArenaPublicShareMessage,
@@ -518,6 +526,10 @@ const publicArenaLegacyCompatibilityMigrationSource = readFileSync(
 );
 const circuitChangeFeedMigrationSource = readFileSync(
   new URL("supabase/migrations/202608250003_circuit_change_feed.sql", root),
+  "utf8"
+);
+const latestEntitySignalProcessorSource = readFileSync(
+  new URL("src/services/latestEntitySignalProcessor.mjs", root),
   "utf8"
 );
 const publicIdentifiersSource = readFileSync(
@@ -1327,8 +1339,8 @@ assert.equal(
     && circuitChangeFeedMigrationSource.includes("create trigger circuits_signal_change")
     && circuitChangeFeedMigrationSource.includes("alter publication supabase_realtime add table public.circuit_change_feed")
     && mainSource.includes('table: "circuit_change_feed"')
-    && mainSource.includes("applyRemoteCircuitSignal")
-    && mainSource.includes("circuitSignalLoadStateRef")
+    && mainSource.includes("createLatestEntitySignalProcessor")
+    && latestEntitySignalProcessorSource.includes("runningById")
     && !mainSource.includes('table: "circuits", filter: `user_id=eq.${user.id}`'),
   true,
   "O Realtime voltou a transmitir os dados completos do circuito em toda alteração.",
@@ -1361,6 +1373,101 @@ assert.equal(
   0,
   "A saída da página deixou de poder solicitar a última sincronização imediatamente.",
 );
+let appStateQueueNow = 10_000;
+let appStateScheduledDelay = null;
+let appStateScheduledFlush = null;
+const appStateCloudWrites = [];
+const appStateQueue = createUserAppStateCloudQueue({
+  now: () => appStateQueueNow,
+  savePayload: async (payload) => { appStateCloudWrites.push(payload); },
+  schedule: (callback, delay) => {
+    appStateScheduledFlush = callback;
+    appStateScheduledDelay = delay;
+    return { callback, delay };
+  },
+  cancel: () => {},
+});
+appStateQueue.seed({ ...appStatePayloadForTest, last_panel: "inicio" }, 5_000);
+appStateQueue.queue(appStatePayloadForTest);
+assert.equal(
+  appStateScheduledDelay,
+  25_000,
+  "A fila modular do painel deixou de respeitar o intervalo mínimo entre gravações.",
+);
+appStateQueueNow = 35_000;
+await appStateScheduledFlush();
+assert.deepEqual(
+  appStateCloudWrites,
+  [appStatePayloadForTest],
+  "A fila modular do painel não enviou o estado pendente mais recente.",
+);
+appStateScheduledFlush = null;
+appStateQueue.queue({ ...appStatePayloadForTest, updated_at: "2026-08-25T12:05:00.000Z" });
+assert.equal(
+  appStateScheduledFlush,
+  null,
+  "A fila modular do painel voltou a agendar uma gravação para um estado idêntico.",
+);
+appStateQueue.dispose();
+
+const normalizedCircuitDirectoryRow = normalizeCircuitRow({
+  id: "circuito-1",
+  name: "Circuito teste",
+  status: "finished",
+  tournament_ids: ["torneio-1", "torneio-1", "", "torneio-2"],
+  ranking_settings: { coverImageUrl: "capa.jpg" },
+  revision: 4,
+});
+assert.deepEqual(
+  normalizedCircuitDirectoryRow.tournamentIds,
+  ["torneio-1", "torneio-2"],
+  "A listagem modular de circuitos deixou de remover identificadores vazios ou repetidos.",
+);
+assert.equal(normalizedCircuitDirectoryRow.status, "closed");
+assert.equal(normalizedCircuitDirectoryRow.coverImageUrl, "capa.jpg");
+assert.equal(normalizedCircuitDirectoryRow.revision, 4);
+assert.deepEqual(
+  normalizeCircuitTournamentIds([1, "1", " 2 ", null]),
+  ["1", "2"],
+  "A normalização reutilizável dos torneios do circuito ficou incompatível.",
+);
+assert.equal(circuitDirectorySelect.includes("ranking_settings"), true);
+assert.equal(circuitHistorySelect.includes("circuit_points"), true);
+
+let releaseFirstCircuitSignal;
+const loadedCircuitSignalVersions = [];
+const appliedCircuitSignalVersions = [];
+const deletedCircuitSignalIds = [];
+const circuitSignalProcessor = createLatestEntitySignalProcessor({
+  getEntityId: (signal) => signal?.circuit_id,
+  isDeleted: (signal) => Boolean(signal?.deleted),
+  loadEntity: async (circuitId, signal) => {
+    loadedCircuitSignalVersions.push(signal.version);
+    if (signal.version === 1) {
+      return new Promise((resolve) => {
+        releaseFirstCircuitSignal = () => resolve({ id: circuitId, version: signal.version });
+      });
+    }
+    return { id: circuitId, version: signal.version };
+  },
+  onUpdate: (row) => { appliedCircuitSignalVersions.push(row.version); },
+  onDelete: (circuitId) => { deletedCircuitSignalIds.push(circuitId); },
+});
+const firstCircuitSignalRun = circuitSignalProcessor.handle({
+  new: { circuit_id: "circuito-1", version: 1 },
+});
+circuitSignalProcessor.handle({ new: { circuit_id: "circuito-1", version: 2 } });
+releaseFirstCircuitSignal();
+await firstCircuitSignalRun;
+assert.deepEqual(
+  loadedCircuitSignalVersions,
+  [1, 2],
+  "Os sinais sucessivos do mesmo circuito deixaram de preservar a atualização mais recente.",
+);
+assert.deepEqual(appliedCircuitSignalVersions, [1, 2]);
+await circuitSignalProcessor.handle({ new: { circuit_id: "circuito-1", deleted: true } });
+assert.deepEqual(deletedCircuitSignalIds, ["circuito-1"]);
+circuitSignalProcessor.dispose();
 assert.equal(
   publicArenaEventPaginationMigrationSource.includes("create or replace function public.get_public_arena_overview")
     && publicArenaEventPaginationMigrationSource.includes("create or replace function public.list_public_arena_events_page")
