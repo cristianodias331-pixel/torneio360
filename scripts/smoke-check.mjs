@@ -4997,8 +4997,8 @@ assert.ok(
   "O perfil público ainda pode comprimir o nome da arena no celular."
 );
 assert.ok(
-  styleSource.includes("grid-template-columns: minmax(410px, 0.8fr) minmax(0, 1.2fr) !important;")
-    && styleSource.includes("padding: 18px clamp(28px, 5vw, 84px) !important;"),
+  styleSource.includes("grid-template-columns: minmax(350px, 0.78fr) minmax(0, 1.22fr) !important;")
+    && styleSource.includes("padding: 11px clamp(24px, 4vw, 58px) !important;"),
   "O cabeçalho do perfil público ainda ocupa altura excessiva no notebook."
 );
 assert.ok(
