@@ -432,6 +432,10 @@ const lazyFeaturesSource = readFileSync(
   new URL("src/features/appShell/lazyFeatures.jsx", root),
   "utf8"
 );
+const loginScreenSource = readFileSync(
+  new URL("src/features/auth/LoginScreen.jsx", root),
+  "utf8"
+);
 const cupRankingDefaultsSource = readFileSync(
   new URL("src/domain/cupRankingDefaults.mjs", root),
   "utf8"
@@ -615,6 +619,10 @@ const publicArenaPresentationSource = readFileSync(
 );
 const publicArenaPageControllerSource = readFileSync(
   new URL("src/features/publicArena/PublicArenaPageController.jsx", root),
+  "utf8"
+);
+const publicPlatformHomeControllerSource = readFileSync(
+  new URL("src/features/publicArena/PublicPlatformHomeController.jsx", root),
   "utf8"
 );
 const publicTournamentPageControllerSource = readFileSync(
@@ -3541,6 +3549,7 @@ for (const marker of requiredApplicationMarkers) {
   assert.ok(
     [
       mainSource,
+      loginScreenSource,
       publicIdentifiersSource,
       cupBracketOrchestrationSource,
       tournamentRuntimeAdaptersSource,
@@ -3665,16 +3674,16 @@ assert.ok(
     && publicArenaApiSource.includes("fetchPublicArenaDirectory")
     && publicArenaApiSource.includes("list_public_arenas_page")
     && publicArenaApiSource.includes("nextCursor")
-    && mainSource.includes("ARENA_DIRECTORY_PAGE_SIZE")
-    && mainSource.includes("ARENA_DIRECTORY_FOCUS_MIN_AGE_MS")
-    && mainSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
+    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_PAGE_SIZE")
+    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_FOCUS_MIN_AGE_MS")
+    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
     && publicArenaApiSource.includes("ARENA_DIRECTORY_CACHE_KEY")
-    && mainSource.includes("readPublicArenaDirectoryCache")
+    && publicPlatformHomeControllerSource.includes("readPublicArenaDirectoryCache")
     && publicArenaApiSource.includes("directoryRequestInFlight")
     && mainSource.includes("publicArenaProfilesInFlightRef")
-    && mainSource.includes("loadMoreArenas")
+    && publicPlatformHomeControllerSource.includes("loadMoreArenas")
     && mainSource.includes("refreshVisibleProfiles")
-    && !mainSource.includes("fetchPublicArenaDirectory({ limit: 250 })")
+    && !publicPlatformHomeControllerSource.includes("fetchPublicArenaDirectory({ limit: 250 })")
     && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"')
     && mainSource.includes('className="arenaFeedOrganizer"'),
   "O diretório de arenas perdeu a paginação, a busca escalável ou a identificação do organizador."
@@ -4324,7 +4333,7 @@ assert.ok(
   "O aceite do prompt ainda oculta a mensagem antes da confirmação real do navegador."
 );
 assert.ok(
-  mainSource.includes('document.getElementById("acesso")?.scrollIntoView({ behavior: "auto", block: "start" })'),
+  loginScreenSource.includes('document.getElementById("acesso")?.scrollIntoView({ behavior: "auto", block: "start" })'),
   "A recuperação de senha não leva o usuário diretamente ao formulário de nova senha."
 );
 assert.ok(
@@ -4679,9 +4688,9 @@ assert.ok(
   "Nem todos os links de WhatsApp usam o código +55 automático."
 );
 assert.ok(authValidationSource.includes("function isUserAlreadyRegisteredError"), "O cadastro não reconhece e-mails que já possuem conta.");
-assert.ok(mainSource.includes("Este e-mail já possui uma conta"), "O cadastro não orienta o usuário a entrar com a conta existente.");
-assert.ok(mainSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
-assert.ok(mainSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
+assert.ok(loginScreenSource.includes("Este e-mail já possui uma conta"), "O cadastro não orienta o usuário a entrar com a conta existente.");
+assert.ok(loginScreenSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
+assert.ok(loginScreenSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
 assert.ok(contactLinksSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");

@@ -25,6 +25,14 @@ export const PublicCircuitScreenView = React.lazy(
 export const PublicTournamentScreenView = React.lazy(
   () => import("../publicArena/PublicTournamentScreen.jsx")
 );
+export const PublicPlatformHomeController = React.lazy(
+  () => import("../publicArena/PublicPlatformHomeController.jsx")
+);
+export const LoginScreen = React.lazy(() => import("../auth/LoginScreen.jsx"));
+export const EmailConfirmationPendingScreen = lazyNamed(
+  () => import("../auth/LoginScreen.jsx"),
+  "EmailConfirmationPendingScreen"
+);
 export const CourtCenterModalView = React.lazy(() => import("../courtCenter/CourtCenterModal.jsx"));
 export const ModalityPicker = React.lazy(() => import("../modalityPicker/ModalityPicker.jsx"));
 export const ConfirmDuplicateCourtModal = lazyNamed(
