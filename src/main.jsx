@@ -2314,6 +2314,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const dashboardLastLoadedAtRef = useRef(0);
   const playRankingRetroMigrationInFlightRef = useRef(null);
   const tournamentRealtimeEpochRef = useRef(0);
+  const tournamentSignalLoadStateRef = useRef(new Map());
   const circuitRealtimeEpochRef = useRef(0);
   const circuitHistoryLoadedIdsRef = useRef(new Set());
   const circuitHistoryLoadPromisesRef = useRef(new Map());
@@ -6035,6 +6036,62 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     cacheCurrentDashboard();
   }
 
+  function applyRemoteTournamentSignal(payload) {
+    const signal = payload?.new || payload?.old;
+    const tournamentId = signal?.tournament_id;
+    if (!tournamentId) return;
+
+    const signalKey = String(tournamentId);
+    const runningState = tournamentSignalLoadStateRef.current.get(signalKey);
+    if (runningState) {
+      runningState.latestSignal = signal;
+      runningState.pending = true;
+      return;
+    }
+
+    const loadState = { latestSignal: signal, pending: false };
+    tournamentSignalLoadStateRef.current.set(signalKey, loadState);
+
+    const reconcileSignal = async () => {
+      do {
+        loadState.pending = false;
+        const latestSignal = loadState.latestSignal;
+
+        if (latestSignal.deleted) {
+          applyRemoteTournamentChange({ eventType: "DELETE", old: { id: tournamentId } });
+          continue;
+        }
+
+        const tournamentIsOpen = String(selectedRef.current?.id || "") === signalKey;
+        const query = supabase
+          .from("tournaments")
+          .select(tournamentIsOpen ? "*" : tournamentSummarySelect)
+          .eq("id", tournamentId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const { data, error } = await query;
+
+        if (error) {
+          console.warn("Não foi possível reconciliar a atualização leve do torneio.", error);
+          continue;
+        }
+        if (!data) {
+          applyRemoteTournamentChange({ eventType: "DELETE", old: { id: tournamentId } });
+          continue;
+        }
+
+        const row = tournamentIsOpen
+          ? { ...data, __summary: false }
+          : normalizeTournamentSummaryRow(data);
+        applyRemoteTournamentChange({ eventType: "UPDATE", new: row });
+      } while (loadState.pending);
+    };
+
+    void reconcileSignal()
+      .catch((error) => console.warn("Falha ao processar sinal de atualização do torneio.", error))
+      .finally(() => tournamentSignalLoadStateRef.current.delete(signalKey));
+  }
+
   function applyRemoteCircuitChange(payload) {
     const eventType = payload?.eventType;
     const row = eventType === "DELETE" ? payload?.old : payload?.new;
@@ -6135,8 +6192,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       .channel(`torneio360-collaboration-${user.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "tournaments", filter: `user_id=eq.${user.id}` },
-        applyRemoteTournamentChange
+        { event: "*", schema: "public", table: "tournament_change_feed", filter: `user_id=eq.${user.id}` },
+        applyRemoteTournamentSignal
       )
       .on(
         "postgres_changes",

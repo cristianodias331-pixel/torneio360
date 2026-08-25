@@ -500,6 +500,10 @@ const publicArenaSnapshotCacheMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240006_public_arena_snapshot_cache.sql", root),
   "utf8"
 );
+const tournamentChangeFeedMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240007_tournament_change_feed.sql", root),
+  "utf8"
+);
 const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
@@ -1290,6 +1294,17 @@ assert.equal(
   existsSync(new URL("scripts/public-load-check.mjs", root)),
   true,
   "O teste concorrente do perfil público foi removido.",
+);
+assert.equal(
+  tournamentChangeFeedMigrationSource.includes("create table if not exists public.tournament_change_feed")
+    && tournamentChangeFeedMigrationSource.includes("create trigger tournaments_signal_change")
+    && tournamentChangeFeedMigrationSource.includes("alter publication supabase_realtime add table public.tournament_change_feed")
+    && mainSource.includes('table: "tournament_change_feed"')
+    && mainSource.includes("applyRemoteTournamentSignal")
+    && mainSource.includes("tournamentSignalLoadStateRef")
+    && !mainSource.includes('table: "tournaments", filter: `user_id=eq.${user.id}`'),
+  true,
+  "O Realtime voltou a transmitir o JSON completo de cada torneio em toda alteração.",
 );
 
 assert.equal(generatePublicId(() => 35, () => 0.5), "tfbt_z_i", "O formato dos links públicos foi alterado.");
