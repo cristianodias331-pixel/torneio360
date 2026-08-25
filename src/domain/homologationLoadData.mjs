@@ -46,14 +46,14 @@ export function getSupabaseProjectRef(supabaseUrl) {
   }
 }
 
-export function assertHomologationLoadTarget({ mode, supabaseUrl, userEmail }) {
+export function assertHomologationLoadTarget({ supabaseUrl, userEmail }) {
   const projectRef = getSupabaseProjectRef(supabaseUrl);
   const normalizedEmail = String(userEmail || "").trim().toLowerCase();
 
   if (projectRef === OFFICIAL_PROJECT_REF) {
     throw new Error("Operação recusada: o banco informado é o banco oficial.");
   }
-  if (mode !== "homologation" || projectRef !== HOMOLOGATION_PROJECT_REF) {
+  if (projectRef !== HOMOLOGATION_PROJECT_REF) {
     throw new Error("O laboratório só funciona no projeto isolado de homologação.");
   }
   if (normalizedEmail !== HOMOLOGATION_LOAD_EMAIL) {

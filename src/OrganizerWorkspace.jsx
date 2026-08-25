@@ -377,7 +377,9 @@ import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { createTournamentRuntimeAdapters } from "./features/tournamentWorkspace/TournamentRuntimeAdapters.jsx";
 import LazyArenaPhotoView from "./features/publicArena/LazyArenaPhoto.jsx";
 
-const HomologationLoadLab = import.meta.env.MODE === "homologation"
+const HOMOLOGATION_LOAD_LAB_ENABLED = String(import.meta.env.VITE_SUPABASE_URL || "")
+  .includes("vcixhzvytkrautotinpi.supabase.co");
+const HomologationLoadLab = HOMOLOGATION_LOAD_LAB_ENABLED
   ? React.lazy(() => import("./features/testing/HomologationLoadLab.jsx"))
   : null;
 
@@ -8413,7 +8415,7 @@ setNewPublicInfo({
       </section>
 
       {HomologationLoadLab
-        && import.meta.env.MODE === "homologation"
+        && HOMOLOGATION_LOAD_LAB_ENABLED
         && String(user.email || "").trim().toLowerCase() === "torneio360@gmail.com" ? (
         <React.Suspense fallback={<section className="card"><p>Carregando laboratório de homologação...</p></section>}>
           <HomologationLoadLab supabase={supabase} user={user} />

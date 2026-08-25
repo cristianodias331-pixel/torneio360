@@ -18,8 +18,7 @@ const TOURNAMENT_INSERT_BATCH_SIZE = 5;
 
 async function validateAuthenticatedTarget({ supabase, user }) {
   assertHomologationLoadTarget({
-    mode: import.meta.env.MODE,
-    supabaseUrl: supabase?.supabaseUrl,
+    supabaseUrl: supabase?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL,
     userEmail: user?.email,
   });
 
@@ -78,8 +77,7 @@ export default function HomologationLoadLab({ supabase, user }) {
   const eligible = useMemo(() => {
     try {
       assertHomologationLoadTarget({
-        mode: import.meta.env.MODE,
-        supabaseUrl: supabase?.supabaseUrl,
+        supabaseUrl: supabase?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL,
         userEmail: user?.email,
       });
       return true;

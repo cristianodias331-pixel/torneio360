@@ -5984,7 +5984,6 @@ for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-bl
 
 assert.deepEqual(
   assertHomologationLoadTarget({
-    mode: "homologation",
     supabaseUrl: "https://vcixhzvytkrautotinpi.supabase.co",
     userEmail: "torneio360@gmail.com",
   }),
@@ -5993,7 +5992,6 @@ assert.deepEqual(
 );
 assert.throws(
   () => assertHomologationLoadTarget({
-    mode: "homologation",
     supabaseUrl: "https://dttutybojealkvuywszt.supabase.co",
     userEmail: "torneio360@gmail.com",
   }),
