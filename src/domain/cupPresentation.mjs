@@ -7,6 +7,7 @@ import {
   isCampeonatoCearenseData,
   isCopinhaData,
   isOfficialCearenseData,
+  isPlayRankingData,
   isSunsetData,
 } from "./cupFormat.mjs";
 import { getCupTeamName } from "./cupGroups.mjs";
@@ -203,10 +204,13 @@ export function createCupPresentation({ getCupPlayTimeById }) {
 
   function groupStoredBracketGames(data) {
     const cupConfig = data.cupConfig || {};
+    const isCearense = isCampeonatoCearenseData(data);
+    const isPlayRanking = isPlayRankingData(data);
+    const isSunset = isSunsetData(data);
     const mainName = cupConfig.mainBracketName || "Principal";
-    const repechageName = cupConfig.repechageName || "Repescagem";
-    const secondParallelName = cupConfig.secondParallelName || "2ª Disputa Paralela";
-    const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
+    const repechageName = cupConfig.repechageName || (isCearense || isPlayRanking || isSunset ? "Consolation" : "Repescagem");
+    const secondParallelName = cupConfig.secondParallelName || (isSunset ? "Caridade" : "2ª Disputa Paralela");
+    const thirdRepechageName = cupConfig.thirdRepechageName || (isCearense ? "Caridade" : isSunset ? "Também Ganhei" : "3ª Disputa Paralela");
     const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
 
     const mainGames = (data.brackets || []).filter((game) => game.phase === "main");

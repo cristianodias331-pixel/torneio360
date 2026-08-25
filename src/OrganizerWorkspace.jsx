@@ -9906,8 +9906,8 @@ function TournamentScreen({
 
     const cupConfig = data.cupConfig || {};
     const missingChoices = [];
-    if (typeof cupConfig.secondRepechageEnabled !== "boolean") missingChoices.push("2ª disputa paralela");
-    if (typeof cupConfig.thirdRepechageEnabled !== "boolean") missingChoices.push("3ª disputa paralela");
+    if (typeof cupConfig.secondRepechageEnabled !== "boolean") missingChoices.push("1ª disputa paralela");
+    if (typeof cupConfig.thirdRepechageEnabled !== "boolean") missingChoices.push("2ª disputa paralela");
 
     if (missingChoices.length > 0) {
       showNotice(
@@ -9922,10 +9922,10 @@ function TournamentScreen({
 
     const missingNames = [];
     if (cupConfig.secondRepechageEnabled && !String(cupConfig.repechageName || "").trim()) {
-      missingNames.push("2ª disputa paralela");
+      missingNames.push("1ª disputa paralela");
     }
     if (cupConfig.thirdRepechageEnabled && !String(cupConfig.thirdRepechageName || "").trim()) {
-      missingNames.push("3ª disputa paralela");
+      missingNames.push("2ª disputa paralela");
     }
 
     if (missingNames.length > 0) {
@@ -10858,6 +10858,14 @@ const secondParallelVisible = isCearenseSecondParallelEnabled(data);
 const sunsetSecondParallelVisible = isSunsetData(data);
 const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
 const sunsetFinalVisible = isSunsetData(data);
+const isOfficialCearenseCup = isCampeonatoCearenseData(data);
+const firstParallelDisplayName = data.cupConfig?.repechageName
+  || (isOfficialCearenseCup || isPlayRankingData(data) || sunsetFinalVisible ? "Consolation" : "Disputa paralela");
+const sunsetSecondParallelDisplayName = data.cupConfig?.secondParallelName || "Caridade";
+const laterParallelDisplayName = data.cupConfig?.thirdRepechageName
+  || (isOfficialCearenseCup ? "Caridade" : sunsetFinalVisible ? "Também Ganhei" : "3ª Disputa Paralela");
+const laterParallelOrdinal = isOfficialCearenseCup ? "2ª" : "3ª";
+const sunsetFinalDisplayName = data.cupConfig?.sunsetBracketName || "Etapa Sunset";
 const rankingOrganizer = data.publicInfo?.organizer || {};
 const tournamentTimingSummary = getTournamentTimingSummary(data);
 const tournamentRankingShareContext = {
@@ -11225,12 +11233,12 @@ return (
             <div className="matchesSubTabs">
               <button type="button" className={activeMatchesTab === "grupos" ? "active" : ""} onClick={() => setActiveMatchesTab("grupos")}>Fase de grupos</button>
               <button type="button" className={activeMatchesTab === "chaves" ? "active" : ""} onClick={() => setActiveMatchesTab("chaves")}>Chaves finais</button>
-              {secondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button> : null}
-              {sunsetSecondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela2" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela2")}>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</button> : null}
+              {secondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela")}>{firstParallelDisplayName}</button> : null}
+              {sunsetSecondParallelVisible ? <button type="button" className={activeMatchesTab === "paralela2" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela2")}>{sunsetSecondParallelDisplayName}</button> : null}
               {thirdParallelVisible ? (
-                <button type="button" className={activeMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela3")}>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</button>
+                <button type="button" className={activeMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActiveMatchesTab("paralela3")}>{laterParallelDisplayName}</button>
               ) : null}
-              {sunsetFinalVisible ? <button type="button" className={activeMatchesTab === "sunset" ? "active" : ""} onClick={() => setActiveMatchesTab("sunset")}>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</button> : null}
+              {sunsetFinalVisible ? <button type="button" className={activeMatchesTab === "sunset" ? "active" : ""} onClick={() => setActiveMatchesTab("sunset")}>{sunsetFinalDisplayName}</button> : null}
             </div>
           )}
           <div style={{ display: !isCupType(config) || activeMatchesTab === "grupos" ? undefined : "none" }}>
@@ -11358,7 +11366,7 @@ return (
                 </div>
 
                 {secondParallelVisible ? <div className="cupRankingPanel">
-                  <h3>{data.cupConfig?.repechageName || "Disputa Paralela"}</h3>
+                  <h3>{firstParallelDisplayName}</h3>
                   {isCopinhaData(data) ? (
                     data.cupConfig?.teamCount === 6 ? (
                       <p>Com 2 grupos, não há consolação neste formato.</p>
@@ -11379,7 +11387,7 @@ return (
                         name: item.name,
                         playTimeSeconds: item.playTimeSeconds,
                       }))}
-                      title={data.cupConfig?.repechageName || "Disputa Paralela"}
+                      title={firstParallelDisplayName}
                       variant="parallel"
                       shareContext={tournamentRankingShareContext}
                     />
@@ -11389,9 +11397,9 @@ return (
                 </div> : null}
                 {sunsetSecondParallelVisible ? (
                   <div className="cupRankingPanel">
-                    <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
+                    <h3>{sunsetSecondParallelDisplayName}</h3>
                     {secondParallelPodium.length > 0 ? (
-                      <CupPodiumView podium={secondParallelPodium} title={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"} variant="parallel" shareContext={tournamentRankingShareContext} />
+                      <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={tournamentRankingShareContext} />
                     ) : (
                       <p>Finalize a 2ª disputa paralela para ver o pódio.</p>
                     )}
@@ -11399,24 +11407,24 @@ return (
                 ) : null}
                 {thirdParallelVisible ? (
                   <div className="cupRankingPanel">
-                    <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
+                    <h3>{laterParallelDisplayName}</h3>
                     {thirdParallelPodium.length > 0 ? (
                       <CupPodiumView
                         podium={thirdParallelPodium}
-                        title={data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}
+                        title={laterParallelDisplayName}
                         variant="parallel"
                         shareContext={tournamentRankingShareContext}
                       />
                     ) : (
-                      <p>Finalize a 3ª disputa paralela para ver o pódio.</p>
+                      <p>Finalize a {laterParallelOrdinal} disputa paralela para ver o pódio.</p>
                     )}
                   </div>
                 ) : null}
                 {sunsetFinalVisible ? (
                   <div className="cupRankingPanel">
-                    <h3>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h3>
+                    <h3>{sunsetFinalDisplayName}</h3>
                     {sunsetPodium.length > 0 ? (
-                      <CupPodiumView podium={sunsetPodium} title={data.cupConfig?.sunsetBracketName || "Etapa Sunset"} shareContext={tournamentRankingShareContext} />
+                      <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={tournamentRankingShareContext} />
                     ) : (
                       <p>Finalize o encontro entre as campeãs para ver o pódio Sunset.</p>
                     )}
@@ -11427,7 +11435,7 @@ return (
 
             {secondParallelVisible ? <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela" ? undefined : "none" }}>
               <div className="cardTitleRow">
-                <h2>{data.cupConfig?.repechageName || "Disputa Paralela"}</h2>
+                <h2>{firstParallelDisplayName}</h2>
                 <div className="cardTitleControls">
                   {currentBrackets && (
                     <button type="button" className="secondaryBtn compactRegenerateBtn" onClick={requestGenerateBrackets}>
@@ -11459,7 +11467,7 @@ return (
             {sunsetSecondParallelVisible ? (
               <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela2" ? undefined : "none" }}>
                 <div className="cardTitleRow">
-                  <h2>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h2>
+                  <h2>{sunsetSecondParallelDisplayName}</h2>
                   <SavingStatusBadge />
                 </div>
                 {!currentBrackets ? (
@@ -11475,15 +11483,15 @@ return (
             {thirdParallelVisible ? (
               <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "paralela3" ? undefined : "none" }}>
                 <div className="cardTitleRow">
-                  <h2>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h2>
+                  <h2>{laterParallelDisplayName}</h2>
                   <SavingStatusBadge />
                 </div>
                 {!currentBrackets ? (
-                  <p>Gere as chaves finais para visualizar a 3ª disputa paralela.</p>
+                  <p>Gere as chaves finais para visualizar a {laterParallelOrdinal} disputa paralela.</p>
                 ) : currentBrackets.thirdParallel?.length > 0 ? (
                   <CupBracketView groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} onEditCourt={requestCourtAssignment} />
                 ) : (
-                  <p>Nesta quantidade de grupos não há duplas elegíveis para a 3ª disputa paralela.</p>
+                  <p>Nesta quantidade de grupos não há duplas elegíveis para a {laterParallelOrdinal} disputa paralela.</p>
                 )}
               </section>
             ) : null}
@@ -11491,7 +11499,7 @@ return (
             {sunsetFinalVisible ? (
               <section className="card" style={{ display: activeTournamentTab === "partidas" && activeMatchesTab === "sunset" ? undefined : "none" }}>
                 <div className="cardTitleRow">
-                  <h2>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h2>
+                  <h2>{sunsetFinalDisplayName}</h2>
                   <SavingStatusBadge />
                 </div>
                 {!currentBrackets ? (

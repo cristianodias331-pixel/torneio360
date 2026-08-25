@@ -1145,9 +1145,10 @@ const initialSuper12Data = createInitialData("Super 12", modalityConfig["Super 1
 assert.equal(initialSuper12Data.players.length, 12, "A criação inicial do Super 12 deixou de gerar doze participantes.");
 assert.deepEqual(initialSuper12Data.schedule, [], "Um torneio novo deixou de começar sem rodadas.");
 const initialCearenseData = createInitialData("Campeonato Cearense", modalityConfig["Campeonato Cearense"]);
-assert.equal(initialCearenseData.cupConfig.repechageName, "Consolation", "A 2ª disputa paralela deixou de vir com o nome Consolation.");
-assert.equal(initialCearenseData.cupConfig.secondRepechageEnabled, true, "A 2ª disputa paralela deixou de começar selecionada em Sim.");
-assert.equal(initialCearenseData.cupConfig.thirdRepechageEnabled, false, "A 3ª disputa paralela deixou de começar selecionada em Não.");
+assert.equal(initialCearenseData.cupConfig.repechageName, "Consolation", "A 1ª disputa paralela deixou de vir com o nome Consolation.");
+assert.equal(initialCearenseData.cupConfig.thirdRepechageName, "Caridade", "A 2ª disputa paralela deixou de vir com o nome Caridade.");
+assert.equal(initialCearenseData.cupConfig.secondRepechageEnabled, true, "A 1ª disputa paralela deixou de começar selecionada em Sim.");
+assert.equal(initialCearenseData.cupConfig.thirdRepechageEnabled, false, "A 2ª disputa paralela deixou de começar selecionada em Não.");
 const normalizedCearenseDefaults = normalizeTournamentData("Campeonato Cearense", {
   cupConfig: {
     secondRepechageEnabled: null,
@@ -1155,18 +1156,39 @@ const normalizedCearenseDefaults = normalizeTournamentData("Campeonato Cearense"
   },
 });
 assert.equal(normalizedCearenseDefaults.cupConfig.repechageName, "Consolation", "Um Cearense antigo sem nome deixou de receber o preenchimento padrão.");
-assert.equal(normalizedCearenseDefaults.cupConfig.secondRepechageEnabled, true, "Uma escolha antiga vazia deixou de assumir Sim na 2ª disputa.");
-assert.equal(normalizedCearenseDefaults.cupConfig.thirdRepechageEnabled, false, "Uma escolha antiga vazia deixou de assumir Não na 3ª disputa.");
+assert.equal(normalizedCearenseDefaults.cupConfig.thirdRepechageName, "Caridade", "A 2ª disputa paralela antiga sem nome deixou de receber Caridade.");
+assert.equal(normalizedCearenseDefaults.cupConfig.secondRepechageEnabled, true, "Uma escolha antiga vazia deixou de assumir Sim na 1ª disputa.");
+assert.equal(normalizedCearenseDefaults.cupConfig.thirdRepechageEnabled, false, "Uma escolha antiga vazia deixou de assumir Não na 2ª disputa.");
 const normalizedCearenseChoices = normalizeTournamentData("Campeonato Cearense", {
   cupConfig: {
     repechageName: "Nome personalizado",
+    thirdRepechageName: "Outro nome personalizado",
     secondRepechageEnabled: false,
     thirdRepechageEnabled: true,
   },
 });
 assert.equal(normalizedCearenseChoices.cupConfig.repechageName, "Nome personalizado", "O nome personalizado da disputa paralela deixou de ser preservado.");
-assert.equal(normalizedCearenseChoices.cupConfig.secondRepechageEnabled, false, "A escolha Não já salva na 2ª disputa foi alterada.");
-assert.equal(normalizedCearenseChoices.cupConfig.thirdRepechageEnabled, true, "A escolha Sim já salva na 3ª disputa foi alterada.");
+assert.equal(normalizedCearenseChoices.cupConfig.thirdRepechageName, "Outro nome personalizado", "O nome personalizado da 2ª disputa deixou de ser preservado.");
+assert.equal(normalizedCearenseChoices.cupConfig.secondRepechageEnabled, false, "A escolha Não já salva na 1ª disputa foi alterada.");
+assert.equal(normalizedCearenseChoices.cupConfig.thirdRepechageEnabled, true, "A escolha Sim já salva na 2ª disputa foi alterada.");
+const migratedCearenseNames = normalizeTournamentData("Campeonato Cearense", {
+  cupConfig: {
+    repechageName: "2ª Disputa Paralela",
+    thirdRepechageName: "3ª Disputa Paralela",
+  },
+});
+assert.equal(migratedCearenseNames.cupConfig.repechageName, "Consolation", "O antigo nome padrão da 1ª disputa não foi corrigido.");
+assert.equal(migratedCearenseNames.cupConfig.thirdRepechageName, "Caridade", "O antigo nome padrão da 2ª disputa não foi corrigido.");
+const initialPlayRankingData = createInitialData("Modelo Play Ranking", modalityConfig["Modelo Play Ranking"]);
+assert.equal(initialPlayRankingData.cupConfig.repechageName, "Consolation", "O Modelo Torneio 360 deixou de iniciar sua disputa paralela como Consolation.");
+assert.equal(isCearenseSecondParallelEnabled(initialPlayRankingData), true, "A 1ª disputa paralela do Modelo Torneio 360 deixou de começar ativa.");
+const initialSunsetData = createInitialData("Copa Sunset", modalityConfig["Copa Sunset"]);
+assert.equal(initialSunsetData.cupConfig.repechageName, "Consolation", "A 1ª disputa da Sunset deixou de vir como Consolation.");
+assert.equal(initialSunsetData.cupConfig.secondParallelName, "Caridade", "A 2ª disputa da Sunset deixou de vir como Caridade.");
+assert.equal(initialSunsetData.cupConfig.thirdRepechageName, "Também Ganhei", "A 3ª disputa da Sunset deixou de vir como Também Ganhei.");
+assert.equal(initialSunsetData.cupConfig.sunsetBracketName, "Etapa Sunset", "A etapa entre campeãs deixou de vir como Etapa Sunset.");
+assert.equal(isCearenseSecondParallelEnabled(initialSunsetData), true, "A 1ª disputa da Sunset deixou de começar ativa.");
+assert.equal(isCearenseThirdParallelEnabled(initialSunsetData), true, "A 3ª disputa da Sunset deixou de começar ativa.");
 const normalizedSuper12Data = normalizeTournamentData("Super 12", {
   players: ["Ana"],
   schedule: [[{ court: 1, team1: "Ana", team2: "Bia" }]],
@@ -3986,11 +4008,13 @@ assert.ok(
     && cearenseThirdParallelSource.includes("sourceEntries.length === 4")
     && cearenseThirdParallelSource.includes("function buildCearenseThirdParallelRounds")
     && cearenseThirdParallelSource.includes('"thirdParallel",')
-    && modalityConfig["Campeonato Cearense"]?.defaultThirdRepechageName === "3ª Disputa Paralela"
+    && modalityConfig["Campeonato Cearense"]?.defaultRepechageName === "Consolation"
+    && modalityConfig["Campeonato Cearense"]?.defaultThirdRepechageName === "Caridade"
+    && tournamentFormatHelpSource.includes('const ordinal = isSecond ? "1ª" : "2ª"')
     && cupPresentationSource.includes('phase === "thirdParallel"')
     && mainSource.includes('activeMatchesTab === "paralela3"')
     && publicTournamentScreenSource.includes('activePublicMatchesTab === "paralela3"'),
-  "O Campeonato Cearense perdeu a classificação oficial, o chaveamento definido ou a 3ª disputa paralela."
+  "O Campeonato Cearense perdeu a classificação oficial, o chaveamento definido ou suas disputas paralelas."
 );
 assert.ok(
   styleSource.includes(".cearenseGroupRankingStack")

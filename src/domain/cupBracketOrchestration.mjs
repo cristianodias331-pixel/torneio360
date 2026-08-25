@@ -47,7 +47,7 @@ export function generatePlayRankingBrackets(data) {
   const qualified = getCearenseQualified(data);
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
-  const repechageName = cupConfig.repechageName || "Disputa Paralela";
+  const repechageName = cupConfig.repechageName || "Consolation";
   const groupCount = createCearenseGroups(
     cupConfig.teamCount || 4,
     "automatic",
@@ -85,7 +85,7 @@ export function generateCearenseBrackets(data) {
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
   const repechageName = cupConfig.repechageName || "Consolation";
-  const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
+  const thirdRepechageName = cupConfig.thirdRepechageName || "Caridade";
   const groupCount = createCearenseGroups(
     cupConfig.teamCount || 4,
     "automatic",
@@ -119,9 +119,9 @@ export function generateSunsetBrackets(data) {
   const qualified = getCearenseQualified(data);
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
-  const firstParallelName = cupConfig.repechageName || "1ª Disputa Paralela";
-  const secondParallelName = cupConfig.secondParallelName || "2ª Disputa Paralela";
-  const thirdParallelName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
+  const firstParallelName = cupConfig.repechageName || "Consolation";
+  const secondParallelName = cupConfig.secondParallelName || "Caridade";
+  const thirdParallelName = cupConfig.thirdRepechageName || "Também Ganhei";
   const sunsetBracketName = cupConfig.sunsetBracketName || "Etapa Sunset";
   const groupCount = createCearenseGroups(
     cupConfig.teamCount || 4,
