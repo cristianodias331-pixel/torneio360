@@ -428,6 +428,14 @@ import {
 
 const root = new URL("../", import.meta.url);
 const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
+const lazyFeaturesSource = readFileSync(
+  new URL("src/features/appShell/lazyFeatures.jsx", root),
+  "utf8"
+);
+const cupRankingDefaultsSource = readFileSync(
+  new URL("src/domain/cupRankingDefaults.mjs", root),
+  "utf8"
+);
 const viteConfigSource = readFileSync(new URL("vite.config.mjs", root), "utf8");
 assert.ok(
   mainSource.includes('"Você está sem internet"')
@@ -569,6 +577,10 @@ const tournamentWorkspaceTabsSource = readFileSync(
   new URL("src/features/tournamentWorkspace/TournamentWorkspaceTabs.jsx", root),
   "utf8"
 );
+const tournamentRuntimeAdaptersSource = readFileSync(
+  new URL("src/features/tournamentWorkspace/TournamentRuntimeAdapters.jsx", root),
+  "utf8"
+);
 const courtCenterModalSource = readFileSync(
   new URL("src/features/courtCenter/CourtCenterModal.jsx", root),
   "utf8"
@@ -599,6 +611,22 @@ const participantManagementSource = readFileSync(
 );
 const publicArenaPresentationSource = readFileSync(
   new URL("src/features/publicArena/PublicArenaPresentation.jsx", root),
+  "utf8"
+);
+const publicArenaPageControllerSource = readFileSync(
+  new URL("src/features/publicArena/PublicArenaPageController.jsx", root),
+  "utf8"
+);
+const publicTournamentPageControllerSource = readFileSync(
+  new URL("src/features/publicArena/PublicTournamentPageController.jsx", root),
+  "utf8"
+);
+const publicCircuitScreenSource = readFileSync(
+  new URL("src/features/publicArena/PublicCircuitScreen.jsx", root),
+  "utf8"
+);
+const publicTournamentScreenSource = readFileSync(
+  new URL("src/features/publicArena/PublicTournamentScreen.jsx", root),
   "utf8"
 );
 const storyCoverEditorSource = readFileSync(
@@ -1505,9 +1533,9 @@ assert.equal(
     && publicArenaApiSource.includes("fetchPublicArenaInitialView")
     && publicArenaApiSource.includes('rpc("get_public_arena_initial_view"')
     && publicArenaApiSource.includes('rpc("list_public_arena_events_page"')
-    && mainSource.includes("PUBLIC_ARENA_EVENT_PAGE_SIZE")
-    && mainSource.includes("fetchPublicArenaInitialView({ arenaId, publicId })")
-    && mainSource.includes("loadPublicEventPage")
+    && publicArenaPageControllerSource.includes("PUBLIC_ARENA_EVENT_PAGE_SIZE")
+    && publicArenaPageControllerSource.includes("fetchPublicArenaInitialView({ arenaId, publicId })")
+    && publicArenaPageControllerSource.includes("loadPublicEventPage")
     && publicArenaPresentationSource.includes("serverPagination")
     && publicArenaPresentationSource.includes("serverPagination.onLoadMore"),
   true,
@@ -3157,7 +3185,8 @@ assert.deepEqual(
   "Campeão e segundo colocado do mesmo grupo perderam o seed vinculado."
 );
 assert.ok(
-  mainSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL = "Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
+  cupRankingDefaultsSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL =')
+    && cupRankingDefaultsSource.includes('"Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
     && tieBreakPanelsSource.includes('"playranking"')
     && tournamentFormatHelpSource.includes("O Total de Games permanece visível somente como estatística.")
     && tournamentFormatHelpSource.includes("o segundo colocado acompanha a posição do campeão do seu grupo"),
@@ -3510,7 +3539,13 @@ const requiredApplicationMarkers = [
 
 for (const marker of requiredApplicationMarkers) {
   assert.ok(
-    [mainSource, publicIdentifiersSource, cupBracketOrchestrationSource].some((source) => source.includes(marker)),
+    [
+      mainSource,
+      publicIdentifiersSource,
+      cupBracketOrchestrationSource,
+      tournamentRuntimeAdaptersSource,
+      publicTournamentPageControllerSource,
+    ].some((source) => source.includes(marker)),
     `Fluxo essencial ausente: ${marker}`,
   );
 }
@@ -3650,17 +3685,17 @@ assert.ok(
     && platformTrafficScalingMigrationSource.includes("p_after_sort_name")
     && platformTrafficScalingMigrationSource.includes("get_public_tournament_if_changed")
     && publicArenaApiSource.includes("refreshPublicTournamentDetail")
-    && mainSource.includes("PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS")
-    && mainSource.includes("PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS"),
+    && publicArenaPageControllerSource.includes("PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS")
+    && publicArenaPageControllerSource.includes("PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS"),
   "A proteção de tráfego perdeu índices, paginação por cursor ou atualização pública condicional."
 );
 assert.ok(
-  mainSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
+  publicArenaPageControllerSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
     && publicArenaApiSource.includes("fetchPublicArenaBundle")
     && publicArenaApiSource.includes("PUBLIC_ARENA_REQUEST_TIMEOUT_MS")
     && publicArenaCacheSource.includes("publicArenaBundleMemoryCache")
-    && mainSource.includes("readPublicArenaBundleCache")
-    && mainSource.includes("onPlaying"),
+    && publicArenaPageControllerSource.includes("readPublicArenaBundleCache")
+    && publicArenaPageControllerSource.includes("onPlaying"),
   "O perfil público perdeu os cinco segundos da propaganda ou a recuperação contra falhas temporárias."
 );
 assert.ok(
@@ -3681,7 +3716,8 @@ assert.ok(
     && publicArenaPayloadMigration.includes("'directoryEntry', true")
     && publicArenaApiSource.includes("fetchPublicTournamentDetail")
     && publicArenaCacheSource.includes("publicTournamentDetailMemoryCache")
-    && mainSource.includes("onOpenTournament={openPublicTournament}"),
+    && publicArenaPageControllerSource.includes("onOpenTournament={openPublicTournament}")
+    && publicTournamentPageControllerSource.includes("onOpenTournament={openPublicTournament}"),
   "O perfil público voltou a baixar todos os jogos e placares antes de o visitante abrir um torneio."
 );
 
@@ -3740,7 +3776,7 @@ assert.ok(
     && tournamentFormatPanelsSource.includes("secondRepechageEnabled")
     && tournamentFormatPanelsSource.includes("thirdRepechageEnabled")
     && tournamentFormatPanelsSource.includes("groupFormation")
-    && mainSource.includes("<CupConfigPanelView"),
+    && tournamentRuntimeAdaptersSource.includes("<CupConfigPanelView"),
   "Os painéis de formato perderam quantidades, paralelas, formação de grupos ou a composição com o torneio."
 );
 
@@ -3753,7 +3789,7 @@ assert.ok(
     && tournamentFormatHelpSource.includes('isSunset ? data.cupConfig?.groupFormation : "automatic"'),
   "A explicação não acompanha a quantidade, o formato individual ou a formação dos grupos escolhida."
 );
-assert.ok(mainSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
+assert.ok(publicTournamentScreenSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
 assert.ok(styleSource.includes(".formatInfoDialog"), "A explicação dinâmica está sem acabamento responsivo.");
 
 assert.ok(
@@ -3773,7 +3809,7 @@ assert.ok(
     && modalityConfig["Campeonato Cearense"]?.defaultThirdRepechageName === "3ª Disputa Paralela"
     && cupPresentationSource.includes('phase === "thirdParallel"')
     && mainSource.includes('activeMatchesTab === "paralela3"')
-    && mainSource.includes('activePublicMatchesTab === "paralela3"'),
+    && publicTournamentScreenSource.includes('activePublicMatchesTab === "paralela3"'),
   "O Campeonato Cearense perdeu a classificação oficial, o chaveamento definido ou a 3ª disputa paralela."
 );
 assert.ok(
@@ -4306,11 +4342,11 @@ assert.ok(
     && cupPodiumSource.includes('variant === "parallel" ? 1 : 3'),
   "A apresentação do pódio das Copas perdeu a principal ou o campeão das disputas paralelas."
 );
-assert.ok(mainSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
+assert.ok(publicCircuitScreenSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
 assert.ok(
   !circuitRankingSettingsPanelSource.includes("function CircuitTournamentFormatSelector")
     && !mainSource.includes("getCircuitCompatibleTournaments")
-    && mainSource.includes("Torneios do circuito")
+    && publicCircuitScreenSource.includes("Torneios do circuito")
     && circuitRankingSettingsPanelSource.includes("Todas as modalidades podem participar do mesmo circuito"),
   "O circuito ainda restringe a mistura de modalidades ou não explica o cálculo automático de cada etapa."
 );
@@ -4340,8 +4376,8 @@ assert.ok(
     && styleSource.includes("var(--ui-surface-raised)"),
   "Os cartões de escolha não seguem a seleção com quadradinho, lilás e contraste nos dois temas."
 );
-assert.ok(mainSource.includes('tournaments={tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
-assert.ok(mainSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
+assert.ok(publicArenaPageControllerSource.includes('tournaments={Array.isArray(selectedCircuit.tournaments) ? selectedCircuit.tournaments : tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
+assert.ok(publicCircuitScreenSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
 assert.ok(
   rankingShareExportSource.includes('pts: "Total de Games"'),
   "A coluna de games ainda usa a nomenclatura antiga."
@@ -4353,7 +4389,7 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes('rankingCriteria: effectiveCircuitCriteria')
-    && mainSource.includes('rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria'),
+    && publicCircuitScreenSource.includes('rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria'),
   "O compartilhamento do ranking do circuito não recebe seu critério efetivo."
 );
 assert.ok(
@@ -4384,7 +4420,7 @@ assert.ok(
 assert.ok(
   rankingShareButtonSource.includes("export default function RankingShareButton")
     && rankingShareButtonSource.includes('from "./rankingShareExport.mjs"')
-    && mainSource.includes('React.lazy(() => import("./features/rankingShare/RankingShareButton.jsx"))'),
+    && lazyFeaturesSource.includes('React.lazy(() => import("../rankingShare/RankingShareButton.jsx"))'),
   "O componente visual de compartilhamento não preserva a interface das ações existentes."
 );
 assert.ok(
@@ -4402,7 +4438,7 @@ assert.ok(
     && tournamentWorkspaceTabsSource.includes("Central de torneios")
     && tournamentWorkspaceTabsSource.includes("Remover da barra?")
     && tournamentWorkspaceTabsSource.includes("TOURNAMENT_TAB_COLORS")
-    && mainSource.includes("<TournamentWorkspaceTabsView {...props} MatchStatusSummary={TournamentMatchStatusSummary}"),
+    && tournamentRuntimeAdaptersSource.includes("<TournamentWorkspaceTabsView {...props} MatchStatusSummary={TournamentMatchStatusSummary}"),
   "A Central de Torneios Abertos perdeu abas, versão móvel, busca, confirmação ou resumo dos jogos."
 );
 assert.ok(
@@ -4412,8 +4448,8 @@ assert.ok(
     && courtCenterModalSource.includes("A quadra será liberada automaticamente ao concluir o placar.")
     && courtCenterModalSource.includes("Distribuição inicial por torneio")
     && courtCenterModalSource.includes("Os jogos e as rodadas não serão alterados.")
-    && mainSource.includes("<CourtCenterModalView")
-    && mainSource.includes("normalizeCourtCenterEntry={normalizeCourtCenterEntry}"),
+    && tournamentRuntimeAdaptersSource.includes("<CourtCenterModalView")
+    && tournamentRuntimeAdaptersSource.includes("normalizeCourtCenterEntry={normalizeCourtCenterEntry}"),
   "A Central de Quadras perdeu capacidade, ocupação, preferências ou compatibilidade com o estado salvo."
 );
 assert.ok(
@@ -4447,8 +4483,8 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes('const [newRankingCriteria, setNewRankingCriteria] = useState("");')
-    && mainSource.includes('function getNewTournamentRankingCriteria(type, selectedCriteria = "")')
-    && mainSource.includes('isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria')
+    && cupRankingDefaultsSource.includes('function getNewTournamentRankingCriteria(type, selectedCriteria = "")')
+    && cupRankingDefaultsSource.includes('isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria')
     && mainSource.includes('if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === effectiveNewRankingCriteria))')
     && mainSource.includes('getNewTournamentRankingCriteria(item.type, item.rankingCriteria)')
     && mainSource.includes('showNotice("warning", "Critério obrigatório"')
@@ -4481,9 +4517,9 @@ assert.ok(
   "A importação em massa deve remover emojis completos em qualquer posição da lista colada."
 );
 assert.ok(
-    mainSource.includes('const publicRankingReady = isCup || publicCompletionState.completed;')
-    && mainSource.includes('className="publicRankingLocked"')
-    && mainSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
+    publicTournamentScreenSource.includes('const publicRankingReady = isCup || publicCompletionState.completed;')
+    && publicTournamentScreenSource.includes('className="publicRankingLocked"')
+    && publicTournamentScreenSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
   "O ranking público das modalidades comuns não está protegido, ou a Copa continua bloqueada indevidamente."
 );
 assert.ok(
@@ -4558,7 +4594,7 @@ assert.ok(
     && cupBracketViewSource.includes("export function BracketColumn")
     && cupBracketViewSource.includes("MatchStatusSummary")
     && cupBracketViewSource.includes("speakBracketRound")
-    && mainSource.includes("<CupBracketViewComponent"),
+    && tournamentRuntimeAdaptersSource.includes("<CupBracketViewComponent"),
   "A apresentação das chaves perdeu fases, resumo, chamadas ou a composição com a tela do torneio."
 );
 assert.ok(
@@ -4566,7 +4602,7 @@ assert.ok(
     && publicBracketViewSource.includes("export function PublicCupBracketView")
     && publicBracketViewSource.includes("export function PublicBracketColumn")
     && publicBracketViewSource.includes("readOnly")
-    && mainSource.includes("<PublicCupBracketView"),
+    && publicTournamentScreenSource.includes("<PublicCupBracketView"),
   "A visualização pública perdeu rodadas, chaves, paralelas ou o modo somente leitura."
 );
 assert.ok(tieBreakPanelsSource.includes('showPodium={false}'), "A classificação da fase de grupos ainda exibe troféus de pódio.");
@@ -4586,10 +4622,10 @@ assert.ok(
   "Os identificadores públicos ou o tratamento de imagens voltaram ao componente principal."
 );
 assert.ok(
-  mainSource.includes("function lazyNamed(importer, exportName)")
+  lazyFeaturesSource.includes("function lazyNamed(importer, exportName)")
     && mainSource.includes("<React.Suspense")
     && mainSource.includes('import("./domain/tournamentScheduleFactory.mjs")')
-    && mainSource.includes('import("./features/matchOperations/speechAnnouncements.mjs")'),
+    && lazyFeaturesSource.includes('import("../matchOperations/speechAnnouncements.mjs")'),
   "As áreas pesadas deixaram de ser carregadas sob demanda ou perderam o fallback seguro."
 );
 assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
@@ -4637,8 +4673,9 @@ assert.ok(styleSource.includes('"team1 score1"'), "No celular, cada placar não 
 assert.ok(contactLinksSource.includes("function getBrazilianWhatsAppUrl"), "Os links de WhatsApp não possuem normalização brasileira.");
 assert.ok(contactLinksSource.includes('digits.startsWith("55") && digits.length >= 12'), "O código do país não é preservado quando já foi informado.");
 assert.ok(
-  (mainSource.match(/getBrazilianWhatsAppUrl\(/g) || []).length >= 3
-    && mainSource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}"),
+  ([mainSource, publicArenaPageControllerSource, publicTournamentScreenSource]
+    .join("\n").match(/getBrazilianWhatsAppUrl\(/g) || []).length >= 3
+    && publicArenaPageControllerSource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}"),
   "Nem todos os links de WhatsApp usam o código +55 automático."
 );
 assert.ok(authValidationSource.includes("function isUserAlreadyRegisteredError"), "O cadastro não reconhece e-mails que já possuem conta.");
@@ -4731,7 +4768,7 @@ assert.ok(
   "Uma conta visitante ainda pode abrir o painel administrativo."
 );
 assert.ok(
-  mainSource.includes("organizer={organizer}"),
+  publicArenaPageControllerSource.includes("organizer={organizer}"),
   "O torneio público ainda usa somente a cópia antiga dos dados da arena."
 );
 assert.ok(
@@ -4853,7 +4890,7 @@ assert.ok(
     && publicArenaPresentationSource.includes("export function PublicPlatformHomeView")
     && mainSource.includes("<PublicArenaHeroHeaderView")
     && mainSource.includes("<PublicArenaTournamentCardsView")
-    && mainSource.includes("<PublicArenaPageView")
+    && publicArenaPageControllerSource.includes("<PublicArenaPageView")
     && mainSource.includes("function PublicArenaPage("),
   "A apresentação pública da arena voltou a depender da consulta ou da composição principal."
 );
@@ -5453,7 +5490,7 @@ const resetTimerTestGame = {
 resetMatchTimer(resetTimerTestGame);
 assert.deepEqual(resetTimerTestGame, {}, "A redefinição do jogo deve remover todos os dados do cronômetro.");
 assert.ok(
-  mainSource.includes("function TournamentTimingSummary")
+  tournamentRuntimeAdaptersSource.includes("function TournamentTimingSummary")
     && tournamentSummaryViewsSource.includes("export function TournamentTimingSummaryView")
     && tournamentSummaryViewsSource.includes("export function TournamentMatchStatusSummaryView")
     && tournamentOperationsSource.includes("complete: operationalGames.length > 0")
@@ -5882,7 +5919,8 @@ assert.ok(
     && storyCoverEditorSource.includes('document.querySelectorAll(\'[aria-modal="true"]\')')
     && storyCoverEditorSource.includes('body.style.position = "fixed"')
     && storyCoverEditorSource.includes("dialog.inert = true")
-    && mainSource.includes("PublicImageLightbox")
+    && publicTournamentScreenSource.includes("PublicImageLightbox")
+    && publicCircuitScreenSource.includes("PublicImageLightbox")
     && publicArenaPresentationSource.includes('organizer.photoUrl || "/torneio360-profile.png"')
     && publicArenaApiSource.includes("get_public_tournament_cover")
     && publicArenaApiSource.includes("get_public_circuit_cover")

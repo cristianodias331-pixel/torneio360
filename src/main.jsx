@@ -50,6 +50,48 @@ import {
 import InstallAppBanner from "./InstallAppBanner.jsx";
 import AppUpdateNotice from "./features/appShell/AppUpdateNotice.jsx";
 import {
+  CircuitExtraPointsPanel,
+  CircuitGenderRegistryPanel,
+  CircuitRankingSettingsEditor,
+  ConfirmCircuitDeleteModal,
+  ConfirmClearScoresModal,
+  ConfirmClearTableModal,
+  ConfirmDuplicateCourtModal,
+  ConfirmEventGroupModalityChangeModal,
+  ConfirmModal,
+  ConfirmModalityChangeModal,
+  ConfirmRegenerationModal,
+  ConfirmTrashPermanentDeleteModal,
+  CopinhaTieBreakPanel,
+  CourtAssignmentModal,
+  CourtBadge,
+  CourtConfigPanel,
+  CourtOccupancyModal,
+  CupGroupRankingView,
+  CupPodiumView,
+  ModalityPicker,
+  NoticeModal,
+  ParticipantOccupancyModal,
+  PublicArenaPageController,
+  PublicCircuitScreenView,
+  PublicCupBracketView,
+  PublicScheduleView,
+  PublicTournamentPageController,
+  PublicTournamentScreenView,
+  RankingShareButton,
+  ReizinhoConfigPanel,
+  ShuffleVideoModal,
+  SimpleFormatInfoButton,
+  StoryCoverEditor,
+  TieBreakDrawOverlay,
+  TournamentCircuitButton,
+  TournamentCircuitManagerModal,
+  TournamentGenderSelector,
+  VoiceRepeatSelector,
+  createShuffleVideoFileOnDemand,
+  downloadShuffleVideoOnDemand,
+} from "./features/appShell/lazyFeatures.jsx";
+import {
   AccessPreparing,
   Blocked,
   FreeTrialNotice,
@@ -61,10 +103,7 @@ import {
   PlanCard,
   PlatformSupportLinks,
 } from "./features/appShell/EntryPresentation.jsx";
-import {
-  TournamentMatchStatusSummaryView,
-  TournamentTimingSummaryView,
-} from "./features/matchOperations/TournamentSummaryViews.jsx";
+import { createTournamentRuntimeAdapters } from "./features/tournamentWorkspace/TournamentRuntimeAdapters.jsx";
 import {
   PublicArenaDirectoryView,
   PublicArenaHeroHeaderView,
@@ -172,10 +211,7 @@ import {
   sortTournamentsForDisplay,
 } from "./domain/tournamentLifecycle.mjs";
 import { createTournamentOperations } from "./domain/tournamentOperations.mjs";
-import {
-  getCearenseFormatSummary,
-  resetCopinhaTieBreaks,
-} from "./domain/cupFormatSummary.mjs";
+import { resetCopinhaTieBreaks } from "./domain/cupFormatSummary.mjs";
 import {
   generateCollaborationChangeId,
   generatePublicId,
@@ -201,6 +237,7 @@ import {
   readPublicArenaDirectoryCache,
 } from "./domain/publicArenaCache.mjs";
 import { createPublicArenaApi } from "./services/publicArenaApi.mjs";
+import { copyToClipboard } from "./services/clipboard.mjs";
 import { createLatestEntitySignalProcessor } from "./services/latestEntitySignalProcessor.mjs";
 import { createUserAppStateCloudQueue } from "./services/userAppStateCloudQueue.mjs";
 import {
@@ -229,7 +266,6 @@ import {
   getTournamentVenueLabel,
 } from "./domain/localAppStorage.mjs";
 import {
-  formatMatchTotalDuration,
   getMatchElapsedSeconds,
   getMatchTimerFields,
   resetMatchTimer,
@@ -303,13 +339,8 @@ import {
   getRankingCriteria,
   rankingCriteriaOptions,
 } from "./domain/rankingCriteria.mjs";
-import {
-  calculateCircuitTournamentRankingRows,
-  calculateTournamentRanking,
-} from "./domain/tournamentRanking.mjs";
 import { calculateCircuitPlacementRowsByConfig } from "./domain/circuitPlacement.mjs";
 import {
-  buildCircuitRankingGroups,
   buildCircuitRankingGroupsFromRecords,
   buildCircuitTournamentRankingRecords,
 } from "./domain/circuitRankingAggregation.mjs";
@@ -320,6 +351,10 @@ import {
   normalizeModalitySearch,
 } from "./domain/modalityCatalog.mjs";
 import { allowedByPlan, modalityConfig } from "./domain/modalityConfig.mjs";
+import {
+  getAutomaticCupRankingLabel,
+  getNewTournamentRankingCriteria,
+} from "./domain/cupRankingDefaults.mjs";
 import {
   isCupType,
   isFixedTeamType,
@@ -374,183 +409,6 @@ import {
 } from "./domain/playRankingBracketMigration.mjs";
 import "./style.css";
 
-function lazyNamed(importer, exportName) {
-  return React.lazy(() => importer().then((module) => ({ default: module[exportName] })));
-}
-
-const CupBracketViewComponent = React.lazy(() => import("./features/brackets/CupBracketView.jsx"));
-const PublicCupBracketView = lazyNamed(
-  () => import("./features/brackets/PublicBracketView.jsx"),
-  "PublicCupBracketView"
-);
-const PublicScheduleView = lazyNamed(
-  () => import("./features/brackets/PublicBracketView.jsx"),
-  "PublicScheduleView"
-);
-const CourtCenterModalView = React.lazy(() => import("./features/courtCenter/CourtCenterModal.jsx"));
-const ModalityPicker = React.lazy(() => import("./features/modalityPicker/ModalityPicker.jsx"));
-const ConfirmDuplicateCourtModal = lazyNamed(
-  () => import("./features/matchOperations/MatchControls.jsx"),
-  "ConfirmDuplicateCourtModal"
-);
-const CourtAssignmentModal = lazyNamed(
-  () => import("./features/matchOperations/MatchControls.jsx"),
-  "CourtAssignmentModal"
-);
-const CourtBadge = lazyNamed(() => import("./features/matchOperations/MatchControls.jsx"), "CourtBadge");
-const CourtConfigPanel = lazyNamed(
-  () => import("./features/matchOperations/MatchControls.jsx"),
-  "CourtConfigPanel"
-);
-const CourtOccupancyModal = lazyNamed(
-  () => import("./features/matchOperations/MatchControls.jsx"),
-  "CourtOccupancyModal"
-);
-const ParticipantOccupancyModal = lazyNamed(
-  () => import("./features/matchOperations/MatchControls.jsx"),
-  "ParticipantOccupancyModal"
-);
-const VoiceRepeatSelector = lazyNamed(
-  () => import("./features/matchOperations/MatchControls.jsx"),
-  "VoiceRepeatSelector"
-);
-const ScheduleViewView = React.lazy(() => import("./features/matchOperations/MatchSchedule.jsx"));
-const ParticipantImportModalView = React.lazy(
-  () => import("./features/participantManagement/ParticipantManagement.jsx")
-);
-const PlayerInputsView = lazyNamed(
-  () => import("./features/participantManagement/ParticipantManagement.jsx"),
-  "PlayerInputs"
-);
-const RankingViewView = React.lazy(() => import("./features/ranking/RankingTables.jsx"));
-const RankingTableView = lazyNamed(() => import("./features/ranking/RankingTables.jsx"), "RankingTable");
-const CupPodiumView = React.lazy(() => import("./features/ranking/CupPodiumView.jsx"));
-const CopinhaTieBreakPanel = lazyNamed(
-  () => import("./features/ranking/TieBreakPanels.jsx"),
-  "CopinhaTieBreakPanel"
-);
-const CupGroupRankingView = lazyNamed(
-  () => import("./features/ranking/TieBreakPanels.jsx"),
-  "CupGroupRankingView"
-);
-const TieBreakDrawOverlay = lazyNamed(
-  () => import("./features/ranking/TieBreakPanels.jsx"),
-  "TieBreakDrawOverlay"
-);
-const RankingShareButton = React.lazy(() => import("./features/rankingShare/RankingShareButton.jsx"));
-const TournamentWorkspaceTabsView = React.lazy(
-  () => import("./features/tournamentWorkspace/TournamentWorkspaceTabs.jsx")
-);
-const CupConfigPanelView = React.lazy(
-  () => import("./features/tournamentConfig/TournamentFormatPanels.jsx")
-);
-const ReizinhoConfigPanel = lazyNamed(
-  () => import("./features/tournamentConfig/TournamentFormatPanels.jsx"),
-  "ReizinhoConfigPanel"
-);
-const SimpleConfigPanelView = lazyNamed(
-  () => import("./features/tournamentConfig/TournamentFormatPanels.jsx"),
-  "SimpleConfigPanel"
-);
-const TournamentFormatInfoButtonView = React.lazy(
-  () => import("./features/tournamentConfig/TournamentFormatHelp.jsx")
-);
-const ParallelDisputeChoiceView = lazyNamed(
-  () => import("./features/tournamentConfig/TournamentFormatHelp.jsx"),
-  "ParallelDisputeChoice"
-);
-const FormatExplanationButton = React.lazy(
-  () => import("./features/tournamentConfig/FormatExplanationButton.jsx")
-);
-const SimpleFormatInfoButton = lazyNamed(
-  () => import("./features/tournamentConfig/FormatExplanationButton.jsx"),
-  "SimpleFormatInfoButton"
-);
-const TournamentGenderSelector = React.lazy(
-  () => import("./features/tournamentConfig/TournamentGenderSelector.jsx")
-);
-const CircuitExtraPointsPanel = React.lazy(
-  () => import("./features/circuitManagement/CircuitExtraPointsPanel.jsx")
-);
-const CircuitGenderRegistryPanel = lazyNamed(
-  () => import("./features/circuitManagement/CircuitRankingSettings.jsx"),
-  "CircuitGenderRegistryPanel"
-);
-const CircuitRankingSettingsEditor = lazyNamed(
-  () => import("./features/circuitManagement/CircuitRankingSettings.jsx"),
-  "CircuitRankingSettingsEditor"
-);
-const TournamentCircuitButton = lazyNamed(
-  () => import("./features/circuitManagement/TournamentCircuitManager.jsx"),
-  "TournamentCircuitButton"
-);
-const TournamentCircuitManagerModal = lazyNamed(
-  () => import("./features/circuitManagement/TournamentCircuitManager.jsx"),
-  "TournamentCircuitManagerModal"
-);
-const ConfirmCircuitDeleteModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmCircuitDeleteModal"
-);
-const ConfirmClearScoresModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmClearScoresModal"
-);
-const ConfirmClearTableModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmClearTableModal"
-);
-const ConfirmEventGroupModalityChangeModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmEventGroupModalityChangeModal"
-);
-const ConfirmModal = lazyNamed(() => import("./features/dialogs/ConfirmationDialogs.jsx"), "ConfirmModal");
-const ConfirmModalityChangeModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmModalityChangeModal"
-);
-const ConfirmRegenerationModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmRegenerationModal"
-);
-const ConfirmTrashPermanentDeleteModal = lazyNamed(
-  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
-  "ConfirmTrashPermanentDeleteModal"
-);
-const NoticeModal = lazyNamed(() => import("./features/dialogs/ConfirmationDialogs.jsx"), "NoticeModal");
-const ShuffleVideoModal = React.lazy(() => import("./features/media/ShuffleVideoModal.jsx"));
-const StoryCoverEditor = React.lazy(() => import("./features/media/StoryCoverEditor.jsx"));
-
-async function createShuffleVideoFileOnDemand(options) {
-  const module = await import("./features/media/shuffleVideoExport.mjs");
-  return module.createShuffleVideoFile(options);
-}
-
-async function downloadShuffleVideoOnDemand(file) {
-  const module = await import("./features/media/shuffleVideoExport.mjs");
-  return module.downloadShuffleVideo(file);
-}
-
-async function speakBracketRound(...args) {
-  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
-  return module.speakBracketRound(...args);
-}
-
-async function speakGame(...args) {
-  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
-  return module.speakGame(...args);
-}
-
-async function speakRound(...args) {
-  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
-  return module.speakRound(...args);
-}
-
-async function stopSpeech(...args) {
-  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
-  return module.stopSpeech(...args);
-}
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   || "https://dttutybojealkvuywszt.supabase.co";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -597,18 +455,30 @@ const {
   getSafeCupPresentation,
 } = createCupPresentation({ getCupPlayTimeById });
 
+const {
+  CupBracketView,
+  CupConfigPanel,
+  CourtCenterModal,
+  ParticipantImportModal,
+  PlayerInputs,
+  RankingTable,
+  RankingView,
+  ScheduleView,
+  SimpleConfigPanel,
+  TournamentFormatInfoButton,
+  TournamentMatchStatusSummary,
+  TournamentTimingSummary,
+  TournamentWorkspaceTabs,
+  buildPublicCircuitRankingGroups,
+  calculateCircuitTournamentRanking,
+  calculateRanking,
+} = createTournamentRuntimeAdapters({
+  getTournamentMatchStatusSummary,
+  getTournamentOperationalGames,
+  getTournamentTimingSummary,
+});
+
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
-const PLAY_RANKING_GROUP_CRITERIA_LABEL = "Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio";
-
-function getAutomaticCupRankingLabel(type) {
-  return modalityConfig[type]?.type === "playranking"
-    ? PLAY_RANKING_GROUP_CRITERIA_LABEL
-    : getRankingCriteria(cupRankingCriteria).label;
-}
-
-function getNewTournamentRankingCriteria(type, selectedCriteria = "") {
-  return isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria;
-}
 
 async function logout() {
   try {
@@ -646,30 +516,6 @@ function calculateCircuitPlacementRows(tournament, settings) {
 function PublicRegistrationStatus(props) {
   return <PublicRegistrationStatusView {...props} getWhatsAppUrl={getBrazilianWhatsAppUrl} />;
 }
-async function copyToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch (e) {
-    console.error(e);
-
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  }
-}
 
 async function resendEmailConfirmation(email) {
   return supabase.auth.resend({
@@ -679,54 +525,6 @@ async function resendEmailConfirmation(email) {
       emailRedirectTo: getAuthRedirectUrl("confirm"),
     },
   });
-}
-
-function TournamentTimingSummary({ data, compact = false }) {
-  const winningScore = getWinningScore(data);
-  const hasActiveTimer = getTournamentOperationalGames(data).some((item) => {
-    const game = item.storedGame || item.game;
-    return !isGameFinished(item.game, winningScore)
-      && !game?.matchTimerFinishedAt
-      && game?.inProgress === true
-      && Boolean(game?.matchTimerStartedAt);
-  });
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    setNow(Date.now());
-    if (!hasActiveTimer) return undefined;
-    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, [hasActiveTimer, data]);
-
-  const summary = getTournamentTimingSummary(data, now);
-  return (
-    <TournamentTimingSummaryView
-      summary={summary}
-      compact={compact}
-      formatDuration={formatMatchTotalDuration}
-    />
-  );
-}
-
-function TournamentMatchStatusSummary({
-  data,
-  compact = false,
-  vertical = false,
-  scope = "all",
-  bracketMatchKeys = null,
-}) {
-  // A contagem é barata e precisa acompanhar até atualizações pontuais de placar/status.
-  // Evitar memoização aqui também protege torneios antigos que ainda atualizam dados aninhados.
-  const summary = getTournamentMatchStatusSummary(data, { scope, bracketMatchKeys });
-
-  return (
-    <TournamentMatchStatusSummaryView
-      summary={summary}
-      compact={compact}
-      vertical={vertical}
-    />
-  );
 }
 
 // Mapas de chaveamento da Copinha. C = campeão do grupo, R = segundo e T =
@@ -2269,22 +2067,6 @@ function Login({
         </section>
       </main>
     </div>
-  );
-}
-
-function TournamentWorkspaceTabs(props) {
-  return <TournamentWorkspaceTabsView {...props} MatchStatusSummary={TournamentMatchStatusSummary} />;
-}
-
-function CourtCenterModal(props) {
-  return (
-    <CourtCenterModalView
-      {...props}
-      modalityConfig={modalityConfig}
-      getTournamentVenueKey={getTournamentVenueKey}
-      getTournamentVenueLabel={getTournamentVenueLabel}
-      normalizeCourtCenterEntry={normalizeCourtCenterEntry}
-    />
   );
 }
 
@@ -13241,107 +13023,6 @@ return (
   );
 }
 
-function ParallelDisputeChoice(props) {
-  return (
-    <ParallelDisputeChoiceView
-      {...props}
-      getCearenseFormatSummary={getCearenseFormatSummary}
-      FormatExplanationButton={FormatExplanationButton}
-    />
-  );
-}
-
-function TournamentFormatInfoButton(props) {
-  return (
-    <TournamentFormatInfoButtonView
-      {...props}
-      getCearenseFormatSummary={getCearenseFormatSummary}
-    />
-  );
-}
-function SimpleConfigPanel(props) {
-  return <SimpleConfigPanelView {...props} SimpleFormatInfoButton={SimpleFormatInfoButton} />;
-}
-
-function CupConfigPanel(props) {
-  return (
-    <CupConfigPanelView
-      {...props}
-      TournamentFormatInfoButton={TournamentFormatInfoButton}
-      ParallelDisputeChoice={ParallelDisputeChoice}
-    />
-  );
-}
-
-function ParticipantImportModal(props) {
-  return <ParticipantImportModalView {...props} modalityConfig={modalityConfig} />;
-}
-
-function PlayerInputs(props) {
-  return <PlayerInputsView {...props} modalityConfig={modalityConfig} />;
-}
-
-
-function ScheduleView(props) {
-  void import("./features/matchOperations/speechAnnouncements.mjs");
-  return (
-    <ScheduleViewView
-      {...props}
-      speakGame={speakGame}
-      speakRound={speakRound}
-      stopSpeech={stopSpeech}
-      MatchStatusSummary={TournamentMatchStatusSummary}
-    />
-  );
-}
-function calculateRanking(data, type, rankingCriteriaValue = defaultRankingCriteria) {
-  const config = modalityConfig[type];
-  return calculateTournamentRanking({
-    data,
-    config,
-    rankingCriteriaValue,
-    timingComplete: getTournamentTimingSummary(data).complete,
-  });
-}
-
-function calculateCircuitTournamentRanking(data, type, rankingCriteriaValue = defaultRankingCriteria) {
-  const config = modalityConfig[type];
-  return calculateCircuitTournamentRankingRows({
-    data,
-    config,
-    rankingCriteriaValue,
-    timingComplete: getTournamentTimingSummary(data).complete,
-  });
-}
-
-function buildPublicCircuitRankingGroups(circuit, tournaments = []) {
-  return buildCircuitRankingGroups({
-    circuit,
-    tournaments,
-    modalityConfigs: modalityConfig,
-    getTimingComplete: (tournament) => getTournamentTimingSummary(tournament?.data || {}).complete,
-  });
-}
-
-function RankingView(props) {
-  return <RankingViewView {...props} modalityConfig={modalityConfig} CircuitButton={TournamentCircuitButton} />;
-}
-
-function RankingTable(props) {
-  return <RankingTableView {...props} CircuitButton={TournamentCircuitButton} />;
-}
-
-function CupBracketView(props) {
-  return (
-    <CupBracketViewComponent
-      {...props}
-      speakGame={speakGame}
-      speakBracketRound={speakBracketRound}
-      stopSpeech={stopSpeech}
-      MatchStatusSummary={TournamentMatchStatusSummary}
-    />
-  );
-}
 function PublicArenaHeroHeader(props) {
   return (
     <PublicArenaHeroHeaderView
@@ -13365,1405 +13046,66 @@ function PublicArenaTournamentCards(props) {
     />
   );
 }
-const PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000;
+const publicArenaPageRuntime = {
+  PublicArenaHeroHeader,
+  PublicArenaTournamentCards,
+  PublicCircuitScreen,
+  PublicTournamentScreen,
+  fetchPublicArenaBundle,
+  fetchPublicArenaEventsPage,
+  fetchPublicArenaInitialView,
+  fetchPublicArenaPhoto,
+  fetchPublicCircuitCover,
+  fetchPublicCircuitDetail,
+  fetchPublicTournamentCover,
+  fetchPublicTournamentDetail,
+  refreshPublicTournamentDetail,
+};
 
-function createPublicArenaEventPages(counts = {}) {
-  const createStatus = (kind, status) => ({
-    loaded: false,
-    loading: false,
-    error: "",
-    total: Math.max(0, Number(counts?.[kind]?.[status]) || 0),
-    hasMore: false,
-    nextOffset: 0,
-  });
-  return {
-    tournaments: {
-      active: createStatus("tournaments", "active"),
-      finished: createStatus("tournaments", "finished"),
-    },
-    circuits: {
-      active: createStatus("circuits", "active"),
-      finished: createStatus("circuits", "finished"),
-    },
-  };
+function PublicArenaPage(props) {
+  return <PublicArenaPageController {...props} runtime={publicArenaPageRuntime} />;
 }
 
-function PublicArenaLoadingScreen() {
-  const [videoReady, setVideoReady] = useState(false);
+const publicTournamentPageRuntime = {
+  PublicArenaHeroHeader,
+  PublicArenaTournamentCards,
+  PublicCircuitScreen,
+  PublicTournamentScreen,
+  fetchPublicCircuitDetail,
+  supabase,
+};
 
-  return (
-    <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da arena">
-      <video
-        className={`publicArenaLoadingVideo${videoReady ? " isReady" : ""}`}
-        src="/arena-profile-loading.mp4"
-        autoPlay
-        muted
-        playsInline
-        loop
-        preload="auto"
-        onPlaying={() => window.requestAnimationFrame(() => setVideoReady(true))}
-        aria-hidden="true"
-      />
-      <div className="publicArenaLoadingCaption">Carregando perfil da arena...</div>
-    </div>
-  );
+function PublicTournamentPage(props) {
+  return <PublicTournamentPageController {...props} runtime={publicTournamentPageRuntime} />;
 }
 
-function PublicArenaPage({ arenaId = null, publicId = null }) {
-  const [loading, setLoading] = useState(true);
-  const [minimumLoadingElapsed, setMinimumLoadingElapsed] = useState(false);
-  const [bundle, setBundle] = useState(null);
-  const [error, setError] = useState("");
-  const [activeArenaTab, setActiveArenaTab] = useState("tournaments");
-  const [activeStatusTab, setActiveStatusTab] = useState("active");
-  const [selectedTournament, setSelectedTournament] = useState(null);
-  const [selectedCircuit, setSelectedCircuit] = useState(null);
-  const [openingPublicId, setOpeningPublicId] = useState(null);
-  const [openingCircuitId, setOpeningCircuitId] = useState(null);
-  const [eventPages, setEventPages] = useState(() => createPublicArenaEventPages());
-  const requestedTournamentCoversRef = useRef(new Set());
-  const requestedCircuitCoversRef = useRef(new Set());
-  const tournamentCoverCacheRef = useRef(new Map());
-  const circuitCoverCacheRef = useRef(new Map());
-  const bundleRequestInFlightRef = useRef(false);
-  const eventPageRequestsRef = useRef(new Set());
-  const eventPagesRef = useRef(eventPages);
-  const lastBundleLoadAtRef = useRef(0);
-  const selectedPublicTournamentRef = useRef(null);
-  eventPagesRef.current = eventPages;
+const publicCircuitScreenRuntime = {
+  RankingTable,
+  buildPublicCircuitRankingGroups,
+  tagline: TORNEIO360_TAGLINE,
+};
 
-  useEffect(() => {
-    selectedPublicTournamentRef.current = selectedTournament;
-  }, [selectedTournament]);
-
-  function getTournamentCardCoverKey(tournament) {
-    const details = tournament?.data || {};
-    return details.multiCategoryEvent === true && details.eventGroupKey
-      ? `group:${details.eventGroupKey}`
-      : `tournament:${tournament?.id || tournament?.public_id || ""}`;
-  }
-
-  function applyTournamentCardCover(tournament, coverImageUrl) {
-    if (!coverImageUrl) return tournament;
-    const details = tournament?.data || {};
-    return {
-      ...tournament,
-      data: {
-        ...details,
-        ...(details.multiCategoryEvent === true
-          ? { eventCoverImageUrl: coverImageUrl }
-          : { coverImageUrl }),
-      },
-    };
-  }
-
-  const loadTournamentCardCover = React.useCallback(async (tournament) => {
-    const publicId = String(tournament?.public_id || "").trim();
-    const coverKey = getTournamentCardCoverKey(tournament);
-    if (!publicId || !coverKey || requestedTournamentCoversRef.current.has(coverKey)) return;
-    requestedTournamentCoversRef.current.add(coverKey);
-    const coverImageUrl = await fetchPublicTournamentCover(publicId);
-    if (!coverImageUrl) return;
-    tournamentCoverCacheRef.current.set(coverKey, coverImageUrl);
-    setBundle((current) => current ? {
-      ...current,
-      tournaments: (current.tournaments || []).map((item) => (
-        getTournamentCardCoverKey(item) === coverKey ? applyTournamentCardCover(item, coverImageUrl) : item
-      )),
-    } : current);
-  }, []);
-
-  const loadCircuitCardCover = React.useCallback(async (circuit) => {
-    const circuitId = String(circuit?.id || "").trim();
-    if (!circuitId || requestedCircuitCoversRef.current.has(circuitId)) return;
-    requestedCircuitCoversRef.current.add(circuitId);
-    const coverImageUrl = await fetchPublicCircuitCover(circuitId);
-    if (!coverImageUrl) return;
-    circuitCoverCacheRef.current.set(circuitId, coverImageUrl);
-    setBundle((current) => current ? {
-      ...current,
-      circuits: (current.circuits || []).map((item) => String(item.id) === circuitId ? {
-        ...item,
-        coverImageUrl,
-        ranking_settings: { ...(item.ranking_settings || {}), coverImageUrl },
-        rankingSettings: { ...(item.rankingSettings || {}), coverImageUrl },
-      } : item),
-    } : current);
-  }, []);
-
-  function loadProfilePhotoInBackground(profile) {
-    const profileId = String(profile?.id || "");
-    if (!profileId || profile?.photo_url || !profile?.has_photo) return;
-
-    void fetchPublicArenaPhoto(profileId).then((photoUrl) => {
-      if (!photoUrl) return;
-      setBundle((current) => {
-        if (String(current?.profile?.id || "") !== profileId) return current;
-        return {
-          ...current,
-          profile: { ...current.profile, photo_url: photoUrl },
-        };
-      });
-    });
-  }
-
-  async function loadPublicEventPage({ kind, status, append = false }) {
-    const normalizedKind = kind === "circuits" ? "circuits" : "tournaments";
-    const normalizedStatus = status === "finished" ? "finished" : "active";
-    const requestKey = `${normalizedKind}:${normalizedStatus}`;
-    if (eventPageRequestsRef.current.has(requestKey)) return;
-
-    const currentPage = eventPagesRef.current?.[normalizedKind]?.[normalizedStatus];
-    if (!append && currentPage?.loaded) return;
-    if (append && (!currentPage?.hasMore || currentPage?.loading)) return;
-
-    eventPageRequestsRef.current.add(requestKey);
-    setEventPages((current) => ({
-      ...current,
-      [normalizedKind]: {
-        ...current[normalizedKind],
-        [normalizedStatus]: {
-          ...current[normalizedKind][normalizedStatus],
-          loading: true,
-          error: "",
-        },
-      },
-    }));
-
-    const result = await fetchPublicArenaEventsPage({
-      arenaId,
-      publicId,
-      kind: normalizedKind,
-      status: normalizedStatus,
-      limit: PUBLIC_ARENA_EVENT_PAGE_SIZE,
-      offset: append ? currentPage?.nextOffset || 0 : 0,
-    });
-    eventPageRequestsRef.current.delete(requestKey);
-
-    if (result.error || !result.data) {
-      console.warn("Não foi possível carregar a página pública de eventos.", result.error);
-      setEventPages((current) => ({
-        ...current,
-        [normalizedKind]: {
-          ...current[normalizedKind],
-          [normalizedStatus]: {
-            ...current[normalizedKind][normalizedStatus],
-            loading: false,
-            error: "Não foi possível carregar estes eventos agora.",
-          },
-        },
-      }));
-      return;
-    }
-
-    const pageItems = normalizedKind === "circuits"
-      ? result.data.items.map((item) => normalizePublicCircuitForDisplay(item, { directoryEntry: true }))
-      : result.data.items;
-    setBundle((current) => {
-      if (!current) return current;
-      const existing = Array.isArray(current[normalizedKind]) ? current[normalizedKind] : [];
-      const belongsToStatus = (item) => isPublicItemFinished(
-        item,
-        normalizedKind === "circuits" ? "circuit" : "tournament"
-      ) === (normalizedStatus === "finished");
-      const otherStatusItems = existing.filter((item) => !belongsToStatus(item));
-      const currentStatusItems = append ? existing.filter(belongsToStatus) : [];
-      const mergedById = new Map(
-        [...currentStatusItems, ...pageItems].map((item) => [String(item.id), item])
-      );
-      return {
-        ...current,
-        [normalizedKind]: [...otherStatusItems, ...mergedById.values()],
-      };
-    });
-    setEventPages((current) => ({
-      ...current,
-      [normalizedKind]: {
-        ...current[normalizedKind],
-        [normalizedStatus]: {
-          loaded: true,
-          loading: false,
-          error: "",
-          total: result.data.total,
-          hasMore: result.data.hasMore,
-          nextOffset: result.data.nextOffset,
-        },
-      },
-    }));
-  }
-
-  async function loadBundle({ silent = false } = {}) {
-    if (bundleRequestInFlightRef.current) return;
-    bundleRequestInFlightRef.current = true;
-    if (!silent) setLoading(true);
-    try {
-      const initialView = silent
-        ? null
-        : await fetchPublicArenaInitialView({ arenaId, publicId });
-      const result = initialView?.bundle || await fetchPublicArenaBundle({ arenaId, publicId });
-
-      if (result.error || !result.data?.profile) {
-        console.error(result.error);
-        if (!silent) {
-          setError("Não foi possível abrir o perfil desta arena.");
-          setBundle(null);
-        }
-      } else {
-        const usesServerPagination = result.data.pagination?.enabled === true;
-        const initialActiveTournaments = usesServerPagination && initialView?.activeTournaments?.data
-          ? initialView.activeTournaments.data
-          : null;
-        const initialTournamentRows = initialActiveTournaments?.items || result.data.tournaments || [];
-        const tournamentsWithCachedCovers = initialTournamentRows.map((tournament) => {
-          const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
-          return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
-        });
-        const normalizedCircuits = (result.data.circuits || []).map((circuit) => {
-          const cachedCover = circuitCoverCacheRef.current.get(String(circuit.id));
-          const circuitWithCover = cachedCover ? {
-            ...circuit,
-            coverImageUrl: cachedCover,
-            ranking_settings: { ...(circuit.ranking_settings || {}), coverImageUrl: cachedCover },
-          } : circuit;
-          return normalizePublicCircuitForDisplay(circuitWithCover, { directoryEntry: true });
-        });
-        const normalizedBundle = { ...result.data, tournaments: tournamentsWithCachedCovers, circuits: normalizedCircuits };
-        setBundle((current) => usesServerPagination && current?.profile?.id === normalizedBundle.profile?.id
-          ? {
-            ...normalizedBundle,
-            tournaments: current.tournaments || [],
-            circuits: current.circuits || [],
-          }
-          : normalizedBundle);
-        if (usesServerPagination) {
-          setEventPages((current) => {
-            const next = { ...current };
-            ["tournaments", "circuits"].forEach((kind) => {
-              next[kind] = { ...current[kind] };
-              ["active", "finished"].forEach((status) => {
-                next[kind][status] = {
-                  ...current[kind][status],
-                  total: Math.max(0, Number(result.data.counts?.[kind]?.[status]) || 0),
-                };
-              });
-            });
-            if (initialActiveTournaments) {
-              next.tournaments.active = {
-                ...next.tournaments.active,
-                loaded: true,
-                loading: false,
-                error: "",
-                total: initialActiveTournaments.total,
-                hasMore: initialActiveTournaments.hasMore,
-                nextOffset: initialActiveTournaments.nextOffset,
-              };
-            }
-            return next;
-          });
-        } else {
-          const legacyCounts = {
-            tournaments: {
-              active: tournamentsWithCachedCovers.filter((item) => !isPublicItemFinished(item, "tournament")).length,
-              finished: tournamentsWithCachedCovers.filter((item) => isPublicItemFinished(item, "tournament")).length,
-            },
-            circuits: {
-              active: normalizedCircuits.filter((item) => !isPublicItemFinished(item, "circuit")).length,
-              finished: normalizedCircuits.filter((item) => isPublicItemFinished(item, "circuit")).length,
-            },
-          };
-          const legacyPages = createPublicArenaEventPages(legacyCounts);
-          ["tournaments", "circuits"].forEach((kind) => {
-            ["active", "finished"].forEach((status) => {
-              legacyPages[kind][status].loaded = true;
-            });
-          });
-          setEventPages(legacyPages);
-        }
-        loadProfilePhotoInBackground(normalizedBundle.profile);
-        if (!usesServerPagination) setSelectedTournament((current) => {
-          if (!current) return null;
-          const directoryItem = (normalizedBundle.tournaments || []).find((item) => item.id === current.id);
-          if (!directoryItem) return null;
-          if (current.directoryEntry !== true) {
-            return { ...directoryItem, ...current, data: current.data };
-          }
-          return directoryItem;
-        });
-        if (!usesServerPagination) setSelectedCircuit((current) => {
-          if (!current) return null;
-          const directoryItem = normalizedCircuits.find((item) => String(item.id) === String(current.id));
-          if (!directoryItem) return null;
-          if (current.directoryEntry !== true) {
-            return { ...directoryItem, ...current };
-          }
-          return directoryItem;
-        });
-        setError("");
-        lastBundleLoadAtRef.current = Date.now();
-      }
-    } finally {
-      bundleRequestInFlightRef.current = false;
-      if (!silent) setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    setMinimumLoadingElapsed(false);
-    setEventPages(createPublicArenaEventPages());
-    eventPageRequestsRef.current.clear();
-    const minimumLoadingTimer = window.setTimeout(
-      () => setMinimumLoadingElapsed(true),
-      PUBLIC_ARENA_LOADING_MIN_DURATION_MS
-    );
-    const cachedBundle = readPublicArenaBundleCache({ arenaId, publicId });
-    if (cachedBundle?.profile) {
-      setBundle(cachedBundle);
-      loadProfilePhotoInBackground(cachedBundle.profile);
-      setError("");
-      setLoading(false);
-      void loadBundle({ silent: true });
-    } else {
-      void loadBundle();
-    }
-    const refreshWhenVisible = () => {
-      if (document.visibilityState !== "visible") return;
-      if (Date.now() - lastBundleLoadAtRef.current < ARENA_DIRECTORY_FOCUS_MIN_AGE_MS) return;
-      void loadBundle({ silent: true });
-    };
-    const interval = window.setInterval(refreshWhenVisible, PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS);
-    window.addEventListener("focus", refreshWhenVisible);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () => {
-      window.clearTimeout(minimumLoadingTimer);
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refreshWhenVisible);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [arenaId, publicId]);
-
-  useEffect(() => {
-    if (!bundle?.profile || bundle.pagination?.enabled !== true) return;
-    const currentPage = eventPagesRef.current?.[activeArenaTab]?.[activeStatusTab];
-    if (!currentPage?.loaded && !currentPage?.loading) {
-      void loadPublicEventPage({ kind: activeArenaTab, status: activeStatusTab });
-    }
-  }, [bundle?.profile?.id, bundle?.pagination?.enabled, activeArenaTab, activeStatusTab]);
-
-  useEffect(() => {
-    const selectedPublicId = String(selectedTournament?.public_id || "").trim();
-    if (!selectedPublicId || selectedTournament?.directoryEntry === true) return undefined;
-    let active = true;
-    let requestInFlight = false;
-
-    const refreshSelectedTournament = async () => {
-      if (!active || requestInFlight || document.visibilityState !== "visible") return;
-      const current = selectedPublicTournamentRef.current;
-      if (!current || String(current.public_id || "") !== selectedPublicId) return;
-      requestInFlight = true;
-      const result = await refreshPublicTournamentDetail(selectedPublicId, current.updated_at || null);
-      requestInFlight = false;
-      if (!active || result.error || !result.changed || !result.data) return;
-      setSelectedTournament((latest) => (
-        latest && String(latest.public_id || "") === selectedPublicId
-          ? { ...latest, ...result.data, directoryEntry: false }
-          : latest
-      ));
-    };
-
-    const interval = window.setInterval(refreshSelectedTournament, PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS);
-    window.addEventListener("focus", refreshSelectedTournament);
-    document.addEventListener("visibilitychange", refreshSelectedTournament);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refreshSelectedTournament);
-      document.removeEventListener("visibilitychange", refreshSelectedTournament);
-    };
-  }, [selectedTournament?.public_id, selectedTournament?.directoryEntry]);
-
-  useEffect(() => {
-    setActiveStatusTab("active");
-  }, [activeArenaTab]);
-
-  async function openPublicTournament(item) {
-    if (!item?.directoryEntry) {
-      setSelectedTournament(item);
-      return;
-    }
-
-    setOpeningPublicId(item.public_id);
-    const result = await fetchPublicTournamentDetail(item.public_id);
-    setOpeningPublicId(null);
-
-    if (result.error || !result.data) {
-      console.error(result.error);
-      return;
-    }
-
-    setSelectedTournament({ ...item, ...result.data, directoryEntry: false });
-  }
-
-  async function openPublicCircuit(item) {
-    if (!item?.directoryEntry) {
-      setSelectedCircuit(item);
-      return;
-    }
-
-    setOpeningCircuitId(item.id);
-    const result = await fetchPublicCircuitDetail(item.id);
-    setOpeningCircuitId(null);
-
-    if (result.error || !result.data) {
-      console.error(result.error);
-      return;
-    }
-
-    setSelectedCircuit(normalizePublicCircuitForDisplay(result.data, { directoryEntry: false }));
-  }
-
-  if (loading || !minimumLoadingElapsed) {
-    return <PublicArenaLoadingScreen />;
-  }
-
-  if (error || !bundle?.profile) {
-    return (
-      <div className="publicPage publicUnavailablePage">
-        <div className="center">
-          <BeachLogo />
-          <h1>Perfil indisponível</h1>
-          <p>{error || "Este perfil não está disponível."}</p>
-          <button type="button" onClick={() => window.location.assign(window.location.origin)}>Explorar outras arenas</button>
-        </div>
-      </div>
-    );
-  }
-
-  const profile = bundle.profile;
-  const loadedTournaments = Array.isArray(bundle.tournaments) ? bundle.tournaments : [];
-  const loadedCircuits = Array.isArray(bundle.circuits) ? bundle.circuits : [];
-  const tournaments = bundle.pagination?.enabled === true
-    ? loadedTournaments
-    : sortTournamentsForDisplay(loadedTournaments);
-  const circuits = bundle.pagination?.enabled === true
-    ? loadedCircuits
-    : sortCircuitsForDisplay(loadedCircuits);
-  const arenaName = profile.arena_name || profile.name || "Arena Torneio360";
-  const organizer = {
-    id: profile.id,
-    photoUrl: profile.photo_url || "",
-    arenaName,
-    organizerName: profile.name || "",
-    whatsapp: profile.phone || "",
-    address: profile.address || "",
-    mapsLink: profile.maps_link || "",
-    instagramHandle: profile.instagram_handle || "",
-    instagramLink: profile.instagram_link || "",
-    whatsappGroupLink: profile.whatsapp_group_link || "",
-    city: profile.city || "",
-    state: profile.state || "",
-  };
-
-  if (selectedTournament) {
-    return (
-      <PublicTournamentScreen
-        tournament={selectedTournament}
-        organizer={organizer}
-        onBackToArena={() => setSelectedTournament(null)}
-      />
-    );
-  }
-
-  if (selectedCircuit) {
-    return (
-      <PublicCircuitScreen
-        circuit={selectedCircuit}
-        tournaments={Array.isArray(selectedCircuit.tournaments) ? selectedCircuit.tournaments : tournaments}
-        organizer={organizer}
-        onBackToArena={() => setSelectedCircuit(null)}
-      />
-    );
-  }
-
-  const activeItems = activeArenaTab === "tournaments"
-    ? tournaments.filter((item) => !isPublicItemFinished(item, "tournament"))
-    : circuits.filter((item) => !isPublicItemFinished(item, "circuit"));
-  const finishedItems = activeArenaTab === "tournaments"
-    ? tournaments.filter((item) => isPublicItemFinished(item, "tournament"))
-    : circuits.filter((item) => isPublicItemFinished(item, "circuit"));
-  const visibleItems = activeStatusTab === "finished" ? finishedItems : activeItems;
-  const currentEventPage = eventPages?.[activeArenaTab]?.[activeStatusTab];
-  const serverPagination = bundle.pagination?.enabled === true ? {
-    activeTotal: eventPages?.[activeArenaTab]?.active?.total || 0,
-    finishedTotal: eventPages?.[activeArenaTab]?.finished?.total || 0,
-    hasMore: currentEventPage?.hasMore === true,
-    loading: currentEventPage?.loading === true,
-    error: currentEventPage?.error || "",
-    onLoadMore: () => loadPublicEventPage({
-      kind: activeArenaTab,
-      status: activeStatusTab,
-      append: true,
-    }),
-  } : null;
-
-  return (
-    <PublicArenaPageView
-      arenaName={arenaName}
-      organizer={organizer}
-      activeArenaTab={activeArenaTab}
-      activeStatusTab={activeStatusTab}
-      activeItems={activeItems}
-      finishedItems={finishedItems}
-      visibleItems={visibleItems}
-      serverPagination={serverPagination}
-      onArenaTabChange={setActiveArenaTab}
-      onStatusTabChange={setActiveStatusTab}
-      onOpenTournament={openPublicTournament}
-      onOpenCircuit={openPublicCircuit}
-      onRequestTournamentCover={loadTournamentCardCover}
-      onRequestCircuitCover={loadCircuitCardCover}
-      openingPublicId={openingPublicId}
-      openingCircuitId={openingCircuitId}
-      getWhatsAppUrl={getBrazilianWhatsAppUrl}
-      getCircuitStatus={(item) => normalizeCircuitStatus(getAutomaticEventStatus(item.end_date || item.endDate))}
-      getCircuitDateLabel={(item) => item.start_date ? `${formatDateBR(item.start_date)} até ${formatDateBR(item.end_date)}` : ""}
-      getCircuitTournamentCount={(item) => (item.tournament_ids || []).length}
-      HeroHeader={PublicArenaHeroHeader}
-      TournamentCards={PublicArenaTournamentCards}
-    />
-  );
+function PublicCircuitScreen(props) {
+  return <PublicCircuitScreenView {...props} runtime={publicCircuitScreenRuntime} />;
 }
 
-function PublicTournamentPage({ publicId }) {
-  const [loading, setLoading] = useState(true);
-  const [anchorTournament, setAnchorTournament] = useState(null);
-  const [tournaments, setTournaments] = useState([]);
-  const [circuits, setCircuits] = useState([]);
-  const [selectedTournament, setSelectedTournament] = useState(null);
-  const [selectedCircuit, setSelectedCircuit] = useState(null);
-  const [activeArenaTab, setActiveArenaTab] = useState("tournaments");
-  const [activeStatusTab, setActiveStatusTab] = useState("active");
-  const [openingPublicId, setOpeningPublicId] = useState(null);
-  const [openingCircuitId, setOpeningCircuitId] = useState(null);
-  const [error, setError] = useState(null);
+const publicTournamentScreenRuntime = {
+  CupGroupRankingView,
+  CupPodiumView,
+  PublicCupBracketView,
+  RankingView,
+  ScheduleView,
+  SimpleFormatInfoButton,
+  TournamentFormatInfoButton,
+  TournamentTimingSummary,
+  calculateRanking,
+  getSafeCupPresentation,
+  getTournamentTimingSummary,
+  tagline: TORNEIO360_TAGLINE,
+};
 
-  async function loadPublicArena({ silent = false } = {}) {
-    if (!silent) setLoading(true);
-
-    const { data: publicTournament, error: publicTournamentError } = await supabase
-      .rpc("get_public_tournament", { p_public_id: publicId })
-      .maybeSingle();
-
-    if (publicTournamentError || !publicTournament) {
-      console.error(publicTournamentError);
-      setError("Link público não encontrado ou desativado.");
-      setAnchorTournament(null);
-      setTournaments([]);
-      setCircuits([]);
-    } else {
-      const visibleAnchor = { ...publicTournament, is_public: true };
-      const ownerId = publicTournament.user_id;
-      const [tournamentsResult, circuitsResult] = await Promise.all([
-        supabase
-          .from("tournaments")
-          .select("*")
-          .eq("user_id", ownerId)
-          .eq("is_public", true)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("circuits")
-          .select("id, user_id, name, start_date, end_date, status, tournament_ids, ranking_criteria, ranking_settings, updated_at")
-          .eq("user_id", ownerId)
-          .order("updated_at", { ascending: false }),
-      ]);
-
-      const tournamentDirectory = Array.isArray(publicTournament.data?.publicArenaDirectory)
-        ? publicTournament.data.publicArenaDirectory.filter((item) => item?.public_id)
-        : [];
-      const publicTournaments = tournamentsResult.error
-        ? tournamentDirectory
-        : (tournamentsResult.data || []).filter((item) => !item.data?.deletedAt);
-      const uniqueTournaments = Array.from(
-        new Map([...publicTournaments, visibleAnchor].map((item) => [item.public_id || item.id, item])).values()
-      );
-      const circuitSnapshot = Array.isArray(publicTournament.data?.publicArenaCircuits)
-        ? publicTournament.data.publicArenaCircuits
-        : [];
-      const circuitSnapshotById = new Map(circuitSnapshot.map((item) => [String(item.id), item]));
-      const publicCircuits = circuitsResult.error
-        ? circuitSnapshot
-        : (circuitsResult.data || []).map((item) => {
-          const snapshot = circuitSnapshotById.get(String(item.id)) || {};
-          return {
-            ...snapshot,
-            ...item,
-            ranking_criteria: snapshot.ranking_criteria || item.ranking_criteria || defaultRankingCriteria,
-            ranking_settings: snapshot.ranking_settings || item.ranking_settings || normalizeCircuitRankingSettings(),
-            ranking_groups: snapshot.ranking_groups || item.ranking_groups || [],
-          };
-        });
-
-      if (tournamentsResult.error) {
-        console.warn("A listagem pública completa de torneios não está disponível; exibindo o torneio do link.", tournamentsResult.error);
-      }
-
-      if (circuitsResult.error && circuitSnapshot.length === 0) {
-        console.warn("A listagem pública de circuitos ainda não está disponível.", circuitsResult.error);
-      }
-
-      setAnchorTournament(visibleAnchor);
-      setTournaments(uniqueTournaments);
-      setCircuits(sortCircuitsForDisplay(publicCircuits));
-      setSelectedTournament((current) => {
-        if (!current) return null;
-        return uniqueTournaments.find((item) => item.id === current.id) || current;
-      });
-      setSelectedCircuit((current) => {
-        if (!current) return null;
-        const directoryItem = publicCircuits.find((item) => String(item.id) === String(current.id));
-        if (!directoryItem) return current;
-        if (current.directoryEntry !== true) return { ...directoryItem, ...current };
-        return directoryItem;
-      });
-      setError(null);
-    }
-
-    if (!silent) setLoading(false);
-  }
-
-  useEffect(() => {
-    loadPublicArena();
-
-    const interval = setInterval(() => {
-      loadPublicArena({ silent: true });
-    }, 20000);
-
-    return () => clearInterval(interval);
-  }, [publicId]);
-
-  useEffect(() => {
-    setActiveStatusTab("active");
-  }, [activeArenaTab]);
-
-  async function openPublicTournament(item) {
-    if (!item?.directoryEntry) {
-      setSelectedTournament(item);
-      return;
-    }
-
-    setOpeningPublicId(item.public_id);
-    const { data, error: tournamentError } = await supabase
-      .rpc("get_public_tournament", { p_public_id: item.public_id })
-      .maybeSingle();
-    setOpeningPublicId(null);
-
-    if (tournamentError || !data) {
-      console.error(tournamentError);
-      setError("Este torneio não está mais disponível no perfil da arena.");
-      return;
-    }
-
-    setSelectedTournament({ ...item, ...data });
-  }
-
-  async function openPublicCircuit(item) {
-    setOpeningCircuitId(item.id);
-    const result = await fetchPublicCircuitDetail(item.id);
-    setOpeningCircuitId(null);
-
-    if (result.error || !result.data) {
-      console.error(result.error);
-      setError("Este circuito não está mais disponível no perfil da arena.");
-      return;
-    }
-
-    setSelectedCircuit(normalizePublicCircuitForDisplay(result.data, { directoryEntry: false }));
-  }
-
-  if (loading) {
-    return (
-      <div className="publicPage">
-        <div className="center">
-          <h1>Carregando tabela...</h1>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !anchorTournament) {
-    return (
-      <div className="publicPage">
-        <div className="center">
-          <h1>Link indisponível</h1>
-          <p>{error || "Não foi possível carregar esta tabela."}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedTournament) {
-    return (
-      <PublicTournamentScreen
-        tournament={selectedTournament}
-        onBackToArena={() => setSelectedTournament(null)}
-      />
-    );
-  }
-
-  const anchorData = normalizeTournamentData(anchorTournament.type, anchorTournament.data);
-  const publicOrganizer = anchorData.publicInfo?.organizer || {};
-  const orderedPublicTournaments = sortTournamentsForDisplay(tournaments);
-  if (selectedCircuit) {
-    return (
-      <PublicCircuitScreen
-        circuit={selectedCircuit}
-        tournaments={orderedPublicTournaments}
-        organizer={publicOrganizer}
-        onBackToArena={() => setSelectedCircuit(null)}
-      />
-    );
-  }
-  const activeItems = activeArenaTab === "tournaments"
-    ? orderedPublicTournaments.filter((item) => !isPublicItemFinished(item, "tournament"))
-    : circuits.filter((item) => !isPublicItemFinished(item, "circuit"));
-  const finishedItems = activeArenaTab === "tournaments"
-    ? orderedPublicTournaments.filter((item) => isPublicItemFinished(item, "tournament"))
-    : circuits.filter((item) => isPublicItemFinished(item, "circuit"));
-  const visibleItems = activeStatusTab === "finished" ? finishedItems : activeItems;
-  const arenaName = publicOrganizer.arenaName || anchorTournament.name || "Arena Torneio360";
-
-  return (
-    <PublicArenaPageView
-      arenaName={arenaName}
-      organizer={publicOrganizer}
-      pageClassName=""
-      heroLabel="Perfil da arena"
-      contactDescription="Escolha um torneio para acompanhar participantes, jogos, chaves e resultados sem fazer login."
-      activeArenaTab={activeArenaTab}
-      activeStatusTab={activeStatusTab}
-      activeItems={activeItems}
-      finishedItems={finishedItems}
-      visibleItems={visibleItems}
-      onArenaTabChange={setActiveArenaTab}
-      onStatusTabChange={setActiveStatusTab}
-      onOpenTournament={openPublicTournament}
-      onOpenCircuit={openPublicCircuit}
-      openingPublicId={openingPublicId}
-      openingCircuitId={openingCircuitId}
-      getWhatsAppUrl={getBrazilianWhatsAppUrl}
-      getCircuitStatus={(item) => normalizeCircuitStatus(getAutomaticEventStatus(item.end_date || item.endDate))}
-      getCircuitDateLabel={(item) => item.start_date || item.startDate ? formatDateBR(item.start_date || item.startDate) : ""}
-      getCircuitTournamentCount={(item) => (item.tournament_ids || item.tournamentIds || []).length}
-      HeroHeader={PublicArenaHeroHeader}
-      TournamentCards={PublicArenaTournamentCards}
-    />
-  );
-}
-
-function PublicCircuitScreen({ circuit, tournaments = [], organizer = {}, onBackToArena }) {
-  const [previewImage, setPreviewImage] = useState(null);
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [circuit?.id]);
-  const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
-  const circuitCoverImage = rankingSettings.coverImageUrl || circuit?.coverImageUrl || "";
-  const circuitCoverThumbnail = rankingSettings.coverImageThumbnailUrl || circuit?.coverImageThumbnailUrl || "";
-  const circuitCoverDisplay = circuitCoverThumbnail || circuitCoverImage;
-  const storedRankingGroups = Array.isArray(circuit?.ranking_groups)
-    ? circuit.ranking_groups.filter((group) => Array.isArray(group?.rows) && group.rows.length > 0)
-    : [];
-  const storedRankingNeedsGenderRepair = rankingSettings.rankingDivision === "gender"
-    && storedRankingGroups.some((group) => (group.key || "geral") === "geral");
-  const rebuiltRankingGroups = storedRankingGroups.length === 0 || storedRankingNeedsGenderRepair
-    ? buildPublicCircuitRankingGroups(circuit, tournaments)
-    : [];
-  const allRankingGroups = rebuiltRankingGroups.length > 0 ? rebuiltRankingGroups : storedRankingGroups;
-  const rankingGroups = rankingSettings.rankingDivision === "gender"
-    ? allRankingGroups.filter((group) => group.key === "masculino" || group.key === "feminino")
-    : allRankingGroups;
-  const placementMode = rankingSettings.mode === circuitRankingModes.placement;
-  const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
-  const performanceColumns = placementMode ? null : getCircuitPerformanceColumns(rankingSettings);
-  const circuitDisplayColumns = placementColumns || performanceColumns;
-  const circuitExportColumns = getCircuitRankingExportColumns(rankingSettings);
-  const rankingTitle = placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado";
-  const circuitCriteriaLabel = getCircuitTieBreakLabel(rankingSettings, { compact: true });
-  const arenaName = organizer.arenaName || "Arena Torneio360";
-  const selectedTournamentIds = new Set((circuit?.tournament_ids || circuit?.tournamentIds || []).map((id) => String(id)));
-  const circuitTournaments = sortTournamentsChronologically(
-    tournaments.filter((tournament) => selectedTournamentIds.has(String(tournament.id)))
-  );
-  const getPublicCircuitGroupShareConfig = (group) => ({
-    title: circuit?.name || "Ranking do circuito",
-    subtitle: group.title,
-    arenaName,
-    arenaPhotoUrl: organizer.photoUrl || "",
-    rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria,
-    columns: circuitExportColumns,
-    criteriaLabel: circuitCriteriaLabel,
-    groups: [group],
-    editableWorkbook: true,
-    workbookTitle: `${circuit?.name || "Ranking do circuito"} - ${group.title}`,
-    workbookGroups: [group],
-    workbookColumns: circuitExportColumns,
-    buttonLabel: group.key === "masculino"
-      ? "Compartilhar masculino"
-      : group.key === "feminino"
-        ? "Compartilhar feminino"
-        : "Compartilhar ranking",
-  });
-
-  return (
-    <div className="publicPage publicCircuitPage">
-      <header className="publicHeader publicHeaderWithLogo publicCircuitHeader">
-        <div className="publicBrandRow">
-          <BeachLogo />
-          <div className="brandTaglineOnly"><span>{TORNEIO360_TAGLINE}</span></div>
-        </div>
-
-        <div className="publicTitleBlock">
-          <span>Ranking público do circuito</span>
-          <h1>{circuit?.name || "Circuito"}</h1>
-          <p>
-            {circuit?.start_date || circuit?.startDate ? formatDateBR(circuit.start_date || circuit.startDate) : "Data inicial não informada"}
-            {circuit?.end_date || circuit?.endDate ? ` até ${formatDateBR(circuit.end_date || circuit.endDate)}` : ""}
-          </p>
-        </div>
-
-        <div className="publicTournamentHeaderActions">
-          <button type="button" onClick={onBackToArena}>← Voltar ao perfil da arena</button>
-          <div className="publicBadge">Somente visualização</div>
-        </div>
-      </header>
-
-      <main className="publicContent publicCircuitContent">
-        <div className={`publicEventMediaInfo ${circuitCoverDisplay ? "hasCover" : ""}`}>
-        {circuitCoverDisplay ? (
-          <button
-            type="button"
-            className="publicTournamentCover publicCoverPreviewButton"
-            onClick={() => setPreviewImage({ src: circuitCoverImage || circuitCoverDisplay, alt: `Foto do circuito ${circuit?.name || "Circuito"}`, title: circuit?.name || "Circuito" })}
-            aria-label={`Ampliar foto do circuito ${circuit?.name || "Circuito"}`}
-          >
-            <img src={circuitCoverDisplay} alt={`Foto do circuito ${circuit?.name || "Circuito"}`} />
-            <span>Ver foto maior</span>
-          </button>
-        ) : null}
-
-        <div className="publicEventMediaInfoDetails">
-        <section className="card publicCircuitIdentityCard">
-          {organizer.photoUrl ? (
-            <img src={organizer.photoUrl} alt={`Foto de ${arenaName}`} />
-          ) : (
-            <span>{arenaName.slice(0, 2).toUpperCase()}</span>
-          )}
-          <div>
-            <small>Organização</small>
-            <h2>{arenaName}</h2>
-            <p>{(circuit?.tournament_ids || circuit?.tournamentIds || []).length} torneio(s) neste circuito</p>
-          </div>
-        </section>
-        </div>
-        </div>
-
-        <section className="card publicCircuitStagesCard">
-          <div className="cardTitleRow">
-            <div><small>Etapas</small><h2>Torneios do circuito</h2></div>
-            <span>{circuitTournaments.length} torneio(s)</span>
-          </div>
-          {circuitTournaments.length === 0 ? (
-            <p className="publicCircuitEmptyRanking">Nenhum torneio público está vinculado a este circuito.</p>
-          ) : (
-            <div className="publicCircuitStageGrid">
-              {circuitTournaments.map((tournament) => {
-                const details = tournament.data || {};
-                return (
-                  <article key={tournament.id}>
-                    <div><small>{getModalityDisplayName(tournament.type)}</small><h3>{tournament.name}</h3></div>
-                    <p>{details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)} {details.eventStartTime || ""}</span> : null}</p>
-                    {tournament.public_id ? <button type="button" onClick={() => window.location.assign(getPublicUrl(tournament.public_id))}>Ver torneio</button> : null}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="card publicCircuitRankingCard">
-          <div className="cardTitleRow">
-            <div>
-              <small className="publicCircuitName">{circuit?.name || "Circuito"}</small>
-              <h2>{rankingTitle}</h2>
-              <p className="publicCircuitRankingRule">
-                {circuitCriteriaLabel}{placementMode ? " · Disputas paralelas não pontuam." : ""}
-              </p>
-            </div>
-          </div>
-
-          {rankingGroups.length === 0 ? (
-            <div className="publicCircuitEmptyRanking">
-              O ranking aparecerá aqui assim que houver placares válidos nos torneios do circuito.
-            </div>
-          ) : rankingGroups.length === 1 ? (
-            <RankingTable
-              title={rankingGroups[0].title}
-              rows={rankingGroups[0].rows}
-              rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
-              columns={circuitDisplayColumns}
-              showGames={!placementMode}
-              shareConfig={getPublicCircuitGroupShareConfig(rankingGroups[0])}
-              progressive
-              initialRowCount={30}
-            />
-          ) : (
-            <div className="twoCols publicCircuitRankingTables">
-              {rankingGroups.map((group) => (
-                <RankingTable
-                  key={group.key || group.title}
-                  title={group.title}
-                  rows={group.rows}
-                  rankingCriteria={circuit.ranking_criteria || defaultRankingCriteria}
-                  columns={circuitDisplayColumns}
-                  showGames={!placementMode}
-                  shareConfig={getPublicCircuitGroupShareConfig(group)}
-                  progressive
-                  initialRowCount={30}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
-    </div>
-  );
-}
-
-function PublicTournamentScreen({ tournament, organizer: liveOrganizer = null, onBackToArena = null }) {
-  const publicTabStorageKey = `publicTournamentTab:${tournament.public_id || tournament.id}`;
-  const publicMatchesTabStorageKey = `publicTournamentMatchesTab:${tournament.public_id || tournament.id}`;
-  const [activePublicTab, setActivePublicTabState] = useState(() => readPublicViewStorage(publicTabStorageKey, "participantes"));
-  const [activePublicMatchesTab, setActivePublicMatchesTabState] = useState(() => readPublicViewStorage(publicMatchesTabStorageKey, "grupos"));
-  const [previewImage, setPreviewImage] = useState(null);
-
-  function setActivePublicTab(tab) {
-    savePublicViewStorage(publicTabStorageKey, tab);
-    setActivePublicTabState(tab);
-  }
-
-  function setActivePublicMatchesTab(tab) {
-    savePublicViewStorage(publicMatchesTabStorageKey, tab);
-    setActivePublicMatchesTabState(tab);
-  }
-  const config = modalityConfig[tournament.type];
-  const normalizedData = normalizeTournamentData(tournament.type, tournament.data);
-  const migrationTournament = tournament.user_id || !liveOrganizer?.id
-    ? tournament
-    : { ...tournament, user_id: liveOrganizer.id };
-  const data = migratePlayRankingBracketForReferenceProfile(migrationTournament, normalizedData).data;
-  const secondParallelVisible = isCearenseSecondParallelEnabled(data);
-  const sunsetSecondParallelVisible = isSunsetData(data);
-  const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
-  const sunsetFinalVisible = isSunsetData(data);
-
-  useEffect(() => {
-    if (activePublicMatchesTab === "paralela" && !secondParallelVisible) {
-      setActivePublicMatchesTab("chaves");
-    } else if (activePublicMatchesTab === "paralela3" && !thirdParallelVisible) {
-      setActivePublicMatchesTab("chaves");
-    }
-  }, [activePublicMatchesTab, secondParallelVisible, thirdParallelVisible]);
-
-  if (!config) {
-    return (
-      <div className="publicPage">
-        <div className="center">
-          <h1>Modalidade indisponível</h1>
-          <p>Esta tabela foi criada com uma modalidade que não está disponível na versão atual.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const publicInfo = data.publicInfo || {};
-  const publicVisibility = publicInfo.visibility || {};
-  const storedOrganizer = publicInfo.organizer || {};
-  const publicOrganizer = liveOrganizer
-    ? { ...storedOrganizer, ...liveOrganizer }
-    : storedOrganizer;
-  const registrationClosed = data.registrationDeadline ? new Date() > new Date(`${data.registrationDeadline}T23:59:59`) : false;
-  const ranking = calculateRanking(data, tournament.type, data.rankingCriteria);
-  const isCup = isCupType(config);
-  const publicCompletionState = getTournamentCompletionState({
-    type: tournament.type,
-    data,
-  });
-  const publicRankingReady = isCup || publicCompletionState.completed;
-
-  const cupGroupRankings = isCup
-    ? calculateCupGroupRankings(data, data.rankingCriteria)
-    : [];
-
-  const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
-  const publicTournamentTimingSummary = getTournamentTimingSummary(data);
-  const publicRankingShareContext = {
-    title: tournament.name,
-    subtitle: getModalityDisplayName(tournament.type),
-    arenaName: publicOrganizer.arenaName || publicOrganizer.organizerName || "Arena Torneio360",
-    arenaPhotoUrl: publicOrganizer.photoUrl || "",
-    rankingCriteria: data.rankingCriteria || defaultRankingCriteria,
-    tournamentDurationSeconds: publicTournamentTimingSummary.complete ? publicTournamentTimingSummary.durationSeconds : 0,
-  };
-
-  const publicAthletes = getRegisteredAthletesForPublic(data, config);
-  const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
-
-  return (
-    <div className="publicPage">
-      <header className="publicHeader publicHeaderWithLogo">
-        <div className="publicBrandRow">
-          <BeachLogo />
-          <div className="brandTaglineOnly">
-            <span>{TORNEIO360_TAGLINE}</span>
-          </div>
-        </div>
-
-        <div className="publicTitleBlock">
-          <span>Tabela pública</span>
-          <h1>{tournament.name}</h1>
-          <p>
-            {getModalityDisplayName(tournament.type)}
-            {getTournamentClassificationLabels(data).map((label) => ` · ${label}`).join("")}
-            {data.eventDay ? ` · ${data.eventDay}` : ""}
-            {data.eventDate ? ` · ${formatDateBR(data.eventDate)}` : ""}
-            {data.location ? ` · ${data.location}` : ""}
-          </p>
-        </div>
-
-        <div className="publicTournamentHeaderActions">
-          {onBackToArena ? <button type="button" onClick={onBackToArena}>← Voltar ao perfil da arena</button> : null}
-          <div className="publicBadge">
-            {registrationClosed ? "Inscrições encerradas" : "Somente visualização"}
-          </div>
-        </div>
-      </header>
-
-      <main className="publicContent">
-        <div className={`publicEventMediaInfo ${tournamentCoverDisplay ? "hasCover" : ""}`}>
-        {tournamentCoverDisplay ? (
-          <button
-            type="button"
-            className="publicTournamentCover publicCoverPreviewButton"
-            onClick={() => setPreviewImage({ src: data.coverImageUrl || tournamentCoverDisplay, alt: `Foto do torneio ${tournament.name}`, title: tournament.name })}
-            aria-label={`Ampliar foto do torneio ${tournament.name}`}
-          >
-            <img src={tournamentCoverDisplay} alt={`Foto do torneio ${tournament.name}`} />
-            <span>Ver foto maior</span>
-          </button>
-        ) : null}
-
-        <div className="publicEventMediaInfoDetails">
-        <section className="card publicTournamentInfoCard">
-          <h2>Informações do torneio</h2>
-          <div className="publicInfoGrid">
-            {data.registrationDeadline ? <span><CalendarDays aria-hidden="true" /> Inscrições até {formatDateBR(data.registrationDeadline)}</span> : null}
-            {registrationClosed ? <span className="closedInfo"><LockKeyhole aria-hidden="true" /> Inscrições encerradas</span> : null}
-            {data.eventStartTime ? <span><Clock3 aria-hidden="true" /> Início {data.eventStartTime}</span> : null}
-            {data.location ? <span><MapPin aria-hidden="true" /> {data.location}</span> : null}
-            {data.winningScore ? <span><Target aria-hidden="true" /> {data.winningScore} games</span> : null}
-          </div>
-        </section>
-
-        {(publicVisibility.showArenaName && publicOrganizer.arenaName) ||
-          (publicVisibility.showOrganizerName && publicOrganizer.organizerName) ||
-          (publicVisibility.showWhatsapp && publicOrganizer.whatsapp) ||
-          (publicVisibility.showWhatsappGroupLink && publicOrganizer.whatsappGroupLink) ||
-          (publicVisibility.showInstagram && (publicOrganizer.instagramHandle || publicOrganizer.instagramLink)) ||
-          (publicVisibility.showAddress && publicOrganizer.address) ||
-          (publicVisibility.showMapsLink && publicOrganizer.mapsLink) ||
-          (publicVisibility.showCityState && (publicOrganizer.city || publicOrganizer.state)) ? (
-          <section className="card publicOrganizerCard">
-            <h2>Organização</h2>
-            <div className="publicOrganizerHeader">
-              {publicOrganizer.photoUrl ? <img src={publicOrganizer.photoUrl} alt="Foto do organizador" /> : null}
-              <div>
-                {publicVisibility.showArenaName && publicOrganizer.arenaName ? <strong>{publicOrganizer.arenaName}</strong> : null}
-                {publicVisibility.showOrganizerName && publicOrganizer.organizerName ? <span>{publicOrganizer.organizerName}</span> : null}
-              </div>
-            </div>
-            <div className="publicOrganizerLinks">
-              {publicVisibility.showWhatsapp && publicOrganizer.whatsapp ? <a href={getBrazilianWhatsAppUrl(publicOrganizer.whatsapp)} target="_blank" rel="noreferrer"><MessageCircle aria-hidden="true" /> WhatsApp</a> : null}
-              {publicVisibility.showWhatsappGroupLink && publicOrganizer.whatsappGroupLink ? <a href={publicOrganizer.whatsappGroupLink} target="_blank" rel="noreferrer"><Users aria-hidden="true" /> Grupo do WhatsApp</a> : null}
-              {publicVisibility.showInstagram && publicOrganizer.instagramLink ? <a href={publicOrganizer.instagramLink} target="_blank" rel="noreferrer"><AtSign aria-hidden="true" /> {publicOrganizer.instagramHandle || "Instagram"}</a> : null}
-              {publicVisibility.showInstagram && !publicOrganizer.instagramLink && publicOrganizer.instagramHandle ? <span><AtSign aria-hidden="true" /> {publicOrganizer.instagramHandle}</span> : null}
-              {publicVisibility.showAddress && publicOrganizer.address ? <span><MapPin aria-hidden="true" /> {publicOrganizer.address}</span> : null}
-              {publicVisibility.showCityState && (publicOrganizer.city || publicOrganizer.state) ? <span><MapPin aria-hidden="true" /> {[publicOrganizer.city, publicOrganizer.state].filter(Boolean).join("/")}</span> : null}
-              {publicVisibility.showMapsLink && publicOrganizer.mapsLink ? <a href={publicOrganizer.mapsLink} target="_blank" rel="noreferrer"><MapPin aria-hidden="true" /> Ver endereço no mapa</a> : null}
-            </div>
-          </section>
-        ) : null}
-        </div>
-        </div>
-
-        <nav className="tournamentTopTabs publicTournamentTabs" aria-label="Visualização pública do torneio">
-          <button type="button" className={activePublicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
-          {isCup ? <button type="button" className={activePublicTab === "grupos" ? "active" : ""} onClick={() => setActivePublicTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button> : null}
-          <button type="button" className={activePublicTab === "partidas" ? "active" : ""} onClick={() => setActivePublicTab("partidas")}><Flame aria-hidden="true" /> Partidas</button>
-          <button type="button" className={activePublicTab === "ranking" ? "active" : ""} onClick={() => setActivePublicTab("ranking")}><Trophy aria-hidden="true" /> Ranking</button>
-        </nav>
-
-        <section className="card publicAthletesCard" style={{ display: activePublicTab === "participantes" ? undefined : "none" }}>
-          <div className="cardTitleRow">
-            <h2>Participantes</h2>
-            <span className="readOnlyBadge">Somente visualização</span>
-          </div>
-          {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" || config.type === "sunset" ? (
-            <div className="formatInfoPublicPlacement">
-              <TournamentFormatInfoButton data={data} config={config} publicView />
-            </div>
-          ) : isFlexibleSimpleType(config) ? (
-            <div className="formatInfoPublicPlacement">
-              <SimpleFormatInfoButton data={data} config={config} publicView />
-            </div>
-          ) : null}
-          <div className="publicAthletesGrid organizerLikeParticipants">
-            {publicAthletes.map((group) => (
-              <div className="publicAthleteGroup" key={group.title}>
-                <h3>{group.title}</h3>
-                {group.names.length === 0 ? (
-                  <p>Nenhum atleta cadastrado ainda.</p>
-                ) : (
-                  <div className="publicAthleteList">
-                    {group.names.map((name, index) => (
-                      <span key={`${group.title}-${index}`}>{name}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {isCup ? (
-          <section className="card" style={{ display: activePublicTab === "grupos" ? undefined : "none" }}>
-            <div className="cardTitleRow">
-              <h2>Grupos</h2>
-              <span className="readOnlyBadge">Somente visualização</span>
-            </div>
-            {!publicRankingReady ? (
-              <div className="publicRankingLocked">
-                <LockKeyhole aria-hidden="true" />
-                <div>
-                  <strong>Classificação ainda não liberada</strong>
-                  <p>Ela ficará disponível após o preenchimento do último placar do torneio.</p>
-                </div>
-              </div>
-            ) : cupGroupRankings.length > 0 ? (
-              <div className="groupsPreviewBox">
-                <h3>Classificação dos grupos</h3>
-                <CupGroupRankingView
-                  className="publicGroupRankings"
-                  groupRankings={cupGroupRankings}
-                  rankingCriteria={data.rankingCriteria || defaultRankingCriteria}
-                />
-              </div>
-            ) : (
-              <p>Os grupos ainda não foram gerados pelo organizador.</p>
-            )}
-          </section>
-        ) : null}
-
-        <section className="card" style={{ display: activePublicTab === "partidas" ? undefined : "none" }}>
-          <div className="cardTitleRow">
-            <h2>{isCup ? "Partidas" : "Rodadas"}</h2>
-            <span className="readOnlyBadge">Somente visualização</span>
-          </div>
-          {isCup ? (
-            <div className="matchesSubTabs">
-              <button type="button" className={activePublicMatchesTab === "grupos" ? "active" : ""} onClick={() => setActivePublicMatchesTab("grupos")}>Fase de grupos</button>
-              <button type="button" className={activePublicMatchesTab === "chaves" ? "active" : ""} onClick={() => setActivePublicMatchesTab("chaves")}>Chaves finais</button>
-              {secondParallelVisible ? <button type="button" className={activePublicMatchesTab === "paralela" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela")}>{data.cupConfig?.repechageName || "Disputa paralela"}</button> : null}
-              {sunsetSecondParallelVisible ? <button type="button" className={activePublicMatchesTab === "paralela2" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela2")}>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</button> : null}
-              {thirdParallelVisible ? (
-                <button type="button" className={activePublicMatchesTab === "paralela3" ? "active" : ""} onClick={() => setActivePublicMatchesTab("paralela3")}>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</button>
-              ) : null}
-              {sunsetFinalVisible ? <button type="button" className={activePublicMatchesTab === "sunset" ? "active" : ""} onClick={() => setActivePublicMatchesTab("sunset")}>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</button> : null}
-            </div>
-          ) : null}
-
-          <div style={{ display: !isCup || activePublicMatchesTab === "grupos" ? undefined : "none" }}>
-            {!data.schedule || data.schedule.length === 0 ? (
-              <p>A tabela ainda não foi gerada pelo organizador.</p>
-            ) : (
-              <ScheduleView schedule={data.schedule} showGroupName={isCup} winningScore={getWinningScore(data)} courtNumbers={data.courtNumbers || []} readOnly />
-            )}
-          </div>
-
-          {isCup ? (
-            <div style={{ display: activePublicMatchesTab === "chaves" ? undefined : "none" }}>
-              {!currentBrackets ? <p>As chaves finais ainda não foram geradas pelo organizador.</p> : (
-                <PublicCupBracketView
-                  groupedBrackets={{ main: currentBrackets.main, repechage: [] }}
-                  mainTitle={data.cupConfig?.mainBracketName || "Chave principal"}
-                  courtNumbers={data.courtNumbers || []}
-                />
-              )}
-            </div>
-          ) : null}
-
-          {isCup && secondParallelVisible ? (
-            <div style={{ display: activePublicMatchesTab === "paralela" ? undefined : "none" }}>
-              {!currentBrackets
-                ? <p>A disputa paralela ainda não foi gerada pelo organizador.</p>
-                : currentBrackets.repechage?.length > 0
-                  ? (
-                    <PublicCupBracketView
-                      groupedBrackets={{ main: [], repechage: currentBrackets.repechage }}
-                      repechageTitle={data.cupConfig?.repechageName || "Disputa paralela"}
-                      courtNumbers={data.courtNumbers || []}
-                    />
-                  )
-                  : <p>{isPlayRankingData(data)
-                    ? "A Disputa Paralela aparecerá aqui após o preenchimento de todos os placares da primeira fase da Eliminatória Principal."
-                    : "Esta Copinha de 2 grupos não possui chave de consolação."}</p>}
-            </div>
-          ) : null}
-
-          {isCup && sunsetSecondParallelVisible ? (
-            <div style={{ display: activePublicMatchesTab === "paralela2" ? undefined : "none" }}>
-              {!currentBrackets
-                ? <p>A 2ª disputa paralela ainda não foi gerada pelo organizador.</p>
-                : currentBrackets.secondParallel?.length > 0
-                  ? (
-                    <PublicCupBracketView
-                      groupedBrackets={{ main: [], repechage: [], secondParallel: currentBrackets.secondParallel }}
-                      secondParallelTitle={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}
-                      courtNumbers={data.courtNumbers || []}
-                    />
-                  )
-                  : <p>Sem eliminadas suficientes nas oitavas, a vice-campeã da Principal ocupará automaticamente esta vaga.</p>}
-            </div>
-          ) : null}
-
-          {isCup && thirdParallelVisible ? (
-            <div style={{ display: activePublicMatchesTab === "paralela3" ? undefined : "none" }}>
-              {!currentBrackets
-                ? <p>A 3ª disputa paralela ainda não foi gerada pelo organizador.</p>
-                : currentBrackets.thirdParallel?.length > 0
-                  ? (
-                    <PublicCupBracketView
-                      groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }}
-                      thirdRepechageTitle={data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}
-                      courtNumbers={data.courtNumbers || []}
-                    />
-                  )
-                  : <p>Nesta quantidade de grupos não há duplas elegíveis para a 3ª disputa paralela.</p>}
-            </div>
-          ) : null}
-
-          {isCup && sunsetFinalVisible ? (
-            <div style={{ display: activePublicMatchesTab === "sunset" ? undefined : "none" }}>
-              {!currentBrackets
-                ? <p>A etapa Sunset ainda não foi gerada pelo organizador.</p>
-                : currentBrackets.sunsetFinal?.length > 0
-                  ? (
-                    <PublicCupBracketView
-                      groupedBrackets={{ main: [], repechage: [], sunsetFinal: currentBrackets.sunsetFinal }}
-                      sunsetFinalTitle={data.cupConfig?.sunsetBracketName || "Etapa Sunset"}
-                      courtNumbers={data.courtNumbers || []}
-                    />
-                  )
-                  : <p>A etapa Sunset aparecerá quando houver ao menos duas chaves capazes de produzir campeãs.</p>}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="card" style={{ display: activePublicTab === "ranking" ? undefined : "none" }}>
-          <div className="cardTitleRow">
-            <div>
-              <h2>{isCup ? "Ranking das chaves" : "Ranking do dia"}</h2>
-              {!isCup ? (
-                <p className="publicCircuitRankingRule">
-                  {getRankingCriteria(data.rankingCriteria || defaultRankingCriteria).label}
-                </p>
-              ) : null}
-            </div>
-            <span className="readOnlyBadge">Somente visualização</span>
-          </div>
-          <TournamentTimingSummary data={data} compact />
-          {!publicRankingReady ? (
-            <div className="publicRankingLocked">
-              <LockKeyhole aria-hidden="true" />
-              <div>
-                <strong>Ranking ainda não liberado</strong>
-                <p>
-                  O ranking será exibido quando todos os jogos reais estiverem concluídos.
-                  {publicCompletionState.requiredGames > 0
-                    ? ` ${publicCompletionState.completedGames} de ${publicCompletionState.requiredGames} placares foram finalizados.`
-                    : " As partidas ainda não foram geradas pelo organizador."}
-                </p>
-              </div>
-            </div>
-          ) : isCup ? (
-            <div className="cupRankingSplit">
-              <div className="cupRankingPanel">
-                <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
-                {mainCupPodium.length > 0 ? <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={publicRankingShareContext} /> : <p>Finalize a chave principal para ver o ranking.</p>}
-              </div>
-              {secondParallelVisible ? <div className="cupRankingPanel">
-                <h3>{data.cupConfig?.repechageName || "Disputa Paralela"}</h3>
-                {isCopinhaData(data)
-                  ? (data.cupConfig?.teamCount === 6
-                    ? <p>Com 2 grupos, não há consolação neste formato.</p>
-                    : consolationCupPodium.length > 0
-                    ? <CupPodiumView podium={consolationCupPodium} title={data.cupConfig?.repechageName || "Consolação"} variant="parallel" shareContext={publicRankingShareContext} />
-                    : <p>A consolação ainda não foi finalizada.</p>)
-                  : (parallelRanking.length > 0
-                    ? <CupPodiumView
-                        podium={parallelRanking.slice(0, 3).map((item, index) => ({
-                          position: index === 0 ? "🏆 Campeão" : index === 1 ? "🥈 Vice" : "🥉 3º lugar",
-                          name: item.name,
-                          playTimeSeconds: item.playTimeSeconds,
-                        }))}
-                        title={data.cupConfig?.repechageName || "Disputa Paralela"}
-                        variant="parallel"
-                        shareContext={publicRankingShareContext}
-                      />
-                    : <p>A disputa paralela ainda não tem ranking.</p>)}
-              </div> : null}
-              {sunsetSecondParallelVisible ? (
-                <div className="cupRankingPanel">
-                  <h3>{data.cupConfig?.secondParallelName || "2ª Disputa Paralela"}</h3>
-                  {secondParallelPodium.length > 0
-                    ? <CupPodiumView podium={secondParallelPodium} title={data.cupConfig?.secondParallelName || "2ª Disputa Paralela"} variant="parallel" shareContext={publicRankingShareContext} />
-                    : <p>A 2ª disputa paralela ainda não foi finalizada.</p>}
-                </div>
-              ) : null}
-              {thirdParallelVisible ? (
-                <div className="cupRankingPanel">
-                  <h3>{data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"}</h3>
-                  {thirdParallelPodium.length > 0
-                    ? <CupPodiumView podium={thirdParallelPodium} title={data.cupConfig?.thirdRepechageName || "3ª Disputa Paralela"} variant="parallel" shareContext={publicRankingShareContext} />
-                    : <p>A 3ª disputa paralela ainda não foi finalizada.</p>}
-                </div>
-              ) : null}
-              {sunsetFinalVisible ? (
-                <div className="cupRankingPanel">
-                  <h3>{data.cupConfig?.sunsetBracketName || "Etapa Sunset"}</h3>
-                  {sunsetPodium.length > 0
-                    ? <CupPodiumView podium={sunsetPodium} title={data.cupConfig?.sunsetBracketName || "Etapa Sunset"} shareContext={publicRankingShareContext} />
-                    : <p>A etapa Sunset ainda não foi finalizada.</p>}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <RankingView ranking={ranking} type={tournament.type} rankingCriteria={data.rankingCriteria || defaultRankingCriteria} shareContext={publicRankingShareContext} />
-          )}
-        </section>
-
-      </main>
-      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
-    </div>
-  );
+function PublicTournamentScreen(props) {
+  return <PublicTournamentScreenView {...props} runtime={publicTournamentScreenRuntime} />;
 }
 
 const torneio360Root = globalThis.__torneio360ReactRoot || createRoot(document.getElementById("root"));
