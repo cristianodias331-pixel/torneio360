@@ -3,6 +3,7 @@ import { performance } from "node:perf_hooks";
 const supabaseUrl = String(process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const anonKey = String(process.env.VITE_SUPABASE_ANON_KEY || "");
 const expectedProjectRef = String(process.env.EXPECTED_SUPABASE_PROJECT_REF || "");
+const configuredArenaId = String(process.env.LOAD_ARENA_ID || "").trim() || null;
 const concurrency = Number(process.env.LOAD_CONCURRENCY || 40);
 const scenarioCooldownMs = Math.max(0, Number(process.env.LOAD_SCENARIO_COOLDOWN_MS || 1500));
 
@@ -106,7 +107,7 @@ const directory = await runScenario(
   }),
 );
 
-const firstArenaId = directory.results
+const firstArenaId = configuredArenaId || directory.results
   .flatMap((result) => Array.isArray(result.data) ? result.data : [])
   .find((arena) => arena?.id)?.id || null;
 
@@ -169,6 +170,29 @@ if (firstArenaId) {
     { maxP95Ms: 3000 },
   );
   scenarios.push(initialPublicProfile.summary);
+
+  await waitForScenarioCooldown();
+  const circuitPage = await rpc("list_public_arena_events_page", {
+    p_organizer_id: firstArenaId,
+    p_public_id: null,
+    p_kind: "circuits",
+    p_status: "active",
+    p_limit: 1,
+    p_offset: 0,
+  });
+  const firstCircuitId = Array.isArray(circuitPage.data?.items)
+    ? circuitPage.data.items.find((circuit) => circuit?.id)?.id || null
+    : null;
+  if (firstCircuitId) {
+    await rpc("get_public_circuit_with_tournaments", { p_circuit_id: firstCircuitId });
+    const publicCircuit = await runScenario(
+      "Circuito público completo",
+      concurrency,
+      () => rpc("get_public_circuit_with_tournaments", { p_circuit_id: firstCircuitId }),
+      { maxP95Ms: 5000 },
+    );
+    scenarios.push(publicCircuit.summary);
+  }
 }
 
 await waitForScenarioCooldown();
