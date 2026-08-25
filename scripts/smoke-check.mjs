@@ -504,6 +504,10 @@ const tournamentChangeFeedMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240007_tournament_change_feed.sql", root),
   "utf8"
 );
+const publicArenaEventPaginationMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250001_public_arena_event_pagination.sql", root),
+  "utf8"
+);
 const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
@@ -1305,6 +1309,20 @@ assert.equal(
     && !mainSource.includes('table: "tournaments", filter: `user_id=eq.${user.id}`'),
   true,
   "O Realtime voltou a transmitir o JSON completo de cada torneio em toda alteração.",
+);
+assert.equal(
+  publicArenaEventPaginationMigrationSource.includes("create or replace function public.get_public_arena_overview")
+    && publicArenaEventPaginationMigrationSource.includes("create or replace function public.list_public_arena_events_page")
+    && publicArenaEventPaginationMigrationSource.includes("drop trigger if exists tournaments_refresh_public_arena_snapshot")
+    && publicArenaEventPaginationMigrationSource.includes("get_public_circuit_with_tournaments")
+    && publicArenaApiSource.includes("fetchPublicArenaEventsPage")
+    && publicArenaApiSource.includes('rpc("list_public_arena_events_page"')
+    && mainSource.includes("PUBLIC_ARENA_EVENT_PAGE_SIZE")
+    && mainSource.includes("loadPublicEventPage")
+    && publicArenaPresentationSource.includes("serverPagination")
+    && publicArenaPresentationSource.includes("serverPagination.onLoadMore"),
+  true,
+  "O perfil público deixou de paginar eventos no servidor ou perdeu as etapas dos circuitos.",
 );
 
 assert.equal(generatePublicId(() => 35, () => 0.5), "tfbt_z_i", "O formato dos links públicos foi alterado.");

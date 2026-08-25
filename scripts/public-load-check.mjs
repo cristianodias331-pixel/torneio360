@@ -78,16 +78,31 @@ const firstArenaId = directory.results
 
 const scenarios = [directory.summary];
 if (firstArenaId) {
-  const arenaBundle = await runScenario(
-    "Perfil público com resumos",
+  const arenaOverview = await runScenario(
+    "Resumo do perfil público",
     25,
-    () => rpc("get_public_arena_bundle", {
+    () => rpc("get_public_arena_overview", {
       p_organizer_id: firstArenaId,
       p_public_id: null,
     }),
     { maxP95Ms: 4000 },
   );
-  scenarios.push(arenaBundle.summary);
+  scenarios.push(arenaOverview.summary);
+
+  const arenaEventsPage = await runScenario(
+    "Página pública de eventos",
+    40,
+    () => rpc("list_public_arena_events_page", {
+      p_organizer_id: firstArenaId,
+      p_public_id: null,
+      p_kind: "tournaments",
+      p_status: "active",
+      p_limit: 8,
+      p_offset: 0,
+    }),
+    { maxP95Ms: 3000 },
+  );
+  scenarios.push(arenaEventsPage.summary);
 }
 
 const unchangedTournament = await runScenario(

@@ -289,6 +289,7 @@ export function PublicArenaPageView({
   TournamentCards,
   onRequestTournamentCover,
   onRequestCircuitCover,
+  serverPagination = null,
 }) {
   const initialVisibleItems = 8;
   const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
@@ -298,8 +299,12 @@ export function PublicArenaPageView({
     setVisibleLimit(initialVisibleItems);
   }, [activeArenaTab, activeStatusTab]);
 
-  const displayedItems = visibleItems.slice(0, visibleLimit);
-  const remainingItems = Math.max(0, visibleItems.length - displayedItems.length);
+  const usesServerPagination = Boolean(serverPagination);
+  const displayedItems = usesServerPagination ? visibleItems : visibleItems.slice(0, visibleLimit);
+  const visibleTotal = activeStatusTab === "finished"
+    ? serverPagination?.finishedTotal ?? finishedItems.length
+    : serverPagination?.activeTotal ?? activeItems.length;
+  const remainingItems = Math.max(0, visibleTotal - displayedItems.length);
 
   React.useEffect(() => {
     if (activeArenaTab !== "circuits" || !onRequestCircuitCover) return;
@@ -330,12 +335,16 @@ export function PublicArenaPageView({
         </nav>
 
         <nav className="publicArenaStatusTabs" aria-label="Situação dos eventos">
-          <button type="button" className={activeStatusTab === "active" ? "active" : ""} onClick={() => onStatusTabChange("active")}>Ativos <span>{activeItems.length}</span></button>
-          <button type="button" className={activeStatusTab === "finished" ? "active" : ""} onClick={() => onStatusTabChange("finished")}>Encerrados <span>{finishedItems.length}</span></button>
+          <button type="button" className={activeStatusTab === "active" ? "active" : ""} onClick={() => onStatusTabChange("active")}>Ativos <span>{serverPagination?.activeTotal ?? activeItems.length}</span></button>
+          <button type="button" className={activeStatusTab === "finished" ? "active" : ""} onClick={() => onStatusTabChange("finished")}>Encerrados <span>{serverPagination?.finishedTotal ?? finishedItems.length}</span></button>
         </nav>
 
         <section className="publicArenaEventGrid" aria-live="polite">
-          {visibleItems.length === 0 ? (
+          {serverPagination?.loading && displayedItems.length === 0 ? (
+            <div className="card publicArenaEmpty">Carregando eventos...</div>
+          ) : serverPagination?.error && displayedItems.length === 0 ? (
+            <div className="card publicArenaEmpty">{serverPagination.error}</div>
+          ) : visibleItems.length === 0 ? (
             <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
           ) : activeArenaTab === "tournaments" ? (
             <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} onPreviewImage={setPreviewImage} onRequestCover={onRequestTournamentCover} />
@@ -373,13 +382,16 @@ export function PublicArenaPageView({
               </article>
             );
           })}
-          {remainingItems > 0 ? (
+          {remainingItems > 0 && (!usesServerPagination || serverPagination.hasMore) ? (
             <button
               type="button"
               className="publicArenaLoadMore"
-              onClick={() => setVisibleLimit((current) => Math.min(current + initialVisibleItems, visibleItems.length))}
+              onClick={usesServerPagination
+                ? serverPagination.onLoadMore
+                : () => setVisibleLimit((current) => Math.min(current + initialVisibleItems, visibleItems.length))}
+              disabled={serverPagination?.loading === true}
             >
-              Mostrar mais eventos <span>{remainingItems}</span>
+              {serverPagination?.loading ? "Carregando mais eventos..." : "Mostrar mais eventos"} <span>{remainingItems}</span>
             </button>
           ) : null}
         </section>

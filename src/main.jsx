@@ -273,6 +273,7 @@ import {
   ARENA_DIRECTORY_PAGE_SIZE,
   ARENA_DIRECTORY_REFRESH_INTERVAL_MS,
   PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS,
+  PUBLIC_ARENA_EVENT_PAGE_SIZE,
   PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS,
   readPublicArenaBundleCache,
   readPublicArenaDirectoryCache,
@@ -469,6 +470,7 @@ if (import.meta.env.DEV) globalThis.__torneio360Supabase = supabase;
 const {
   fetchPublicArenaBundle,
   fetchPublicArenaDirectory,
+  fetchPublicArenaEventsPage,
   fetchPublicArenaPhoto,
   fetchPublicCircuitCover,
   fetchPublicCircuitDetail,
@@ -13271,6 +13273,27 @@ function PublicArenaTournamentCards(props) {
 }
 const PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000;
 
+function createPublicArenaEventPages(counts = {}) {
+  const createStatus = (kind, status) => ({
+    loaded: false,
+    loading: false,
+    error: "",
+    total: Math.max(0, Number(counts?.[kind]?.[status]) || 0),
+    hasMore: false,
+    nextOffset: 0,
+  });
+  return {
+    tournaments: {
+      active: createStatus("tournaments", "active"),
+      finished: createStatus("tournaments", "finished"),
+    },
+    circuits: {
+      active: createStatus("circuits", "active"),
+      finished: createStatus("circuits", "finished"),
+    },
+  };
+}
+
 function PublicArenaLoadingScreen() {
   const [videoReady, setVideoReady] = useState(false);
 
@@ -13303,13 +13326,17 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   const [selectedCircuit, setSelectedCircuit] = useState(null);
   const [openingPublicId, setOpeningPublicId] = useState(null);
   const [openingCircuitId, setOpeningCircuitId] = useState(null);
+  const [eventPages, setEventPages] = useState(() => createPublicArenaEventPages());
   const requestedTournamentCoversRef = useRef(new Set());
   const requestedCircuitCoversRef = useRef(new Set());
   const tournamentCoverCacheRef = useRef(new Map());
   const circuitCoverCacheRef = useRef(new Map());
   const bundleRequestInFlightRef = useRef(false);
+  const eventPageRequestsRef = useRef(new Set());
+  const eventPagesRef = useRef(eventPages);
   const lastBundleLoadAtRef = useRef(0);
   const selectedPublicTournamentRef = useRef(null);
+  eventPagesRef.current = eventPages;
 
   useEffect(() => {
     selectedPublicTournamentRef.current = selectedTournament;
@@ -13386,6 +13413,91 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     });
   }
 
+  async function loadPublicEventPage({ kind, status, append = false }) {
+    const normalizedKind = kind === "circuits" ? "circuits" : "tournaments";
+    const normalizedStatus = status === "finished" ? "finished" : "active";
+    const requestKey = `${normalizedKind}:${normalizedStatus}`;
+    if (eventPageRequestsRef.current.has(requestKey)) return;
+
+    const currentPage = eventPagesRef.current?.[normalizedKind]?.[normalizedStatus];
+    if (!append && currentPage?.loaded) return;
+    if (append && (!currentPage?.hasMore || currentPage?.loading)) return;
+
+    eventPageRequestsRef.current.add(requestKey);
+    setEventPages((current) => ({
+      ...current,
+      [normalizedKind]: {
+        ...current[normalizedKind],
+        [normalizedStatus]: {
+          ...current[normalizedKind][normalizedStatus],
+          loading: true,
+          error: "",
+        },
+      },
+    }));
+
+    const result = await fetchPublicArenaEventsPage({
+      arenaId,
+      publicId,
+      kind: normalizedKind,
+      status: normalizedStatus,
+      limit: PUBLIC_ARENA_EVENT_PAGE_SIZE,
+      offset: append ? currentPage?.nextOffset || 0 : 0,
+    });
+    eventPageRequestsRef.current.delete(requestKey);
+
+    if (result.error || !result.data) {
+      console.warn("Não foi possível carregar a página pública de eventos.", result.error);
+      setEventPages((current) => ({
+        ...current,
+        [normalizedKind]: {
+          ...current[normalizedKind],
+          [normalizedStatus]: {
+            ...current[normalizedKind][normalizedStatus],
+            loading: false,
+            error: "Não foi possível carregar estes eventos agora.",
+          },
+        },
+      }));
+      return;
+    }
+
+    const pageItems = normalizedKind === "circuits"
+      ? result.data.items.map((item) => normalizePublicCircuitForDisplay(item, { directoryEntry: true }))
+      : result.data.items;
+    setBundle((current) => {
+      if (!current) return current;
+      const existing = Array.isArray(current[normalizedKind]) ? current[normalizedKind] : [];
+      const belongsToStatus = (item) => isPublicItemFinished(
+        item,
+        normalizedKind === "circuits" ? "circuit" : "tournament"
+      ) === (normalizedStatus === "finished");
+      const otherStatusItems = existing.filter((item) => !belongsToStatus(item));
+      const currentStatusItems = append ? existing.filter(belongsToStatus) : [];
+      const mergedById = new Map(
+        [...currentStatusItems, ...pageItems].map((item) => [String(item.id), item])
+      );
+      return {
+        ...current,
+        [normalizedKind]: [...otherStatusItems, ...mergedById.values()],
+      };
+    });
+    setEventPages((current) => ({
+      ...current,
+      [normalizedKind]: {
+        ...current[normalizedKind],
+        [normalizedStatus]: {
+          loaded: true,
+          loading: false,
+          error: "",
+          total: result.data.total,
+          hasMore: result.data.hasMore,
+          nextOffset: result.data.nextOffset,
+        },
+      },
+    }));
+  }
+
   async function loadBundle({ silent = false } = {}) {
     if (bundleRequestInFlightRef.current) return;
     bundleRequestInFlightRef.current = true;
@@ -13400,6 +13512,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
           setBundle(null);
         }
       } else {
+        const usesServerPagination = result.data.pagination?.enabled === true;
         const tournamentsWithCachedCovers = (result.data.tournaments || []).map((tournament) => {
           const cachedCover = tournamentCoverCacheRef.current.get(getTournamentCardCoverKey(tournament));
           return cachedCover ? applyTournamentCardCover(tournament, cachedCover) : tournament;
@@ -13414,9 +13527,48 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
           return normalizePublicCircuitForDisplay(circuitWithCover, { directoryEntry: true });
         });
         const normalizedBundle = { ...result.data, tournaments: tournamentsWithCachedCovers, circuits: normalizedCircuits };
-        setBundle(normalizedBundle);
+        setBundle((current) => usesServerPagination && current?.profile?.id === normalizedBundle.profile?.id
+          ? {
+            ...normalizedBundle,
+            tournaments: current.tournaments || [],
+            circuits: current.circuits || [],
+          }
+          : normalizedBundle);
+        if (usesServerPagination) {
+          setEventPages((current) => {
+            const next = { ...current };
+            ["tournaments", "circuits"].forEach((kind) => {
+              next[kind] = { ...current[kind] };
+              ["active", "finished"].forEach((status) => {
+                next[kind][status] = {
+                  ...current[kind][status],
+                  total: Math.max(0, Number(result.data.counts?.[kind]?.[status]) || 0),
+                };
+              });
+            });
+            return next;
+          });
+        } else {
+          const legacyCounts = {
+            tournaments: {
+              active: tournamentsWithCachedCovers.filter((item) => !isPublicItemFinished(item, "tournament")).length,
+              finished: tournamentsWithCachedCovers.filter((item) => isPublicItemFinished(item, "tournament")).length,
+            },
+            circuits: {
+              active: normalizedCircuits.filter((item) => !isPublicItemFinished(item, "circuit")).length,
+              finished: normalizedCircuits.filter((item) => isPublicItemFinished(item, "circuit")).length,
+            },
+          };
+          const legacyPages = createPublicArenaEventPages(legacyCounts);
+          ["tournaments", "circuits"].forEach((kind) => {
+            ["active", "finished"].forEach((status) => {
+              legacyPages[kind][status].loaded = true;
+            });
+          });
+          setEventPages(legacyPages);
+        }
         loadProfilePhotoInBackground(normalizedBundle.profile);
-        setSelectedTournament((current) => {
+        if (!usesServerPagination) setSelectedTournament((current) => {
           if (!current) return null;
           const directoryItem = (normalizedBundle.tournaments || []).find((item) => item.id === current.id);
           if (!directoryItem) return null;
@@ -13425,7 +13577,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
           }
           return directoryItem;
         });
-        setSelectedCircuit((current) => {
+        if (!usesServerPagination) setSelectedCircuit((current) => {
           if (!current) return null;
           const directoryItem = normalizedCircuits.find((item) => String(item.id) === String(current.id));
           if (!directoryItem) return null;
@@ -13445,6 +13597,8 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
 
   useEffect(() => {
     setMinimumLoadingElapsed(false);
+    setEventPages(createPublicArenaEventPages());
+    eventPageRequestsRef.current.clear();
     const minimumLoadingTimer = window.setTimeout(
       () => setMinimumLoadingElapsed(true),
       PUBLIC_ARENA_LOADING_MIN_DURATION_MS
@@ -13474,6 +13628,14 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [arenaId, publicId]);
+
+  useEffect(() => {
+    if (!bundle?.profile || bundle.pagination?.enabled !== true) return;
+    const currentPage = eventPagesRef.current?.[activeArenaTab]?.[activeStatusTab];
+    if (!currentPage?.loaded && !currentPage?.loading) {
+      void loadPublicEventPage({ kind: activeArenaTab, status: activeStatusTab });
+    }
+  }, [bundle?.profile?.id, bundle?.pagination?.enabled, activeArenaTab, activeStatusTab]);
 
   useEffect(() => {
     const selectedPublicId = String(selectedTournament?.public_id || "").trim();
@@ -13565,8 +13727,14 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
   }
 
   const profile = bundle.profile;
-  const tournaments = sortTournamentsForDisplay(Array.isArray(bundle.tournaments) ? bundle.tournaments : []);
-  const circuits = sortCircuitsForDisplay(Array.isArray(bundle.circuits) ? bundle.circuits : []);
+  const loadedTournaments = Array.isArray(bundle.tournaments) ? bundle.tournaments : [];
+  const loadedCircuits = Array.isArray(bundle.circuits) ? bundle.circuits : [];
+  const tournaments = bundle.pagination?.enabled === true
+    ? loadedTournaments
+    : sortTournamentsForDisplay(loadedTournaments);
+  const circuits = bundle.pagination?.enabled === true
+    ? loadedCircuits
+    : sortCircuitsForDisplay(loadedCircuits);
   const arenaName = profile.arena_name || profile.name || "Arena Torneio360";
   const organizer = {
     id: profile.id,
@@ -13597,7 +13765,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     return (
       <PublicCircuitScreen
         circuit={selectedCircuit}
-        tournaments={tournaments}
+        tournaments={Array.isArray(selectedCircuit.tournaments) ? selectedCircuit.tournaments : tournaments}
         organizer={organizer}
         onBackToArena={() => setSelectedCircuit(null)}
       />
@@ -13611,6 +13779,19 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
     ? tournaments.filter((item) => isPublicItemFinished(item, "tournament"))
     : circuits.filter((item) => isPublicItemFinished(item, "circuit"));
   const visibleItems = activeStatusTab === "finished" ? finishedItems : activeItems;
+  const currentEventPage = eventPages?.[activeArenaTab]?.[activeStatusTab];
+  const serverPagination = bundle.pagination?.enabled === true ? {
+    activeTotal: eventPages?.[activeArenaTab]?.active?.total || 0,
+    finishedTotal: eventPages?.[activeArenaTab]?.finished?.total || 0,
+    hasMore: currentEventPage?.hasMore === true,
+    loading: currentEventPage?.loading === true,
+    error: currentEventPage?.error || "",
+    onLoadMore: () => loadPublicEventPage({
+      kind: activeArenaTab,
+      status: activeStatusTab,
+      append: true,
+    }),
+  } : null;
 
   return (
     <PublicArenaPageView
@@ -13621,6 +13802,7 @@ function PublicArenaPage({ arenaId = null, publicId = null }) {
       activeItems={activeItems}
       finishedItems={finishedItems}
       visibleItems={visibleItems}
+      serverPagination={serverPagination}
       onArenaTabChange={setActiveArenaTab}
       onStatusTabChange={setActiveStatusTab}
       onOpenTournament={openPublicTournament}

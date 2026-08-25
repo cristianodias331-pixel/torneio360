@@ -2,6 +2,7 @@ import {
   ARENA_DIRECTORY_PAGE_SIZE,
   ARENA_DIRECTORY_CACHE_KEY,
   ARENA_DIRECTORY_RETRY_DELAY_MS,
+  PUBLIC_ARENA_EVENT_PAGE_SIZE,
   PUBLIC_ARENA_REQUEST_TIMEOUT_MS,
   readPublicArenaBundleCache,
   readPublicArenaPhotoCache,
@@ -17,6 +18,8 @@ import {
 export function createPublicArenaApi({ supabase }) {
   let directoryRequestInFlight = null;
   let pagedDirectoryRpcAvailable = null;
+  let arenaOverviewRpcAvailable = null;
+  let arenaEventPaginationRpcAvailable = null;
   const legacyDirectorySnapshots = new Map();
   const publicCoverCache = new Map();
   const publicCoverRequests = new Map();
@@ -173,10 +176,26 @@ export function createPublicArenaApi({ supabase }) {
       const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
 
       try {
-        const result = await supabase.rpc("get_public_arena_bundle", {
-          p_organizer_id: arenaId || null,
-          p_public_id: publicId || null,
-        }).abortSignal(controller.signal);
+        let result = await supabase.rpc(
+          arenaOverviewRpcAvailable === false ? "get_public_arena_bundle" : "get_public_arena_overview",
+          {
+            p_organizer_id: arenaId || null,
+            p_public_id: publicId || null,
+          }
+        ).abortSignal(controller.signal);
+
+        const overviewFunctionMissing = result.error && /get_public_arena_overview|function.*does not exist|schema cache/i.test(
+          `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+        );
+        if (overviewFunctionMissing) {
+          arenaOverviewRpcAvailable = false;
+          result = await supabase.rpc("get_public_arena_bundle", {
+            p_organizer_id: arenaId || null,
+            p_public_id: publicId || null,
+          }).abortSignal(controller.signal);
+        } else if (!result.error) {
+          arenaOverviewRpcAvailable = true;
+        }
 
         lastData = result.data;
         if (!result.error && result.data?.profile) {
@@ -200,6 +219,62 @@ export function createPublicArenaApi({ supabase }) {
     if (cached?.profile) return { data: cached, error: null, fromCache: true };
 
     return { data: lastData, error: lastError, fromCache: false };
+  }
+
+  async function fetchPublicArenaEventsPage({
+    arenaId = null,
+    publicId = null,
+    kind = "tournaments",
+    status = "active",
+    limit = PUBLIC_ARENA_EVENT_PAGE_SIZE,
+    offset = 0,
+  } = {}) {
+    const normalizedKind = kind === "circuits" ? "circuits" : "tournaments";
+    const normalizedStatus = status === "finished" ? "finished" : "active";
+    const normalizedLimit = Math.max(1, Math.min(Number(limit) || PUBLIC_ARENA_EVENT_PAGE_SIZE, 24));
+    const normalizedOffset = Math.max(0, Number(offset) || 0);
+
+    if (arenaEventPaginationRpcAvailable === false) {
+      return { data: null, error: new Error("Paginação pública ainda não instalada."), available: false };
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
+    try {
+      const result = await supabase.rpc("list_public_arena_events_page", {
+        p_organizer_id: arenaId || null,
+        p_public_id: publicId || null,
+        p_kind: normalizedKind,
+        p_status: normalizedStatus,
+        p_limit: normalizedLimit,
+        p_offset: normalizedOffset,
+      }).abortSignal(controller.signal);
+      const pageFunctionMissing = result.error && /list_public_arena_events_page|function.*does not exist|schema cache/i.test(
+        `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+      );
+      if (pageFunctionMissing) {
+        arenaEventPaginationRpcAvailable = false;
+        return { data: null, error: result.error, available: false };
+      }
+      if (result.error) return { data: null, error: result.error, available: true };
+
+      arenaEventPaginationRpcAvailable = true;
+      const page = result.data || {};
+      return {
+        data: {
+          items: Array.isArray(page.items) ? page.items.filter((item) => item?.id) : [],
+          total: Math.max(0, Number(page.total) || 0),
+          hasMore: page.has_more === true,
+          nextOffset: Math.max(0, Number(page.next_offset) || 0),
+        },
+        error: null,
+        available: true,
+      };
+    } catch (error) {
+      return { data: null, error, available: true };
+    } finally {
+      window.clearTimeout(timeout);
+    }
   }
 
   async function fetchPublicTournamentDetail(publicId) {
@@ -295,9 +370,17 @@ export function createPublicArenaApi({ supabase }) {
       const timeout = window.setTimeout(() => controller.abort(), PUBLIC_ARENA_REQUEST_TIMEOUT_MS);
 
       try {
-        const result = await supabase
-          .rpc("get_public_circuit", { p_circuit_id: normalizedCircuitId })
+        let result = await supabase
+          .rpc("get_public_circuit_with_tournaments", { p_circuit_id: normalizedCircuitId })
           .abortSignal(controller.signal);
+        const expandedFunctionMissing = result.error && /get_public_circuit_with_tournaments|function.*does not exist|schema cache/i.test(
+          `${result.error.message || ""} ${result.error.details || ""} ${result.error.hint || ""}`
+        );
+        if (expandedFunctionMissing) {
+          result = await supabase
+            .rpc("get_public_circuit", { p_circuit_id: normalizedCircuitId })
+            .abortSignal(controller.signal);
+        }
 
         if (!result.error && result.data?.id) {
           writePublicCircuitDetailCache(normalizedCircuitId, result.data);
@@ -369,6 +452,7 @@ export function createPublicArenaApi({ supabase }) {
   return {
     fetchPublicArenaBundle,
     fetchPublicArenaDirectory,
+    fetchPublicArenaEventsPage,
     fetchPublicArenaPhoto,
     fetchPublicCircuitCover,
     fetchPublicCircuitDetail,
