@@ -3,12 +3,16 @@ import { performance } from "node:perf_hooks";
 const supabaseUrl = String(process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const anonKey = String(process.env.VITE_SUPABASE_ANON_KEY || "");
 const expectedProjectRef = String(process.env.EXPECTED_SUPABASE_PROJECT_REF || "");
+const concurrency = Number(process.env.LOAD_CONCURRENCY || 40);
 
 if (!supabaseUrl || !anonKey) {
   throw new Error("Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para executar o teste de carga.");
 }
 if (expectedProjectRef && !supabaseUrl.includes(expectedProjectRef)) {
   throw new Error("O Supabase configurado não corresponde ao projeto esperado para o teste.");
+}
+if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 200) {
+  throw new Error("LOAD_CONCURRENCY deve ser um número inteiro entre 1 e 200.");
 }
 
 const headers = {
@@ -44,26 +48,49 @@ async function rpc(functionName, body) {
 }
 
 async function runScenario(name, requests, requestFactory, { maxP95Ms = 3000 } = {}) {
-  const results = await Promise.all(Array.from({ length: requests }, (_, index) => requestFactory(index)));
+  const settled = await Promise.allSettled(
+    Array.from({ length: requests }, (_, index) => requestFactory(index))
+  );
+  const results = settled
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value);
+  const errors = settled
+    .filter((result) => result.status === "rejected")
+    .map((result) => result.reason);
   const latencies = results.map((result) => result.elapsedMs);
   const bytes = results.map((result) => result.bytes);
   const summary = {
     name,
     requests,
+    successes: results.length,
+    errors: errors.length,
+    errorRate: `${((errors.length / requests) * 100).toFixed(1)}%`,
     p50Ms: Math.round(percentile(latencies, 0.5)),
     p95Ms: Math.round(percentile(latencies, 0.95)),
-    maxMs: Math.round(Math.max(...latencies)),
-    averageBytes: Math.round(bytes.reduce((total, value) => total + value, 0) / bytes.length),
+    maxMs: latencies.length ? Math.round(Math.max(...latencies)) : 0,
+    averageBytes: bytes.length
+      ? Math.round(bytes.reduce((total, value) => total + value, 0) / bytes.length)
+      : 0,
   };
+  if (errors.length) {
+    const firstError = errors[0] instanceof Error ? errors[0].message : String(errors[0]);
+    throw new Error(`${name}: ${errors.length}/${requests} requisições falharam. Primeira falha: ${firstError}`);
+  }
   if (summary.p95Ms > maxP95Ms) {
     throw new Error(`${name}: p95 de ${summary.p95Ms} ms ultrapassou o limite de ${maxP95Ms} ms.`);
   }
   return { summary, results };
 }
 
+await rpc("list_public_arenas_page", {
+  p_search: null,
+  p_limit: 18,
+  p_after_sort_name: null,
+  p_after_id: null,
+});
 const directory = await runScenario(
   "Diretório público paginado",
-  40,
+  concurrency,
   () => rpc("list_public_arenas_page", {
     p_search: null,
     p_limit: 18,
@@ -78,9 +105,13 @@ const firstArenaId = directory.results
 
 const scenarios = [directory.summary];
 if (firstArenaId) {
+  await rpc("get_public_arena_overview", {
+    p_organizer_id: firstArenaId,
+    p_public_id: null,
+  });
   const arenaOverview = await runScenario(
     "Resumo do perfil público",
-    25,
+    concurrency,
     () => rpc("get_public_arena_overview", {
       p_organizer_id: firstArenaId,
       p_public_id: null,
@@ -89,9 +120,17 @@ if (firstArenaId) {
   );
   scenarios.push(arenaOverview.summary);
 
+  await rpc("list_public_arena_events_page", {
+    p_organizer_id: firstArenaId,
+    p_public_id: null,
+    p_kind: "tournaments",
+    p_status: "active",
+    p_limit: 8,
+    p_offset: 0,
+  });
   const arenaEventsPage = await runScenario(
     "Página pública de eventos",
-    40,
+    concurrency,
     () => rpc("list_public_arena_events_page", {
       p_organizer_id: firstArenaId,
       p_public_id: null,
@@ -103,11 +142,41 @@ if (firstArenaId) {
     { maxP95Ms: 3000 },
   );
   scenarios.push(arenaEventsPage.summary);
+
+  const initialPublicProfile = await runScenario(
+    "Acesso inicial completo ao perfil",
+    concurrency,
+    async () => {
+      const startedAt = performance.now();
+      const overview = await rpc("get_public_arena_overview", {
+        p_organizer_id: firstArenaId,
+        p_public_id: null,
+      });
+      const events = await rpc("list_public_arena_events_page", {
+        p_organizer_id: firstArenaId,
+        p_public_id: null,
+        p_kind: "tournaments",
+        p_status: "active",
+        p_limit: 8,
+        p_offset: 0,
+      });
+      return {
+        elapsedMs: performance.now() - startedAt,
+        bytes: overview.bytes + events.bytes,
+      };
+    },
+    { maxP95Ms: 5000 },
+  );
+  scenarios.push(initialPublicProfile.summary);
 }
 
+await rpc("get_public_tournament_if_changed", {
+  p_public_id: "__performance_missing__",
+  p_known_updated_at: null,
+});
 const unchangedTournament = await runScenario(
   "Checagem condicional de torneio",
-  40,
+  concurrency,
   () => rpc("get_public_tournament_if_changed", {
     p_public_id: "__performance_missing__",
     p_known_updated_at: null,
