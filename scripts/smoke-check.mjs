@@ -4353,7 +4353,7 @@ assert.ok(
 assert.ok(
   rankingShareButtonSource.includes("export default function RankingShareButton")
     && rankingShareButtonSource.includes('from "./rankingShareExport.mjs"')
-    && mainSource.includes('import RankingShareButton from "./features/rankingShare/RankingShareButton.jsx";'),
+    && mainSource.includes('React.lazy(() => import("./features/rankingShare/RankingShareButton.jsx"))'),
   "O componente visual de compartilhamento não preserva a interface das ações existentes."
 );
 assert.ok(
@@ -4551,8 +4551,15 @@ assert.ok(
   publicIdentifiersSource.includes("export function generatePublicId")
     && storyCoverCropSource.includes("export function readStoryCoverFile")
     && mainSource.includes('from "./domain/publicIdentifiers.mjs"')
-    && mainSource.includes('from "./features/media/storyCoverCrop.mjs"'),
+    && mainSource.includes('import("./features/media/storyCoverCrop.mjs")'),
   "Os identificadores públicos ou o tratamento de imagens voltaram ao componente principal."
+);
+assert.ok(
+  mainSource.includes("function lazyNamed(importer, exportName)")
+    && mainSource.includes("<React.Suspense")
+    && mainSource.includes('import("./domain/tournamentScheduleFactory.mjs")')
+    && mainSource.includes('import("./features/matchOperations/speechAnnouncements.mjs")'),
+  "As áreas pesadas deixaram de ser carregadas sob demanda ou perderam o fallback seguro."
 );
 assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
 assert.ok(mainSource.includes('navigator.serviceWorker.register("/sw.js")'), "O service worker do app não está registrado.");

@@ -61,36 +61,10 @@ import {
   PlanCard,
   PlatformSupportLinks,
 } from "./features/appShell/EntryPresentation.jsx";
-import CupBracketViewComponent from "./features/brackets/CupBracketView.jsx";
-import {
-  PublicCupBracketView,
-  PublicScheduleView,
-} from "./features/brackets/PublicBracketView.jsx";
-import CourtCenterModalView from "./features/courtCenter/CourtCenterModal.jsx";
-import ModalityPicker from "./features/modalityPicker/ModalityPicker.jsx";
-import {
-  ConfirmDuplicateCourtModal,
-  CourtAssignmentModal,
-  CourtBadge,
-  CourtConfigPanel,
-  CourtOccupancyModal,
-  ParticipantOccupancyModal,
-  VoiceRepeatSelector,
-} from "./features/matchOperations/MatchControls.jsx";
-import ScheduleViewView from "./features/matchOperations/MatchSchedule.jsx";
-import {
-  speakBracketRound,
-  speakGame,
-  speakRound,
-  stopSpeech,
-} from "./features/matchOperations/speechAnnouncements.mjs";
 import {
   TournamentMatchStatusSummaryView,
   TournamentTimingSummaryView,
 } from "./features/matchOperations/TournamentSummaryViews.jsx";
-import ParticipantImportModalView, {
-  PlayerInputs as PlayerInputsView,
-} from "./features/participantManagement/ParticipantManagement.jsx";
 import {
   PublicArenaDirectoryView,
   PublicArenaHeroHeaderView,
@@ -100,29 +74,7 @@ import {
   PublicArenaTournamentCardsView,
   PublicPlatformHomeView,
 } from "./features/publicArena/PublicArenaPresentation.jsx";
-import RankingViewView, {
-  RankingTable as RankingTableView,
-} from "./features/ranking/RankingTables.jsx";
-import CupPodiumView from "./features/ranking/CupPodiumView.jsx";
-import {
-  CopinhaTieBreakPanel,
-  CupGroupRankingView,
-  TieBreakDrawOverlay,
-} from "./features/ranking/TieBreakPanels.jsx";
-import RankingShareButton from "./features/rankingShare/RankingShareButton.jsx";
-import TournamentWorkspaceTabsView from "./features/tournamentWorkspace/TournamentWorkspaceTabs.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
-import CupConfigPanelView, {
-  ReizinhoConfigPanel,
-  SimpleConfigPanel as SimpleConfigPanelView,
-} from "./features/tournamentConfig/TournamentFormatPanels.jsx";
-import TournamentFormatInfoButtonView, {
-  ParallelDisputeChoice as ParallelDisputeChoiceView,
-} from "./features/tournamentConfig/TournamentFormatHelp.jsx";
-import FormatExplanationButton, {
-  SimpleFormatInfoButton,
-} from "./features/tournamentConfig/FormatExplanationButton.jsx";
-import TournamentGenderSelector from "./features/tournamentConfig/TournamentGenderSelector.jsx";
 import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
@@ -151,41 +103,6 @@ import {
   normalizeCircuitRow,
   normalizeCircuitTournamentIds,
 } from "./domain/circuitDirectory.mjs";
-import CircuitExtraPointsPanel from "./features/circuitManagement/CircuitExtraPointsPanel.jsx";
-import {
-  CircuitGenderRegistryPanel,
-  CircuitRankingSettingsEditor,
-} from "./features/circuitManagement/CircuitRankingSettings.jsx";
-import {
-  TournamentCircuitButton,
-  TournamentCircuitManagerModal,
-} from "./features/circuitManagement/TournamentCircuitManager.jsx";
-import {
-  ConfirmCircuitDeleteModal,
-  ConfirmClearScoresModal,
-  ConfirmClearTableModal,
-  ConfirmEventGroupModalityChangeModal,
-  ConfirmModal,
-  ConfirmModalityChangeModal,
-  ConfirmRegenerationModal,
-  ConfirmTrashPermanentDeleteModal,
-  NoticeModal,
-} from "./features/dialogs/ConfirmationDialogs.jsx";
-import ShuffleVideoModal from "./features/media/ShuffleVideoModal.jsx";
-import StoryCoverEditor from "./features/media/StoryCoverEditor.jsx";
-import { readStoryCoverFile } from "./features/media/storyCoverCrop.mjs";
-import {
-  createShuffleVideoFile,
-  createShuffleVideoSnapshot,
-  downloadShuffleVideo,
-} from "./features/media/shuffleVideoExport.mjs";
-import {
-  SHUFFLE_DURATION_SECONDS,
-  SHUFFLE_MOVEMENT_INTERVAL_MS,
-  createShuffleAnimationItems,
-  getShuffleNames,
-  moveShuffleAnimationItems,
-} from "./features/media/shuffleAnimation.mjs";
 import {
   listPendingTournaments,
   mergeConcurrentTournamentData,
@@ -194,7 +111,6 @@ import {
   requestDurableOfflineStorage,
   saveDashboardCache,
 } from "./offlineDataStore.mjs";
-import { generateSchedule } from "./domain/tournamentScheduleFactory.mjs";
 import {
   applyCourtNumberToGame,
   createDefaultCourtNumbers,
@@ -286,10 +202,6 @@ import {
 } from "./domain/publicArenaCache.mjs";
 import { createPublicArenaApi } from "./services/publicArenaApi.mjs";
 import { createLatestEntitySignalProcessor } from "./services/latestEntitySignalProcessor.mjs";
-import {
-  uploadPreparedImagePair,
-  uploadProfilePhoto,
-} from "./services/mediaStorage.mjs";
 import { createUserAppStateCloudQueue } from "./services/userAppStateCloudQueue.mjs";
 import {
   DEFAULT_TOURNAMENT_NAVIGATION,
@@ -461,6 +373,183 @@ import {
   migratePlayRankingBracketForReferenceProfile,
 } from "./domain/playRankingBracketMigration.mjs";
 import "./style.css";
+
+function lazyNamed(importer, exportName) {
+  return React.lazy(() => importer().then((module) => ({ default: module[exportName] })));
+}
+
+const CupBracketViewComponent = React.lazy(() => import("./features/brackets/CupBracketView.jsx"));
+const PublicCupBracketView = lazyNamed(
+  () => import("./features/brackets/PublicBracketView.jsx"),
+  "PublicCupBracketView"
+);
+const PublicScheduleView = lazyNamed(
+  () => import("./features/brackets/PublicBracketView.jsx"),
+  "PublicScheduleView"
+);
+const CourtCenterModalView = React.lazy(() => import("./features/courtCenter/CourtCenterModal.jsx"));
+const ModalityPicker = React.lazy(() => import("./features/modalityPicker/ModalityPicker.jsx"));
+const ConfirmDuplicateCourtModal = lazyNamed(
+  () => import("./features/matchOperations/MatchControls.jsx"),
+  "ConfirmDuplicateCourtModal"
+);
+const CourtAssignmentModal = lazyNamed(
+  () => import("./features/matchOperations/MatchControls.jsx"),
+  "CourtAssignmentModal"
+);
+const CourtBadge = lazyNamed(() => import("./features/matchOperations/MatchControls.jsx"), "CourtBadge");
+const CourtConfigPanel = lazyNamed(
+  () => import("./features/matchOperations/MatchControls.jsx"),
+  "CourtConfigPanel"
+);
+const CourtOccupancyModal = lazyNamed(
+  () => import("./features/matchOperations/MatchControls.jsx"),
+  "CourtOccupancyModal"
+);
+const ParticipantOccupancyModal = lazyNamed(
+  () => import("./features/matchOperations/MatchControls.jsx"),
+  "ParticipantOccupancyModal"
+);
+const VoiceRepeatSelector = lazyNamed(
+  () => import("./features/matchOperations/MatchControls.jsx"),
+  "VoiceRepeatSelector"
+);
+const ScheduleViewView = React.lazy(() => import("./features/matchOperations/MatchSchedule.jsx"));
+const ParticipantImportModalView = React.lazy(
+  () => import("./features/participantManagement/ParticipantManagement.jsx")
+);
+const PlayerInputsView = lazyNamed(
+  () => import("./features/participantManagement/ParticipantManagement.jsx"),
+  "PlayerInputs"
+);
+const RankingViewView = React.lazy(() => import("./features/ranking/RankingTables.jsx"));
+const RankingTableView = lazyNamed(() => import("./features/ranking/RankingTables.jsx"), "RankingTable");
+const CupPodiumView = React.lazy(() => import("./features/ranking/CupPodiumView.jsx"));
+const CopinhaTieBreakPanel = lazyNamed(
+  () => import("./features/ranking/TieBreakPanels.jsx"),
+  "CopinhaTieBreakPanel"
+);
+const CupGroupRankingView = lazyNamed(
+  () => import("./features/ranking/TieBreakPanels.jsx"),
+  "CupGroupRankingView"
+);
+const TieBreakDrawOverlay = lazyNamed(
+  () => import("./features/ranking/TieBreakPanels.jsx"),
+  "TieBreakDrawOverlay"
+);
+const RankingShareButton = React.lazy(() => import("./features/rankingShare/RankingShareButton.jsx"));
+const TournamentWorkspaceTabsView = React.lazy(
+  () => import("./features/tournamentWorkspace/TournamentWorkspaceTabs.jsx")
+);
+const CupConfigPanelView = React.lazy(
+  () => import("./features/tournamentConfig/TournamentFormatPanels.jsx")
+);
+const ReizinhoConfigPanel = lazyNamed(
+  () => import("./features/tournamentConfig/TournamentFormatPanels.jsx"),
+  "ReizinhoConfigPanel"
+);
+const SimpleConfigPanelView = lazyNamed(
+  () => import("./features/tournamentConfig/TournamentFormatPanels.jsx"),
+  "SimpleConfigPanel"
+);
+const TournamentFormatInfoButtonView = React.lazy(
+  () => import("./features/tournamentConfig/TournamentFormatHelp.jsx")
+);
+const ParallelDisputeChoiceView = lazyNamed(
+  () => import("./features/tournamentConfig/TournamentFormatHelp.jsx"),
+  "ParallelDisputeChoice"
+);
+const FormatExplanationButton = React.lazy(
+  () => import("./features/tournamentConfig/FormatExplanationButton.jsx")
+);
+const SimpleFormatInfoButton = lazyNamed(
+  () => import("./features/tournamentConfig/FormatExplanationButton.jsx"),
+  "SimpleFormatInfoButton"
+);
+const TournamentGenderSelector = React.lazy(
+  () => import("./features/tournamentConfig/TournamentGenderSelector.jsx")
+);
+const CircuitExtraPointsPanel = React.lazy(
+  () => import("./features/circuitManagement/CircuitExtraPointsPanel.jsx")
+);
+const CircuitGenderRegistryPanel = lazyNamed(
+  () => import("./features/circuitManagement/CircuitRankingSettings.jsx"),
+  "CircuitGenderRegistryPanel"
+);
+const CircuitRankingSettingsEditor = lazyNamed(
+  () => import("./features/circuitManagement/CircuitRankingSettings.jsx"),
+  "CircuitRankingSettingsEditor"
+);
+const TournamentCircuitButton = lazyNamed(
+  () => import("./features/circuitManagement/TournamentCircuitManager.jsx"),
+  "TournamentCircuitButton"
+);
+const TournamentCircuitManagerModal = lazyNamed(
+  () => import("./features/circuitManagement/TournamentCircuitManager.jsx"),
+  "TournamentCircuitManagerModal"
+);
+const ConfirmCircuitDeleteModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmCircuitDeleteModal"
+);
+const ConfirmClearScoresModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmClearScoresModal"
+);
+const ConfirmClearTableModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmClearTableModal"
+);
+const ConfirmEventGroupModalityChangeModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmEventGroupModalityChangeModal"
+);
+const ConfirmModal = lazyNamed(() => import("./features/dialogs/ConfirmationDialogs.jsx"), "ConfirmModal");
+const ConfirmModalityChangeModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmModalityChangeModal"
+);
+const ConfirmRegenerationModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmRegenerationModal"
+);
+const ConfirmTrashPermanentDeleteModal = lazyNamed(
+  () => import("./features/dialogs/ConfirmationDialogs.jsx"),
+  "ConfirmTrashPermanentDeleteModal"
+);
+const NoticeModal = lazyNamed(() => import("./features/dialogs/ConfirmationDialogs.jsx"), "NoticeModal");
+const ShuffleVideoModal = React.lazy(() => import("./features/media/ShuffleVideoModal.jsx"));
+const StoryCoverEditor = React.lazy(() => import("./features/media/StoryCoverEditor.jsx"));
+
+async function createShuffleVideoFileOnDemand(options) {
+  const module = await import("./features/media/shuffleVideoExport.mjs");
+  return module.createShuffleVideoFile(options);
+}
+
+async function downloadShuffleVideoOnDemand(file) {
+  const module = await import("./features/media/shuffleVideoExport.mjs");
+  return module.downloadShuffleVideo(file);
+}
+
+async function speakBracketRound(...args) {
+  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
+  return module.speakBracketRound(...args);
+}
+
+async function speakGame(...args) {
+  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
+  return module.speakGame(...args);
+}
+
+async function speakRound(...args) {
+  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
+  return module.speakRound(...args);
+}
+
+async function stopSpeech(...args) {
+  const module = await import("./features/matchOperations/speechAnnouncements.mjs");
+  return module.stopSpeech(...args);
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   || "https://dttutybojealkvuywszt.supabase.co";
@@ -4588,6 +4677,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setCoverImageLoading(true);
 
     try {
+      const { readStoryCoverFile } = await import("./features/media/storyCoverCrop.mjs");
       const imageUrl = await readStoryCoverFile(file);
       coverImageApplyRef.current = applyImage;
       setCoverImageEditor({ imageUrl, fileName: file.name || "" });
@@ -4606,6 +4696,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function applyTournamentCover(images) {
     try {
+      const { uploadPreparedImagePair } = await import("./services/mediaStorage.mjs");
       const uploadedImages = await uploadPreparedImagePair({
         supabase,
         userId: user.id,
@@ -4651,6 +4742,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     let publicProfileData = buildOrganizerProfilePayload();
     if (/^data:image\//i.test(publicProfileData.photo_url)) {
       try {
+        const { uploadProfilePhoto } = await import("./services/mediaStorage.mjs");
         const uploadedPhotoUrl = await uploadProfilePhoto({
           supabase,
           userId: user.id,
@@ -11979,7 +12071,7 @@ function TournamentScreen({
     showNotice("success", "Importação desfeita", "A lista de participantes voltou ao estado anterior.");
   }
 
-  function finishShuffle() {
+  async function finishShuffle() {
     const copy = structuredClone(data);
     copy.participantAttendance = normalizeParticipantAttendance(config, copy.players, copy.participantAttendance);
 
@@ -12012,6 +12104,7 @@ function TournamentScreen({
       copy.namesShuffled = true;
     }
 
+    const { createShuffleVideoSnapshot } = await import("./features/media/shuffleVideoExport.mjs");
     const videoSnapshot = createShuffleVideoSnapshot(copy, config, tournament);
     copy.lastShuffleVideo = videoSnapshot;
 
@@ -12020,8 +12113,16 @@ function TournamentScreen({
     setShuffleVideoSnapshot(videoSnapshot);
   }
 
-function shuffleNames() {
+async function shuffleNames() {
   clearShuffleTimers();
+  void import("./features/media/shuffleVideoExport.mjs");
+  const {
+    SHUFFLE_DURATION_SECONDS,
+    SHUFFLE_MOVEMENT_INTERVAL_MS,
+    createShuffleAnimationItems,
+    getShuffleNames,
+    moveShuffleAnimationItems,
+  } = await import("./features/media/shuffleAnimation.mjs");
   const names = getShuffleNames(data, config);
 
   if (!names.length) {
@@ -12050,7 +12151,7 @@ function shuffleNames() {
 
     if (seconds <= 0) {
       clearShuffleTimers();
-      finishShuffle();
+      void finishShuffle();
     }
   }, 1000);
   shuffleCountdownTimerRef.current = countdown;
@@ -12071,7 +12172,7 @@ function showGeneratedGamesNotice(message) {
   );
 }
 
-function generate() {
+async function generate() {
   if (isCupType(config)) {
     const schedule = generateCupGroupSchedule(data.players, data.cupConfig || {});
 
@@ -12096,6 +12197,7 @@ function generate() {
     return;
   }
 
+  const { generateSchedule } = await import("./domain/tournamentScheduleFactory.mjs");
   const schedule = generateSchedule(tournament.type, data.players);
 
   setData({
@@ -12585,8 +12687,8 @@ return (
         snapshot={shuffleVideoSnapshot}
         arenaName={data.publicInfo?.organizer?.arenaName || data.publicInfo?.organizer?.organizerName || "Arena Torneio360"}
         arenaPhotoUrl={data.publicInfo?.organizer?.photoUrl || ""}
-        createVideoFile={createShuffleVideoFile}
-        downloadVideo={downloadShuffleVideo}
+        createVideoFile={createShuffleVideoFileOnDemand}
+        downloadVideo={downloadShuffleVideoOnDemand}
         onClose={() => setShuffleVideoSnapshot(null)}
       />,
       document.body
@@ -13180,6 +13282,7 @@ function PlayerInputs(props) {
 
 
 function ScheduleView(props) {
+  void import("./features/matchOperations/speechAnnouncements.mjs");
   return (
     <ScheduleViewView
       {...props}
@@ -14649,7 +14752,18 @@ if (import.meta.env.DEV) globalThis.__torneio360ReactRoot = torneio360Root;
 
 torneio360Root.render(
   <>
-    <App />
+    <React.Suspense
+      fallback={(
+        <div className="loadingPage" role="status" aria-label="Carregando área do Torneio 360">
+          <div className="loadingCard">
+            <div className="loadingSpinner" aria-hidden="true" />
+            <p>Carregando área do Torneio 360...</p>
+          </div>
+        </div>
+      )}
+    >
+      <App />
+    </React.Suspense>
     <InstallAppBanner />
     <AppUpdateNotice />
   </>
