@@ -41,17 +41,41 @@
   }
 
   .proDashboard.playAppShell button.openTournamentTabMain {
-    align-items: flex-start !important;
+    align-items: center !important;
     justify-content: center !important;
     flex-direction: column !important;
     gap: 9px !important;
-    padding: 10px 25px 11px 13px !important;
+    padding: 10px 13px 11px !important;
+    text-align: center !important;
+  }
+
+  .proDashboard .openTournamentTabIdentity {
+    width: 100%;
+    justify-content: center;
+    padding-inline: 22px;
+  }
+
+  .proDashboard .openTournamentTabName {
+    text-align: center;
   }
 
   .proDashboard .openTournamentTab .tournamentMatchStatusSummary.is-vertical {
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, max-content));
-    justify-content: start;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .proDashboard .openTournamentTab .tournamentMatchStatusSummary.is-vertical .summaryStatus {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .proDashboard .openTournamentTab .tournamentMatchStatusSummary.is-vertical .summaryStatus strong {
+    min-width: 18px;
+    min-height: 18px;
+    padding-inline: 4px;
+    font-size: 10px;
   }
 }
 
@@ -89,19 +113,10 @@
   line-height: 1 !important;
 }
 
-/* Aumenta somente a tipografia dos atletas, preservando a caixa da partida. */
-.proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamRow {
-  min-height: 42px !important;
-  height: 42px !important;
-  max-height: 42px !important;
-}
-
+/* Mantém a proporção original da linha e do placar com tipografia mais legível. */
 .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamName {
-  font-size: 18px !important;
-  line-height: 1.05 !important;
-  -webkit-line-clamp: 1 !important;
-  text-overflow: ellipsis;
-  white-space: normal;
+  font-size: 13px !important;
+  line-height: 1.22 !important;
 }
 
 /* Atalho da Central de Quadras dentro de Organização. */
@@ -181,7 +196,7 @@ html[data-theme="dark"] .proDashboard.playAppShell .organizationSubTabs button.o
 
 @media (max-width: 760px) {
   .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamName {
-    font-size: 15px !important;
+    font-size: 13px !important;
   }
 
   .organizationSubTabs {
