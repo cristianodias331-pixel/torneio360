@@ -145,6 +145,10 @@ import {
   normalizeTournamentSummaryRow,
   tournamentSummarySelect,
 } from "./domain/tournamentSummary.mjs";
+import {
+  getUserAppStateCloudDelay,
+  getUserAppStateSyncSignature,
+} from "./domain/userAppStateSync.mjs";
 import CircuitExtraPointsPanel from "./features/circuitManagement/CircuitExtraPointsPanel.jsx";
 import {
   CircuitGenderRegistryPanel,
@@ -2318,6 +2322,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const tournamentRealtimeEpochRef = useRef(0);
   const tournamentSignalLoadStateRef = useRef(new Map());
   const circuitRealtimeEpochRef = useRef(0);
+  const circuitSignalLoadStateRef = useRef(new Map());
   const circuitHistoryLoadedIdsRef = useRef(new Set());
   const circuitHistoryLoadPromisesRef = useRef(new Map());
   const circuitRankingViewCacheRef = useRef(new Map());
@@ -2352,6 +2357,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [restoredTournamentId, setRestoredTournamentId] = useState(null);
   const circuitPersistenceQueueRef = useRef(Promise.resolve());
   const appStateSaveTimerRef = useRef(null);
+  const appStateCloudSaveTimerRef = useRef(null);
+  const appStateCloudWriteInFlightRef = useRef(false);
+  const appStatePendingCloudPayloadRef = useRef(null);
+  const appStateLastCloudSignatureRef = useRef("");
+  const appStateLastCloudSaveAtRef = useRef(0);
   const restoredAppStateRef = useRef(false);
   const appStateRestoreReadyRef = useRef(false);
   const pendingScrollRestoreRef = useRef(null);
@@ -2763,6 +2773,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           .single();
 
         if (cancelled || error || !data?.last_url) return;
+        appStateLastCloudSignatureRef.current = getUserAppStateSyncSignature(data);
+        appStateLastCloudSaveAtRef.current = Date.now();
 
         // A cópia local é síncrona e costuma ser a mais recente ao voltar para
         // a mesma aba. O Supabase continua como recuperação entre dispositivos.
@@ -2790,13 +2802,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   useEffect(() => {
     const saveNow = () => saveUserAppState();
+    const saveBeforeLeaving = () => saveUserAppState({}, { forceCloud: true });
     const saveWhenHidden = () => {
-      if (document.visibilityState === "hidden") saveNow();
+      if (document.visibilityState === "hidden") saveBeforeLeaving();
     };
     const saveAfterScroll = () => scheduleUserAppStateSave();
-    const interval = setInterval(saveNow, 10000);
-    window.addEventListener("pagehide", saveNow);
-    window.addEventListener("beforeunload", saveNow);
+    const interval = setInterval(saveNow, 60000);
+    window.addEventListener("pagehide", saveBeforeLeaving);
+    window.addEventListener("beforeunload", saveBeforeLeaving);
     window.addEventListener("blur", saveNow);
     window.addEventListener("scroll", saveAfterScroll, { passive: true });
     document.addEventListener("visibilitychange", saveWhenHidden);
@@ -2804,11 +2817,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return () => {
       saveNow();
       clearInterval(interval);
-      window.removeEventListener("pagehide", saveNow);
-      window.removeEventListener("beforeunload", saveNow);
+      window.removeEventListener("pagehide", saveBeforeLeaving);
+      window.removeEventListener("beforeunload", saveBeforeLeaving);
       window.removeEventListener("blur", saveNow);
       window.removeEventListener("scroll", saveAfterScroll);
       document.removeEventListener("visibilitychange", saveWhenHidden);
+      if (appStateCloudSaveTimerRef.current) clearTimeout(appStateCloudSaveTimerRef.current);
     };
   }, [activePanel, selected?.id, expandedCircuitId, profileSubtab, user.id]);
 
@@ -2831,7 +2845,68 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     void loadCircuitRankingHistory(expandedCircuitId);
   }, [activePanel, expandedCircuitId, circuits.length]);
 
-  async function saveUserAppState(extra = {}) {
+  async function flushPendingUserAppStateToCloud() {
+    if (appStateCloudWriteInFlightRef.current || isBrowserOffline()) return;
+    const payload = appStatePendingCloudPayloadRef.current;
+    if (!payload) return;
+
+    const signature = getUserAppStateSyncSignature(payload);
+    if (signature === appStateLastCloudSignatureRef.current) {
+      appStatePendingCloudPayloadRef.current = null;
+      return;
+    }
+
+    appStatePendingCloudPayloadRef.current = null;
+    appStateCloudWriteInFlightRef.current = true;
+    try {
+      const { error } = await supabase.from("user_app_state").upsert(payload, { onConflict: "user_id" });
+      if (error) {
+        console.error("Erro ao salvar posição do usuário", error);
+        appStatePendingCloudPayloadRef.current = payload;
+        appStateLastCloudSaveAtRef.current = Date.now();
+        return;
+      }
+      appStateLastCloudSignatureRef.current = signature;
+      appStateLastCloudSaveAtRef.current = Date.now();
+    } catch (error) {
+      console.error("Erro ao salvar posição do usuário", error);
+      appStatePendingCloudPayloadRef.current = payload;
+      appStateLastCloudSaveAtRef.current = Date.now();
+    } finally {
+      appStateCloudWriteInFlightRef.current = false;
+      if (appStatePendingCloudPayloadRef.current) {
+        queueUserAppStateCloudSave(appStatePendingCloudPayloadRef.current);
+      }
+    }
+  }
+
+  function queueUserAppStateCloudSave(payload, { force = false } = {}) {
+    appStatePendingCloudPayloadRef.current = payload;
+    const delay = getUserAppStateCloudDelay({
+      payload,
+      lastSignature: appStateLastCloudSignatureRef.current,
+      lastSavedAt: appStateLastCloudSaveAtRef.current,
+      force,
+    });
+    if (delay === null) {
+      appStatePendingCloudPayloadRef.current = null;
+      return;
+    }
+
+    if (appStateCloudSaveTimerRef.current) clearTimeout(appStateCloudSaveTimerRef.current);
+    if (delay === 0) {
+      appStateCloudSaveTimerRef.current = null;
+      void flushPendingUserAppStateToCloud();
+      return;
+    }
+
+    appStateCloudSaveTimerRef.current = setTimeout(() => {
+      appStateCloudSaveTimerRef.current = null;
+      void flushPendingUserAppStateToCloud();
+    }, delay);
+  }
+
+  async function saveUserAppState(extra = {}, { forceCloud = false } = {}) {
     if (!appStateRestoreReadyRef.current) return;
 
     const params = new URLSearchParams(window.location.search);
@@ -2855,19 +2930,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     };
 
     saveLocalUserAppState(user.id, payload);
-
-    try {
-      const { error } = await supabase.from("user_app_state").upsert(payload, { onConflict: "user_id" });
-      if (error) console.error("Erro ao salvar posição do usuário", error);
-    } catch (error) {
-      console.error("Erro ao salvar posição do usuário", error);
-    }
+    queueUserAppStateCloudSave(payload, { force: forceCloud });
   }
 
   function scheduleUserAppStateSave(extra = {}) {
     if (!appStateRestoreReadyRef.current) return;
     if (appStateSaveTimerRef.current) clearTimeout(appStateSaveTimerRef.current);
-    appStateSaveTimerRef.current = setTimeout(() => saveUserAppState(extra), 700);
+    appStateSaveTimerRef.current = setTimeout(() => saveUserAppState(extra), 1500);
   }
   const [photoEditor, setPhotoEditor] = useState(null);
   const [profileEditing, setProfileEditing] = useState(false);
@@ -6129,6 +6198,56 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     cacheCurrentDashboard();
   }
 
+  function applyRemoteCircuitSignal(payload) {
+    const signal = payload?.new || payload?.old;
+    const circuitId = signal?.circuit_id;
+    if (!circuitId) return;
+
+    const signalKey = String(circuitId);
+    const runningState = circuitSignalLoadStateRef.current.get(signalKey);
+    if (runningState) {
+      runningState.latestSignal = signal;
+      runningState.pending = true;
+      return;
+    }
+
+    const loadState = { latestSignal: signal, pending: false };
+    circuitSignalLoadStateRef.current.set(signalKey, loadState);
+
+    const reconcileSignal = async () => {
+      do {
+        loadState.pending = false;
+        const latestSignal = loadState.latestSignal;
+        if (latestSignal.deleted) {
+          applyRemoteCircuitChange({ eventType: "DELETE", old: { id: circuitId } });
+          continue;
+        }
+
+        const { data, error } = await supabase
+          .from("circuits")
+          .select(circuitDirectorySelect)
+          .eq("id", circuitId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.warn("Não foi possível reconciliar a atualização leve do circuito.", error);
+          continue;
+        }
+        if (!data) {
+          applyRemoteCircuitChange({ eventType: "DELETE", old: { id: circuitId } });
+          continue;
+        }
+
+        applyRemoteCircuitChange({ eventType: "UPDATE", new: data });
+      } while (loadState.pending);
+    };
+
+    void reconcileSignal()
+      .catch((error) => console.warn("Falha ao processar sinal de atualização do circuito.", error))
+      .finally(() => circuitSignalLoadStateRef.current.delete(signalKey));
+  }
+
   function applyRemoteProfileChange(payload) {
     if (payload?.eventType === "DELETE" || !payload?.new?.id) return;
     const remoteRow = payload.new;
@@ -6199,8 +6318,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "circuits", filter: `user_id=eq.${user.id}` },
-        applyRemoteCircuitChange
+        { event: "*", schema: "public", table: "circuit_change_feed", filter: `user_id=eq.${user.id}` },
+        applyRemoteCircuitSignal
       )
       .on(
         "postgres_changes",

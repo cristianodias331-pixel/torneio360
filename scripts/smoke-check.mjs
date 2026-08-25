@@ -139,6 +139,10 @@ import {
   tournamentSummarySelect,
 } from "../src/domain/tournamentSummary.mjs";
 import {
+  getUserAppStateCloudDelay,
+  getUserAppStateSyncSignature,
+} from "../src/domain/userAppStateSync.mjs";
+import {
   generateCollaborationChangeId,
   generatePublicId,
   getArenaPublicShareMessage,
@@ -510,6 +514,10 @@ const publicArenaEventPaginationMigrationSource = readFileSync(
 );
 const publicArenaLegacyCompatibilityMigrationSource = readFileSync(
   new URL("supabase/migrations/202608250002_public_arena_legacy_bundle_compatibility.sql", root),
+  "utf8"
+);
+const circuitChangeFeedMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250003_circuit_change_feed.sql", root),
   "utf8"
 );
 const publicIdentifiersSource = readFileSync(
@@ -1313,6 +1321,45 @@ assert.equal(
     && !mainSource.includes('table: "tournaments", filter: `user_id=eq.${user.id}`'),
   true,
   "O Realtime voltou a transmitir o JSON completo de cada torneio em toda alteração.",
+);
+assert.equal(
+  circuitChangeFeedMigrationSource.includes("create table if not exists public.circuit_change_feed")
+    && circuitChangeFeedMigrationSource.includes("create trigger circuits_signal_change")
+    && circuitChangeFeedMigrationSource.includes("alter publication supabase_realtime add table public.circuit_change_feed")
+    && mainSource.includes('table: "circuit_change_feed"')
+    && mainSource.includes("applyRemoteCircuitSignal")
+    && mainSource.includes("circuitSignalLoadStateRef")
+    && !mainSource.includes('table: "circuits", filter: `user_id=eq.${user.id}`'),
+  true,
+  "O Realtime voltou a transmitir os dados completos do circuito em toda alteração.",
+);
+const appStatePayloadForTest = {
+  last_url: "/?aba=circuitos",
+  last_panel: "circuitos",
+  last_circuit_id: "circuito-1",
+  scroll_y: 240,
+  updated_at: "2026-08-25T12:00:00.000Z",
+};
+const appStateSignatureForTest = getUserAppStateSyncSignature(appStatePayloadForTest);
+assert.equal(
+  appStateSignatureForTest,
+  getUserAppStateSyncSignature({ ...appStatePayloadForTest, updated_at: "2026-08-25T12:01:00.000Z" }),
+  "A data técnica voltou a provocar gravações repetidas do mesmo estado de navegação.",
+);
+assert.equal(
+  getUserAppStateCloudDelay({ payload: appStatePayloadForTest, lastSignature: appStateSignatureForTest }),
+  null,
+  "Um estado de navegação idêntico deixou de ser descartado antes da gravação.",
+);
+assert.equal(
+  getUserAppStateCloudDelay({ payload: appStatePayloadForTest, lastSavedAt: 5_000, now: 10_000 }),
+  25_000,
+  "O limite de gravações do estado de navegação deixou de respeitar 30 segundos.",
+);
+assert.equal(
+  getUserAppStateCloudDelay({ payload: appStatePayloadForTest, force: true }),
+  0,
+  "A saída da página deixou de poder solicitar a última sincronização imediatamente.",
 );
 assert.equal(
   publicArenaEventPaginationMigrationSource.includes("create or replace function public.get_public_arena_overview")
