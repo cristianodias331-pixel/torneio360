@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import "../../styles/31-matches-and-brackets.css";
 import { getGameCourtLabel } from "../../domain/courtNumbers.mjs";
 import {
@@ -11,6 +12,35 @@ import {
 } from "../../domain/scoreRules.mjs";
 import { getGameSideAttendanceParticipants } from "../../domain/participantAttendance.mjs";
 import { CourtBadge, VoiceRepeatSelector } from "./MatchControls.jsx";
+
+function normalizeScheduleSearch(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
+function getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore) {
+  const isFinished = getScoreWinnerSide(game, winningScore) !== null;
+  const statusLabel = isFinished
+    ? "Finalizado Finalizados"
+    : game?.inProgress === true
+      ? "Em jogo"
+      : "A chamar Aguardando chamada";
+  const teamNames = [...(Array.isArray(game?.team1) ? game.team1 : [game?.team1]),
+    ...(Array.isArray(game?.team2) ? game.team2 : [game?.team2])]
+    .filter(Boolean)
+    .join(" ");
+
+  return normalizeScheduleSearch([
+    `Rodada ${roundIndex + 1}`,
+    game?.groupName,
+    getGameCourtLabel(game, courtNumbers),
+    teamNames,
+    statusLabel,
+  ].filter(Boolean).join(" "));
+}
 
 function useLiveMatchElapsedSeconds(game, shouldTick) {
   const [now, setNow] = useState(() => Date.now());
@@ -245,26 +275,47 @@ export default function ScheduleView({
   stopSpeech,
   MatchStatusSummary,
 }) {
-  const groupedSchedule = [];
+  const [scheduleSearchValue, setScheduleSearchValue] = useState("");
+  const normalizedScheduleSearch = normalizeScheduleSearch(scheduleSearchValue);
+  const visibleSchedule = useMemo(() => schedule
+    .map((round, roundIndex) => ({
+      roundIndex,
+      games: round
+        .map((game, gameIndex) => ({ game, gameIndex }))
+        .filter(({ game }) => !normalizedScheduleSearch
+          || getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)
+            .includes(normalizedScheduleSearch)),
+    }))
+    .filter(({ games }) => games.length > 0), [
+      courtNumbers,
+      normalizedScheduleSearch,
+      schedule,
+      winningScore,
+    ]);
+  const visibleGameCount = visibleSchedule.reduce((total, round) => total + round.games.length, 0);
+  const groupedSchedule = useMemo(() => {
+    if (!showGroupName) return [];
 
-  if (showGroupName) {
+    const groups = [];
     const groupsByName = new Map();
 
-    schedule.forEach((round, roundIndex) => {
-      round.forEach((game, gameIndex) => {
+    visibleSchedule.forEach(({ roundIndex, games }) => {
+      games.forEach(({ game, gameIndex }) => {
         const groupName = String(game?.groupName || "Grupo").trim();
         const groupKey = game?.groupId ?? groupName;
 
         if (!groupsByName.has(groupKey)) {
           const group = { key: groupKey, name: groupName, games: [] };
           groupsByName.set(groupKey, group);
-          groupedSchedule.push(group);
+          groups.push(group);
         }
 
         groupsByName.get(groupKey).games.push({ game, roundIndex, gameIndex });
       });
     });
-  }
+
+    return groups;
+  }, [showGroupName, visibleSchedule]);
 
   const renderGame = (game, roundIndex, gameIndex, key = gameIndex) => (
     <UniversalMatchCard
@@ -292,10 +343,26 @@ export default function ScheduleView({
       {!readOnly ? (
         <div className="scheduleOverviewToolbar" aria-label="Controles e resumo dos jogos">
           {statusData ? <MatchStatusSummary data={statusData} /> : null}
+          <label className="scheduleSearch">
+            <Search aria-hidden="true" />
+            <input
+              type="search"
+              value={scheduleSearchValue}
+              onChange={(event) => setScheduleSearchValue(event.target.value)}
+              placeholder="Nome, rodada ou quadra"
+              aria-label="Pesquisar jogos por nome, rodada, grupo, quadra ou estado"
+            />
+          </label>
           <VoiceRepeatSelector
             voiceRepeat={voiceRepeat}
             setVoiceRepeat={setVoiceRepeat}
           />
+        </div>
+      ) : null}
+
+      {!readOnly && normalizedScheduleSearch && visibleGameCount === 0 ? (
+        <div className="scheduleSearchEmpty" role="status">
+          Nenhum jogo encontrado para “{scheduleSearchValue.trim()}”.
         </div>
       ) : null}
 
@@ -356,7 +423,7 @@ export default function ScheduleView({
             );
           })}
         </>
-      ) : schedule.map((round, roundIndex) => (
+      ) : visibleSchedule.map(({ roundIndex, games }) => (
         <div className={`roundCard ${readOnly ? "readOnlyRoundCard publicReadOnlyRound" : ""}`} key={roundIndex}>
           <div className="roundHeader">
             <h3>Rodada {roundIndex + 1}</h3>
@@ -367,7 +434,7 @@ export default function ScheduleView({
                   type="button"
                   className="voiceBtn"
                   onClick={() =>
-                    speakRound(round, roundIndex, {
+                    speakRound(schedule[roundIndex], roundIndex, {
                       includeGroup: showGroupName,
                       repeat: voiceRepeat,
                       courtNumbers,
@@ -388,7 +455,7 @@ export default function ScheduleView({
             ) : null}
           </div>
 
-          {round.map((game, gameIndex) => {
+          {games.map(({ game, gameIndex }) => {
             return renderGame(game, roundIndex, gameIndex);
           })}
         </div>

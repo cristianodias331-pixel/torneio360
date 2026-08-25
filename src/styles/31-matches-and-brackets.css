@@ -29,10 +29,84 @@
   background: transparent;
 }
 
+.scheduleSearch {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 230px;
+  width: min(340px, 100%);
+  max-width: 340px;
+  min-width: 170px;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid #cbd9e8;
+  border-radius: 9px;
+  background: #fff;
+  color: #60748c;
+}
+
+.scheduleSearch:focus-within {
+  border-color: #2f6df6;
+  box-shadow: 0 0 0 2px rgba(47, 109, 246, 0.12);
+}
+
+.scheduleSearch svg {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+}
+
+.scheduleSearch input {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 30px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #22344a !important;
+  font-size: 11px !important;
+}
+
+.scheduleSearchEmpty {
+  grid-column: 1 / -1;
+  display: grid;
+  min-height: 76px;
+  padding: 14px;
+  place-items: center;
+  border: 1px dashed #c8d6e6;
+  border-radius: 11px;
+  background: #f8fbff;
+  color: #60748c;
+  font-size: 12px;
+  text-align: center;
+}
+
 html[data-theme="dark"] .scheduleOverviewToolbar,
 .proDashboard.theme-dark .scheduleOverviewToolbar {
   border-color: #30445c;
   background: #121f2f;
+}
+
+html[data-theme="dark"] .scheduleSearch,
+.proDashboard.theme-dark .scheduleSearch {
+  border-color: #3b516b;
+  background: #0e1a29;
+  color: #9eb0c5;
+}
+
+html[data-theme="dark"] .scheduleSearch input,
+.proDashboard.theme-dark .scheduleSearch input {
+  color: #e6eef8 !important;
+}
+
+html[data-theme="dark"] .scheduleSearchEmpty,
+.proDashboard.theme-dark .scheduleSearchEmpty {
+  border-color: #3a5069;
+  background: #111e2e;
+  color: #aebed1;
 }
 
 .schedule > .roundCard:not(.bracketRoundLane) {
@@ -186,6 +260,11 @@ html[data-theme="dark"] .scheduleGroupSection .matchCardPhase,
 
   .scheduleOverviewToolbar .voiceRepeatBox {
     width: 100%;
+  }
+
+  .scheduleSearch {
+    width: 100%;
+    max-width: none;
   }
 
   .scheduleRoundCalls {

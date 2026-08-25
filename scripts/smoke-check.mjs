@@ -4703,6 +4703,17 @@ assert.ok(
   "O resumo interno deixou de usar a mesma visão geral exibida na aba do torneio."
 );
 assert.ok(
+  matchScheduleSource.includes('className="scheduleSearch"')
+    && matchScheduleSource.includes('getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)')
+    && matchScheduleSource.includes('placeholder="Nome, rodada ou quadra"')
+    && matchControlsSource.includes('Repetir chamada')
+    && matchControlsSource.includes('<option value={1}>1 vez</option>')
+    && styleSource.includes('.scheduleSearch {')
+    && styleSource.includes('grid-template-columns: repeat(3, minmax(0, max-content));')
+    && styleSource.includes('width: 20px !important;'),
+  "A pesquisa operacional das partidas ou o seletor compacto de repetição está ausente."
+);
+assert.ok(
   mainSource.includes('function prepareEditableBracketData(currentData)')
     && mainSource.includes('return syncCupBracketScores(copy);')
     && mainSource.includes('const copy = prepareEditableBracketData(prev);'),
