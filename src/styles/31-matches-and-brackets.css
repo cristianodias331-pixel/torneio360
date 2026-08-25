@@ -6,8 +6,8 @@
   justify-content: flex-start;
   gap: 10px;
   min-width: 0;
-  min-height: 42px;
-  padding: 5px 8px;
+  min-height: 48px;
+  padding: 6px 8px;
   border: 1px solid #d7e3f1;
   border-radius: 11px;
   background: #f8fbff;
@@ -20,6 +20,33 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+.scheduleStatusFilters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.scheduleStatusFilter {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  white-space: nowrap;
+}
+
+.scheduleStatusFilter i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.scheduleStatusFilter.is-in-progress i { background: #7c3aed; }
+.scheduleStatusFilter.is-finished i { background: #16834a; }
+.scheduleStatusFilter.is-waiting i { background: #718096; }
 
 .scheduleOverviewToolbar .tournamentMatchStatusSummary {
   min-height: 0;
@@ -42,12 +69,12 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  flex: 0 1 300px;
-  width: min(300px, 100%);
-  max-width: 300px;
+  flex: 0 1 330px;
+  width: min(330px, 100%);
+  max-width: 330px;
   min-width: 170px;
-  min-height: 32px;
-  padding: 0 9px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1px solid #cbd9e8;
   border-radius: 9px;
   background: #fff;
@@ -69,7 +96,7 @@
 .scheduleSearch input {
   width: 100% !important;
   min-width: 0 !important;
-  min-height: 30px !important;
+  min-height: 34px !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
@@ -77,7 +104,8 @@
   background: transparent !important;
   box-shadow: none !important;
   color: #22344a !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
+  line-height: 34px !important;
 }
 
 .scheduleSearchEmpty {
@@ -278,6 +306,14 @@ html[data-theme="dark"] .scheduleGroupSection .matchCardPhase,
     flex-direction: column;
     gap: 6px;
     width: 100%;
+  }
+
+  .scheduleStatusFilters {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
   }
 
   .scheduleSearch {

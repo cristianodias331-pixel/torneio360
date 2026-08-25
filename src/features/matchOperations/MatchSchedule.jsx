@@ -13,6 +13,13 @@ import {
 import { getGameSideAttendanceParticipants } from "../../domain/participantAttendance.mjs";
 import { CourtBadge, VoiceRepeatSelector } from "./MatchControls.jsx";
 
+const SCHEDULE_STATUS_FILTERS = [
+  { value: "all", label: "Todos", summaryKey: "total" },
+  { value: "in-progress", label: "Em jogo", summaryKey: "inProgress" },
+  { value: "finished", label: "Finalizados", summaryKey: "finished" },
+  { value: "waiting", label: "A chamar", summaryKey: "waiting" },
+];
+
 function normalizeScheduleSearch(value) {
   return String(value ?? "")
     .normalize("NFD")
@@ -21,11 +28,17 @@ function normalizeScheduleSearch(value) {
     .trim();
 }
 
+function getScheduleGameStatus(game, winningScore) {
+  if (getScoreWinnerSide(game, winningScore) !== null) return "finished";
+  if (game?.inProgress === true) return "in-progress";
+  return "waiting";
+}
+
 function getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore) {
-  const isFinished = getScoreWinnerSide(game, winningScore) !== null;
-  const statusLabel = isFinished
+  const gameStatus = getScheduleGameStatus(game, winningScore);
+  const statusLabel = gameStatus === "finished"
     ? "Finalizado Finalizados"
-    : game?.inProgress === true
+    : gameStatus === "in-progress"
       ? "Em jogo"
       : "A chamar Aguardando chamada";
   const teamNames = [...(Array.isArray(game?.team1) ? game.team1 : [game?.team1]),
@@ -40,6 +53,26 @@ function getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)
     teamNames,
     statusLabel,
   ].filter(Boolean).join(" "));
+}
+
+function ScheduleStatusFilters({ summary, value, onChange }) {
+  return (
+    <div className="scheduleStatusFilters" role="group" aria-label="Filtrar jogos por situação">
+      {SCHEDULE_STATUS_FILTERS.map((filter) => (
+        <button
+          type="button"
+          className={`scheduleStatusFilter is-${filter.value} ${value === filter.value ? "active" : ""}`}
+          key={filter.value}
+          onClick={() => onChange(filter.value)}
+          aria-pressed={value === filter.value}
+        >
+          {filter.value !== "all" ? <i aria-hidden="true" /> : null}
+          <span>{filter.label}</span>
+          <strong>{summary[filter.summaryKey]}</strong>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function useLiveMatchElapsedSeconds(game, shouldTick) {
@@ -273,23 +306,38 @@ export default function ScheduleView({
   speakGame,
   speakRound,
   stopSpeech,
-  MatchStatusSummary,
 }) {
   const [scheduleSearchValue, setScheduleSearchValue] = useState("");
+  const [scheduleStatusFilter, setScheduleStatusFilter] = useState("all");
   const normalizedScheduleSearch = normalizeScheduleSearch(scheduleSearchValue);
+  const scheduleSummary = useMemo(() => schedule.reduce((summary, round) => {
+    round.forEach((game) => {
+      const status = getScheduleGameStatus(game, winningScore);
+      summary.total += 1;
+      if (status === "in-progress") summary.inProgress += 1;
+      else if (status === "finished") summary.finished += 1;
+      else summary.waiting += 1;
+    });
+    return summary;
+  }, { total: 0, inProgress: 0, finished: 0, waiting: 0 }), [schedule, winningScore]);
   const visibleSchedule = useMemo(() => schedule
     .map((round, roundIndex) => ({
       roundIndex,
       games: round
         .map((game, gameIndex) => ({ game, gameIndex }))
-        .filter(({ game }) => !normalizedScheduleSearch
-          || getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)
-            .includes(normalizedScheduleSearch)),
+        .filter(({ game }) => (
+          (scheduleStatusFilter === "all"
+            || getScheduleGameStatus(game, winningScore) === scheduleStatusFilter)
+          && (!normalizedScheduleSearch
+            || getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)
+              .includes(normalizedScheduleSearch))
+        )),
     }))
     .filter(({ games }) => games.length > 0), [
       courtNumbers,
       normalizedScheduleSearch,
       schedule,
+      scheduleStatusFilter,
       winningScore,
     ]);
   const visibleGameCount = visibleSchedule.reduce((total, round) => total + round.games.length, 0);
@@ -316,6 +364,10 @@ export default function ScheduleView({
 
     return groups;
   }, [showGroupName, visibleSchedule]);
+  const selectScheduleStatusFilter = (nextFilter) => {
+    setScheduleStatusFilter(nextFilter);
+    if (nextFilter === "all") setScheduleSearchValue("");
+  };
 
   const renderGame = (game, roundIndex, gameIndex, key = gameIndex) => (
     <UniversalMatchCard
@@ -343,7 +395,11 @@ export default function ScheduleView({
       {!readOnly ? (
         <div className="scheduleOverviewToolbar" aria-label="Controles e resumo dos jogos">
           <div className="scheduleOverviewPrimary">
-            {statusData ? <MatchStatusSummary data={statusData} /> : null}
+            <ScheduleStatusFilters
+              summary={scheduleSummary}
+              value={scheduleStatusFilter}
+              onChange={selectScheduleStatusFilter}
+            />
             <label className="scheduleSearch">
               <Search aria-hidden="true" />
               <input
@@ -362,9 +418,11 @@ export default function ScheduleView({
         </div>
       ) : null}
 
-      {!readOnly && normalizedScheduleSearch && visibleGameCount === 0 ? (
+      {!readOnly && (normalizedScheduleSearch || scheduleStatusFilter !== "all") && visibleGameCount === 0 ? (
         <div className="scheduleSearchEmpty" role="status">
-          Nenhum jogo encontrado para “{scheduleSearchValue.trim()}”.
+          {normalizedScheduleSearch
+            ? `Nenhum jogo encontrado para “${scheduleSearchValue.trim()}”.`
+            : "Nenhum jogo encontrado neste filtro."}
         </div>
       ) : null}
 

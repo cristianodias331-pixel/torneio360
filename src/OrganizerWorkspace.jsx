@@ -11238,6 +11238,7 @@ return (
           ) : (
             <>
              <ScheduleView
+  key={`${tournament.id}:${activeTournamentTab}:${activeMatchesTab}`}
   schedule={data.schedule}
   statusData={data}
   updateScore={updateScore}

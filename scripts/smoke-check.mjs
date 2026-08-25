@@ -4696,7 +4696,7 @@ assert.ok(
   "O status persistente de jogo em curso está ausente."
 );
 assert.ok(
-    matchScheduleSource.includes('<MatchStatusSummary data={statusData} />')
+    matchScheduleSource.includes('<ScheduleStatusFilters')
     && cupBracketViewSource.includes('<MatchStatusSummary')
     && !cupBracketViewSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
     && tournamentOperationsSource.includes('scope !== "all" && item.scope !== scope'),
@@ -4705,15 +4705,20 @@ assert.ok(
 assert.ok(
   matchScheduleSource.includes('className="scheduleSearch"')
     && matchScheduleSource.includes('className="scheduleOverviewPrimary"')
+    && matchScheduleSource.includes('const SCHEDULE_STATUS_FILTERS = [')
+    && matchScheduleSource.includes('aria-pressed={value === filter.value}')
+    && matchScheduleSource.includes('if (nextFilter === "all") setScheduleSearchValue("");')
     && matchScheduleSource.includes('getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)')
     && matchScheduleSource.includes('placeholder="Nome, rodada ou quadra"')
     && matchControlsSource.includes('Repetir chamada')
     && matchControlsSource.includes('<option value={1}>1 vez</option>')
     && styleSource.includes('.scheduleSearch {')
+    && styleSource.includes('button.scheduleStatusFilter.active')
     && styleSource.includes('grid-template-columns: repeat(3, minmax(0, max-content));')
     && styleSource.includes('.proDashboard.playAppShell button.openTournamentTabClose {')
-    && styleSource.includes('max-height: 18px !important;'),
-  "A pesquisa operacional das partidas ou o seletor compacto de repetição está ausente."
+    && styleSource.includes('max-height: 18px !important;')
+    && organizerWorkspaceSource.includes('key={`${tournament.id}:${activeTournamentTab}:${activeMatchesTab}`}'),
+  "Os filtros, a pesquisa operacional ou o seletor compacto das partidas estão ausentes."
 );
 assert.ok(
   mainSource.includes('function prepareEditableBracketData(currentData)')

@@ -1397,7 +1397,7 @@ html[data-theme="dark"] .summaryStatus.is-waiting i,
   flex-direction: row;
   justify-content: flex-end;
   gap: 6px;
-  min-height: 32px;
+  min-height: 36px;
   margin-bottom: 0;
   padding: 0;
   border: 0 !important;
@@ -1415,9 +1415,91 @@ html[data-theme="dark"] .summaryStatus.is-waiting i,
 .tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox select {
   width: 82px;
   max-width: 82px;
-  min-height: 32px;
+  min-height: 36px;
   padding: 5px 26px 5px 9px;
   font-size: 11px;
+}
+
+.proDashboard.playAppShell button.scheduleStatusFilter {
+  width: auto !important;
+  min-width: 0 !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 9px !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: #52657b !important;
+  -webkit-text-fill-color: #52657b !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.proDashboard.playAppShell button.scheduleStatusFilter:hover {
+  border-color: #c7d5e6 !important;
+  background: #fff !important;
+  color: #273a52 !important;
+  -webkit-text-fill-color: #273a52 !important;
+}
+
+.proDashboard.playAppShell button.scheduleStatusFilter.active {
+  border-color: #4f83f1 !important;
+  background: #eaf2ff !important;
+  color: #174ea6 !important;
+  -webkit-text-fill-color: #174ea6 !important;
+  box-shadow: 0 0 0 2px rgba(47, 109, 246, 0.1) !important;
+}
+
+.proDashboard.playAppShell button.scheduleStatusFilter strong {
+  display: inline-grid;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0 5px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e5edf6;
+  color: #52657b;
+  -webkit-text-fill-color: #52657b;
+  font-size: 9.5px;
+  line-height: 1;
+}
+
+.proDashboard.playAppShell button.scheduleStatusFilter.active strong {
+  background: #cfe0ff;
+  color: #174ea6;
+  -webkit-text-fill-color: #174ea6;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.scheduleStatusFilter,
+.proDashboard.theme-dark button.scheduleStatusFilter {
+  color: #b8c5d5 !important;
+  -webkit-text-fill-color: #b8c5d5 !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.scheduleStatusFilter:hover,
+.proDashboard.theme-dark button.scheduleStatusFilter:hover {
+  border-color: #415874 !important;
+  background: #17263a !important;
+  color: #eef5ff !important;
+  -webkit-text-fill-color: #eef5ff !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.scheduleStatusFilter.active,
+.proDashboard.theme-dark button.scheduleStatusFilter.active {
+  border-color: #6ea0ff !important;
+  background: #18345d !important;
+  color: #dceaff !important;
+  -webkit-text-fill-color: #dceaff !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.scheduleStatusFilter strong,
+.proDashboard.theme-dark button.scheduleStatusFilter strong {
+  background: #293b52;
+  color: #c3d1e1;
+  -webkit-text-fill-color: #c3d1e1;
 }
 
 .proDashboard.playAppShell .organizationSubTabs button {
