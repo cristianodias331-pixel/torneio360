@@ -461,7 +461,16 @@ assert.ok(
     && mainSource.match(/function migrateReferenceProfilePlayRankingTournaments[\s\S]*?\.eq\("user_id", PLAY_RANKING_RETROACTIVE_PROFILE_ID\)/),
   "A atualização retroativa deixou de estar isolada ao perfil PLAY RANKING® e à sua modalidade Modelo Torneio 360."
 );
-const styleSource = readFileSync(new URL("src/style.css", root), "utf8");
+function readCssBundleSource(entryUrl, visited = new Set()) {
+  if (visited.has(entryUrl.href)) return "";
+  visited.add(entryUrl.href);
+  const source = readFileSync(entryUrl, "utf8");
+  const imports = [...source.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/g)]
+    .map((match) => readCssBundleSource(new URL(match[1], entryUrl), visited));
+  return [source, ...imports].join("\n");
+}
+
+const styleSource = readCssBundleSource(new URL("src/style.css", root));
 const authValidationSource = readFileSync(
   new URL("src/domain/authValidation.mjs", root),
   "utf8"
