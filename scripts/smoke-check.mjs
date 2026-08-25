@@ -123,6 +123,7 @@ import {
   getPublicTournamentDirectoryItem,
   getRegisteredAthletesForPublic,
   normalizePublicCircuitForDisplay,
+  selectVisiblePublicCircuitRankingGroups,
   sortCircuitsForDisplay,
 } from "../src/domain/publicArenaData.mjs";
 import {
@@ -1207,6 +1208,28 @@ assert.deepEqual(
   normalizedPublicCircuitByTotalGames.ranking_groups[0].rows.map((row) => row.name),
   ["Bia", "Ana"],
   "O ranking público do circuito voltou a usar uma ordem fixa diferente da escolhida pelo organizador.",
+);
+const legacyGeneralCircuitGroup = [{ key: "geral", title: "Ranking geral acumulado", rows: [{ name: "Ana" }] }];
+assert.deepEqual(
+  selectVisiblePublicCircuitRankingGroups({
+    storedGroups: legacyGeneralCircuitGroup,
+    rebuiltGroups: [],
+    rankingDivision: "gender",
+  }),
+  legacyGeneralCircuitGroup,
+  "Um histórico geral válido não pode desaparecer quando a separação por gênero ainda não puder ser reconstruída.",
+);
+assert.deepEqual(
+  selectVisiblePublicCircuitRankingGroups({
+    storedGroups: legacyGeneralCircuitGroup,
+    rebuiltGroups: [
+      { key: "masculino", rows: [{ name: "Bruno" }] },
+      { key: "feminino", rows: [{ name: "Carla" }] },
+    ],
+    rankingDivision: "gender",
+  }).map((group) => group.key),
+  ["masculino", "feminino"],
+  "A separação por gênero deve substituir o fallback geral assim que estiver disponível.",
 );
 for (const [type, config] of Object.entries(modalityConfig)) {
   const publicSections = getRegisteredAthletesForPublic(createInitialData(type, config), config);

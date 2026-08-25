@@ -14,6 +14,7 @@ import {
   normalizeCircuitRankingSettings,
 } from "../../domain/circuitRankingSettings.mjs";
 import { defaultRankingCriteria } from "../../domain/rankingCriteria.mjs";
+import { selectVisiblePublicCircuitRankingGroups } from "../../domain/publicArenaData.mjs";
 import { sortTournamentsChronologically } from "../../domain/tournamentLifecycle.mjs";
 
 export default function PublicCircuitScreenView({
@@ -44,10 +45,11 @@ export default function PublicCircuitScreenView({
   const rebuiltRankingGroups = storedRankingGroups.length === 0 || storedRankingNeedsGenderRepair
     ? buildPublicCircuitRankingGroups(circuit, tournaments)
     : [];
-  const allRankingGroups = rebuiltRankingGroups.length > 0 ? rebuiltRankingGroups : storedRankingGroups;
-  const rankingGroups = rankingSettings.rankingDivision === "gender"
-    ? allRankingGroups.filter((group) => group.key === "masculino" || group.key === "feminino")
-    : allRankingGroups;
+  const rankingGroups = selectVisiblePublicCircuitRankingGroups({
+    storedGroups: storedRankingGroups,
+    rebuiltGroups: rebuiltRankingGroups,
+    rankingDivision: rankingSettings.rankingDivision,
+  });
   const placementMode = rankingSettings.mode === circuitRankingModes.placement;
   const placementColumns = placementMode ? getCircuitPlacementColumns(rankingSettings) : null;
   const performanceColumns = placementMode ? null : getCircuitPerformanceColumns(rankingSettings);

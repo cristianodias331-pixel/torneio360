@@ -108,6 +108,22 @@ export function sortCircuitsForDisplay(items) {
   });
 }
 
+export function selectVisiblePublicCircuitRankingGroups({
+  storedGroups = [],
+  rebuiltGroups = [],
+  rankingDivision = "general",
+} = {}) {
+  const stored = Array.isArray(storedGroups) ? storedGroups : [];
+  const rebuilt = Array.isArray(rebuiltGroups) ? rebuiltGroups : [];
+  const availableGroups = rebuilt.length > 0 ? rebuilt : stored;
+  if (rankingDivision !== "gender") return availableGroups;
+
+  const genderGroups = availableGroups.filter((group) => (
+    group?.key === "masculino" || group?.key === "feminino"
+  ));
+  return genderGroups.length > 0 ? genderGroups : availableGroups;
+}
+
 export function normalizePublicCircuitForDisplay(circuit, { directoryEntry = true } = {}) {
   const rankingSettings = normalizeCircuitRankingSettings(circuit?.ranking_settings || circuit?.rankingSettings);
   const placementMode = rankingSettings.mode === circuitRankingModes.placement;
