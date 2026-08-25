@@ -206,8 +206,8 @@ export function createInitialData(type, config) {
           : {}),
         ...(config.type === "cearense" || config.type === "cearenseIndividual"
           ? {
-            secondRepechageEnabled: null,
-            thirdRepechageEnabled: null,
+            secondRepechageEnabled: true,
+            thirdRepechageEnabled: false,
           }
           : {}),
         tieBreakOverrides: {},
@@ -343,12 +343,12 @@ export function normalizeTournamentData(type, rawData) {
           : {}),
         ...(config.type === "cearense" || config.type === "cearenseIndividual"
           ? {
-            secondRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")
-              ? (typeof sourceCupConfig.secondRepechageEnabled === "boolean" ? sourceCupConfig.secondRepechageEnabled : null)
-              : true,
-            thirdRepechageEnabled: Object.prototype.hasOwnProperty.call(sourceCupConfig, "thirdRepechageEnabled")
-              ? (typeof sourceCupConfig.thirdRepechageEnabled === "boolean" ? sourceCupConfig.thirdRepechageEnabled : null)
-              : true,
+            secondRepechageEnabled: typeof sourceCupConfig.secondRepechageEnabled === "boolean"
+              ? sourceCupConfig.secondRepechageEnabled
+              : defaults.cupConfig.secondRepechageEnabled,
+            thirdRepechageEnabled: typeof sourceCupConfig.thirdRepechageEnabled === "boolean"
+              ? sourceCupConfig.thirdRepechageEnabled
+              : defaults.cupConfig.thirdRepechageEnabled,
           }
           : {}),
         tieBreakOverrides: isTournamentDataObject(sourceCupConfig.tieBreakOverrides)
