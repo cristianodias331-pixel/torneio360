@@ -34,6 +34,11 @@ export function isTournamentDataObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function normalizeConfigurableCupName(value, fallback, legacyDefaults = []) {
+  if (typeof value !== "string") return fallback;
+  return legacyDefaults.includes(value.trim()) ? fallback : value;
+}
+
 export function normalizeNameList(values, count, label) {
   const source = Array.isArray(values) ? values : [];
 
@@ -308,6 +313,9 @@ export function normalizeTournamentData(type, rawData) {
     const teamCount = config.allowedTeamCounts.includes(requestedTeamCount)
       ? requestedTeamCount
       : config.defaultTeams;
+    const isCearenseConfig = config.type === "cearense" || config.type === "cearenseIndividual";
+    const isPlayRankingConfig = config.type === "playranking";
+    const isSunsetConfig = config.type === "sunset";
 
     return {
       ...normalized,
@@ -321,15 +329,25 @@ export function normalizeTournamentData(type, rawData) {
         mainBracketName: typeof sourceCupConfig.mainBracketName === "string"
           ? sourceCupConfig.mainBracketName
           : defaults.cupConfig.mainBracketName,
-        repechageName: typeof sourceCupConfig.repechageName === "string"
-          ? sourceCupConfig.repechageName
-          : defaults.cupConfig.repechageName,
-        secondParallelName: typeof sourceCupConfig.secondParallelName === "string"
-          ? sourceCupConfig.secondParallelName
-          : defaults.cupConfig.secondParallelName,
-        thirdRepechageName: typeof sourceCupConfig.thirdRepechageName === "string"
-          ? sourceCupConfig.thirdRepechageName
-          : defaults.cupConfig.thirdRepechageName,
+        repechageName: normalizeConfigurableCupName(
+          sourceCupConfig.repechageName,
+          defaults.cupConfig.repechageName,
+          isCearenseConfig
+            ? ["2ª Disputa Paralela"]
+            : isPlayRankingConfig
+              ? ["Disputa Paralela"]
+              : isSunsetConfig ? ["1ª Disputa Paralela"] : []
+        ),
+        secondParallelName: normalizeConfigurableCupName(
+          sourceCupConfig.secondParallelName,
+          defaults.cupConfig.secondParallelName,
+          isSunsetConfig ? ["2ª Disputa Paralela"] : []
+        ),
+        thirdRepechageName: normalizeConfigurableCupName(
+          sourceCupConfig.thirdRepechageName,
+          defaults.cupConfig.thirdRepechageName,
+          isCearenseConfig || isSunsetConfig ? ["3ª Disputa Paralela"] : []
+        ),
         sunsetBracketName: typeof sourceCupConfig.sunsetBracketName === "string"
           ? sourceCupConfig.sunsetBracketName
           : defaults.cupConfig.sunsetBracketName,
