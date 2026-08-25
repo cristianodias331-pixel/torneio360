@@ -84,7 +84,7 @@ export function generateCearenseBrackets(data) {
   const qualified = getCearenseQualified(data);
   const cupConfig = data.cupConfig || {};
   const mainName = cupConfig.mainBracketName || "Eliminatória Principal";
-  const repechageName = cupConfig.repechageName || "2ª Disputa Paralela";
+  const repechageName = cupConfig.repechageName || "Consolation";
   const thirdRepechageName = cupConfig.thirdRepechageName || "3ª Disputa Paralela";
   const groupCount = createCearenseGroups(
     cupConfig.teamCount || 4,

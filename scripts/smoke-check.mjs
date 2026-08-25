@@ -1144,6 +1144,29 @@ assert.deepEqual(
 const initialSuper12Data = createInitialData("Super 12", modalityConfig["Super 12"]);
 assert.equal(initialSuper12Data.players.length, 12, "A criação inicial do Super 12 deixou de gerar doze participantes.");
 assert.deepEqual(initialSuper12Data.schedule, [], "Um torneio novo deixou de começar sem rodadas.");
+const initialCearenseData = createInitialData("Campeonato Cearense", modalityConfig["Campeonato Cearense"]);
+assert.equal(initialCearenseData.cupConfig.repechageName, "Consolation", "A 2ª disputa paralela deixou de vir com o nome Consolation.");
+assert.equal(initialCearenseData.cupConfig.secondRepechageEnabled, true, "A 2ª disputa paralela deixou de começar selecionada em Sim.");
+assert.equal(initialCearenseData.cupConfig.thirdRepechageEnabled, false, "A 3ª disputa paralela deixou de começar selecionada em Não.");
+const normalizedCearenseDefaults = normalizeTournamentData("Campeonato Cearense", {
+  cupConfig: {
+    secondRepechageEnabled: null,
+    thirdRepechageEnabled: null,
+  },
+});
+assert.equal(normalizedCearenseDefaults.cupConfig.repechageName, "Consolation", "Um Cearense antigo sem nome deixou de receber o preenchimento padrão.");
+assert.equal(normalizedCearenseDefaults.cupConfig.secondRepechageEnabled, true, "Uma escolha antiga vazia deixou de assumir Sim na 2ª disputa.");
+assert.equal(normalizedCearenseDefaults.cupConfig.thirdRepechageEnabled, false, "Uma escolha antiga vazia deixou de assumir Não na 3ª disputa.");
+const normalizedCearenseChoices = normalizeTournamentData("Campeonato Cearense", {
+  cupConfig: {
+    repechageName: "Nome personalizado",
+    secondRepechageEnabled: false,
+    thirdRepechageEnabled: true,
+  },
+});
+assert.equal(normalizedCearenseChoices.cupConfig.repechageName, "Nome personalizado", "O nome personalizado da disputa paralela deixou de ser preservado.");
+assert.equal(normalizedCearenseChoices.cupConfig.secondRepechageEnabled, false, "A escolha Não já salva na 2ª disputa foi alterada.");
+assert.equal(normalizedCearenseChoices.cupConfig.thirdRepechageEnabled, true, "A escolha Sim já salva na 3ª disputa foi alterada.");
 const normalizedSuper12Data = normalizeTournamentData("Super 12", {
   players: ["Ana"],
   schedule: [[{ court: 1, team1: "Ana", team2: "Bia" }]],
@@ -5529,9 +5552,9 @@ assert.ok(
 assert.ok(
   tournamentFormatHelpSource.includes("export function ParallelDisputeChoice")
     && tournamentFormatHelpSource.includes("Realizar {ordinal} disputa paralela?")
-    && tournamentDataNormalizationSource.includes("secondRepechageEnabled: null")
-    && tournamentDataNormalizationSource.includes("thirdRepechageEnabled: null")
-    && tournamentDataNormalizationSource.includes('Object.prototype.hasOwnProperty.call(sourceCupConfig, "secondRepechageEnabled")')
+    && tournamentDataNormalizationSource.includes("secondRepechageEnabled: true")
+    && tournamentDataNormalizationSource.includes("thirdRepechageEnabled: false")
+    && tournamentDataNormalizationSource.includes('typeof sourceCupConfig.secondRepechageEnabled === "boolean"')
     && mainSource.includes("function ensureCearenseParallelChoices")
     && mainSource.includes("isCearenseSecondParallelEnabled(data)")
     && mainSource.includes("isCearenseThirdParallelEnabled(data)"),
