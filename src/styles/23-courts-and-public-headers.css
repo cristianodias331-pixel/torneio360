@@ -1,0 +1,1666 @@
+/* Quadra fixa + edição somente do número. */
+.courtNumberInputWrap,
+.courtEditorNumberInput {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--ui-border, #cbd5e1) !important;
+  border-radius: 11px !important;
+  background: var(--ui-input, #f8fafc) !important;
+}
+
+.courtNumberInputWrap > strong,
+.courtEditorNumberInput > strong {
+  align-self: stretch !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 10px !important;
+  border-right: 1px solid var(--ui-border, #cbd5e1) !important;
+  background: color-mix(in srgb, var(--brand-blue, #2563eb) 9%, var(--ui-surface-raised, #fff)) !important;
+  color: var(--brand-blue, #2563eb) !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase !important;
+}
+
+.courtConfigField .courtNumberInputWrap input,
+.courtEditorNumberInput input {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 40px !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ui-text-strong, #0f172a) !important;
+  font-size: 14px !important;
+  font-weight: 950 !important;
+  text-align: center !important;
+  box-shadow: none !important;
+}
+
+.courtEditorNumberInput {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  border-color: var(--court-modal-border, #d7e1ed) !important;
+  background: var(--court-modal-soft, #f3f7fc) !important;
+}
+
+.courtEditorNumberInput > strong {
+  border-color: var(--court-modal-border, #d7e1ed) !important;
+  background: rgba(59, 130, 246, .10) !important;
+  color: #2563eb !important;
+}
+
+.courtEditorNumberInput input {
+  color: var(--court-modal-text, #0b1830) !important;
+}
+
+.courtEditorNumberInput button {
+  align-self: stretch !important;
+  min-width: 92px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 8px 13px !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.courtDuplicateOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 31000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 18px !important;
+  background: rgba(3, 10, 24, .76) !important;
+  backdrop-filter: blur(11px) !important;
+}
+
+.courtDuplicateModal {
+  display: grid !important;
+  justify-items: center !important;
+  width: min(450px, 100%) !important;
+  padding: 25px !important;
+  border: 1px solid #f4b860 !important;
+  border-radius: 24px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  text-align: center !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .42) !important;
+}
+
+.courtDuplicateIcon {
+  display: grid !important;
+  place-items: center !important;
+  width: 52px !important;
+  height: 52px !important;
+  margin-bottom: 10px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5) !important;
+  color: #c2410c !important;
+  font-size: 26px !important;
+  font-weight: 950 !important;
+}
+
+.courtDuplicateEyebrow {
+  color: #c2410c !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  letter-spacing: .11em !important;
+  text-transform: uppercase !important;
+}
+
+.courtDuplicateModal h2 {
+  margin: 6px 0 7px !important;
+  color: inherit !important;
+  font-size: 23px !important;
+  line-height: 1.16 !important;
+}
+
+.courtDuplicateModal > p {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.48 !important;
+}
+
+.courtDuplicatePreview {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin: 18px 0 !important;
+  padding: 13px !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: 16px !important;
+  background: #fff7ed !important;
+}
+
+.courtDuplicatePreview > strong {
+  color: #9a3412 !important;
+  font-size: 11px !important;
+}
+
+.courtDuplicateActions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+  width: 100% !important;
+}
+
+.courtDuplicateActions button {
+  width: 100% !important;
+  min-height: 44px !important;
+  padding: 9px 12px !important;
+  border-radius: 13px !important;
+  font-size: 11px !important;
+}
+
+html[data-theme="dark"] .courtDuplicateModal {
+  border-color: #7c5429 !important;
+  background: #17212e !important;
+  color: #f4f7fb !important;
+}
+
+html[data-theme="dark"] .courtDuplicateModal > p {
+  color: #aab7c8 !important;
+}
+
+html[data-theme="dark"] .courtDuplicatePreview {
+  border-color: #6f4b26 !important;
+  background: rgba(245, 158, 11, .10) !important;
+}
+
+html[data-theme="dark"] .courtDuplicatePreview > strong {
+  color: #fdba74 !important;
+}
+
+html[data-theme="dark"] .courtEditorNumberInput > strong {
+  color: #7aa7ff !important;
+}
+
+@media (max-width: 480px) {
+  .courtDuplicateModal {
+    padding: 20px 15px !important;
+    border-radius: 21px !important;
+  }
+
+  .courtDuplicateActions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .courtDuplicatePreview {
+    align-items: center !important;
+    flex-direction: column !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .courtEditorNumberInput {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .courtEditorNumberInput button {
+    grid-column: 1 / -1 !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* =========================================================
+   PERFIL PÚBLICO DA ARENA — CABEÇALHO COMPACTO NO DESKTOP
+   Aproveita a largura do notebook sem alterar a composição mobile.
+   ========================================================= */
+@media (min-width: 761px) {
+  .publicPage.publicArenaPage .publicArenaHeader {
+    position: relative !important;
+    gap: 18px !important;
+    min-height: 0 !important;
+    padding: 18px clamp(28px, 5vw, 84px) !important;
+    overflow: hidden !important;
+  }
+
+  .publicArenaRealPage .publicArenaHeader > .publicBrandRow {
+    min-width: 0 !important;
+  }
+
+  .publicArenaRealPage .publicBrandRow .beachLogo,
+  .publicArenaRealPage .publicBrandRow .torneio360Logo {
+    width: 126px !important;
+    max-width: 126px !important;
+    height: 58px !important;
+    flex: 0 0 126px !important;
+    margin: 0 !important;
+  }
+
+  .publicArenaRealPage .publicBackToPlatform,
+  .publicArenaRealPage .publicOrganizerAccess {
+    position: static !important;
+    min-height: 40px !important;
+    margin: 0 !important;
+    padding: 9px 13px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity {
+    min-width: 0 !important;
+    gap: 14px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity > img,
+  .publicPage.publicArenaPage .publicArenaIdentity > .publicArenaInitials {
+    width: 72px !important;
+    height: 72px !important;
+    min-width: 72px !important;
+    flex: 0 0 72px !important;
+    border-width: 3px !important;
+    border-radius: 19px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity h1 {
+    margin: 3px 0 5px !important;
+    font-size: clamp(25px, 3vw, 35px) !important;
+    line-height: 1.02 !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity small {
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity p {
+    margin: 2px 0 !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+}
+
+@media (min-width: 980px) {
+  .publicPage.publicArenaPage .publicArenaHeader {
+    display: grid !important;
+    align-items: center !important;
+    column-gap: clamp(28px, 4vw, 58px) !important;
+  }
+
+  .publicArenaRealPage .publicArenaHeader > .publicBrandRow {
+    display: grid !important;
+    align-items: center !important;
+    justify-content: start !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 979px) {
+  .publicPage.publicArenaPage .publicArenaHeader {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding-top: 14px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .publicArenaRealPage .publicArenaHeader > .publicBrandRow {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+}
+
+/* =========================================================
+   CENTRAL DE TORNEIOS ABERTOS
+   Abas locais e persistentes, sem alterar dados do torneio.
+   ========================================================= */
+.tournamentWorkspaceTabsShell {
+  position: sticky;
+  top: 52px;
+  z-index: 82;
+  min-width: 0;
+  padding: 9px clamp(14px, 2.4vw, 32px);
+  border-bottom: 1px solid #d8e3f2;
+  background: rgba(246, 249, 254, 0.96);
+  box-shadow: 0 7px 20px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.desktopTournamentTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.openTournamentTabsViewport {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #a9bbd2 transparent;
+}
+
+.openTournamentTabsViewport::-webkit-scrollbar { height: 5px; }
+.openTournamentTabsViewport::-webkit-scrollbar-track { background: transparent; }
+.openTournamentTabsViewport::-webkit-scrollbar-thumb { background: #a9bbd2; border-radius: 999px; }
+
+.openTournamentTabsTrack {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  width: max-content;
+  min-width: 100%;
+  padding: 2px 1px 5px;
+}
+
+.openTournamentTab {
+  --tournament-tab-color: #2563eb;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: clamp(154px, 15vw, 224px);
+  min-width: 154px;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid #d6e0ed;
+  border-radius: 13px 13px 6px 6px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.04);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.openTournamentTab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: #cbd5e1;
+  opacity: 0.7;
+}
+
+.openTournamentTab:hover {
+  transform: translateY(-1px);
+  border-color: #aebed1;
+}
+
+.openTournamentTab.active {
+  transform: translateY(-1px);
+  border: 2px solid #2563eb;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12), 0 7px 17px rgba(37, 99, 235, 0.18);
+}
+
+.openTournamentTab:not(.active) { opacity: 0.82; }
+.openTournamentTab:not(.active):hover { opacity: 1; }
+
+.openTournamentTab.active::after {
+  height: 4px;
+  background: #2563eb;
+  opacity: 1;
+}
+
+.openTournamentTabMain,
+.openTournamentTabClose,
+.tournamentTabsScrollButton,
+.addOpenTournamentButton,
+.mobileTournamentSwitcherButton {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.openTournamentTabMain {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  padding: 10px 6px 11px 11px !important;
+  color: #26364c !important;
+  background: transparent !important;
+  text-align: left !important;
+}
+
+.openTournamentTab.active .openTournamentTabMain { color: #0b1729 !important; }
+
+.openTournamentTabDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
+}
+
+.openTournamentTab.active .openTournamentTabDot {
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.openTournamentTabName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.openTournamentTabClose {
+  position: absolute !important;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  display: grid !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 !important;
+  place-items: center !important;
+  border-radius: 8px !important;
+  color: #8291a6 !important;
+  background: transparent !important;
+}
+
+.openTournamentTabClose:hover {
+  color: #b42318 !important;
+  background: rgba(180, 35, 24, 0.08) !important;
+}
+
+.openTournamentTabClose svg { width: 12px; height: 12px; }
+
+.tournamentTabsScrollButton {
+  display: grid !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  place-items: center !important;
+  border: 1px solid #d7e1ef !important;
+  border-radius: 11px !important;
+  color: #47617f !important;
+  background: #fff !important;
+}
+
+.tournamentTabsScrollButton:hover { color: #1553d8 !important; border-color: #a9c2f4 !important; }
+.tournamentTabsScrollButton svg { width: 17px; height: 17px; }
+
+.addOpenTournamentButton {
+  display: inline-flex !important;
+  min-height: 40px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 9px 12px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.addOpenTournamentButton {
+  color: #fff !important;
+  background: linear-gradient(135deg, #1553d8, #0aaed0) !important;
+  box-shadow: 0 8px 18px rgba(21, 83, 216, 0.2) !important;
+}
+
+.addOpenTournamentButton svg { width: 16px; height: 16px; }
+.mobileTournamentSwitcherButton { display: none !important; }
+
+.tournamentTabsModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30000;
+  display: grid;
+  padding: 22px;
+  place-items: center;
+  background: rgba(4, 12, 28, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.tournamentTabsModal {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 44px));
+  overflow: hidden;
+  border: 1px solid #d6e1ef;
+  border-radius: 24px;
+  background: #f8fbff;
+  box-shadow: 0 30px 90px rgba(2, 8, 23, 0.36);
+}
+
+.tournamentTabsModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 24px 17px;
+  border-bottom: 1px solid #dce5f1;
+}
+
+.tournamentTabsModalHeader span {
+  display: block;
+  margin-bottom: 4px;
+  color: #1553d8;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tournamentTabsModalHeader h2 {
+  margin: 0;
+  color: #0f1d31;
+  font-size: clamp(22px, 4vw, 30px);
+  line-height: 1.05;
+}
+
+.tournamentTabsModalHeader p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tournamentTabsModalHeader > button {
+  display: grid !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  place-items: center !important;
+  border: 1px solid #d5e0ee !important;
+  border-radius: 12px !important;
+  color: #52657f !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.tournamentTabsModalHeader > button svg { width: 17px; height: 17px; }
+
+.tournamentTabsSearch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 17px 24px 12px;
+  padding: 0 14px;
+  border: 1px solid #cddbea;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 15px rgba(15, 23, 42, 0.04);
+}
+
+.tournamentTabsSearch:focus-within {
+  border-color: #5f8fe8;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.tournamentTabsSearch svg { width: 17px; height: 17px; color: #6d7f96; }
+.tournamentTabsSearch input {
+  width: 100%;
+  height: 46px;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  color: #17263a !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 13px !important;
+}
+
+.tournamentTabsModalList {
+  display: grid;
+  gap: 9px;
+  max-height: min(520px, calc(100vh - 235px));
+  padding: 5px 24px 24px;
+  overflow-y: auto;
+}
+
+.tournamentTabsModalItem {
+  --tournament-tab-color: #2563eb;
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 11px 10px 0;
+  overflow: hidden;
+  border: 1px solid #dce5f0;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.tournamentTabsModalItem.active {
+  border-color: color-mix(in srgb, var(--tournament-tab-color) 45%, #dce5f0);
+  background: color-mix(in srgb, var(--tournament-tab-color) 7%, #fff);
+}
+
+.tournamentTabsModalItemColor {
+  align-self: stretch;
+  border-radius: 0 5px 5px 0;
+  background: var(--tournament-tab-color);
+}
+
+.tournamentTabsModalItemCopy { min-width: 0; }
+.tournamentTabsModalItemCopy strong {
+  display: block;
+  overflow: hidden;
+  color: #17263a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournamentTabsModalItemCopy span {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #718096;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournamentTabsOpenBadge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--tournament-tab-color);
+  background: color-mix(in srgb, var(--tournament-tab-color) 10%, #fff);
+  font-size: 9px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.tournamentTabsModalItem > button {
+  min-width: 82px !important;
+  min-height: 36px !important;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  color: #fff !important;
+  background: var(--tournament-tab-color) !important;
+  box-shadow: none !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+}
+
+.tournamentTabsModalItem > button:disabled {
+  color: #66758a !important;
+  background: #e4eaf2 !important;
+  opacity: 1 !important;
+}
+
+.tournamentTabsEmpty {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: #74849a;
+  text-align: center;
+}
+
+.tournamentTabsEmpty svg { width: 32px; height: 32px; color: #8ca6c8; }
+.tournamentTabsEmpty strong { color: #283a51; font-size: 14px; }
+.tournamentTabsEmpty span { font-size: 11px; }
+
+.tournamentTabCloseOverlay { z-index: 31000; }
+.tournamentTabCloseModal {
+  width: min(430px, 100%);
+  padding: 28px;
+  border: 1px solid #d9e2ef;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(2, 8, 23, 0.4);
+  text-align: center;
+}
+
+.tournamentTabCloseIcon {
+  display: inline-grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 13px;
+  place-items: center;
+  border-radius: 16px;
+  color: #c2410c;
+  background: #fff0e7;
+}
+
+.tournamentTabCloseIcon svg { width: 23px; height: 23px; }
+.tournamentTabCloseModal h2 { margin: 0; color: #15243a; font-size: 23px; }
+.tournamentTabCloseModal p { margin: 10px 0 22px; color: #64748b; font-size: 12.5px; line-height: 1.55; }
+.tournamentTabCloseModal p strong { color: #25364d; }
+.tournamentTabCloseActions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 9px; }
+.tournamentTabCloseActions button {
+  min-height: 43px !important;
+  border: 1px solid #d5dfeb !important;
+  border-radius: 12px !important;
+  color: #34465e !important;
+  background: #f7f9fc !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+.tournamentTabCloseActions button.confirm {
+  border-color: #c2410c !important;
+  color: #fff !important;
+  background: #c2410c !important;
+}
+
+html[data-theme="dark"] .tournamentWorkspaceTabsShell {
+  border-color: #26384d;
+  background: rgba(10, 19, 33, 0.96);
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme="dark"] .openTournamentTab,
+html[data-theme="dark"] .tournamentTabsScrollButton {
+  border-color: #30445b !important;
+  background: #162334 !important;
+}
+
+html[data-theme="dark"] .openTournamentTab.active {
+  border: 2px solid #60a5fa !important;
+  background: linear-gradient(135deg, #1d3d68, #142a49) !important;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2), 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .openTournamentTabMain { color: #c9d5e4 !important; }
+html[data-theme="dark"] .openTournamentTab.active .openTournamentTabMain { color: #fff !important; }
+html[data-theme="dark"] .openTournamentTabClose { color: #8ea0b6 !important; }
+html[data-theme="dark"] .tournamentTabsScrollButton { color: #c5d2e1 !important; }
+html[data-theme="dark"] .openTournamentTabsViewport { scrollbar-color: #4f657e transparent; }
+
+html[data-theme="dark"] .tournamentTabsModal,
+html[data-theme="dark"] .tournamentTabCloseModal {
+  border-color: #31445b;
+  background: #111d2c;
+}
+
+html[data-theme="dark"] .tournamentTabsModalHeader { border-color: #2c3e54; }
+html[data-theme="dark"] .tournamentTabsModalHeader h2,
+html[data-theme="dark"] .tournamentTabCloseModal h2 { color: #f5f8fc; }
+html[data-theme="dark"] .tournamentTabsModalHeader p,
+html[data-theme="dark"] .tournamentTabCloseModal p { color: #9eafc3; }
+html[data-theme="dark"] .tournamentTabsModalHeader > button,
+html[data-theme="dark"] .tournamentTabsSearch,
+html[data-theme="dark"] .tournamentTabsModalItem {
+  border-color: #30445b !important;
+  background: #172536 !important;
+}
+html[data-theme="dark"] .tournamentTabsSearch input { color: #eef4fb !important; }
+html[data-theme="dark"] .tournamentTabsModalItem.active {
+  background: color-mix(in srgb, var(--tournament-tab-color) 15%, #172536) !important;
+}
+html[data-theme="dark"] .tournamentTabsModalItemCopy strong,
+html[data-theme="dark"] .tournamentTabsEmpty strong,
+html[data-theme="dark"] .tournamentTabCloseModal p strong { color: #edf3fa; }
+html[data-theme="dark"] .tournamentTabsModalItemCopy span,
+html[data-theme="dark"] .tournamentTabsEmpty { color: #96a8bd; }
+html[data-theme="dark"] .tournamentTabsOpenBadge {
+  background: color-mix(in srgb, var(--tournament-tab-color) 19%, #172536);
+}
+html[data-theme="dark"] .tournamentTabCloseIcon { color: #fdba74; background: #3a251b; }
+html[data-theme="dark"] .tournamentTabCloseActions button {
+  border-color: #344960 !important;
+  color: #cfdae6 !important;
+  background: #19283a !important;
+}
+
+@media (max-width: 1100px) {
+  .addOpenTournamentButton span { display: none; }
+  .addOpenTournamentButton { width: 42px !important; min-width: 42px !important; padding: 0 !important; }
+}
+
+@media (max-width: 700px) {
+  .tournamentWorkspaceTabsShell {
+    top: 52px;
+    padding: 8px 12px;
+  }
+
+  .desktopTournamentTabs { display: none; }
+  .mobileTournamentSwitcherButton {
+    display: grid !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    grid-template-columns: 5px minmax(0, 1fr) auto auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 7px 11px 7px 6px !important;
+    overflow: hidden !important;
+    border: 1px solid #d5e0ee !important;
+    border-radius: 14px !important;
+    color: #263850 !important;
+    background: #fff !important;
+    text-align: left !important;
+  }
+
+  .mobileTournamentSwitcherColor {
+    align-self: stretch;
+    border-radius: 999px;
+    background: var(--tournament-tab-color);
+  }
+
+  .mobileTournamentSwitcherCopy { min-width: 0; }
+  .mobileTournamentSwitcherCopy small {
+    display: block;
+    margin-bottom: 1px;
+    color: #7a8ca2;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .mobileTournamentSwitcherCopy strong {
+    display: block;
+    overflow: hidden;
+    color: #17263a;
+    font-size: 11.5px;
+    font-weight: 950;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobileTournamentSwitcherCount {
+    display: grid;
+    min-width: 23px;
+    height: 23px;
+    padding: 0 5px;
+    place-items: center;
+    border-radius: 999px;
+    color: #1553d8;
+    background: #e8f0ff;
+    font-size: 9px;
+    font-weight: 950;
+  }
+  .mobileTournamentSwitcherButton > svg { width: 16px; height: 16px; color: #60748d; }
+
+  html[data-theme="dark"] .mobileTournamentSwitcherButton {
+    border-color: #30445b !important;
+    color: #dce6f1 !important;
+    background: #162334 !important;
+  }
+  html[data-theme="dark"] .mobileTournamentSwitcherCopy strong { color: #f3f7fb; }
+  html[data-theme="dark"] .mobileTournamentSwitcherCopy small { color: #91a3b8; }
+  html[data-theme="dark"] .mobileTournamentSwitcherCount { color: #a9c8ff; background: #233c63; }
+
+  .tournamentTabsModalOverlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .tournamentTabsModal {
+    width: 100%;
+    max-height: min(86vh, 760px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .tournamentTabsModalHeader { padding: 19px 17px 14px; }
+  .tournamentTabsModalHeader p { font-size: 10.5px; }
+  .tournamentTabsModal .tournamentTabsSearch {
+    width: calc(100% - 32px) !important;
+    max-width: calc(100% - 32px) !important;
+    margin: 13px 16px 9px !important;
+  }
+  .tournamentTabsModalList {
+    max-height: calc(86vh - 205px);
+    padding: 4px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .tournamentTabsModalItem {
+    grid-template-columns: 5px minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+  .tournamentTabsOpenBadge { display: none; }
+  .tournamentTabsModalItem > button { min-width: 70px !important; padding-inline: 9px !important; }
+
+  .tournamentTabCloseOverlay { align-items: center; padding: 18px; }
+  .tournamentTabCloseModal { padding: 23px 19px; border-radius: 22px; }
+  .tournamentTabCloseActions { grid-template-columns: 1fr; }
+}
+
+/* Cabeçalho dos torneios e circuitos vistos pelo visitante. */
+@media (min-width: 980px) {
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(240px, 0.58fr) minmax(0, 1.42fr) minmax(190px, auto) !important;
+    align-items: center !important;
+    gap: clamp(22px, 3vw, 44px) !important;
+    min-height: 0 !important;
+    padding: 16px clamp(28px, 4vw, 64px) !important;
+    overflow: hidden !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicBrandRow {
+    display: grid !important;
+    grid-template-columns: 124px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .beachLogo,
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .torneio360Logo {
+    width: 124px !important;
+    max-width: 124px !important;
+    height: 58px !important;
+    flex: 0 0 124px !important;
+    margin: 0 !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .brandTaglineOnly {
+    display: block !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding-left: 11px !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.28) !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .brandTaglineOnly span {
+    margin: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTitleBlock {
+    min-width: 0 !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTitleBlock > span {
+    margin: 0 0 4px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTitleBlock h1 {
+    margin: 0 0 5px !important;
+    font-size: clamp(23px, 2.45vw, 31px) !important;
+    line-height: 1.05 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTitleBlock p {
+    margin: 0 !important;
+    max-width: 760px !important;
+    font-size: 11.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTournamentHeaderActions {
+    display: grid !important;
+    justify-items: stretch !important;
+    gap: 7px !important;
+    width: min(100%, 210px) !important;
+    min-width: 190px !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTournamentHeaderActions > button,
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTournamentHeaderActions > .publicBadge {
+    position: static !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 36px !important;
+    margin: 0 !important;
+    padding: 7px 11px !important;
+    border-radius: 13px !important;
+    font-size: 10.5px !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 979px) {
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 138px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 13px 20px !important;
+    padding: 15px 28px !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .brandTaglineOnly {
+    display: none !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicBrandRow {
+    min-width: 0 !important;
+  }
+
+  .publicPage > .publicHeaderWithLogo:not(.publicArenaHeader) .publicTournamentHeaderActions {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+  }
+}
+
+/* Visibilidade final da central: regras posteriores do layout nao podem exibir
+   simultaneamente a barra desktop e o seletor compacto. */
+@media (min-width: 701px) {
+  .proDashboard .tournamentWorkspaceTabsShell { top: 76px !important; }
+  .proDashboard button.mobileTournamentSwitcherButton { display: none !important; }
+  .proDashboard .desktopTournamentTabs { display: flex !important; }
+}
+
+@media (max-width: 700px) {
+  .proDashboard .tournamentWorkspaceTabsShell { top: 70px !important; }
+  .proDashboard .desktopTournamentTabs { display: none !important; }
+}
+
+.proDashboard.playAppShell button.openTournamentTabMain,
+.proDashboard.playAppShell button.openTournamentTabClose {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.proDashboard.playAppShell button.openTournamentTabMain { color: #26364c !important; }
+.proDashboard.playAppShell .openTournamentTab.active button.openTournamentTabMain { color: #0b1729 !important; }
+.proDashboard.playAppShell button.openTournamentTabClose { color: #8291a6 !important; }
+.proDashboard.playAppShell button.openTournamentTabClose:hover {
+  color: #b42318 !important;
+  background: rgba(180, 35, 24, 0.08) !important;
+}
+
+.proDashboard.playAppShell button.tournamentTabsScrollButton {
+  color: #47617f !important;
+  border: 1px solid #d7e1ef !important;
+  background: #fff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.proDashboard.playAppShell button.addOpenTournamentButton {
+  color: #fff !important;
+  border: 0 !important;
+  background: linear-gradient(135deg, #1553d8, #0aaed0) !important;
+  box-shadow: 0 8px 18px rgba(21, 83, 216, 0.2) !important;
+}
+
+.proDashboard.playAppShell button.mobileTournamentSwitcherButton {
+  color: #263850 !important;
+  border: 1px solid #d5e0ee !important;
+  background: #fff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .proDashboard.playAppShell button.openTournamentTabMain { color: #c9d5e4 !important; }
+html[data-theme="dark"] .proDashboard.playAppShell .openTournamentTab.active button.openTournamentTabMain { color: #fff !important; }
+html[data-theme="dark"] .proDashboard.playAppShell button.openTournamentTabClose { color: #8ea0b6 !important; }
+html[data-theme="dark"] .proDashboard.playAppShell button.tournamentTabsScrollButton {
+  color: #c5d2e1 !important;
+  border-color: #30445b !important;
+  background: #162334 !important;
+  background-image: none !important;
+}
+html[data-theme="dark"] .proDashboard.playAppShell button.mobileTournamentSwitcherButton {
+  color: #dce6f1 !important;
+  border-color: #30445b !important;
+  background: #162334 !important;
+  background-image: none !important;
+}
+
+/* =========================================================
+   DENSIDADE VISUAL PROFISSIONAL — AGOSTO 2026
+   Escala de 8 px, mais conteúdo útil por tela e alvos de toque
+   preservados. Esta camada altera somente apresentação.
+   ========================================================= */
+.publicPage.publicArenaPage .publicArenaContent {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  padding-top: 16px !important;
+  padding-bottom: 48px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaContacts,
+.publicPage.publicArenaPage .publicArenaEventGrid,
+.publicPage.publicArenaPage .publicArenaEmpty {
+  grid-column: 1 / -1 !important;
+}
+
+.publicPage.publicArenaPage .publicArenaContacts {
+  gap: 16px !important;
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaContacts h2 {
+  font-size: 17px !important;
+  line-height: 1.2 !important;
+}
+
+.publicPage.publicArenaPage .publicArenaContacts p {
+  margin-top: 4px !important;
+  font-size: 11.5px !important;
+  line-height: 1.35 !important;
+}
+
+.publicPage.publicArenaPage .publicOrganizerLinks {
+  gap: 6px !important;
+}
+
+.publicPage.publicArenaPage .publicOrganizerLinks a {
+  min-height: 34px !important;
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  font-size: 10.5px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaTabs,
+.publicPage.publicArenaPage .publicArenaStatusTabs {
+  gap: 5px !important;
+  padding: 4px !important;
+  border-radius: 13px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaTabs button,
+.publicPage.publicArenaPage .publicArenaStatusTabs button {
+  min-height: 38px !important;
+  padding: 7px 10px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaTabs button svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaStatusTabs button span {
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 5px !important;
+  font-size: 9px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventGrid {
+  gap: 10px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCard {
+  gap: 11px !important;
+  min-height: 0 !important;
+  padding: 13px 14px !important;
+  border-radius: 16px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover {
+  grid-template-columns: 150px minmax(0, 1fr) auto !important;
+  padding: 0 !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCover {
+  min-height: 128px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventBody {
+  padding: 14px 16px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
+  margin-right: 14px !important;
+  padding: 9px 14px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventIcon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCard small {
+  font-size: 9px !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCard h2 {
+  margin: 2px 0 5px !important;
+  font-size: 16px !important;
+  line-height: 1.18 !important;
+}
+
+.publicPage.publicArenaPage .publicArenaEventCard p {
+  gap: 5px 11px !important;
+  font-size: 10.5px !important;
+}
+
+.publicPage.publicArenaPage .publicRegistrationStatus {
+  min-height: 30px !important;
+  margin-top: 7px !important;
+  padding: 5px 10px !important;
+  font-size: 10.5px !important;
+}
+
+.publicPage.publicArenaPage .publicCircuitStatus {
+  min-height: 24px !important;
+  margin-bottom: 6px !important;
+  padding: 4px 8px !important;
+  font-size: 9px !important;
+}
+
+@media (min-width: 980px) {
+  .publicPage.publicArenaPage .publicArenaHeader {
+    grid-template-columns: minmax(350px, 0.78fr) minmax(0, 1.22fr) !important;
+    gap: clamp(20px, 3vw, 40px) !important;
+    padding: 11px clamp(24px, 4vw, 58px) !important;
+  }
+
+  .publicArenaRealPage .publicArenaHeader > .publicBrandRow {
+    grid-template-columns: auto 104px auto !important;
+    gap: 10px !important;
+  }
+
+  .publicPage.publicArenaPage .publicBrandRow .beachLogo,
+  .publicPage.publicArenaPage .publicBrandRow .torneio360Logo {
+    width: 104px !important;
+    max-width: 104px !important;
+    height: 48px !important;
+    flex-basis: 104px !important;
+  }
+
+  .publicArenaRealPage .publicBackToPlatform,
+  .publicArenaRealPage .publicOrganizerAccess {
+    min-height: 36px !important;
+    padding: 7px 11px !important;
+    border-radius: 10px !important;
+    font-size: 9.5px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity {
+    gap: 11px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity > img,
+  .publicPage.publicArenaPage .publicArenaIdentity > .publicArenaInitials {
+    width: 58px !important;
+    height: 58px !important;
+    min-width: 58px !important;
+    flex-basis: 58px !important;
+    border-width: 3px !important;
+    border-radius: 16px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity small {
+    font-size: 8px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity h1 {
+    margin: 1px 0 3px !important;
+    font-size: clamp(23px, 2.5vw, 31px) !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity p {
+    margin: 1px 0 !important;
+    font-size: 10.5px !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .proDashboard .playContent {
+    padding-top: 22px !important;
+    padding-bottom: 44px !important;
+  }
+
+  .proDashboard .playTitleBlock {
+    gap: 14px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .proDashboard .playTitleBlock h1 {
+    font-size: clamp(27px, 2.2vw, 31px) !important;
+  }
+
+  .proDashboard .playStatsGrid {
+    gap: 12px !important;
+  }
+
+  .proDashboard .playStatsGrid > div {
+    min-height: 92px !important;
+    padding: 14px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .proDashboard .tournamentWorkspaceContent > .appPage > header {
+    margin-bottom: 12px !important;
+    padding: 15px 17px !important;
+    border-radius: 16px !important;
+  }
+
+  .proDashboard .tournamentWorkspaceTabsShell {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .proDashboard .openTournamentTab {
+    min-height: 38px !important;
+  }
+
+  .proDashboard .openTournamentTabMain {
+    padding-top: 8px !important;
+    padding-bottom: 9px !important;
+  }
+
+  .proDashboard .tournamentTabsScrollButton,
+  .proDashboard .addOpenTournamentButton {
+    min-height: 36px !important;
+    height: 36px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .publicPage.publicArenaPage .publicArenaHeader {
+    gap: 10px !important;
+    padding: max(10px, env(safe-area-inset-top)) 10px 12px !important;
+  }
+
+  .publicArenaRealPage .publicArenaHeader > .publicBrandRow {
+    grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  .publicArenaRealPage .publicBrandRow .beachLogo,
+  .publicArenaRealPage .publicBrandRow .torneio360Logo {
+    width: 76px !important;
+    max-width: 76px !important;
+    height: 40px !important;
+    flex-basis: 76px !important;
+  }
+
+  .publicArenaRealPage .publicBackToPlatform,
+  .publicArenaRealPage .publicOrganizerAccess {
+    min-height: 38px !important;
+    padding: 5px !important;
+    border-radius: 10px !important;
+    font-size: 8.5px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity {
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity > img,
+  .publicPage.publicArenaPage .publicArenaIdentity > .publicArenaInitials {
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    flex-basis: 52px !important;
+    border-radius: 14px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity h1 {
+    margin: 1px 0 3px !important;
+    font-size: clamp(19px, 6.5vw, 24px) !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaIdentity p {
+    font-size: 9.5px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaContent {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    width: min(100% - 14px, 1180px) !important;
+    padding-top: 9px !important;
+    padding-bottom: 64px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaContacts,
+  .publicPage.publicArenaPage .publicArenaTabs,
+  .publicPage.publicArenaPage .publicArenaStatusTabs,
+  .publicPage.publicArenaPage .publicArenaEventGrid,
+  .publicPage.publicArenaPage .publicArenaEmpty {
+    grid-column: 1 !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaContacts {
+    gap: 9px !important;
+    padding: 11px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaContacts h2 {
+    font-size: 15px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaContacts p {
+    font-size: 10px !important;
+  }
+
+  .publicPage.publicArenaPage .publicOrganizerLinks {
+    display: flex !important;
+    grid-template-columns: none !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain !important;
+    scrollbar-width: none !important;
+  }
+
+  .publicPage.publicArenaPage .publicOrganizerLinks::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .publicPage.publicArenaPage .publicOrganizerLinks a {
+    width: auto !important;
+    min-width: max-content !important;
+    min-height: 36px !important;
+    flex: 0 0 auto !important;
+    padding: 7px 10px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaTabs,
+  .publicPage.publicArenaPage .publicArenaStatusTabs {
+    padding: 3px !important;
+    border-radius: 12px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaTabs button,
+  .publicPage.publicArenaPage .publicArenaStatusTabs button {
+    min-height: 42px !important;
+    padding: 7px 6px !important;
+    font-size: 10.5px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCard,
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover {
+    grid-template-columns: 56px minmax(0, 1fr) !important;
+    gap: 9px !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover .publicArenaEventCover {
+    width: 56px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    border-radius: 12px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventBody {
+    padding: 0 !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventIcon {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCard h2 {
+    font-size: 14px !important;
+  }
+
+  .publicPage.publicArenaPage .publicArenaEventCard > button,
+  .publicPage.publicArenaPage .publicArenaEventCardWithCover > button {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    margin: 0 !important;
+    padding: 8px 12px !important;
+  }
+
+  .publicPage.publicArenaPage .publicRegistrationStatus {
+    width: fit-content !important;
+    min-height: 32px !important;
+    margin-top: 6px !important;
+  }
+
+  .proDashboard .playTopbar.proTopbar {
+    height: 64px !important;
+    min-height: 64px !important;
+  }
+
+  .proDashboard .proTopbar .playTopBrand {
+    height: 54px !important;
+  }
+
+  .proDashboard .proTopbar .playTopBrand .torneio360Logo {
+    width: 94px !important;
+    min-width: 94px !important;
+    max-width: 94px !important;
+    height: 42px !important;
+  }
+
+  .proDashboard .playMain {
+    padding-top: 64px !important;
+  }
+
+  .proDashboard .tournamentWorkspaceTabsShell {
+    top: 64px !important;
+    padding: 6px 10px !important;
+  }
+
+  .proDashboard .mobileTournamentSwitcherButton {
+    min-height: 44px !important;
+  }
+
+  .proDashboard .playContent {
+    padding-top: 16px !important;
+  }
+
+  .proDashboard .tournamentWorkspaceContent > .appPage > header {
+    margin-bottom: 10px !important;
+    padding: 13px !important;
+    border-radius: 15px !important;
+  }
+}
+
+/* Perfil público da arena no mesmo padrão dos torneios e circuitos públicos. */
+.publicArenaStandardHeader .publicArenaTitleBlock {
+  min-width: 0;
+}
+
+.publicArenaStandardHeader .publicArenaTitleMain {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.publicArenaStandardHeader .publicArenaTitleMain > img,
+.publicArenaStandardHeader .publicArenaTitleMain > .publicArenaInitials {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  border-radius: 15px;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 10px 24px rgba(2, 12, 27, 0.2);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  object-fit: cover;
+}
+
+.publicArenaStandardHeader .publicArenaTitleCopy {
+  min-width: 0;
+}
+
+.publicArenaStandardHeader .publicArenaTitleCopy h1 {
+  margin: 0 0 4px;
+}
+
+.publicArenaStandardHeader .publicArenaTitleMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 13px;
+}
+
+.publicArenaStandardHeader .publicArenaTitleMeta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.publicArenaStandardHeader .publicArenaTitleMeta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.publicArenaStandardHeader .publicArenaHeaderActions .publicOrganizerAccess {
+  border-color: rgba(187, 247, 208, 0.95) !important;
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+@media (max-width: 760px) {
+  .publicArenaStandardHeader .publicArenaTitleMain {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .publicArenaStandardHeader .publicArenaTitleMain > img,
+  .publicArenaStandardHeader .publicArenaTitleMain > .publicArenaInitials {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 13px;
+  }
+
+  .publicArenaStandardHeader .publicArenaTitleCopy h1 {
+    margin: 0 0 3px !important;
+    font-size: clamp(20px, 6.5vw, 26px) !important;
+  }
+
+  .publicArenaStandardHeader .publicArenaTitleMeta {
+    gap: 2px 10px;
+    font-size: 10.5px !important;
+  }
+
+  .publicArenaStandardHeader .publicArenaHeaderActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .publicArenaStandardHeader .publicArenaHeaderActions > button {
+    grid-area: auto !important;
+    width: 100% !important;
+    min-height: 40px !important;
+    padding: 7px 8px !important;
+    font-size: 9.5px !important;
+  }
+}

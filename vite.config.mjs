@@ -15,4 +15,29 @@ export default defineConfig({
   define: {
     __APP_BUILD_VERSION__: JSON.stringify(readBuildVersion()),
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor-react",
+              test: /node_modules[\\/](react|react-dom)[\\/]/,
+              priority: 30,
+            },
+            {
+              name: "vendor-supabase",
+              test: /node_modules[\\/](@supabase|ws)[\\/]/,
+              priority: 20,
+            },
+            {
+              name: "vendor-icons",
+              test: /node_modules[\\/]lucide-react[\\/]/,
+              priority: 10,
+            },
+          ],
+        },
+      },
+    },
+  },
 });

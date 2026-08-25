@@ -1,9 +1,16 @@
-export const ARENA_DIRECTORY_REFRESH_INTERVAL_MS = 60_000;
+export const ARENA_DIRECTORY_PAGE_SIZE = 18;
+export const ARENA_DIRECTORY_REFRESH_INTERVAL_MS = 5 * 60_000;
+export const ARENA_DIRECTORY_FOCUS_MIN_AGE_MS = 60_000;
 export const ARENA_DIRECTORY_RETRY_DELAY_MS = 450;
-export const ARENA_DIRECTORY_CACHE_KEY = "t360.public-arena-directory.v2";
+export const ARENA_DIRECTORY_CACHE_KEY = "t360.public-arena-directory.v3";
 export const ARENA_DIRECTORY_CACHE_MAX_AGE_MS = 5 * 60_000;
 export const PUBLIC_ARENA_BUNDLE_CACHE_PREFIX = "t360.public-arena-bundle.v2";
 export const PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS = 30 * 60_000;
+export const PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS = 60_000;
+export const PUBLIC_ARENA_EVENT_PAGE_SIZE = 8;
+export const PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS = 15_000;
+export const PUBLIC_TOURNAMENT_DETAIL_CACHE_MAX_AGE_MS = 15_000;
+export const PUBLIC_CIRCUIT_DETAIL_CACHE_MAX_AGE_MS = 60_000;
 export const PUBLIC_ARENA_REQUEST_TIMEOUT_MS = 12_000;
 
 const publicArenaBundleMemoryCache = new Map();
@@ -87,7 +94,7 @@ export function readPublicTournamentDetailCache(publicId, now = Date.now()) {
   return readTimedMemoryCache(
     publicTournamentDetailMemoryCache,
     publicId,
-    PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS,
+    PUBLIC_TOURNAMENT_DETAIL_CACHE_MAX_AGE_MS,
     now,
   );
 }
@@ -100,7 +107,7 @@ export function readPublicCircuitDetailCache(circuitId, now = Date.now()) {
   return readTimedMemoryCache(
     publicCircuitDetailMemoryCache,
     circuitId,
-    PUBLIC_ARENA_BUNDLE_CACHE_MAX_AGE_MS,
+    PUBLIC_CIRCUIT_DETAIL_CACHE_MAX_AGE_MS,
     now,
   );
 }

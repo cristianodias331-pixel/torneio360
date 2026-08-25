@@ -7,9 +7,31 @@ import {
   tournamentGenderModes,
 } from "./participantGenderRegistry.mjs";
 
+export const tournamentListGenderFilters = {
+  all: "all",
+  masculine: "masculino",
+  feminine: "feminino",
+  mixed: "mista_livre",
+};
+
 export function getEffectiveTournamentGenderMode(type, value) {
   if (isMixedType(modalityConfig[type])) return tournamentGenderModes.mixed;
   return normalizeTournamentGenderMode(value);
+}
+
+export function getTournamentListGenderFilter(type, details = {}) {
+  const genderMode = getEffectiveTournamentGenderMode(type, inferTournamentGenderMode(details));
+  if (genderMode === tournamentGenderModes.masculine) return tournamentListGenderFilters.masculine;
+  if (genderMode === tournamentGenderModes.feminine) return tournamentListGenderFilters.feminine;
+  if (genderMode === tournamentGenderModes.mixed || genderMode === tournamentGenderModes.open) {
+    return tournamentListGenderFilters.mixed;
+  }
+  return "";
+}
+
+export function matchesTournamentListGenderFilter(type, details, filter = tournamentListGenderFilters.all) {
+  return filter === tournamentListGenderFilters.all
+    || getTournamentListGenderFilter(type, details) === filter;
 }
 
 export function getGenderCompatibleTournamentTypes(types, genderMode) {

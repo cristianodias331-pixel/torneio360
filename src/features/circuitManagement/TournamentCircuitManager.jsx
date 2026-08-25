@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, GitBranch, PlusCircle, X } from "lucide-react";
 
@@ -28,6 +28,8 @@ export function TournamentCircuitManagerModal({
   );
   const [selectedIds, setSelectedIds] = useState(initialIds);
   const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState("");
+  const savingRef = useRef(false);
   const [confirmRemoval, setConfirmRemoval] = useState(false);
 
   useEffect(() => {
@@ -64,23 +66,39 @@ export function TournamentCircuitManagerModal({
   }
 
   async function submitChanges() {
-    if (!changed || saving) return;
+    if (!changed || savingRef.current) return;
     if (removedCount > 0 && !confirmRemoval) {
       setConfirmRemoval(true);
       return;
     }
 
+    savingRef.current = true;
+    setSavingAction("save");
     setSaving(true);
-    const saved = await onSave?.(selectedIds);
-    setSaving(false);
+    let saved = false;
+    try {
+      saved = await onSave?.(selectedIds);
+    } finally {
+      savingRef.current = false;
+      setSavingAction("");
+      setSaving(false);
+    }
     if (saved) onClose?.();
   }
 
   async function startNewCircuit() {
-    if (saving) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSavingAction("create");
     setSaving(true);
-    const started = await onCreate?.();
-    setSaving(false);
+    let started = false;
+    try {
+      started = await onCreate?.();
+    } finally {
+      savingRef.current = false;
+      setSavingAction("");
+      setSaving(false);
+    }
     if (started) onClose?.();
   }
 
@@ -150,14 +168,14 @@ export function TournamentCircuitManagerModal({
           ) : null}
 
           <div className="tournamentCircuitCreateDivider"><span>ou</span></div>
-          <button type="button" className="tournamentCircuitCreateNew" onClick={startNewCircuit} disabled={saving}>
-            <PlusCircle aria-hidden="true" /> Criar novo circuito com este torneio
+          <button type="button" className="tournamentCircuitCreateNew" onClick={startNewCircuit} disabled={saving} aria-busy={savingAction === "create"}>
+            <PlusCircle aria-hidden="true" /> {savingAction === "create" ? "Abrindo criação do circuito..." : "Criar novo circuito com este torneio"}
           </button>
         </div>
 
         <footer className="tournamentCircuitDialogActions">
           <button type="button" className="secondaryBtn" onClick={onClose} disabled={saving}>Cancelar</button>
-          <button type="button" className="tournamentCircuitSave" onClick={submitChanges} disabled={!changed || saving}>
+          <button type="button" className="tournamentCircuitSave" onClick={submitChanges} disabled={!changed || saving} aria-busy={savingAction === "save"}>
             {saving ? "Salvando..." : confirmRemoval ? "Sim, salvar alterações" : "Salvar nos circuitos"}
           </button>
         </footer>

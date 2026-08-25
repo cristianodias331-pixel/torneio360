@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { orderFixedMixedPair } from "../src/fixedMixedTeamOrder.mjs";
 import { super12IndividualTemplate } from "../src/super12Schedule.mjs";
@@ -10,6 +10,7 @@ import {
   normalizeCircuitParticipantKey,
 } from "../src/circuitNameIdentity.mjs";
 import {
+  compactCircuitRowsForDashboardCache,
   mergeConcurrentTournamentData,
   preservesTournamentCriticalData,
 } from "../src/offlineDataStore.mjs";
@@ -113,6 +114,7 @@ import {
   getPublicTournamentDirectoryItem,
   getRegisteredAthletesForPublic,
   normalizePublicCircuitForDisplay,
+  selectVisiblePublicCircuitRankingGroups,
   sortCircuitsForDisplay,
 } from "../src/domain/publicArenaData.mjs";
 import {
@@ -128,6 +130,28 @@ import {
   writePublicCircuitDetailCache,
   writePublicTournamentDetailCache,
 } from "../src/domain/publicArenaCache.mjs";
+import { createPublicArenaApi } from "../src/services/publicArenaApi.mjs";
+import {
+  EVENT_MEDIA_BUCKET,
+  uploadPreparedImagePair,
+  uploadProfilePhoto,
+} from "../src/services/mediaStorage.mjs";
+import {
+  normalizeTournamentSummaryRow,
+  tournamentSummarySelect,
+} from "../src/domain/tournamentSummary.mjs";
+import {
+  getUserAppStateCloudDelay,
+  getUserAppStateSyncSignature,
+} from "../src/domain/userAppStateSync.mjs";
+import {
+  circuitDirectorySelect,
+  circuitHistorySelect,
+  normalizeCircuitRow,
+  normalizeCircuitTournamentIds,
+} from "../src/domain/circuitDirectory.mjs";
+import { createLatestEntitySignalProcessor } from "../src/services/latestEntitySignalProcessor.mjs";
+import { createUserAppStateCloudQueue } from "../src/services/userAppStateCloudQueue.mjs";
 import {
   generateCollaborationChangeId,
   generatePublicId,
@@ -161,7 +185,10 @@ import {
   getEffectiveTournamentGenderMode,
   getGenderCompatibleTournamentTypes,
   getStoredTournamentGenderFields,
+  getTournamentListGenderFilter,
   getTournamentClassificationLabels,
+  matchesTournamentListGenderFilter,
+  tournamentListGenderFilters,
 } from "../src/domain/tournamentGenderConfig.mjs";
 import {
   getGameSideAttendanceParticipants,
@@ -253,6 +280,7 @@ import {
   buildCircuitRankingGroups,
   buildCircuitRankingGroupsFromRecords,
   buildCircuitTournamentRankingRecords,
+  buildUniqueCombinedCircuitSourceSlices,
 } from "../src/domain/circuitRankingAggregation.mjs";
 import {
   getModalityDisplayName,
@@ -405,7 +433,22 @@ import {
 } from "../src/domain/cupQualification.mjs";
 
 const root = new URL("../", import.meta.url);
-const mainSource = readFileSync(new URL("src/main.jsx", root), "utf8");
+const mainEntrySource = readFileSync(new URL("src/main.jsx", root), "utf8");
+const organizerWorkspaceSource = readFileSync(new URL("src/OrganizerWorkspace.jsx", root), "utf8");
+const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}`;
+const lazyFeaturesSource = readFileSync(
+  new URL("src/features/appShell/lazyFeatures.jsx", root),
+  "utf8"
+);
+const loginScreenSource = readFileSync(
+  new URL("src/features/auth/LoginScreen.jsx", root),
+  "utf8"
+);
+const cupRankingDefaultsSource = readFileSync(
+  new URL("src/domain/cupRankingDefaults.mjs", root),
+  "utf8"
+);
+const viteConfigSource = readFileSync(new URL("vite.config.mjs", root), "utf8");
 assert.ok(
   mainSource.includes('"Você está sem internet"')
     && !mainSource.includes('"Dados ainda não sincronizados"'),
@@ -424,7 +467,13 @@ assert.ok(
     && mainSource.match(/function migrateReferenceProfilePlayRankingTournaments[\s\S]*?\.eq\("user_id", PLAY_RANKING_RETROACTIVE_PROFILE_ID\)/),
   "A atualização retroativa deixou de estar isolada ao perfil PLAY RANKING® e à sua modalidade Modelo Torneio 360."
 );
-const styleSource = readFileSync(new URL("src/style.css", root), "utf8");
+const styleSource = [
+  readFileSync(new URL("src/style.css", root), "utf8"),
+  ...readdirSync(new URL("src/styles/", root))
+    .filter((fileName) => fileName.endsWith(".css"))
+    .sort()
+    .map((fileName) => readFileSync(new URL(`src/styles/${fileName}`, root), "utf8")),
+].join("\n");
 const authValidationSource = readFileSync(
   new URL("src/domain/authValidation.mjs", root),
   "utf8"
@@ -477,6 +526,82 @@ const groupedEventGeneralCoverMigrationSource = readFileSync(
   new URL("supabase/migrations/202608240003_grouped_event_general_cover.sql", root),
   "utf8"
 );
+const platformTrafficScalingMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240004_platform_traffic_scaling.sql", root),
+  "utf8"
+);
+const eventMediaStorageMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240005_event_media_storage.sql", root),
+  "utf8"
+);
+const publicArenaSnapshotCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240006_public_arena_snapshot_cache.sql", root),
+  "utf8"
+);
+const tournamentChangeFeedMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608240007_tournament_change_feed.sql", root),
+  "utf8"
+);
+const publicArenaEventPaginationMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250001_public_arena_event_pagination.sql", root),
+  "utf8"
+);
+const publicArenaLegacyCompatibilityMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250002_public_arena_legacy_bundle_compatibility.sql", root),
+  "utf8"
+);
+const circuitChangeFeedMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250003_circuit_change_feed.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250004_public_arena_initial_view.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewOptimizedMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250005_public_arena_initial_view_optimized.sql", root),
+  "utf8"
+);
+const publicCircuitRankingPerformanceMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250006_public_circuit_ranking_performance.sql", root),
+  "utf8"
+);
+const publicCircuitSnapshotCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250007_public_circuit_snapshot_cache.sql", root),
+  "utf8"
+);
+const publicCircuitCacheWriteModeMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250008_public_circuit_cache_write_mode.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250009_public_arena_initial_view_cache.sql", root),
+  "utf8"
+);
+const publicArenaInitialViewCacheFixMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250010_public_arena_initial_view_cache_fix.sql", root),
+  "utf8"
+);
+const publicCircuitRankingPaginationMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250011_public_circuit_ranking_pagination.sql", root),
+  "utf8"
+);
+const publicCircuitRankingPageCacheMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608250012_public_circuit_ranking_page_cache.sql", root),
+  "utf8"
+);
+const browserPerformanceCheckSource = readFileSync(
+  new URL("scripts/browser-performance-check.mjs", root),
+  "utf8"
+);
+const publicCircuitPaginationCheckSource = readFileSync(
+  new URL("scripts/public-circuit-pagination-check.mjs", root),
+  "utf8"
+);
+const latestEntitySignalProcessorSource = readFileSync(
+  new URL("src/services/latestEntitySignalProcessor.mjs", root),
+  "utf8"
+);
 const publicIdentifiersSource = readFileSync(
   new URL("src/domain/publicIdentifiers.mjs", root),
   "utf8"
@@ -496,6 +621,10 @@ const rankingWorkbookExportSource = readFileSync(
 const canvasToolsSource = readFileSync(new URL("src/features/media/canvasTools.mjs", root), "utf8");
 const tournamentWorkspaceTabsSource = readFileSync(
   new URL("src/features/tournamentWorkspace/TournamentWorkspaceTabs.jsx", root),
+  "utf8"
+);
+const tournamentRuntimeAdaptersSource = readFileSync(
+  new URL("src/features/tournamentWorkspace/TournamentRuntimeAdapters.jsx", root),
   "utf8"
 );
 const courtCenterModalSource = readFileSync(
@@ -528,6 +657,26 @@ const participantManagementSource = readFileSync(
 );
 const publicArenaPresentationSource = readFileSync(
   new URL("src/features/publicArena/PublicArenaPresentation.jsx", root),
+  "utf8"
+);
+const publicArenaPageControllerSource = readFileSync(
+  new URL("src/features/publicArena/PublicArenaPageController.jsx", root),
+  "utf8"
+);
+const publicPlatformHomeControllerSource = readFileSync(
+  new URL("src/features/publicArena/PublicPlatformHomeController.jsx", root),
+  "utf8"
+);
+const publicTournamentPageControllerSource = readFileSync(
+  new URL("src/features/publicArena/PublicTournamentPageController.jsx", root),
+  "utf8"
+);
+const publicCircuitScreenSource = readFileSync(
+  new URL("src/features/publicArena/PublicCircuitScreen.jsx", root),
+  "utf8"
+);
+const publicTournamentScreenSource = readFileSync(
+  new URL("src/features/publicArena/PublicTournamentScreen.jsx", root),
   "utf8"
 );
 const storyCoverEditorSource = readFileSync(
@@ -619,6 +768,22 @@ const indexSource = readFileSync(new URL("index.html", root), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("package.json", root), "utf8"));
 const manifest = JSON.parse(readFileSync(new URL("public/manifest.webmanifest", root), "utf8"));
 const appVersion = JSON.parse(readFileSync(new URL("public/app-version.json", root), "utf8"));
+assert.ok(
+  styleSource.includes('@keyframes asyncActionIndicatorSpin')
+    && styleSource.includes('button[aria-busy="true"]::after')
+    && organizerWorkspaceSource.includes("if (circuitSavingRef.current) return false;")
+    && organizerWorkspaceSource.includes("return await persistCircuit(form, options);")
+    && organizerWorkspaceSource.includes('aria-busy={circuitSaving || coverImageLoading}')
+    && publicArenaPresentationSource.includes('aria-busy={openingPublicId === tournament.public_id}')
+    && publicArenaPresentationSource.includes('aria-busy={openingCircuitId === item.id}')
+    && rankingTablesSource.includes('aria-busy={remotePagination.loading === true}')
+    && rankingShareButtonSource.includes('aria-busy={status === "loading"}')
+    && accessStatusViewsSource.includes('aria-busy={retrying}')
+    && tournamentCircuitManagerSource.includes("if (!changed || savingRef.current) return;")
+    && circuitExtraPointsPanelSource.includes('aria-busy={extraSaving}')
+    && tournamentWorkspaceTabsSource.includes('aria-busy={isBusy}'),
+  "As ações demoradas perderam o indicador visual ou voltaram a aceitar cliques repetidos."
+);
 const publicArenaMigrationUrl = new URL("supabase/migrations/202608030001_public_arena_platform.sql", root);
 assert.ok(existsSync(fileURLToPath(publicArenaMigrationUrl)), "A migração segura da plataforma pública está ausente.");
 const publicArenaMigration = readFileSync(publicArenaMigrationUrl, "utf8");
@@ -1083,6 +1248,48 @@ assert.deepEqual(
   ["Bia", "Ana"],
   "O ranking público do circuito voltou a usar uma ordem fixa diferente da escolhida pelo organizador.",
 );
+assert.equal(
+  getTournamentListGenderFilter("Super 8", { participantGenderMode: tournamentGenderModes.masculine }),
+  tournamentListGenderFilters.masculine,
+  "O filtro da lista deixou de reconhecer torneios masculinos."
+);
+assert.equal(
+  getTournamentListGenderFilter("Super 8", { participantGenderMode: tournamentGenderModes.open }),
+  tournamentListGenderFilters.mixed,
+  "O filtro da lista deixou de reunir Livre com Misto."
+);
+assert.equal(
+  getTournamentListGenderFilter("Super 12 Mista (Dupla Aleatória)", {}),
+  tournamentListGenderFilters.mixed,
+  "Uma modalidade mista sem metadado legado deixou de aparecer em Misto/Livre."
+);
+assert.equal(
+  matchesTournamentListGenderFilter("Super 8", { participantGenderMode: tournamentGenderModes.feminine }, tournamentListGenderFilters.masculine),
+  false,
+  "O filtro masculino passou a exibir torneios femininos."
+);
+const legacyGeneralCircuitGroup = [{ key: "geral", title: "Ranking geral acumulado", rows: [{ name: "Ana" }] }];
+assert.deepEqual(
+  selectVisiblePublicCircuitRankingGroups({
+    storedGroups: legacyGeneralCircuitGroup,
+    rebuiltGroups: [],
+    rankingDivision: "gender",
+  }),
+  legacyGeneralCircuitGroup,
+  "Um histórico geral válido não pode desaparecer quando a separação por gênero ainda não puder ser reconstruída.",
+);
+assert.deepEqual(
+  selectVisiblePublicCircuitRankingGroups({
+    storedGroups: legacyGeneralCircuitGroup,
+    rebuiltGroups: [
+      { key: "masculino", rows: [{ name: "Bruno" }] },
+      { key: "feminino", rows: [{ name: "Carla" }] },
+    ],
+    rankingDivision: "gender",
+  }).map((group) => group.key),
+  ["masculino", "feminino"],
+  "A separação por gênero deve substituir o fallback geral assim que estiver disponível.",
+);
 for (const [type, config] of Object.entries(modalityConfig)) {
   const publicSections = getRegisteredAthletesForPublic(createInitialData(type, config), config);
   assert.ok(
@@ -1132,7 +1339,7 @@ assert.deepEqual(
   [{ title: "Atletas cadastrados", names: [] }],
   "Um formato desconhecido não pode derrubar a visualização pública por causa da forma de players.",
 );
-assert.equal(ARENA_DIRECTORY_CACHE_KEY, "t360.public-arena-directory.v2", "A chave do cache público de arenas foi alterada.");
+assert.equal(ARENA_DIRECTORY_CACHE_KEY, "t360.public-arena-directory.v3", "A chave do cache público de arenas foi alterada.");
 assert.equal(getPublicArenaBundleCacheKey({ arenaId: "arena-1" }), "t360.public-arena-bundle.v2:arena-1", "A chave do perfil público em memória foi alterada.");
 writePublicArenaBundleCache({ arenaId: "arena-cache" }, { profile: { id: "arena-cache" } }, 1_000);
 assert.deepEqual(readPublicArenaBundleCache({ arenaId: "arena-cache" }, 1_001), { profile: { id: "arena-cache" } }, "Um perfil público válido deixou de ser recuperado do cache.");
@@ -1144,6 +1351,331 @@ assert.deepEqual(readPublicCircuitDetailCache("circuit-cache", 3_001), { id: "ci
 assert.deepEqual(readPublicArenaPhotoCache("arena-photo"), { found: false, data: "" }, "Uma foto ainda não consultada foi confundida com foto vazia em cache.");
 writePublicArenaPhotoCache("arena-photo", "");
 assert.deepEqual(readPublicArenaPhotoCache("arena-photo"), { found: true, data: "" }, "O cache deixou de lembrar que uma arena não possui foto.");
+
+const legacyArenaRows = Array.from({ length: 25 }, (_, index) => ({
+  id: `arena-${String(index + 1).padStart(2, "0")}`,
+  arena_name: `Arena ${String(index + 1).padStart(2, "0")}`,
+}));
+let legacyArenaDirectoryCalls = 0;
+const legacyPublicArenaApi = createPublicArenaApi({
+  supabase: {
+    async rpc(functionName) {
+      if (functionName === "list_public_arenas_page") {
+        return { data: null, error: { message: "function public.list_public_arenas_page does not exist" } };
+      }
+      if (functionName === "list_public_arenas") {
+        legacyArenaDirectoryCalls += 1;
+        return { data: legacyArenaRows, error: null };
+      }
+      throw new Error(`RPC inesperado no teste: ${functionName}`);
+    },
+  },
+});
+const legacyArenaPageOne = await legacyPublicArenaApi.fetchPublicArenaDirectory({ limit: 18 });
+const legacyArenaPageTwo = await legacyPublicArenaApi.fetchPublicArenaDirectory({
+  limit: 18,
+  cursor: legacyArenaPageOne.nextCursor,
+});
+assert.equal(legacyArenaPageOne.data.length, 18, "O diretório legado deixou de respeitar o tamanho da primeira página.");
+assert.equal(legacyArenaPageOne.hasMore, true, "O diretório legado não indicou a segunda página disponível.");
+assert.equal(legacyArenaPageTwo.data.length, 7, "A continuação do diretório legado perdeu arenas.");
+assert.equal(legacyArenaPageTwo.hasMore, false, "O diretório legado indicou páginas inexistentes.");
+assert.equal(legacyArenaDirectoryCalls, 1, "A paginação compatível repetiu a consulta completa ao Supabase.");
+
+assert.equal(
+  tournamentSummarySelect.includes("data->>coverImageUrl") || tournamentSummarySelect.includes("data->>eventCoverImageUrl"),
+  false,
+  "A listagem leve voltou a transportar a capa completa em Base64.",
+);
+assert.equal(
+  tournamentSummarySelect.includes("data->>coverImageThumbnailUrl")
+    && tournamentSummarySelect.includes("data->>eventCoverImageThumbnailUrl"),
+  true,
+  "A listagem leve deixou de solicitar as miniaturas das capas.",
+);
+assert.deepEqual(
+  normalizeTournamentSummaryRow({
+    id: "summary-1",
+    summary_cover_image_thumbnail_url: "data:image/jpeg;base64,mini",
+    summary_event_cover_image_thumbnail_url: "data:image/jpeg;base64,event-mini",
+  }).data,
+  {
+    coverImageThumbnailUrl: "data:image/jpeg;base64,mini",
+    eventCoverImageThumbnailUrl: "data:image/jpeg;base64,event-mini",
+  },
+  "A normalização do resumo perdeu as miniaturas das capas.",
+);
+assert.equal(
+  mainSource.includes("openTournamentIds.slice(-12)"),
+  false,
+  "O painel voltou a pré-carregar em massa os JSONs completos das abas antigas.",
+);
+
+const uploadedMediaObjects = [];
+const fakeMediaStorage = {
+  storage: {
+    from(bucket) {
+      assert.equal(bucket, EVENT_MEDIA_BUCKET, "O upload usou um bucket inesperado.");
+      return {
+        async upload(path, file, options) {
+          uploadedMediaObjects.push({ path, file, options });
+          return { data: { path }, error: null };
+        },
+        getPublicUrl(path) {
+          return { data: { publicUrl: `https://media.example/${path}` } };
+        },
+        async remove() {
+          return { data: [], error: null };
+        },
+      };
+    },
+  },
+};
+const uploadedCoverPair = await uploadPreparedImagePair({
+  supabase: fakeMediaStorage,
+  userId: "owner-1",
+  imageUrl: "data:image/jpeg;base64,Y2FwYQ==",
+  thumbnailUrl: "data:image/jpeg;base64,bWluaQ==",
+});
+const uploadedProfilePhoto = await uploadProfilePhoto({
+  supabase: fakeMediaStorage,
+  userId: "owner-1",
+  photoUrl: "data:image/png;base64,cGVyZmls",
+});
+assert.equal(uploadedMediaObjects.length, 3, "O armazenamento deixou de receber a capa, a miniatura ou a foto do perfil.");
+assert.equal(uploadedMediaObjects.every((item) => item.path.startsWith("owner-1/")), true, "Uma imagem foi enviada fora da pasta do proprietário.");
+assert.equal(uploadedMediaObjects.every((item) => item.options.cacheControl === "31536000"), true, "As imagens deixaram de usar cache imutável longo.");
+assert.equal(uploadedCoverPair.imageUrl.startsWith("https://media.example/owner-1/"), true, "A capa salva não retornou URL pública.");
+assert.equal(uploadedProfilePhoto.startsWith("https://media.example/owner-1/"), true, "A foto do perfil não retornou URL pública.");
+assert.equal(
+  eventMediaStorageMigrationSource.includes("insert into storage.buckets")
+    && eventMediaStorageMigrationSource.includes("event_media_owner_insert")
+    && eventMediaStorageMigrationSource.includes("auth.uid()::text"),
+  true,
+  "O bucket de mídia deixou de proteger os uploads pela pasta do proprietário.",
+);
+assert.equal(
+  viteConfigSource.includes('name: "vendor-react"')
+    && viteConfigSource.includes('name: "vendor-supabase"')
+    && viteConfigSource.includes('name: "vendor-icons"')
+    && viteConfigSource.includes("codeSplitting"),
+  true,
+  "O build deixou de separar dependências estáveis do código principal.",
+);
+assert.equal(
+  publicArenaSnapshotCacheMigrationSource.includes("create table if not exists public.public_arena_snapshots")
+    && publicArenaSnapshotCacheMigrationSource.includes("refresh_public_arena_snapshot")
+    && publicArenaSnapshotCacheMigrationSource.includes("t360_public_tournament_directory_fingerprint")
+    && publicArenaSnapshotCacheMigrationSource.includes("old.ranking_settings is not distinct from new.ranking_settings"),
+  true,
+  "O perfil público deixou de usar snapshot ou voltou a reconstruí-lo após qualquer placar.",
+);
+assert.equal(
+  existsSync(new URL("scripts/public-load-check.mjs", root)),
+  true,
+  "O teste concorrente do perfil público foi removido.",
+);
+assert.equal(
+  tournamentChangeFeedMigrationSource.includes("create table if not exists public.tournament_change_feed")
+    && tournamentChangeFeedMigrationSource.includes("create trigger tournaments_signal_change")
+    && tournamentChangeFeedMigrationSource.includes("alter publication supabase_realtime add table public.tournament_change_feed")
+    && mainSource.includes('table: "tournament_change_feed"')
+    && mainSource.includes("applyRemoteTournamentSignal")
+    && mainSource.includes("tournamentSignalLoadStateRef")
+    && !mainSource.includes('table: "tournaments", filter: `user_id=eq.${user.id}`'),
+  true,
+  "O Realtime voltou a transmitir o JSON completo de cada torneio em toda alteração.",
+);
+assert.equal(
+  circuitChangeFeedMigrationSource.includes("create table if not exists public.circuit_change_feed")
+    && circuitChangeFeedMigrationSource.includes("create trigger circuits_signal_change")
+    && circuitChangeFeedMigrationSource.includes("alter publication supabase_realtime add table public.circuit_change_feed")
+    && mainSource.includes('table: "circuit_change_feed"')
+    && mainSource.includes("createLatestEntitySignalProcessor")
+    && latestEntitySignalProcessorSource.includes("runningById")
+    && !mainSource.includes('table: "circuits", filter: `user_id=eq.${user.id}`'),
+  true,
+  "O Realtime voltou a transmitir os dados completos do circuito em toda alteração.",
+);
+const appStatePayloadForTest = {
+  last_url: "/?aba=circuitos",
+  last_panel: "circuitos",
+  last_circuit_id: "circuito-1",
+  scroll_y: 240,
+  updated_at: "2026-08-25T12:00:00.000Z",
+};
+const appStateSignatureForTest = getUserAppStateSyncSignature(appStatePayloadForTest);
+assert.equal(
+  appStateSignatureForTest,
+  getUserAppStateSyncSignature({ ...appStatePayloadForTest, updated_at: "2026-08-25T12:01:00.000Z" }),
+  "A data técnica voltou a provocar gravações repetidas do mesmo estado de navegação.",
+);
+assert.equal(
+  getUserAppStateCloudDelay({ payload: appStatePayloadForTest, lastSignature: appStateSignatureForTest }),
+  null,
+  "Um estado de navegação idêntico deixou de ser descartado antes da gravação.",
+);
+assert.equal(
+  getUserAppStateCloudDelay({ payload: appStatePayloadForTest, lastSavedAt: 5_000, now: 10_000 }),
+  25_000,
+  "O limite de gravações do estado de navegação deixou de respeitar 30 segundos.",
+);
+assert.equal(
+  getUserAppStateCloudDelay({ payload: appStatePayloadForTest, force: true }),
+  0,
+  "A saída da página deixou de poder solicitar a última sincronização imediatamente.",
+);
+let appStateQueueNow = 10_000;
+let appStateScheduledDelay = null;
+let appStateScheduledFlush = null;
+const appStateCloudWrites = [];
+const appStateQueue = createUserAppStateCloudQueue({
+  now: () => appStateQueueNow,
+  savePayload: async (payload) => { appStateCloudWrites.push(payload); },
+  schedule: (callback, delay) => {
+    appStateScheduledFlush = callback;
+    appStateScheduledDelay = delay;
+    return { callback, delay };
+  },
+  cancel: () => {},
+});
+appStateQueue.seed({ ...appStatePayloadForTest, last_panel: "inicio" }, 5_000);
+appStateQueue.queue(appStatePayloadForTest);
+assert.equal(
+  appStateScheduledDelay,
+  25_000,
+  "A fila modular do painel deixou de respeitar o intervalo mínimo entre gravações.",
+);
+appStateQueueNow = 35_000;
+await appStateScheduledFlush();
+assert.deepEqual(
+  appStateCloudWrites,
+  [appStatePayloadForTest],
+  "A fila modular do painel não enviou o estado pendente mais recente.",
+);
+appStateScheduledFlush = null;
+appStateQueue.queue({ ...appStatePayloadForTest, updated_at: "2026-08-25T12:05:00.000Z" });
+assert.equal(
+  appStateScheduledFlush,
+  null,
+  "A fila modular do painel voltou a agendar uma gravação para um estado idêntico.",
+);
+appStateQueue.dispose();
+
+const normalizedCircuitDirectoryRow = normalizeCircuitRow({
+  id: "circuito-1",
+  name: "Circuito teste",
+  status: "finished",
+  tournament_ids: ["torneio-1", "torneio-1", "", "torneio-2"],
+  ranking_settings: { coverImageUrl: "capa.jpg" },
+  revision: 4,
+});
+assert.deepEqual(
+  normalizedCircuitDirectoryRow.tournamentIds,
+  ["torneio-1", "torneio-2"],
+  "A listagem modular de circuitos deixou de remover identificadores vazios ou repetidos.",
+);
+assert.equal(normalizedCircuitDirectoryRow.status, "closed");
+assert.equal(normalizedCircuitDirectoryRow.coverImageUrl, "capa.jpg");
+assert.equal(normalizedCircuitDirectoryRow.revision, 4);
+assert.deepEqual(
+  normalizeCircuitTournamentIds([1, "1", " 2 ", null]),
+  ["1", "2"],
+  "A normalização reutilizável dos torneios do circuito ficou incompatível.",
+);
+assert.equal(circuitDirectorySelect.includes("ranking_settings"), true);
+assert.equal(circuitHistorySelect.includes("circuit_points"), true);
+
+let releaseFirstCircuitSignal;
+const loadedCircuitSignalVersions = [];
+const appliedCircuitSignalVersions = [];
+const deletedCircuitSignalIds = [];
+const circuitSignalProcessor = createLatestEntitySignalProcessor({
+  getEntityId: (signal) => signal?.circuit_id,
+  isDeleted: (signal) => Boolean(signal?.deleted),
+  loadEntity: async (circuitId, signal) => {
+    loadedCircuitSignalVersions.push(signal.version);
+    if (signal.version === 1) {
+      return new Promise((resolve) => {
+        releaseFirstCircuitSignal = () => resolve({ id: circuitId, version: signal.version });
+      });
+    }
+    return { id: circuitId, version: signal.version };
+  },
+  onUpdate: (row) => { appliedCircuitSignalVersions.push(row.version); },
+  onDelete: (circuitId) => { deletedCircuitSignalIds.push(circuitId); },
+});
+const firstCircuitSignalRun = circuitSignalProcessor.handle({
+  new: { circuit_id: "circuito-1", version: 1 },
+});
+circuitSignalProcessor.handle({ new: { circuit_id: "circuito-1", version: 2 } });
+releaseFirstCircuitSignal();
+await firstCircuitSignalRun;
+assert.deepEqual(
+  loadedCircuitSignalVersions,
+  [1, 2],
+  "Os sinais sucessivos do mesmo circuito deixaram de preservar a atualização mais recente.",
+);
+assert.deepEqual(appliedCircuitSignalVersions, [1, 2]);
+await circuitSignalProcessor.handle({ new: { circuit_id: "circuito-1", deleted: true } });
+assert.deepEqual(deletedCircuitSignalIds, ["circuito-1"]);
+circuitSignalProcessor.dispose();
+assert.equal(
+  publicArenaEventPaginationMigrationSource.includes("create or replace function public.get_public_arena_overview")
+    && publicArenaEventPaginationMigrationSource.includes("create or replace function public.list_public_arena_events_page")
+    && publicArenaEventPaginationMigrationSource.includes("drop trigger if exists tournaments_refresh_public_arena_snapshot")
+    && publicArenaEventPaginationMigrationSource.includes("get_public_circuit_with_tournaments")
+    && publicArenaInitialViewMigrationSource.includes("create or replace function public.get_public_arena_initial_view")
+    && publicArenaInitialViewMigrationSource.includes("public.get_public_arena_overview(owner_id, null)")
+    && publicArenaInitialViewMigrationSource.includes("public.list_public_arena_events_page(")
+    && publicArenaInitialViewOptimizedMigrationSource.includes("with candidates as materialized")
+    && publicArenaInitialViewOptimizedMigrationSource.includes("from counts cross join page_payload")
+    && publicCircuitRankingPerformanceMigrationSource.includes("valid_tournaments as materialized")
+    && publicCircuitRankingPerformanceMigrationSource.includes("circuit_ranking_history_public_read_idx")
+    && publicCircuitSnapshotCacheMigrationSource.includes("create table if not exists public.public_circuit_snapshots")
+    && publicCircuitSnapshotCacheMigrationSource.includes("pg_advisory_xact_lock")
+    && publicCircuitSnapshotCacheMigrationSource.includes("referencing new table as inserted_rows")
+    && publicCircuitSnapshotCacheMigrationSource.includes("refresh_public_circuit_snapshot")
+    && publicCircuitCacheWriteModeMigrationSource.includes("get_public_circuit_with_tournaments(uuid) volatile")
+    && publicArenaInitialViewCacheMigrationSource.includes("create table if not exists public.public_arena_initial_snapshots")
+    && publicArenaInitialViewCacheMigrationSource.includes("date_trunc('minute', statement_timestamp())")
+    && publicArenaInitialViewCacheMigrationSource.includes("pg_advisory_xact_lock")
+    && publicArenaInitialViewCacheMigrationSource.includes("tournaments_invalidate_public_arena_initial_snapshot")
+    && publicArenaInitialViewCacheFixMigrationSource.includes("requested_limit integer")
+    && !publicArenaInitialViewCacheFixMigrationSource.includes("snapshot.page_limit = page_limit")
+    && publicCircuitRankingPaginationMigrationSource.includes("list_public_circuit_ranking_page")
+    && publicCircuitRankingPaginationMigrationSource.includes("'rankPosition', page_rows.global_position")
+    && publicCircuitRankingPaginationMigrationSource.includes("'ranking_pagination', jsonb_build_object")
+    && publicCircuitRankingPageCacheMigrationSource.includes("create table if not exists public.public_circuit_ranking_rows")
+    && publicCircuitRankingPageCacheMigrationSource.includes("ensure_public_circuit_snapshot")
+    && publicCircuitRankingPageCacheMigrationSource.includes("refresh_public_circuit_ranking_rows")
+    && publicCircuitRankingPageCacheMigrationSource.includes("from public.public_circuit_ranking_rows ranking")
+    && browserPerformanceCheckSource.includes("--headless=new")
+    && browserPerformanceCheckSource.includes(".publicPage.publicArenaPage")
+    && browserPerformanceCheckSource.includes("profileVisibleMs")
+    && publicCircuitPaginationCheckSource.includes("list_public_circuit_ranking_page")
+    && publicCircuitPaginationCheckSource.includes("posição global")
+    && publicArenaApiSource.includes("fetchPublicArenaEventsPage")
+    && publicArenaApiSource.includes("fetchPublicArenaInitialView")
+    && publicArenaApiSource.includes('rpc("get_public_arena_initial_view"')
+    && publicArenaApiSource.includes('rpc("list_public_arena_events_page"')
+    && publicArenaApiSource.includes('rpc("list_public_circuit_ranking_page"')
+    && publicArenaApiSource.includes("fetchPublicCircuitRankingAll")
+    && publicArenaPageControllerSource.includes("PUBLIC_ARENA_EVENT_PAGE_SIZE")
+    && publicArenaPageControllerSource.includes("fetchPublicArenaInitialView({ arenaId, publicId })")
+    && publicArenaPageControllerSource.includes("loadPublicEventPage")
+    && publicArenaPresentationSource.includes("serverPagination")
+    && publicArenaPresentationSource.includes("serverPagination.onLoadMore"),
+  true,
+  "O perfil público deixou de paginar eventos no servidor ou perdeu as etapas dos circuitos.",
+);
+assert.equal(
+  publicArenaLegacyCompatibilityMigrationSource.includes("public.build_public_arena_bundle_uncached")
+    && publicArenaLegacyCompatibilityMigrationSource.includes("grant execute on function public.get_public_arena_bundle"),
+  true,
+  "Uma versão anterior do front-end pode perder os eventos durante a transição para a paginação.",
+);
+
 assert.equal(generatePublicId(() => 35, () => 0.5), "tfbt_z_i", "O formato dos links públicos foi alterado.");
 assert.equal(
   generateCollaborationChangeId({ randomUUID: () => "change-id" }),
@@ -2781,7 +3313,8 @@ assert.deepEqual(
   "Campeão e segundo colocado do mesmo grupo perderam o seed vinculado."
 );
 assert.ok(
-  mainSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL = "Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
+  cupRankingDefaultsSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL =')
+    && cupRankingDefaultsSource.includes('"Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
     && tieBreakPanelsSource.includes('"playranking"')
     && tournamentFormatHelpSource.includes("O Total de Games permanece visível somente como estatística.")
     && tournamentFormatHelpSource.includes("o segundo colocado acompanha a posição do campeão do seu grupo"),
@@ -3134,7 +3667,14 @@ const requiredApplicationMarkers = [
 
 for (const marker of requiredApplicationMarkers) {
   assert.ok(
-    [mainSource, publicIdentifiersSource, cupBracketOrchestrationSource].some((source) => source.includes(marker)),
+    [
+      mainSource,
+      loginScreenSource,
+      publicIdentifiersSource,
+      cupBracketOrchestrationSource,
+      tournamentRuntimeAdaptersSource,
+      publicTournamentPageControllerSource,
+    ].some((source) => source.includes(marker)),
     `Fluxo essencial ausente: ${marker}`,
   );
 }
@@ -3252,27 +3792,39 @@ assert.ok(
 assert.ok(
   mainSource.includes("createPublicArenaApi({ supabase })")
     && publicArenaApiSource.includes("fetchPublicArenaDirectory")
-    && mainSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
+    && publicArenaApiSource.includes("list_public_arenas_page")
+    && publicArenaApiSource.includes("nextCursor")
+    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_PAGE_SIZE")
+    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_FOCUS_MIN_AGE_MS")
+    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
     && publicArenaApiSource.includes("ARENA_DIRECTORY_CACHE_KEY")
-    && mainSource.includes("readPublicArenaDirectoryCache")
+    && publicPlatformHomeControllerSource.includes("readPublicArenaDirectoryCache")
     && publicArenaApiSource.includes("directoryRequestInFlight")
-    && mainSource.includes("hasSuccessfulLoad")
     && mainSource.includes("publicArenaProfilesInFlightRef")
-    && mainSource.includes("refreshVisibleArenas")
+    && publicPlatformHomeControllerSource.includes("loadMoreArenas")
     && mainSource.includes("refreshVisibleProfiles")
-    && mainSource.includes('window.addEventListener("focus", refreshArenas)')
-    && mainSource.includes('document.addEventListener("visibilitychange", handleVisibilityChange)')
+    && !publicPlatformHomeControllerSource.includes("fetchPublicArenaDirectory({ limit: 250 })")
     && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"')
     && mainSource.includes('className="arenaFeedOrganizer"'),
-  "O diretório de arenas não atualiza automaticamente ou não identifica o organizador nos cartões."
+  "O diretório de arenas perdeu a paginação, a busca escalável ou a identificação do organizador."
 );
 assert.ok(
-  mainSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
+  platformTrafficScalingMigrationSource.includes("profiles_public_directory_search_trgm_idx")
+    && platformTrafficScalingMigrationSource.includes("create function public.list_public_arenas_page")
+    && platformTrafficScalingMigrationSource.includes("p_after_sort_name")
+    && platformTrafficScalingMigrationSource.includes("get_public_tournament_if_changed")
+    && publicArenaApiSource.includes("refreshPublicTournamentDetail")
+    && publicArenaPageControllerSource.includes("PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS")
+    && publicArenaPageControllerSource.includes("PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS"),
+  "A proteção de tráfego perdeu índices, paginação por cursor ou atualização pública condicional."
+);
+assert.ok(
+  publicArenaPageControllerSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
     && publicArenaApiSource.includes("fetchPublicArenaBundle")
     && publicArenaApiSource.includes("PUBLIC_ARENA_REQUEST_TIMEOUT_MS")
     && publicArenaCacheSource.includes("publicArenaBundleMemoryCache")
-    && mainSource.includes("readPublicArenaBundleCache")
-    && mainSource.includes("onPlaying"),
+    && publicArenaPageControllerSource.includes("readPublicArenaBundleCache")
+    && publicArenaPageControllerSource.includes("onPlaying"),
   "O perfil público perdeu os cinco segundos da propaganda ou a recuperação contra falhas temporárias."
 );
 assert.ok(
@@ -3293,7 +3845,8 @@ assert.ok(
     && publicArenaPayloadMigration.includes("'directoryEntry', true")
     && publicArenaApiSource.includes("fetchPublicTournamentDetail")
     && publicArenaCacheSource.includes("publicTournamentDetailMemoryCache")
-    && mainSource.includes("onOpenTournament={openPublicTournament}"),
+    && publicArenaPageControllerSource.includes("onOpenTournament={openPublicTournament}")
+    && publicTournamentPageControllerSource.includes("onOpenTournament={openPublicTournament}"),
   "O perfil público voltou a baixar todos os jogos e placares antes de o visitante abrir um torneio."
 );
 
@@ -3352,7 +3905,7 @@ assert.ok(
     && tournamentFormatPanelsSource.includes("secondRepechageEnabled")
     && tournamentFormatPanelsSource.includes("thirdRepechageEnabled")
     && tournamentFormatPanelsSource.includes("groupFormation")
-    && mainSource.includes("<CupConfigPanelView"),
+    && tournamentRuntimeAdaptersSource.includes("<CupConfigPanelView"),
   "Os painéis de formato perderam quantidades, paralelas, formação de grupos ou a composição com o torneio."
 );
 
@@ -3365,7 +3918,7 @@ assert.ok(
     && tournamentFormatHelpSource.includes('isSunset ? data.cupConfig?.groupFormation : "automatic"'),
   "A explicação não acompanha a quantidade, o formato individual ou a formação dos grupos escolhida."
 );
-assert.ok(mainSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
+assert.ok(publicTournamentScreenSource.includes("publicView />"), "A explicação do formato não está acessível ao visitante.");
 assert.ok(styleSource.includes(".formatInfoDialog"), "A explicação dinâmica está sem acabamento responsivo.");
 
 assert.ok(
@@ -3385,7 +3938,7 @@ assert.ok(
     && modalityConfig["Campeonato Cearense"]?.defaultThirdRepechageName === "3ª Disputa Paralela"
     && cupPresentationSource.includes('phase === "thirdParallel"')
     && mainSource.includes('activeMatchesTab === "paralela3"')
-    && mainSource.includes('activePublicMatchesTab === "paralela3"'),
+    && publicTournamentScreenSource.includes('activePublicMatchesTab === "paralela3"'),
   "O Campeonato Cearense perdeu a classificação oficial, o chaveamento definido ou a 3ª disputa paralela."
 );
 assert.ok(
@@ -3900,7 +4453,7 @@ assert.ok(
   "O aceite do prompt ainda oculta a mensagem antes da confirmação real do navegador."
 );
 assert.ok(
-  mainSource.includes('document.getElementById("acesso")?.scrollIntoView({ behavior: "auto", block: "start" })'),
+  loginScreenSource.includes('document.getElementById("acesso")?.scrollIntoView({ behavior: "auto", block: "start" })'),
   "A recuperação de senha não leva o usuário diretamente ao formulário de nova senha."
 );
 assert.ok(
@@ -3918,11 +4471,20 @@ assert.ok(
     && cupPodiumSource.includes('variant === "parallel" ? 1 : 3'),
   "A apresentação do pódio das Copas perdeu a principal ou o campeão das disputas paralelas."
 );
-assert.ok(mainSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
+assert.ok(publicCircuitScreenSource.includes('placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado"'), "O ranking público do circuito não identifica corretamente o modelo escolhido.");
+assert.ok(
+  publicCircuitScreenSource.includes("remotePagination={getRemotePagination")
+    && publicCircuitScreenSource.includes("loadFullConfig: async () =>")
+    && rankingTablesSource.includes("p.rankPosition || p.rank_position")
+    && rankingTablesSource.includes("onClick={remotePagination.onLoadMore}")
+    && rankingShareButtonSource.includes('typeof config.loadFullConfig === "function"')
+    && rankingShareButtonSource.includes("downloadRankingWorkbook(activeConfig)"),
+  "O ranking público do circuito perdeu paginação no servidor, posição global ou exportação completa sob demanda."
+);
 assert.ok(
   !circuitRankingSettingsPanelSource.includes("function CircuitTournamentFormatSelector")
     && !mainSource.includes("getCircuitCompatibleTournaments")
-    && mainSource.includes("Torneios do circuito")
+    && publicCircuitScreenSource.includes("Torneios do circuito")
     && circuitRankingSettingsPanelSource.includes("Todas as modalidades podem participar do mesmo circuito"),
   "O circuito ainda restringe a mistura de modalidades ou não explica o cálculo automático de cada etapa."
 );
@@ -3952,8 +4514,8 @@ assert.ok(
     && styleSource.includes("var(--ui-surface-raised)"),
   "Os cartões de escolha não seguem a seleção com quadradinho, lilás e contraste nos dois temas."
 );
-assert.ok(mainSource.includes('tournaments={tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
-assert.ok(mainSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
+assert.ok(publicArenaPageControllerSource.includes('tournaments={Array.isArray(selectedCircuit.tournaments) ? selectedCircuit.tournaments : tournaments}'), "O ranking público do circuito não recebe os torneios para cálculo imediato.");
+assert.ok(publicCircuitScreenSource.includes('className="publicCircuitName"'), "O nome do circuito não recebe destaque no ranking público.");
 assert.ok(
   rankingShareExportSource.includes('pts: "Total de Games"'),
   "A coluna de games ainda usa a nomenclatura antiga."
@@ -3965,7 +4527,7 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes('rankingCriteria: effectiveCircuitCriteria')
-    && mainSource.includes('rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria'),
+    && publicCircuitScreenSource.includes('rankingCriteria: circuit?.ranking_criteria || defaultRankingCriteria'),
   "O compartilhamento do ranking do circuito não recebe seu critério efetivo."
 );
 assert.ok(
@@ -3979,14 +4541,14 @@ assert.ok(
   rankingShareButtonSource.includes('className="rankingExportDialog"')
     && rankingShareButtonSource.includes('Imprimir / salvar PDF multipágina')
     && rankingShareButtonSource.includes('downloadRankingFiles(exportFiles)')
-    && rankingShareButtonSource.includes('shareRankingImages(config)')
+    && rankingShareButtonSource.includes('shareRankingImages(nextConfig)')
     && rankingShareExportSource.includes('paginateRankingGroups(normalizedGroups')
     && styleSource.includes('.rankingExportOverlay'),
   "O ranking não apresenta exportação paginada para imagem, impressão e download."
 );
 assert.ok(
   rankingShareButtonSource.includes("Baixar planilha editável (.xlsx)")
-    && rankingShareButtonSource.includes("downloadRankingWorkbook(config)")
+    && rankingShareButtonSource.includes("downloadRankingWorkbook(activeConfig)")
     && rankingWorkbookExportSource.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     && rankingWorkbookExportSource.includes("TORNEIO360_LOGO")
     && rankingWorkbookExportSource.includes("workbookGroups")
@@ -3996,7 +4558,7 @@ assert.ok(
 assert.ok(
   rankingShareButtonSource.includes("export default function RankingShareButton")
     && rankingShareButtonSource.includes('from "./rankingShareExport.mjs"')
-    && mainSource.includes('import RankingShareButton from "./features/rankingShare/RankingShareButton.jsx";'),
+    && lazyFeaturesSource.includes('React.lazy(() => import("../rankingShare/RankingShareButton.jsx"))'),
   "O componente visual de compartilhamento não preserva a interface das ações existentes."
 );
 assert.ok(
@@ -4009,12 +4571,13 @@ assert.ok(
 assert.ok(
   tournamentWorkspaceTabsSource.includes("export default function TournamentWorkspaceTabs")
     && tournamentWorkspaceTabsSource.includes("MatchStatusSummary")
+    && tournamentWorkspaceTabsSource.includes('<MatchStatusSummary data={tournament.data} compact vertical />')
     && tournamentWorkspaceTabsSource.includes('className="desktopTournamentTabs"')
     && tournamentWorkspaceTabsSource.includes('className="mobileTournamentWorkspaceActions"')
     && tournamentWorkspaceTabsSource.includes("Central de torneios")
     && tournamentWorkspaceTabsSource.includes("Remover da barra?")
     && tournamentWorkspaceTabsSource.includes("TOURNAMENT_TAB_COLORS")
-    && mainSource.includes("<TournamentWorkspaceTabsView {...props} MatchStatusSummary={TournamentMatchStatusSummary}"),
+    && tournamentRuntimeAdaptersSource.includes("<TournamentWorkspaceTabsView {...props} MatchStatusSummary={TournamentMatchStatusSummary}"),
   "A Central de Torneios Abertos perdeu abas, versão móvel, busca, confirmação ou resumo dos jogos."
 );
 assert.ok(
@@ -4024,8 +4587,8 @@ assert.ok(
     && courtCenterModalSource.includes("A quadra será liberada automaticamente ao concluir o placar.")
     && courtCenterModalSource.includes("Distribuição inicial por torneio")
     && courtCenterModalSource.includes("Os jogos e as rodadas não serão alterados.")
-    && mainSource.includes("<CourtCenterModalView")
-    && mainSource.includes("normalizeCourtCenterEntry={normalizeCourtCenterEntry}"),
+    && tournamentRuntimeAdaptersSource.includes("<CourtCenterModalView")
+    && tournamentRuntimeAdaptersSource.includes("normalizeCourtCenterEntry={normalizeCourtCenterEntry}"),
   "A Central de Quadras perdeu capacidade, ocupação, preferências ou compatibilidade com o estado salvo."
 );
 assert.ok(
@@ -4059,8 +4622,8 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes('const [newRankingCriteria, setNewRankingCriteria] = useState("");')
-    && mainSource.includes('function getNewTournamentRankingCriteria(type, selectedCriteria = "")')
-    && mainSource.includes('isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria')
+    && cupRankingDefaultsSource.includes('function getNewTournamentRankingCriteria(type, selectedCriteria = "")')
+    && cupRankingDefaultsSource.includes('isCupType(modalityConfig[type]) ? cupRankingCriteria : selectedCriteria')
     && mainSource.includes('if (!isMultiCategory && !rankingCriteriaOptions.some((option) => option.value === effectiveNewRankingCriteria))')
     && mainSource.includes('getNewTournamentRankingCriteria(item.type, item.rankingCriteria)')
     && mainSource.includes('showNotice("warning", "Critério obrigatório"')
@@ -4093,24 +4656,47 @@ assert.ok(
   "A importação em massa deve remover emojis completos em qualquer posição da lista colada."
 );
 assert.ok(
-    mainSource.includes('const publicRankingReady = isCup || publicCompletionState.completed;')
-    && mainSource.includes('className="publicRankingLocked"')
-    && mainSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
+    publicTournamentScreenSource.includes('const publicRankingReady = isCup || publicCompletionState.completed;')
+    && publicTournamentScreenSource.includes('className="publicRankingLocked"')
+    && publicTournamentScreenSource.includes('O ranking será exibido quando todos os jogos reais estiverem concluídos.'),
   "O ranking público das modalidades comuns não está protegido, ou a Copa continua bloqueada indevidamente."
 );
 assert.ok(
   mainSource.includes('function toggleScheduleGameStatus(roundIndex, gameIndex)')
     && mainSource.includes('function toggleBracketGameStatus(matchKey)')
-    && matchScheduleSource.includes('Jogo em andamento')
+    && matchScheduleSource.includes('Em jogo')
     && matchScheduleSource.includes('is-in-progress'),
-  "O status persistente de jogo em andamento está ausente."
+  "O status persistente de jogo em curso está ausente."
 );
 assert.ok(
-    matchScheduleSource.includes('<MatchStatusSummary data={statusData} />')
+    matchScheduleSource.includes('<ScheduleStatusFilters')
     && cupBracketViewSource.includes('<MatchStatusSummary')
-    && !cupBracketViewSource.includes('bracketMatchKeys={visibleBracketMatchKeys}')
+    && cupBracketViewSource.includes('scope="bracket"')
+    && cupBracketViewSource.includes('bracketMatchKeys={currentPhaseMatchKeys}')
     && tournamentOperationsSource.includes('scope !== "all" && item.scope !== scope'),
-  "O resumo interno deixou de usar a mesma visão geral exibida na aba do torneio."
+  "A fase de grupos ou o resumo isolado da chave aberta está ausente."
+);
+assert.ok(
+  matchScheduleSource.includes('className="scheduleSearch"')
+    && matchScheduleSource.includes('className="scheduleOverviewPrimary"')
+    && matchScheduleSource.includes('const SCHEDULE_STATUS_FILTERS = [')
+    && matchScheduleSource.includes('aria-pressed={value === filter.value}')
+    && matchScheduleSource.includes('if (nextFilter === "all") {')
+    && matchScheduleSource.includes('setScheduleSearchValue("");')
+    && matchScheduleSource.includes('const [scheduleFilterSnapshot, setScheduleFilterSnapshot] = useState(null);')
+    && matchScheduleSource.includes('frozenFilterGameKeys.has(`${roundIndex}:${gameIndex}`)')
+    && matchScheduleSource.includes('summary: { ...scheduleSummary }')
+    && matchScheduleSource.includes('getScheduleGameSearchText(game, roundIndex, courtNumbers, winningScore)')
+    && matchScheduleSource.includes('placeholder="Nome, rodada ou quadra"')
+    && matchControlsSource.includes('Repetir chamada')
+    && matchControlsSource.includes('<option value={1}>1 vez</option>')
+    && styleSource.includes('.scheduleSearch {')
+    && styleSource.includes('button.scheduleStatusFilter.active')
+    && styleSource.includes('grid-template-columns: repeat(3, minmax(0, max-content));')
+    && styleSource.includes('.proDashboard.playAppShell button.openTournamentTabClose {')
+    && styleSource.includes('max-height: 18px !important;')
+    && organizerWorkspaceSource.includes('key={`${tournament.id}:${activeTournamentTab}:${activeMatchesTab}`}'),
+  "Os filtros, a pesquisa operacional ou o seletor compacto das partidas estão ausentes."
 );
 assert.ok(
   mainSource.includes('function prepareEditableBracketData(currentData)')
@@ -4170,7 +4756,7 @@ assert.ok(
     && cupBracketViewSource.includes("export function BracketColumn")
     && cupBracketViewSource.includes("MatchStatusSummary")
     && cupBracketViewSource.includes("speakBracketRound")
-    && mainSource.includes("<CupBracketViewComponent"),
+    && tournamentRuntimeAdaptersSource.includes("<CupBracketViewComponent"),
   "A apresentação das chaves perdeu fases, resumo, chamadas ou a composição com a tela do torneio."
 );
 assert.ok(
@@ -4178,7 +4764,7 @@ assert.ok(
     && publicBracketViewSource.includes("export function PublicCupBracketView")
     && publicBracketViewSource.includes("export function PublicBracketColumn")
     && publicBracketViewSource.includes("readOnly")
-    && mainSource.includes("<PublicCupBracketView"),
+    && publicTournamentScreenSource.includes("<PublicCupBracketView"),
   "A visualização pública perdeu rodadas, chaves, paralelas ou o modo somente leitura."
 );
 assert.ok(tieBreakPanelsSource.includes('showPodium={false}'), "A classificação da fase de grupos ainda exibe troféus de pódio.");
@@ -4194,8 +4780,15 @@ assert.ok(
   publicIdentifiersSource.includes("export function generatePublicId")
     && storyCoverCropSource.includes("export function readStoryCoverFile")
     && mainSource.includes('from "./domain/publicIdentifiers.mjs"')
-    && mainSource.includes('from "./features/media/storyCoverCrop.mjs"'),
+    && mainSource.includes('import("./features/media/storyCoverCrop.mjs")'),
   "Os identificadores públicos ou o tratamento de imagens voltaram ao componente principal."
+);
+assert.ok(
+  lazyFeaturesSource.includes("function lazyNamed(importer, exportName)")
+    && mainSource.includes("<React.Suspense")
+    && mainSource.includes('import("./domain/tournamentScheduleFactory.mjs")')
+    && lazyFeaturesSource.includes('import("../matchOperations/speechAnnouncements.mjs")'),
+  "As áreas pesadas deixaram de ser carregadas sob demanda ou perderam o fallback seguro."
 );
 assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
 assert.ok(mainSource.includes('navigator.serviceWorker.register("/sw.js")'), "O service worker do app não está registrado.");
@@ -4242,14 +4835,15 @@ assert.ok(styleSource.includes('"team1 score1"'), "No celular, cada placar não 
 assert.ok(contactLinksSource.includes("function getBrazilianWhatsAppUrl"), "Os links de WhatsApp não possuem normalização brasileira.");
 assert.ok(contactLinksSource.includes('digits.startsWith("55") && digits.length >= 12'), "O código do país não é preservado quando já foi informado.");
 assert.ok(
-  (mainSource.match(/getBrazilianWhatsAppUrl\(/g) || []).length >= 3
-    && mainSource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}"),
+  ([mainSource, publicArenaPageControllerSource, publicTournamentScreenSource]
+    .join("\n").match(/getBrazilianWhatsAppUrl\(/g) || []).length >= 3
+    && publicArenaPageControllerSource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}"),
   "Nem todos os links de WhatsApp usam o código +55 automático."
 );
 assert.ok(authValidationSource.includes("function isUserAlreadyRegisteredError"), "O cadastro não reconhece e-mails que já possuem conta.");
-assert.ok(mainSource.includes("Este e-mail já possui uma conta"), "O cadastro não orienta o usuário a entrar com a conta existente.");
-assert.ok(mainSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
-assert.ok(mainSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
+assert.ok(loginScreenSource.includes("Este e-mail já possui uma conta"), "O cadastro não orienta o usuário a entrar com a conta existente.");
+assert.ok(loginScreenSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
+assert.ok(loginScreenSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
 assert.ok(contactLinksSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");
@@ -4283,7 +4877,7 @@ assert.ok(
 );
 assert.ok(
   cupPresentationSource.includes('.filter((game) => game.phase === "main")')
-    && mainSource.includes("function calculateCircuitPlacementRows")
+    && circuitRankingAggregationSource.includes("calculateCircuitPlacementRowsByConfig")
     && circuitRankingSettingsPanelSource.includes("function CircuitRankingSettingsEditor")
     && circuitRankingSettingsPanelSource.includes('role="radiogroup" aria-label="Quem acumula os pontos"')
     && circuitRankingSettingsPanelSource.includes("getCircuitTieBreakLabel(settings)")
@@ -4336,7 +4930,7 @@ assert.ok(
   "Uma conta visitante ainda pode abrir o painel administrativo."
 );
 assert.ok(
-  mainSource.includes("organizer={organizer}"),
+  publicArenaPageControllerSource.includes("organizer={organizer}"),
   "O torneio público ainda usa somente a cópia antiga dos dados da arena."
 );
 assert.ok(
@@ -4458,7 +5052,7 @@ assert.ok(
     && publicArenaPresentationSource.includes("export function PublicPlatformHomeView")
     && mainSource.includes("<PublicArenaHeroHeaderView")
     && mainSource.includes("<PublicArenaTournamentCardsView")
-    && mainSource.includes("<PublicArenaPageView")
+    && publicArenaPageControllerSource.includes("<PublicArenaPageView")
     && mainSource.includes("function PublicArenaPage("),
   "A apresentação pública da arena voltou a depender da consulta ou da composição principal."
 );
@@ -4545,8 +5139,8 @@ assert.ok(
   "O perfil público ainda pode comprimir o nome da arena no celular."
 );
 assert.ok(
-  styleSource.includes("grid-template-columns: minmax(410px, 0.8fr) minmax(0, 1.2fr) !important;")
-    && styleSource.includes("padding: 18px clamp(28px, 5vw, 84px) !important;"),
+  styleSource.includes("grid-template-columns: minmax(350px, 0.78fr) minmax(0, 1.22fr) !important;")
+    && styleSource.includes("padding: 11px clamp(24px, 4vw, 58px) !important;"),
   "O cabeçalho do perfil público ainda ocupa altura excessiva no notebook."
 );
 assert.ok(
@@ -5058,7 +5652,7 @@ const resetTimerTestGame = {
 resetMatchTimer(resetTimerTestGame);
 assert.deepEqual(resetTimerTestGame, {}, "A redefinição do jogo deve remover todos os dados do cronômetro.");
 assert.ok(
-  mainSource.includes("function TournamentTimingSummary")
+  tournamentRuntimeAdaptersSource.includes("function TournamentTimingSummary")
     && tournamentSummaryViewsSource.includes("export function TournamentTimingSummaryView")
     && tournamentSummaryViewsSource.includes("export function TournamentMatchStatusSummaryView")
     && tournamentOperationsSource.includes("complete: operationalGames.length > 0")
@@ -5385,6 +5979,17 @@ assert.deepEqual(
   "As fases próprias dos outros modelos de copa não podem ser ocultadas pelas opções exclusivas do Cearense."
 );
 assert.deepEqual(
+  tournamentOperationsForTest.getTournamentMatchStatusSummary({
+    ...disabledCearenseParallelData,
+    cupConfig: { format: "playranking" },
+  }, {
+    scope: "bracket",
+    bracketMatchKeys: ["repechage_sf_1"],
+  }),
+  { waiting: 0, inProgress: 1, finished: 0, total: 1 },
+  "O resumo de uma disputa eliminatória deve contar somente os jogos da chave aberta."
+);
+assert.deepEqual(
   tournamentOperationsForTest.getTournamentTimingSummary({
     schedule: [[{
       ids1: [1],
@@ -5487,7 +6092,8 @@ assert.ok(
     && storyCoverEditorSource.includes('document.querySelectorAll(\'[aria-modal="true"]\')')
     && storyCoverEditorSource.includes('body.style.position = "fixed"')
     && storyCoverEditorSource.includes("dialog.inert = true")
-    && mainSource.includes("PublicImageLightbox")
+    && publicTournamentScreenSource.includes("PublicImageLightbox")
+    && publicCircuitScreenSource.includes("PublicImageLightbox")
     && publicArenaPresentationSource.includes('organizer.photoUrl || "/torneio360-profile.png"')
     && publicArenaApiSource.includes("get_public_tournament_cover")
     && publicArenaApiSource.includes("get_public_circuit_cover")
@@ -5521,6 +6127,27 @@ assert.ok(
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {
   assert.ok(existsSync(fileURLToPath(new URL(logoPath, root))), `Asset obrigatório ausente: ${logoPath}`);
 }
+
+const uniqueCombinedSlices = buildUniqueCombinedCircuitSourceSlices({
+  circuit: { rankingSettings: { sourceCircuitIds: ["circuit-a", "circuit-b"] } },
+  circuits: [
+    { id: "circuit-a", tournamentIds: ["stage-1", "stage-2"], rankingSettings: {} },
+    { id: "circuit-b", tournamentIds: ["stage-2", "stage-3"], rankingSettings: {} },
+  ],
+});
+assert.deepEqual(
+  uniqueCombinedSlices.map((slice) => slice.tournamentIds),
+  [["stage-1", "stage-2"], ["stage-3"]],
+  "O circuito somado voltou a contar uma etapa compartilhada mais de uma vez."
+);
+const compactedCircuitCache = compactCircuitRowsForDashboardCache([
+  { id: "circuit-1", name: "Circuito grande", rankingHistory: { atleta: { points: 100 } } },
+]);
+assert.deepEqual(
+  compactedCircuitCache,
+  [{ id: "circuit-1", name: "Circuito grande" }],
+  "O cache offline voltou a copiar o ranking completo dos circuitos."
+);
 
 for (const iconPath of [
   "public/torneio360-profile.png",
