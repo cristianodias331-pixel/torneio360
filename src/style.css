@@ -1,4 +1,8 @@
-@import "./styles/00-foundation-and-legacy.css";
+@import "./styles/00-foundation.css";
+@import "./styles/01-legacy-dashboard.css";
+@import "./styles/02-legacy-organizer-and-profile.css";
+@import "./styles/03-legacy-public-experience.css";
+@import "./styles/04-legacy-navigation-and-circuits.css";
 @import "./styles/10-app-shell-and-auth.css";
 @import "./styles/20-public-and-tournament.css";
 @import "./styles/30-event-operations.css";

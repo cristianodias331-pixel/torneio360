@@ -1,0 +1,3338 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-dark: #020617;
+  --bg-blue: #082f49;
+  --card: #ffffff;
+  --muted: #64748b;
+  --text: #0f172a;
+  --line: #e2e8f0;
+  --primary: #2563eb;
+  --cyan: #06b6d4;
+  --green: #22c55e;
+  --purple: #7c3aed;
+  --pink: #ec4899;
+  --gold: #f59e0b;
+  --danger: #dc2626;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", Arial, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.22), transparent 34%),
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 28%),
+    linear-gradient(135deg, #020617, #082f49 48%, #020617);
+  color: var(--text);
+}
+
+/* =========================
+   BOTÕES
+   ========================= */
+
+button {
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 20px;
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  color: #24364d;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.deleteBtn,
+button.deleteBtn,
+.danger,
+button.danger {
+  background: linear-gradient(135deg, #dc2626, #991b1b) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.36) !important;
+}
+
+.secondaryBtn,
+button.secondaryBtn,
+.linkBtn {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.actions button {
+  min-width: 130px;
+}
+
+.actions button:not(.deleteBtn):not(.danger):nth-child(1) {
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  box-shadow: 0 14px 28px rgba(236, 72, 153, 0.3);
+}
+
+.actions button:not(.deleteBtn):not(.danger):nth-child(2) {
+  background: linear-gradient(135deg, #059669, #22c55e);
+  box-shadow: 0 14px 28px rgba(34, 197, 94, 0.3);
+}
+
+.actions button:not(.deleteBtn):not(.danger):nth-child(3) {
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.3);
+}
+
+/* =========================
+   FORMULÁRIOS
+   ========================= */
+
+input,
+select {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  padding: 14px 15px;
+  margin: 6px 0 14px;
+  font-size: 15px;
+  font-weight: 750;
+  color: #0f172a;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition:
+    border 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow:
+    0 0 0 4px rgba(56, 189, 248, 0.18),
+    inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+label {
+  font-weight: 850;
+  font-size: 14px;
+}
+
+/* =========================
+   LOGIN
+   ========================= */
+
+.logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #22c55e, #38bdf8);
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  margin-bottom: 16px;
+}
+
+.linkBtn {
+  margin-top: 12px;
+  width: 100%;
+}
+
+/* =========================
+   LOGIN — PAINEL BONITO COM ABAS
+   ========================= */
+
+.infoTabs button.active {
+  background: linear-gradient(135deg, #22c55e, #06b6d4) !important;
+  box-shadow: 0 14px 32px rgba(14, 165, 233, 0.28) !important;
+}
+
+@keyframes tabOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================
+   PLANOS
+   ========================= */
+
+.plansGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.planCard {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+}
+
+.planCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: linear-gradient(90deg, #22c55e, #06b6d4, #7c3aed);
+}
+
+.planBadge {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  background: linear-gradient(135deg, #22c55e, #06b6d4);
+  color: white;
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: 0 10px 24px rgba(34, 197, 94, 0.26);
+}
+
+.planTop h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+  color: #020617;
+}
+
+.planTop span {
+  display: inline-flex;
+  margin-top: 6px;
+  color: #64748b;
+  font-weight: 850;
+  font-size: 14px;
+}
+
+.planDesc {
+  color: #475569;
+  line-height: 1.45;
+  font-weight: 650;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.planCard ul {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 9px;
+}
+
+.planCard li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1.35;
+  font-size: 13px;
+}
+
+.planCard li::before {
+  content: "✓";
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+/* =========================
+   MODALIDADES
+   ========================= */
+
+.modalitiesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.modalitiesGrid div {
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.modalitiesGrid strong {
+  display: block;
+  color: #020617;
+  font-size: 16px;
+  font-weight: 950;
+  margin-bottom: 6px;
+}
+
+.modalitiesGrid p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.45;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* =========================
+   TELAS CENTRAIS
+   ========================= */
+
+.center {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 24px;
+  color: white;
+  text-align: center;
+}
+
+.center button {
+  margin-top: 16px;
+}
+
+.infoBox {
+  background: white;
+  color: #0f172a;
+  border-radius: 18px;
+  padding: 18px;
+  margin: 16px 0;
+  min-width: 300px;
+}
+
+/* =========================
+   APP PRINCIPAL
+   ========================= */
+
+.appPage {
+  max-width: 1320px;
+  margin: auto;
+  padding: 26px;
+}
+
+.appPage header {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  color: #0f172a;
+  margin-bottom: 22px;
+  border-radius: 30px;
+  padding: 18px 24px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.10);
+  backdrop-filter: blur(16px);
+}
+
+.appPage header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.10), transparent 34%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 32%);
+  pointer-events: none;
+}
+
+.appPage header > * {
+  position: relative;
+  z-index: 5;
+}
+
+.appPage header button {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.appPage header h1 {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1;
+  letter-spacing: -0.06em;
+  font-weight: 950;
+}
+
+.appPage header p {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.10);
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  color: #0f172a;
+  font-weight: 850;
+  font-size: 13px;
+}
+
+.appPage header .landingBrand strong {
+  display: block;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.appPage header .landingBrand span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* =========================
+   CARDS
+   ========================= */
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  border-radius: 30px;
+  padding: 26px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow:
+    0 22px 60px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22px;
+  right: 22px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #06b6d4, #7c3aed);
+  opacity: 0.85;
+}
+
+.card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+  color: #020617;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.card h2::before {
+  content: "▸";
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  color: white;
+  font-size: 16px;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+}
+
+.card h3 {
+  margin: 8px 0 10px;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+/* =========================
+   LISTAS / GRID
+   ========================= */
+
+.modality {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 16px;
+  background: #f8fafc;
+  font-weight: 900;
+}
+
+.twoCols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.miniCard {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.tournamentList {
+  gap: 12px;
+}
+
+.tournamentItem {
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+}
+
+.tournamentItem strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.tournamentItem span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* =========================
+   PARTICIPANTES
+   ========================= */
+
+.numberedInput {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.numberedInput span {
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #020617, #1e3a8a);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  font-size: 16px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
+}
+
+.numberedInput input {
+  margin: 0;
+}
+
+/* =========================
+   RODADAS
+   ========================= */
+
+.schedule {
+  gap: 24px !important;
+}
+
+.roundCard {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: 28px;
+  padding: 22px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid #dbe3ef;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.1);
+}
+
+.roundCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: linear-gradient(180deg, #22c55e, #06b6d4, #7c3aed);
+}
+
+.roundCard h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px 4px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #020617, #1e293b);
+  color: white;
+  font-size: 15px;
+  font-weight: 950;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
+}
+
+.gameCard {
+  border-radius: 24px;
+  padding: 27px 18px;
+  margin-bottom: 24px;
+  min-height: 177px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid #dbeafe;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.gameCard:last-child {
+  margin-bottom: 0;
+}
+
+.gameCard strong {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #dbeafe, #cffafe);
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+}
+
+/* =========================
+   PLACAR
+   ========================= */
+
+/* =========================
+   TABELAS
+   ========================= */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 22px;
+  background: white;
+  font-size: 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+thead {
+  background: linear-gradient(135deg, #020617, #1e3a8a);
+  color: white;
+}
+
+th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 14px 12px;
+  text-align: left;
+}
+
+td {
+  font-weight: 750;
+  padding: 13px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+tbody tr:hover {
+  background: #dff6ff;
+}
+
+/* =========================
+   MODAIS
+   ========================= */
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.confirmBox {
+  width: min(520px, calc(100% - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border-radius: 30px;
+  padding: 28px;
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 30px 100px rgba(2, 6, 23, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  text-align: center;
+  animation: confirmIn 0.22s ease-out;
+}
+
+.confirmIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  background: linear-gradient(135deg, #fee2e2, #ffedd5);
+  box-shadow: 0 16px 38px rgba(220, 38, 38, 0.18);
+}
+
+.noticeBox.success .confirmIcon {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+}
+
+.noticeBox.info .confirmIcon {
+  background: linear-gradient(135deg, #dbeafe, #cffafe);
+}
+
+.confirmBox h2 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+  color: #020617;
+}
+
+.confirmBox p {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.confirmEyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.confirmActions button {
+  min-width: 150px;
+}
+
+@keyframes confirmIn {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* =========================
+   SORTEIO
+   ========================= */
+
+.shuffleOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(10px);
+  display: grid;
+  place-items: center;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  overflow: auto;
+}
+
+.shuffleBox {
+  width: min(900px, 100%);
+  height: min(620px, calc(100vh - 28px));
+  height: min(620px, calc(100dvh - 28px));
+  max-height: calc(100vh - 28px);
+  max-height: calc(100dvh - 28px);
+  border-radius: 36px;
+  padding: 22px;
+  color: white;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(236, 72, 153, 0.2), transparent 30%),
+    radial-gradient(circle at 80% 70%, rgba(34, 197, 94, 0.2), transparent 30%),
+    linear-gradient(135deg, #020617, #082f49, #111827);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.55);
+}
+
+.shuffleHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin: 0;
+}
+
+.shuffleEyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.shuffleHeader h2 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+
+.shuffleHeader p {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+}
+
+.shuffleTimer {
+  width: 78px;
+  height: 78px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #22c55e, #38bdf8);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 950;
+  box-shadow: 0 16px 40px rgba(34, 197, 94, 0.35);
+}
+
+.shuffleStage {
+  position: relative;
+  min-height: 0;
+  height: auto;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.18), transparent 28%),
+    radial-gradient(circle at 80% 70%, rgba(34, 197, 94, 0.18), transparent 28%),
+    rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.floatingName {
+  position: absolute;
+  background: white;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 950;
+  white-space: nowrap;
+  max-width: clamp(90px, 18vw, 190px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  transition:
+    left 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.58s ease;
+  will-change: left, top, transform;
+}
+
+.floatingName span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shuffleProgress {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  margin: 0;
+  overflow: hidden;
+}
+
+.shuffleProgress div {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #38bdf8);
+  border-radius: inherit;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: shuffleProgressFill 5s linear forwards;
+}
+
+@keyframes shuffleProgressFill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* VÃ­deo opcional do sorteio */
+.shuffleVideoOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20100;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  overflow: auto;
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.shuffleVideoModal {
+  width: min(920px, 100%);
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  border: 1px solid #d9e3ef;
+  border-radius: 30px;
+  background: #f8fafc;
+  color: #111b3f;
+  box-shadow: 0 34px 110px rgba(2, 6, 23, 0.48);
+}
+
+.shuffleVideoModalHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #d9e3ef;
+  background: rgba(248, 250, 252, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.shuffleVideoModalHeader span {
+  display: block;
+  margin-bottom: 4px;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.shuffleVideoModalHeader h2 {
+  margin: 0;
+  color: #111b3f;
+  font-size: clamp(24px, 3vw, 34px);
+  letter-spacing: -0.04em;
+}
+
+.shuffleVideoModalHeader p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+button.shuffleVideoClose {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff !important;
+  color: #111b3f !important;
+  box-shadow: none !important;
+}
+
+.shuffleVideoClose svg {
+  width: 19px;
+  height: 19px;
+}
+
+.shuffleVideoChoice,
+.shuffleVideoReady {
+  padding: 22px 24px 26px;
+}
+
+.shuffleVideoReceipt {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.6fr);
+  gap: 14px;
+}
+
+.shuffleVideoReceipt > div {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid #d9e3ef;
+  border-radius: 20px;
+  background: #ffffff;
+}
+
+.shuffleVideoReceipt strong,
+.shuffleVideoReceipt span {
+  display: block;
+}
+
+.shuffleVideoReceipt strong {
+  overflow: hidden;
+  color: #111b3f;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shuffleVideoReceipt span {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.shuffleVideoMiniResult {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.shuffleVideoMiniResult > div {
+  min-width: 0;
+  padding: 13px 15px;
+  border-left: 4px solid #7c3aed;
+  border-radius: 14px;
+  background: #eef4ff;
+}
+
+.shuffleVideoMiniResult strong,
+.shuffleVideoMiniResult span {
+  display: block;
+}
+
+.shuffleVideoMiniResult strong {
+  color: #1d4ed8;
+  font-size: 13px;
+}
+
+.shuffleVideoMiniResult span {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shuffleVideoActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.shuffleVideoActions button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 17px;
+  border-radius: 14px;
+  font-size: 13px;
+  box-shadow: none !important;
+}
+
+.shuffleVideoActions button svg {
+  width: 18px;
+  height: 18px;
+}
+
+button.shuffleVideoGenerate {
+  background: linear-gradient(135deg, #7c3aed, #9333ea) !important;
+  color: #ffffff !important;
+}
+
+button.shuffleVideoDownload {
+  background: linear-gradient(135deg, #047857, #16a34a) !important;
+  color: #ffffff !important;
+}
+
+button.shuffleVideoSecondary {
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+}
+
+button.shuffleVideoReopenButton,
+.actions button.shuffleVideoReopenButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(124, 58, 237, 0.24) !important;
+}
+
+.shuffleVideoReopenButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.shuffleVideoGenerating {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 34px 24px;
+  text-align: center;
+}
+
+.shuffleVideoGenerating > strong {
+  margin-top: 18px;
+  color: #111b3f;
+  font-size: 22px;
+}
+
+.shuffleVideoGenerating > span {
+  margin-top: 7px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.shuffleVideoSpinner {
+  width: 46px;
+  height: 46px;
+  color: #7c3aed;
+  animation: shuffleVideoSpin 1s linear infinite;
+}
+
+.shuffleVideoGenerating > div {
+  width: min(460px, 100%);
+  height: 12px;
+  margin-top: 26px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dbe4ef;
+}
+
+.shuffleVideoGenerating > div i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c3aed, #22d3ee);
+  transition: width 0.18s linear;
+}
+
+.shuffleVideoGenerating small {
+  margin-top: 8px;
+  color: #475569;
+  font-weight: 900;
+}
+
+@keyframes shuffleVideoSpin {
+  to { transform: rotate(360deg); }
+}
+
+.shuffleVideoPreviewShell {
+  width: min(310px, 100%);
+  margin: 0 auto;
+  padding: 8px;
+  border-radius: 22px;
+  background: #07163e;
+  box-shadow: 0 18px 48px rgba(7, 22, 62, 0.24);
+}
+
+.shuffleVideoPreviewShell video {
+  display: block;
+  width: 100%;
+  max-height: 52vh;
+  max-height: 52dvh;
+  border-radius: 15px;
+  background: #020617;
+}
+
+.shuffleVideoMessage {
+  margin: 14px 0 0;
+  padding: 11px 14px;
+  border: 1px solid #86efac;
+  border-radius: 13px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.shuffleVideoMessage.error {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+html[data-theme="dark"] .shuffleVideoModal {
+  border-color: #2b4059;
+  background: #101b2c;
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .shuffleVideoModalHeader {
+  border-color: #2b4059;
+  background: rgba(16, 27, 44, 0.96);
+}
+
+html[data-theme="dark"] .shuffleVideoModalHeader h2,
+html[data-theme="dark"] .shuffleVideoGenerating > strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .shuffleVideoModalHeader p,
+html[data-theme="dark"] .shuffleVideoGenerating > span {
+  color: #9fb0c4;
+}
+
+html[data-theme="dark"] button.shuffleVideoClose,
+html[data-theme="dark"] button.shuffleVideoSecondary {
+  border-color: #39506a !important;
+  background: #172538 !important;
+  color: #e5edf7 !important;
+}
+
+html[data-theme="dark"] .shuffleVideoReceipt > div {
+  border-color: #2b4059;
+  background: #152235;
+}
+
+html[data-theme="dark"] .shuffleVideoReceipt strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .shuffleVideoReceipt span,
+html[data-theme="dark"] .shuffleVideoGenerating small {
+  color: #9fb0c4;
+}
+
+html[data-theme="dark"] .shuffleVideoMiniResult > div {
+  background: #172b49;
+}
+
+html[data-theme="dark"] .shuffleVideoMiniResult strong {
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .shuffleVideoMiniResult span {
+  color: #d4deeb;
+}
+
+html[data-theme="dark"] .shuffleVideoGenerating > div {
+  background: #273b52;
+}
+
+html[data-theme="dark"] .shuffleVideoMessage {
+  border-color: #166534;
+  background: #0d2e20;
+  color: #bbf7d0;
+}
+
+html[data-theme="dark"] .shuffleVideoMessage.error {
+  border-color: #9a3412;
+  background: #341c12;
+  color: #fed7aa;
+}
+
+html[data-theme="dark"] .confirmBox {
+  border-color: #2b4059;
+  background: linear-gradient(180deg, #152235, #101b2c);
+  color: #f8fafc;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.58);
+}
+
+html[data-theme="dark"] .confirmBox h2 {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .confirmBox p {
+  color: #b8c5d5;
+}
+
+html[data-theme="dark"] .regenerationImpactList {
+  border-color: #39506a;
+  background: #172538;
+  color: #e5edf7;
+}
+
+html[data-theme="dark"] .confirmActions .secondaryBtn {
+  border-color: #39506a !important;
+  background: #172538 !important;
+  color: #e5edf7 !important;
+}
+
+/* =========================
+   RESPONSIVO
+   ========================= */
+
+@media (max-width: 1050px) {
+
+  .plansGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalitiesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .shuffleOverlay {
+    place-items: center;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+
+  .shuffleBox {
+    height: min(570px, calc(100vh - 20px));
+    height: min(570px, calc(100dvh - 20px));
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 14px;
+    gap: 11px;
+    border-radius: 24px;
+  }
+
+  .shuffleHeader {
+    gap: 10px;
+  }
+
+  .shuffleHeader h2 {
+    font-size: clamp(20px, 6vw, 25px);
+  }
+
+  .shuffleHeader p {
+    max-width: 230px;
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .shuffleEyebrow {
+    font-size: 9px;
+  }
+
+  .shuffleTimer {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    border-radius: 18px;
+    font-size: 20px;
+  }
+
+  .shuffleStage {
+    border-radius: 18px;
+  }
+
+  .floatingName {
+    max-width: 29vw;
+    padding: 7px 9px;
+    font-size: 11px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+  }
+
+  .shuffleProgress {
+    height: 8px;
+  }
+
+  .shuffleVideoOverlay {
+    place-items: end center;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .shuffleVideoModal {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 24px;
+  }
+
+  .shuffleVideoModalHeader {
+    gap: 10px;
+    padding: 16px 15px 13px;
+  }
+
+  .shuffleVideoModalHeader h2 {
+    font-size: 24px;
+  }
+
+  .shuffleVideoModalHeader p {
+    max-width: 285px;
+    font-size: 12px;
+  }
+
+  button.shuffleVideoClose {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .shuffleVideoChoice,
+  .shuffleVideoReady {
+    padding: 14px 14px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .shuffleVideoReceipt {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .shuffleVideoReceipt > div {
+    padding: 12px 14px;
+    border-radius: 15px;
+  }
+
+  .shuffleVideoReceipt strong {
+    font-size: 15px;
+  }
+
+  .shuffleVideoMiniResult {
+    grid-template-columns: 1fr;
+    max-height: 190px;
+    overflow: auto;
+  }
+
+  .shuffleVideoActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-top: 14px;
+  }
+
+  .shuffleVideoActions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .shuffleVideoGenerating {
+    min-height: 330px;
+    padding: 28px 18px;
+  }
+
+  .shuffleVideoPreviewShell {
+    width: min(240px, 72vw);
+  }
+
+  .shuffleVideoPreviewShell video {
+    max-height: 48vh;
+    max-height: 48dvh;
+  }
+
+  button.shuffleVideoReopenButton,
+  .actions button.shuffleVideoReopenButton {
+    width: 100%;
+  }
+
+  .appPage {
+    padding: 14px;
+  }
+
+  .appPage header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .twoCols {
+    grid-template-columns: 1fr;
+  }
+
+  .tournamentItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+
+  .confirmOverlay {
+    align-items: center;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+
+  .confirmBox {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 20px 16px;
+    border-radius: 24px;
+  }
+
+  .confirmIcon {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 10px;
+    border-radius: 19px;
+    font-size: 28px;
+  }
+
+  .confirmBox h2 {
+    margin-bottom: 8px;
+    font-size: clamp(22px, 7vw, 27px);
+  }
+
+  .confirmBox p {
+    font-size: 14px;
+    line-height: 1.42;
+  }
+
+  .confirmBox .regenerationImpactList {
+    gap: 6px;
+    margin: 14px 0 16px;
+    padding: 12px 12px 12px 30px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .confirmActions {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .confirmActions button {
+    width: 100%;
+  }
+}
+
+/* Critério do ranking */
+
+/* Salvamento automático e apagar placares */
+
+/* Correção botão Voltar dentro do torneio */
+
+.appPage header .actions {
+  z-index: 50;
+}
+
+.appPage header .actions button {
+  z-index: 60;
+}
+
+/* Correções do salvamento automático e botão voltar */
+
+.appPage header .actions {
+  position: relative;
+  z-index: 80;
+  pointer-events: auto;
+}
+
+.roundHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.roundHeader h3 {
+  margin: 0;
+}
+
+.voiceActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.voiceBtn {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+}
+
+.voiceBtn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.voiceBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.voiceRepeatBox {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.voiceRepeatBox span {
+  font-weight: 700;
+  color: #334155;
+}
+
+.voiceRepeatBox select {
+  max-width: 160px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .roundHeader {
+    align-items: flex-start;
+  }
+
+  .voiceActions {
+    width: 100%;
+  }
+
+  .voiceActions button {
+    flex: 1;
+  }
+
+  .voiceRepeatBox {
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-direction: column;
+  }
+
+  .voiceRepeatBox select {
+    max-width: 100%;
+  }
+}
+
+.appPage header .actions button {
+  position: relative;
+  z-index: 90;
+  pointer-events: auto;
+}
+
+.plansGridThree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.plansGridThree .planCard {
+  height: 100%;
+}
+
+.modalityInfoCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.modalityInfoTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modalityInfoTop strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.explainBtn {
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  white-space: nowrap;
+}
+
+.explainBtn:hover {
+  background: #dbeafe;
+}
+
+.modalityExplainBox {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.modalityExplainBox p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+@media (max-width: 980px) {
+  .plansGridThree {
+    grid-template-columns: 1fr;
+  }
+
+  .modalityInfoTop {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .explainBtn {
+    width: 100%;
+  }
+}
+
+.landingPage {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #fff7ed 48%, #eff6ff 100%);
+  color: #0f172a;
+}
+
+.landingHeader {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px clamp(18px, 4vw, 56px);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.landingBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.landingBrand strong {
+  display: block;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.landingBrand span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.beachLogo {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  box-shadow: 0 14px 28px rgba(14, 165, 233, 0.25);
+  flex: 0 0 auto;
+}
+
+.landingNav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.landingNav a {
+  color: #334155;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.landingNav a:hover {
+  color: #2563eb;
+}
+
+.landingHeaderActions,
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landingHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 40px;
+  align-items: center;
+  padding: 72px clamp(18px, 5vw, 70px) 56px;
+}
+
+.heroContent h1 {
+  margin: 18px 0 18px;
+  font-size: clamp(38px, 5.5vw, 72px);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  color: #0f172a;
+}
+
+.heroContent p {
+  max-width: 680px;
+  color: #475569;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: #ecfeff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.heroHighlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.heroHighlights span {
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.heroVisual {
+  min-height: 440px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sandCard {
+  position: relative;
+  width: min(100%, 460px);
+  min-height: 440px;
+  border-radius: 36px;
+  overflow: hidden;
+  padding: 30px;
+  background:
+    radial-gradient(circle at 85% 14%, #fde68a 0 36px, transparent 37px),
+    linear-gradient(180deg, #7dd3fc 0%, #bae6fd 40%, #fde68a 41%, #fbbf24 100%);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
+}
+
+.sandSun {
+  position: absolute;
+  right: 34px;
+  top: 32px;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #fef3c7;
+  box-shadow: 0 0 0 14px rgba(254, 243, 199, 0.32);
+}
+
+.racketMark {
+  position: absolute;
+  left: 28px;
+  top: 28px;
+  width: 78px;
+  height: 78px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.74);
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+}
+
+.mockPanel {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 28px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
+}
+
+.mockTop {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.mockTop span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.mockTitle {
+  font-weight: 900;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.mockGame {
+  padding: 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+}
+
+.mockGame strong {
+  color: #2563eb;
+}
+
+.mockGame p {
+  margin: 4px 0 0;
+  color: #334155;
+  font-size: 14px;
+}
+
+.mockVoiceBtn {
+  width: 100%;
+  margin-top: 4px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.landingSection {
+  padding: 58px clamp(18px, 5vw, 70px);
+}
+
+.sectionIntro {
+  max-width: 780px;
+  margin-bottom: 28px;
+}
+
+.sectionIntro span,
+.accessText span {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #2563eb;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
+.sectionIntro h2,
+.accessText h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 46px);
+  letter-spacing: -0.04em;
+  color: #0f172a;
+}
+
+.sectionIntro p,
+.accessText p {
+  color: #64748b;
+  line-height: 1.7;
+  font-size: 16px;
+}
+
+.stepsGrid,
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.featuresGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stepCard,
+.featureCard {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07);
+}
+
+.stepCard div {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 900;
+  margin-bottom: 14px;
+}
+
+.stepCard h3,
+.featureCard h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.stepCard p,
+.featureCard p {
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.featureCard span {
+  display: inline-block;
+  font-size: 30px;
+  margin-bottom: 10px;
+}
+
+.landingPlans {
+  align-items: stretch;
+}
+
+.landingModalities {
+  align-items: start;
+}
+
+.landingAccessSection {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(320px, 0.75fr);
+  gap: 34px;
+  align-items: start;
+  padding: 66px clamp(18px, 5vw, 70px) 90px;
+}
+
+.accessCard {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e2e8f0;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.14);
+}
+
+.accessToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px;
+  background: #f1f5f9;
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+
+.accessToggle button {
+  background: transparent;
+  color: #334155;
+  box-shadow: none;
+}
+
+.accessToggle button.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.formTwoCols {
+  gap: 12px;
+}
+
+.formTwoCols > div {
+  min-width: 0;
+}
+
+@media (max-width: 1080px) {
+  .landingNav {
+    display: none;
+  }
+
+  .landingHero,
+  .landingAccessSection {
+    grid-template-columns: 1fr;
+  }
+
+  .heroVisual {
+    min-height: auto;
+  }
+
+  .stepsGrid,
+  .featuresGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .landingHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .landingHeaderActions {
+    width: 100%;
+  }
+
+  .landingHeaderActions button,
+  .heroActions button {
+    flex: 1;
+  }
+
+  .landingHero {
+    padding-top: 42px;
+  }
+
+  .heroActions,
+  .heroHighlights {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stepsGrid,
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sandCard {
+    min-height: 390px;
+  }
+
+  .landingAccessSection {
+    padding-bottom: 54px;
+  }
+}
+
+.publicPage {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%),
+    linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+  color: #0f172a;
+}
+
+.publicHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px clamp(18px, 5vw, 70px);
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid #e2e8f0;
+  backdrop-filter: blur(14px);
+}
+
+.publicHeader span {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #2563eb;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
+.publicHeader h1 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.publicHeader p {
+  margin: 4px 0 0;
+  color: #64748b;
+}
+
+.publicBadge {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.publicContent {
+  padding: 28px clamp(18px, 5vw, 70px) 60px;
+}
+
+@media (max-width: 700px) {
+
+  .publicHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* ================================
+   COPA / CHAVES MAIS COMPACTAS
+================================ */
+
+.cupBrackets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(340px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.bracketColumn {
+  min-width: 0;
+}
+
+.bracketColumn > h3 {
+  position: sticky;
+  top: 76px;
+  z-index: 5;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 15px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+}
+
+.bracketColumn .roundCard {
+  padding: 12px;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+.bracketColumn .roundHeader {
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bracketColumn .roundHeader h3 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.bracketColumn .gameCard {
+  padding: 10px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+.bracketColumn .gameCard strong {
+  font-size: 13px;
+}
+
+.bracketColumn .gameTeams {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bracketColumn .gameTeams div {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.bracketColumn .gameTeams span {
+  font-size: 12px;
+}
+
+.bracketColumn .scoreRow {
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.bracketColumn .scoreRow input {
+  height: 34px;
+  padding: 6px;
+  font-size: 14px;
+}
+
+.bracketColumn .voiceActions {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bracketColumn .voiceBtn,
+.bracketColumn .secondaryBtn {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.bracketColumn .gameVoiceActions {
+  margin-top: 8px;
+}
+
+/* ================================
+   COPA RESPONSIVA NO CELULAR
+================================ */
+
+@media (max-width: 900px) {
+  .cupBrackets {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bracketColumn {
+    flex: 0 0 86vw;
+    scroll-snap-align: start;
+  }
+
+  .bracketColumn > h3 {
+    position: sticky;
+    top: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .appPage {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .cupBrackets {
+    gap: 12px;
+  }
+
+  .bracketColumn {
+    flex-basis: 88vw;
+  }
+
+  .bracketColumn > h3 {
+    font-size: 14px;
+    padding: 9px 10px;
+    border-radius: 12px;
+  }
+
+  .bracketColumn .roundCard {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .bracketColumn .roundHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bracketColumn .roundHeader h3 {
+    font-size: 14px;
+  }
+
+  .bracketColumn .gameCard {
+    padding: 9px;
+  }
+
+  .bracketColumn .gameTeams {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .bracketColumn .gameTeams span {
+    display: block;
+    opacity: 0.65;
+  }
+
+  .bracketColumn .scoreRow {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .bracketColumn .scoreRow input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bracketColumn .voiceActions {
+    width: 100%;
+  }
+
+  .bracketColumn .voiceActions button {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .publicContent {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* ================================
+   RODADAS / FASE DE GRUPOS COMPACTAS
+================================ */
+
+.schedule {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.schedule > .voiceRepeatBox {
+  grid-column: 1 / -1;
+}
+
+.schedule .roundCard {
+  padding: 12px;
+  border-radius: 16px;
+  margin: 0;
+}
+
+.schedule .roundHeader {
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.schedule .roundHeader h3,
+.schedule > .roundCard > h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+
+.schedule .gameCard {
+  padding: 10px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+.schedule .gameCard:last-child {
+  margin-bottom: 0;
+}
+
+.schedule .gameCard strong {
+  font-size: 13px;
+}
+
+.schedule .gameTeams {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.schedule .gameTeams div {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.schedule .gameTeams span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.schedule .scoreRow {
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.schedule .scoreRow input {
+  height: 34px;
+  padding: 6px;
+  font-size: 14px;
+}
+
+.schedule .voiceActions {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.schedule .voiceBtn,
+.schedule .secondaryBtn {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.schedule .gameVoiceActions {
+  margin-top: 8px;
+}
+
+.voiceRepeatBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.voiceRepeatBox span {
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.voiceRepeatBox select {
+  max-width: 160px;
+  margin: 0;
+}
+
+  /* ================================
+   RODADAS RESPONSIVAS NO CELULAR
+================================ */
+
+@media (max-width: 760px) {
+  .schedule {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .schedule .roundCard {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .schedule .roundHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .schedule .roundHeader h3,
+  .schedule > .roundCard > h3 {
+    font-size: 14px;
+  }
+
+  .schedule .gameCard {
+    padding: 9px;
+  }
+
+  .schedule .gameTeams {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .schedule .gameTeams span {
+    display: block;
+  }
+
+  .schedule .scoreRow {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .schedule .scoreRow input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .schedule .voiceActions {
+    width: 100%;
+  }
+
+  .schedule .voiceActions button {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .voiceRepeatBox {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .voiceRepeatBox select {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+  /* ================================
+   PARTICIPANTES MAIS COMPACTOS
+================================ */
+
+.twoCols {
+  gap: 14px;
+}
+
+.miniCard {
+  padding: 12px;
+  border-radius: 16px;
+}
+
+.miniCard h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.numberedInput {
+  gap: 8px;
+}
+
+.numberedInput span {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.numberedInput input,
+.miniCard input {
+  height: 38px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .twoCols {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .miniCard {
+    padding: 10px;
+  }
+
+  .numberedInput input,
+  .miniCard input {
+    height: 36px;
+  }
+}
+
+  /* ================================
+   CARDS GERAIS MAIS ENXUTOS
+================================ */
+
+.appPage {
+  gap: 14px;
+}
+
+.card {
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.card h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.card h3 {
+  font-size: 16px;
+}
+
+.actions {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  padding: 10px 13px;
+}
+
+@media (max-width: 760px) {
+  .card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .card h2 {
+    font-size: 18px;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions button {
+    flex: 1;
+    min-width: 130px;
+  }
+}
+
+  .publicHeader {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* =========================================================
+   COMPACTAÇÃO GERAL DOS JOGOS / RODADAS / CHAVES
+   Vale para todas as modalidades
+========================================================= */
+
+/* deixa rodadas/fase de grupos em grade compacta */
+
+/* =========================================================
+   COMPACTAÇÃO GERAL DOS JOGOS / RODADAS / CHAVES
+   Vale para todas as modalidades
+========================================================= */
+
+.roundCard {
+  padding: 10px !important;
+  border-radius: 16px !important;
+  margin-bottom: 10px !important;
+}
+
+.gameCard {
+  padding: 9px !important;
+  border-radius: 14px !important;
+  margin-bottom: 8px !important;
+}
+
+.gameCard strong {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.voiceActions {
+  gap: 6px !important;
+}
+
+.voiceBtn,
+.secondaryBtn,
+.gameVoiceActions button {
+  padding: 7px 10px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+}
+
+.roundHeader {
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.roundHeader h3,
+.roundCard > h3 {
+  font-size: 14px !important;
+}
+
+.card {
+  padding: 14px !important;
+}
+
+.card h2 {
+  font-size: 18px !important;
+  margin-bottom: 10px !important;
+}
+
+.card h3 {
+  font-size: 15px !important;
+}
+
+/* deixa rodadas/fase de grupos em grade compacta */
+.schedule {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+/* =========================================================
+   RESPONSIVO CELULAR — COMPACTO
+========================================================= */
+
+@media (max-width: 760px) {
+  .appPage {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .card {
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .schedule {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .cupBrackets {
+    display: flex !important;
+    gap: 12px !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    padding-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .bracketColumn {
+    flex: 0 0 88vw !important;
+    scroll-snap-align: start !important;
+  }
+
+  .bracketColumn > h3 {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+  }
+
+  .roundHeader {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  .roundHeader .voiceActions {
+    width: 100% !important;
+  }
+
+  .roundHeader .voiceActions button {
+    flex: 1 !important;
+  }
+}
+
+/* =========================================================
+   AJUSTE FINAL — RODADAS CONFORTÁVEIS EM 2 COLUNAS
+   Sobrescreve a compactação exagerada anterior
+========================================================= */
+
+/* Rodadas normais e fase de grupos: no máximo 2 colunas */
+
+/* O seletor de voz ocupa a largura toda */
+
+/* Cards voltam a ter tamanho confortável */
+
+/* Times um pouco maiores */
+
+/* Placar confortável */
+
+/* Botões sem ficar minúsculos */
+
+/* Cards gerais não tão pequenos */
+
+/* =========================================================
+   CHAVES DA COPA — 2 COLUNAS CONFORTÁVEIS
+========================================================= */
+
+/* Ouro para principal */
+
+/* Prata para paralela/repescagem */
+
+/* Título da fase sem ficar mini */
+
+/* Quadra em pílula, mas legível */
+
+/* =========================================================
+   CELULAR — 1 RODADA POR LINHA
+========================================================= */
+
+/* =========================================================
+   AJUSTES FINAIS — COPA, PÓDIO, RANKING PARALELO E PLACAR
+========================================================= */
+
+/* Remove setinhas dos inputs de placar */
+
+/* Rodadas normais e fase de grupos: 2 colunas no desktop */
+.schedule {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(360px, 1fr)) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+.schedule > .voiceRepeatBox {
+  grid-column: 1 / -1 !important;
+}
+
+/* Cards confortáveis */
+.roundCard {
+  padding: 16px !important;
+  border-radius: 20px !important;
+  margin-bottom: 14px !important;
+}
+
+.gameCard {
+  padding: 14px !important;
+  border-radius: 18px !important;
+  margin-bottom: 12px !important;
+}
+
+.gameCard strong {
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+}
+
+.voiceBtn,
+.secondaryBtn,
+.gameVoiceActions button {
+  padding: 9px 12px !important;
+  border-radius: 14px !important;
+  font-size: 12px !important;
+}
+
+.roundHeader {
+  gap: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+.roundHeader h3,
+.roundCard > h3 {
+  font-size: 16px !important;
+  margin: 0 !important;
+}
+
+/* Cards gerais */
+.card {
+  padding: 18px !important;
+}
+
+.card h2 {
+  font-size: 20px !important;
+  margin-bottom: 14px !important;
+}
+
+.card h3 {
+  font-size: 16px !important;
+}
+
+/* Chaves da Copa: 2 colunas */
+.cupBrackets {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(380px, 1fr)) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+.bracketColumn {
+  min-width: 0 !important;
+}
+
+.bracketColumn > h3 {
+  margin: 0 0 12px !important;
+  padding: 12px 14px !important;
+  border-radius: 16px !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+/* Principal/Ouro */
+.cupBrackets .bracketColumn:first-child > h3 {
+  background: linear-gradient(135deg, #facc15, #f59e0b) !important;
+  color: #422006 !important;
+  border: 1px solid #fbbf24 !important;
+}
+
+/* Paralela/Prata */
+.cupBrackets .bracketColumn:nth-child(2) > h3 {
+  background: linear-gradient(135deg, #e5e7eb, #94a3b8) !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.cupBrackets .bracketColumn:first-child .roundCard {
+  border-left: 5px solid #f59e0b !important;
+}
+
+.cupBrackets .bracketColumn:nth-child(2) .roundCard {
+  border-left: 5px solid #94a3b8 !important;
+}
+
+/* Título das fases */
+.bracketColumn .roundHeader h3,
+.bracketColumn .roundCard > h3 {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 8px 13px !important;
+  border-radius: 999px !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  margin-bottom: 10px !important;
+}
+
+.cupBrackets .bracketColumn:first-child .roundHeader h3,
+.cupBrackets .bracketColumn:first-child .roundCard > h3 {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #fff7ed !important;
+}
+
+.cupBrackets .bracketColumn:nth-child(2) .roundHeader h3,
+.cupBrackets .bracketColumn:nth-child(2) .roundCard > h3 {
+  background: linear-gradient(135deg, #64748b, #334155) !important;
+  color: #f8fafc !important;
+}
+
+/* Quadra em pílula */
+.bracketColumn .gameCard > strong,
+.schedule .gameCard > strong {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+}
+
+/* Pódio da Copa Principal */
+.cupPodiumBox {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff7ed, #fef3c7);
+  border: 1px solid #f59e0b;
+}
+
+.cupPodiumBox h3 {
+  margin-top: 0;
+  color: #78350f;
+}
+
+.cupPodiumGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.cupPodiumItem {
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #fde68a;
+  text-align: center;
+}
+
+.cupPodiumItem strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #92400e;
+}
+
+.cupPodiumItem span {
+  font-weight: 800;
+  color: #111827;
+}
+
+/* Ranking da disputa paralela */
+
+/* Responsivo */
+@media (max-width: 900px) {
+  .schedule {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .cupBrackets {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    overflow-x: visible !important;
+  }
+
+  .bracketColumn {
+    width: 100% !important;
+    flex: initial !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .cupPodiumGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .appPage {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .card {
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .roundCard {
+    padding: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  .gameCard {
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .roundHeader {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  .roundHeader .voiceActions {
+    width: 100% !important;
+  }
+
+  .roundHeader .voiceActions button,
+  .gameVoiceActions button {
+    flex: 1 !important;
+    width: 100% !important;
+  }
+}
+
+.card .twoCols > div label {
+  display: block;
+}
+
+.card select option[value=""] {
+  color: #94a3b8;
+}
+
+.tournamentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tournamentMeta span {
+  width: fit-content;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tournamentItem {
+  gap: 14px;
+}
+
+@media (max-width: 700px) {
+  .tournamentItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tournamentItem .actions {
+    width: 100%;
+  }
+
+  .tournamentItem .actions button {
+    flex: 1;
+  }
+}
+
+.tournamentList {
+  display: grid;
+  gap: 14px;
+}
+
+.tournamentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.tournamentInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournamentTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tournamentTitleRow strong {
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.tournamentTypeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #0369a1;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.tournamentMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tournamentMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tournamentActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .tournamentItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tournamentActions {
+    width: 100%;
+  }
+
+  .tournamentActions button {
+    flex: 1;
+  }
+}
+
+.grid .modality {
+  gap: 10px;
+  min-height: 58px;
+  padding: 14px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+  font-size: 0.92rem;
+  font-weight: 800;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.grid .modality:hover {
+  border-color: rgba(14, 165, 233, 0.28);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+.grid .modality::first-letter {
+  font-size: 1.05rem;
+}
+
+.card > .grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+
+  .grid .modality {
+    min-height: auto;
+  }
+}
+
+.card > .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.grid .modality {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 16px 18px 16px 46px;
+  border-radius: 20px;
+  border: 1px solid rgba(14, 165, 233, 0.14);
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 34%),
+    linear-gradient(135deg, #ffffff, #f8fafc);
+  color: #0f172a;
+  font-size: 0.94rem;
+  font-weight: 900;
+  line-height: 1.25;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+}
+
+.grid .modality::before {
+  content: "🏆";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e0f2fe, #ccfbf1);
+  font-size: 0.8rem;
+}
+
+.grid .modality:hover {
+  transform: translateY(-2px);
+  border-color: rgba(14, 165, 233, 0.32);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.1);
+}
+
+@media (max-width: 720px) {
+  .card > .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid .modality {
+    min-height: 58px;
+  }
+}
+
