@@ -74,14 +74,25 @@
   display: none !important;
 }
 
-.embeddedLoginPage > main {
-  min-height: 0;
-}
-
 .unifiedLoginPage > main {
   display: grid;
   min-height: calc(100vh - 72px);
   place-items: center;
+}
+
+.unifiedLoginPage.embeddedLoginPage {
+  min-height: 0;
+  background: transparent;
+}
+
+.unifiedLoginPage.embeddedLoginPage > main {
+  min-height: 0;
+  place-items: stretch;
+}
+
+.unifiedLoginPage.embeddedLoginPage .landingAccessSection {
+  border-radius: 20px;
+  padding-top: 42px;
 }
 
 .unifiedLoginPage .landingAccessSection {

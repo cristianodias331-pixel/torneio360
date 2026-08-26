@@ -463,9 +463,6 @@ function App() {
       <UnifiedPlatformFrame
         activePanel="profile"
         hasSession={Boolean(session)}
-        title="Perfil"
-        eyebrow="Torneio360"
-        description="Perfil dentro da comunidade Torneio360."
         onNavigate={(panel) => navigateFromPublicProfile(panel, Boolean(session))}
         onSignup={session ? undefined : () => navigatePlatform({ cadastro: "conta" })}
         onAccountAction={() => navigatePlatform(session ? {} : { entrar: "1" })}
@@ -698,9 +695,6 @@ function UnifiedPublicArenaProfile({ session = null, ...props }) {
     <UnifiedPlatformFrame
       activePanel="profile"
       hasSession={hasSession}
-      title={props.publicId ? undefined : "Perfil da organização"}
-      eyebrow={props.publicId ? undefined : "Organização"}
-      description={props.publicId ? undefined : "Informações, fotos, torneios e circuitos publicados."}
       onNavigate={(panel) => navigateFromPublicProfile(panel, hasSession)}
       onSignup={hasSession ? undefined : () => navigatePlatform({ cadastro: "conta" })}
       onAccountAction={() => navigatePlatform(hasSession ? {} : { entrar: "1" })}
