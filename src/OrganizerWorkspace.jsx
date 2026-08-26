@@ -7919,7 +7919,12 @@ setNewPublicInfo({
                   {circuitStatus === "finished" ? "Encerrado" : circuitStatus === "upcoming" ? "Próximo" : "Em andamento"}
                 </span>
               </div>
-              <p><CalendarDays aria-hidden="true" /> {circuit.startDate ? formatDateBR(circuit.startDate) : "Sem início"} até {circuit.endDate ? formatDateBR(circuit.endDate) : "sem fim definido"}</p>
+              <p className="circuitDateRange">
+                <CalendarDays aria-hidden="true" />
+                <span>{circuit.startDate ? formatDateBR(circuit.startDate) : "Sem início"}</span>
+                <span className="circuitDateSeparator">até</span>
+                <span>{circuit.endDate ? formatDateBR(circuit.endDate) : "sem fim definido"}</span>
+              </p>
               <small>
                 {combinedCircuit
                   ? `${sourceCircuitIds.length} circuito(s) de origem · ${selectedTournamentCount} torneio(s) consolidados`
