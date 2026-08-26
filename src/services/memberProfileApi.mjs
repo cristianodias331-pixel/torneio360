@@ -83,3 +83,35 @@ export async function loadPublicMemberProfile({ supabase, identifier }) {
     schemaAvailable: true,
   };
 }
+
+export async function fetchPublicMemberDirectory({
+  supabase,
+  search = "",
+  limit = 24,
+  cursor = null,
+}) {
+  const normalizedLimit = Math.max(1, Math.min(Number(limit) || 24, 48));
+  const { data, error } = await supabase.rpc("list_public_member_profiles", {
+    p_search: String(search || "").trim() || null,
+    p_limit: normalizedLimit,
+    p_after_sort_name: cursor?.sortName || null,
+    p_after_user_id: cursor?.userId || null,
+  });
+
+  if (error) {
+    return { items: [], hasMore: false, nextCursor: null, error };
+  }
+
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const nextCursor = data?.next_cursor?.user_id ? {
+    userId: data.next_cursor.user_id,
+    sortName: data.next_cursor.sort_name || "",
+  } : null;
+
+  return {
+    items,
+    hasMore: data?.has_more === true,
+    nextCursor,
+    error: null,
+  };
+}

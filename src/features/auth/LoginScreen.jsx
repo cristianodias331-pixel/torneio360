@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Gift, MessageCircle } from "lucide-react";
+import { Gift, MessageCircle, Trophy, UserRound } from "lucide-react";
+import "../../styles/54-public-auth-profiles.css";
 import { NoticeModal } from "../dialogs/ConfirmationDialogs.jsx";
 import {
   BeachLogo,
@@ -135,6 +136,7 @@ export default function LoginScreen({
   supabase,
   tagline = "Gestão inteligente de torneios",
   initialMode = "login",
+  initialAccountType = "athlete",
   initialNotice = null,
   recoverySession = null,
   onRecoveryFinished,
@@ -147,6 +149,7 @@ export default function LoginScreen({
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [accountType, setAccountType] = useState(initialAccountType === "organizer" ? "organizer" : "athlete");
   const [mode, setMode] = useState(initialMode);
   const [notice, setNotice] = useState(() => {
     if (!initialNotice) return null;
@@ -213,7 +216,9 @@ export default function LoginScreen({
       }
 
       setResendCooldown(60);
-      showNotice("success", "E-mail reenviado", "Confira sua caixa de entrada e abra o link para iniciar os 7 dias grátis.");
+      showNotice("success", "E-mail reenviado", accountType === "organizer"
+        ? "Confira sua caixa de entrada e abra o link para iniciar os 7 dias grátis."
+        : "Confira sua caixa de entrada e abra o link para ativar seu perfil esportivo.");
     } catch (error) {
       console.error(error);
       showNotice("error", "Não foi possível reenviar", "Verifique sua conexão e tente novamente.");
@@ -374,6 +379,7 @@ export default function LoginScreen({
             first_name: firstName.trim(),
             last_name: lastName.trim(),
             birth_date: birthDate,
+            account_type: accountType,
           },
         },
       });
@@ -411,8 +417,12 @@ export default function LoginScreen({
         "success",
         confirmationRequired || existingAccountResponse ? "Confira seu e-mail" : "Conta criada",
         confirmationRequired || existingAccountResponse
-          ? "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar sua conta e iniciar os 7 dias grátis."
-          : "Sua conta foi criada e os 7 dias grátis do plano Premium já estão ativos."
+          ? accountType === "organizer"
+            ? "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar sua conta e iniciar os 7 dias grátis."
+            : "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar seu perfil esportivo."
+          : accountType === "organizer"
+            ? "Sua conta foi criada e os 7 dias grátis do plano Premium já estão ativos."
+            : "Sua conta e seu perfil esportivo foram criados."
       );
     } catch (error) {
       console.error(error);
@@ -472,18 +482,18 @@ export default function LoginScreen({
       <main>
         <section className="landingTrialBanner" aria-labelledby="landing-trial-title">
           <div className="landingTrialSeal" aria-hidden="true">
-            <Gift />
-            <strong>7</strong>
-            <span>dias grátis</span>
+            {mode === "signup" && accountType === "athlete" ? <UserRound /> : <Gift />}
+            <strong>{mode === "signup" && accountType === "athlete" ? "Atleta" : "7"}</strong>
+            <span>{mode === "signup" && accountType === "athlete" ? "perfil gratuito" : "dias grátis"}</span>
           </div>
 
           <div className="landingTrialCopy">
-            <span>Oferta para novos usuários</span>
-            <h2 id="landing-trial-title">Experimente o plano Premium completo por 7 dias</h2>
-            <p>Crie sua conta e confirme o e-mail para liberar seu período gratuito.</p>
+            <span>{mode === "signup" && accountType === "athlete" ? "Perfil esportivo" : "Oferta para novos usuários"}</span>
+            <h2 id="landing-trial-title">{mode === "signup" && accountType === "athlete" ? "Crie seu perfil de atleta gratuitamente" : "Experimente o plano Premium completo por 7 dias"}</h2>
+            <p>{mode === "signup" && accountType === "athlete" ? "Confirme o e-mail para publicar seu perfil e participar das próximas inscrições." : "Crie sua conta e confirme o e-mail para liberar seu período gratuito."}</p>
             <div className="landingTrialBenefits" aria-label="Benefícios do teste grátis">
-              <span>Todos os formatos Premium</span>
-              <span>Rankings e tabelas automáticas</span>
+              <span>{mode === "signup" && accountType === "athlete" ? "Foto, capa e apresentação" : "Todos os formatos Premium"}</span>
+              <span>{mode === "signup" && accountType === "athlete" ? "Galeria pessoal com até 6 fotos" : "Rankings e tabelas automáticas"}</span>
               <span>Começa após confirmar o e-mail</span>
             </div>
           </div>
@@ -495,20 +505,20 @@ export default function LoginScreen({
               document.getElementById("acesso")?.scrollIntoView({ behavior: "smooth" });
             }}
           >
-            Começar teste grátis
+            {mode === "signup" && accountType === "athlete" ? "Criar perfil gratuito" : "Começar teste grátis"}
           </button>
         </section>
 
         <section className="landingHero">
           <div className="heroContent">
             <div className="heroBadge">
-              🎾 Gestão de torneios com cara de arena profissional
+              🎾 Gestão de torneios com identidade profissional
             </div>
 
-            <h1>Sua arena com torneios, rankings e experiência profissional</h1>
+            <h1>Sua organização com torneios, rankings e experiência profissional</h1>
 
             <p>
-              Monte torneios de Beach Tennis com visual moderno, controle de jogos, rankings automáticos, chamada por voz e uma área pública pronta para encantar atletas e organizadores.
+              Monte torneios de Beach Tennis com visual moderno, controle de jogos, rankings automáticos, chamada por voz e um perfil público pronto para atletas e organizadores.
             </p>
 
             <div className="heroActions">
@@ -535,7 +545,7 @@ export default function LoginScreen({
             </div>
 
             <div className="heroHighlights">
-              <span>🏟️ Gestão para arenas</span>
+              <span>🏟️ Gestão para organizações</span>
               <span>🏆 Torneios e copas</span>
               <span>📊 Ranking em tempo real</span>
             </div>
@@ -556,7 +566,7 @@ export default function LoginScreen({
                   <span></span>
                 </div>
 
-                <div className="mockTitle">Arena Central · Rodada 1</div>
+                <div className="mockTitle">Organização Central · Rodada 1</div>
 
                 <div className="mockGame">
                   <strong>Quadra 1</strong>
@@ -588,8 +598,8 @@ export default function LoginScreen({
           <div className="stepsGrid">
             <div className="stepCard">
               <div>1</div>
-              <h3>Cadastre a arena</h3>
-              <p>Use sua conta para centralizar os torneios da arena, clube ou organizador.</p>
+              <h3>Cadastre a organização</h3>
+              <p>Use sua conta para centralizar os torneios da organização, clube ou projeto esportivo.</p>
             </div>
 
             <div className="stepCard">
@@ -617,7 +627,7 @@ export default function LoginScreen({
         <section className="landingSection featuresSection">
           <div className="sectionIntro">
             <span>Recursos</span>
-            <h2>Tudo que sua arena precisa para rodar campeonatos</h2>
+            <h2>Tudo que sua organização precisa para rodar campeonatos</h2>
           </div>
 
           <div className="featuresGrid">
@@ -841,7 +851,9 @@ export default function LoginScreen({
               {mode === "login"
                 ? "Acesse seus torneios salvos e continue de onde parou."
                 : mode === "signup"
-                  ? "Confirme seu e-mail e ganhe 7 dias grátis no plano Premium."
+                  ? accountType === "organizer"
+                    ? "Confirme seu e-mail e ganhe 7 dias grátis no plano Premium."
+                    : "Confirme seu e-mail para ativar seu perfil esportivo gratuito."
                   : mode === "forgotPassword"
                     ? "Informe seu e-mail para receber o link de redefinição."
                     : "Crie uma nova senha com pelo menos 8 caracteres para voltar a acessar sua conta."}
@@ -871,10 +883,10 @@ export default function LoginScreen({
 
             {mode === "signup" ? (
               <div className="accessTrialCallout" role="status">
-                <span className="accessTrialCalloutIcon"><Gift aria-hidden="true" /></span>
+                <span className="accessTrialCalloutIcon">{accountType === "organizer" ? <Gift aria-hidden="true" /> : <UserRound aria-hidden="true" />}</span>
                 <span>
-                  <strong>Seu Premium começa com 7 dias grátis</strong>
-                  <small>Confirme o e-mail depois do cadastro para ativar o teste.</small>
+                  <strong>{accountType === "organizer" ? "Seu Premium começa com 7 dias grátis" : "Seu perfil esportivo é gratuito"}</strong>
+                  <small>{accountType === "organizer" ? "Confirme o e-mail depois do cadastro para ativar o teste." : "Entre como atleta e organize apenas se decidir assinar depois."}</small>
                 </span>
               </div>
             ) : null}
@@ -882,6 +894,15 @@ export default function LoginScreen({
             <form onSubmit={handleSubmit} noValidate>
               {mode === "signup" && (
                 <>
+                  <fieldset className="accountTypeSelector">
+                    <legend>Como você quer começar?</legend>
+                    <button type="button" className={accountType === "athlete" ? "active" : ""} onClick={() => setAccountType("athlete")} aria-pressed={accountType === "athlete"}>
+                      <UserRound aria-hidden="true" /><span><strong>Atleta</strong><small>Perfil esportivo gratuito</small></span>
+                    </button>
+                    <button type="button" className={accountType === "organizer" ? "active" : ""} onClick={() => setAccountType("organizer")} aria-pressed={accountType === "organizer"}>
+                      <Trophy aria-hidden="true" /><span><strong>Organizador</strong><small>Publicar e administrar eventos</small></span>
+                    </button>
+                  </fieldset>
                   <div className="twoCols formTwoCols">
                     <div>
                       <label>Nome</label>

@@ -541,6 +541,21 @@
   border-top: 1px solid var(--border, #c8d4e6);
 }
 
+.organizationGalleryEditor {
+  margin: 24px 0;
+}
+
+.organizationGallerySaveBtn {
+  width: fit-content;
+  margin: 16px 0 0 auto;
+}
+
+@media (max-width: 620px) {
+  .organizationGallerySaveBtn {
+    width: 100%;
+  }
+}
+
 .unifiedMemberGalleryEditor > header,
 .unifiedMemberGalleryEditor > header > div,
 .unifiedMemberProfileActions {

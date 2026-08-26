@@ -72,6 +72,13 @@ import {
   createPublicArenaApi,
 } from "./services/publicArenaApi.mjs";
 import {
+  fetchPublicMemberDirectory,
+} from "./services/memberProfileApi.mjs";
+import {
+  fetchPublicTournamentFeed,
+  loadPublicOrganizationGallery,
+} from "./services/publicSocialApi.mjs";
+import {
   isRetryableConnectionError,
   readCachedProfile,
   saveCachedProfile,
@@ -144,6 +151,13 @@ const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
 const publicPlatformHomeRuntime = Object.freeze({
   fetchPublicArenaDirectory,
   fetchPublicArenaPhoto,
+  fetchPublicMemberDirectory: (options) => fetchPublicMemberDirectory({ supabase, ...options }),
+  fetchPublicTournamentFeed: (options) => fetchPublicTournamentFeed({ supabase, ...options }),
+  formatDate: formatDateBR,
+  getModalityName: getModalityDisplayName,
+  getRegistrationDeadline: getTournamentRegistrationDeadline,
+  isRegistrationOpen: isRegistrationDeadlineOpen,
+  getWhatsAppUrl: getBrazilianWhatsAppUrl,
   tagline: TORNEIO360_TAGLINE,
 });
 
@@ -186,8 +200,9 @@ function PublicRegistrationStatus(props) {
 function App() {
   const routeParams = new URLSearchParams(window.location.search);
   const publicId = routeParams.get("public");
-  const arenaId = routeParams.get("arena");
-  const memberIdentifier = routeParams.get("membro");
+  const arenaId = routeParams.get("organizacao") || routeParams.get("arena");
+  const memberIdentifier = routeParams.get("perfil") || routeParams.get("membro");
+  const signupType = routeParams.get("cadastro");
   const wantsLogin = routeParams.get("entrar") === "1";
   const publicMode = routeParams.get("publico") === "1";
 
@@ -433,7 +448,7 @@ function App() {
   }
 
   if (publicId || arenaId) {
-    return <PublicArenaPage publicId={publicId} arenaId={arenaId} />;
+    return <PublicArenaPage publicId={publicId} arenaId={arenaId} session={session} />;
   }
 
   if (publicMode && authFlow !== "recovery") {
@@ -463,7 +478,7 @@ function App() {
     );
   }
 
-  if (!session && !wantsLogin && !authCallbackError && !authNotice) {
+  if (!session && !wantsLogin && !signupType && !authCallbackError && !authNotice) {
     return <PublicPlatformHome />;
   }
 
@@ -471,7 +486,8 @@ function App() {
     return (
       <Login
         key="guest-login"
-        initialMode={authCallbackError ? "forgotPassword" : "login"}
+        initialMode={authCallbackError ? "forgotPassword" : signupType ? "signup" : "login"}
+        initialAccountType={signupType === "organizador" ? "organizer" : "athlete"}
         initialNotice={authCallbackError || authNotice}
       />
     );
@@ -592,7 +608,7 @@ function PublicArenaHeroHeader(props) {
     <PublicArenaHeroHeaderView
       {...props}
       tagline={TORNEIO360_TAGLINE}
-      onBack={() => window.location.assign(window.location.origin)}
+      onBack={() => window.location.assign(`${window.location.origin}/#organizacoes`)}
       onOrganizerAccess={openOrganizerAccess}
     />
   );
@@ -624,6 +640,7 @@ const publicArenaPageRuntime = {
   fetchPublicTournamentCover,
   fetchPublicTournamentDetail,
   refreshPublicTournamentDetail,
+  loadPublicOrganizationGallery: (organizationId) => loadPublicOrganizationGallery({ supabase, organizationId }),
 };
 
 function PublicArenaPage(props) {

@@ -116,7 +116,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
 
   function openPublicProfile() {
     const url = new URL(window.location.origin);
-    url.searchParams.set("membro", profile.handle || user.id);
+    url.searchParams.set("perfil", profile.handle || user.id);
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 

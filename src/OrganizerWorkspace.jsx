@@ -120,6 +120,10 @@ import {
   saveMyMemberProfile,
 } from "./services/memberProfileApi.mjs";
 import {
+  loadMyOrganizationGallery,
+  saveMyOrganizationGallery,
+} from "./services/publicSocialApi.mjs";
+import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
   getEffectiveTournamentGenderMode,
@@ -1220,6 +1224,26 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     whatsappGroupLink: profile.whatsapp_group_link || "",
     isPublic: true,
   });
+  const [organizationGallery, setOrganizationGallery] = useState([]);
+  const organizationGalleryBaseRef = useRef([]);
+  const [organizationGalleryStatus, setOrganizationGalleryStatus] = useState("loading");
+  const [organizationGallerySaving, setOrganizationGallerySaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    loadMyOrganizationGallery({ supabase })
+      .then((photos) => {
+        if (!active) return;
+        organizationGalleryBaseRef.current = photos;
+        setOrganizationGallery(photos);
+        setOrganizationGalleryStatus("ready");
+      })
+      .catch((error) => {
+        console.warn("Galeria da organização ainda não está disponível:", error);
+        if (active) setOrganizationGalleryStatus("unavailable");
+      });
+    return () => { active = false; };
+  }, [supabase]);
 
   const memberProfileFallback = useMemo(() => createMemberProfileFallback({
     user,
@@ -3232,7 +3256,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   function openPublicMemberProfile() {
     const identifier = memberProfile.handle || user.id;
     const url = new URL(window.location.origin);
-    url.searchParams.set("membro", identifier);
+    url.searchParams.set("perfil", identifier);
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 
@@ -3595,6 +3619,61 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(next));
       return next;
     });
+  }
+
+  async function handleOrganizationGalleryFiles(files) {
+    if (!files?.length || organizationGallerySaving) return;
+    const availableSlots = Math.max(0, 6 - organizationGallery.length);
+    const selectedFiles = Array.from(files).slice(0, availableSlots);
+    if (selectedFiles.length === 0) {
+      showNotice("info", "Galeria completa", "A organização aceita até seis fotos.");
+      return;
+    }
+    try {
+      const { prepareSocialPostImageFile } = await import("./features/media/imageResize.mjs");
+      const prepared = await Promise.all(selectedFiles.map((file) => prepareSocialPostImageFile(file)));
+      setOrganizationGallery((current) => [
+        ...current,
+        ...prepared.map((entry) => entry.imageUrl),
+      ].slice(0, 6));
+    } catch (error) {
+      showNotice("warning", "Fotos não adicionadas", error?.message || "Escolha outras imagens.");
+    }
+  }
+
+  function removeOrganizationGalleryPhoto(index) {
+    if (organizationGallerySaving) return;
+    setOrganizationGallery((current) => current.filter((_, photoIndex) => photoIndex !== index));
+  }
+
+  async function saveOrganizationGallery() {
+    if (!user?.id || organizationGallerySaving) return;
+    if (organizationGalleryStatus !== "ready") {
+      showNotice("warning", "Galeria indisponível", "A estrutura da galeria precisa estar disponível no site teste.");
+      return;
+    }
+    if (JSON.stringify(organizationGallery) === JSON.stringify(organizationGalleryBaseRef.current)) {
+      showNotice("info", "Galeria já atualizada", "Não há novas fotos para enviar.");
+      return;
+    }
+    setOrganizationGallerySaving(true);
+    try {
+      const { uploadOrganizationProfileGalleryPhoto } = await import("./services/mediaStorage.mjs");
+      const uploadedPhotos = await Promise.all(organizationGallery.map((photoUrl, index) => (
+        /^data:image\//i.test(photoUrl)
+          ? uploadOrganizationProfileGalleryPhoto({ supabase, userId: user.id, photoUrl, position: index + 1 })
+          : photoUrl
+      )));
+      const savedPhotos = await saveMyOrganizationGallery({ supabase, photoUrls: uploadedPhotos });
+      organizationGalleryBaseRef.current = savedPhotos;
+      setOrganizationGallery(savedPhotos);
+      showNotice("success", "Galeria atualizada", "As fotos da organização foram salvas no perfil público.");
+    } catch (error) {
+      console.error("Erro ao salvar galeria da organização:", error);
+      showNotice("error", "Galeria não salva", "Não foi possível salvar as fotos agora.");
+    } finally {
+      setOrganizationGallerySaving(false);
+    }
   }
 
   function sortTournamentsByStoredOrder(items) {
@@ -8625,13 +8704,13 @@ setNewPublicInfo({
         <h2>Organização</h2>
       </div>
     </div>
-    <p className="profileSectionHint">Organize as informações profissionais da arena sem misturá-las com o seu perfil pessoal.</p>
+    <p className="profileSectionHint">Organize as informações profissionais da organização sem misturá-las com o seu perfil pessoal.</p>
 
     <div className="profileFormSectionHeader">
       <span><UserRound aria-hidden="true" /></span>
       <div>
         <strong>Identidade</strong>
-        <small>Foto e nomes exibidos no perfil da arena.</small>
+        <small>Foto e nomes exibidos no perfil da organização.</small>
       </div>
     </div>
 
@@ -8650,6 +8729,54 @@ setNewPublicInfo({
       </label>
       {organizerProfile.photoUrl ? <button className="removePhotoBtn" type="button" onClick={removeOrganizerPhoto}>Remover foto</button> : null}
     </div>
+
+    <section className="unifiedMemberGalleryEditor organizationGalleryEditor" aria-labelledby="organization-gallery-title">
+      <header>
+        <div>
+          <span><Grid3X3 aria-hidden="true" /></span>
+          <div>
+            <h3 id="organization-gallery-title">Galeria da organização</h3>
+            <p>Até seis fotos institucionais. Elas aparecem somente dentro deste perfil, nunca na Visão geral.</p>
+          </div>
+        </div>
+        <strong>{organizationGallery.length}/6</strong>
+      </header>
+      <div className="unifiedMemberGalleryGrid">
+        {organizationGallery.map((photoUrl, index) => (
+          <figure key={`${photoUrl}-${index}`}>
+            <img src={photoUrl} alt={`Foto ${index + 1} da organização`} />
+            <button type="button" onClick={() => removeOrganizationGalleryPhoto(index)} disabled={organizationGallerySaving}>Remover</button>
+          </figure>
+        ))}
+        {organizationGallery.length < 6 ? (
+          <label className="unifiedMemberGalleryAdd">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                if (files.length) handleOrganizationGalleryFiles(files);
+                event.target.value = "";
+              }}
+            />
+            <PlusCircle aria-hidden="true" />
+            <strong>Adicionar fotos</strong>
+            <small>Restam {6 - organizationGallery.length}</small>
+          </label>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className="saveProfileBtn actionConfirmBtn organizationGallerySaveBtn"
+        onClick={saveOrganizationGallery}
+        disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
+        aria-busy={organizationGallerySaving}
+      >
+        {organizationGallerySaving ? "Salvando galeria..." : "Salvar galeria da organização"}
+      </button>
+    </section>
 
     <div className="organizerProfileGrid">
       <div className="formField">
@@ -8694,17 +8821,17 @@ setNewPublicInfo({
         <span><MapPin aria-hidden="true" /></span>
         <div>
           <strong>Localização</strong>
-          <small>Endereço e referência geográfica da arena.</small>
+          <small>Endereço e referência geográfica da organização.</small>
         </div>
       </div>
 
       <div className="formField fullField">
-        <label>Endereço da arena</label>
+        <label>Endereço da organização</label>
         <input value={organizerProfile.address} onChange={(e) => updateOrganizerProfile("address", e.target.value)} placeholder="Rua, número, bairro" />
       </div>
 
       <div className="formField fullField">
-        <label>Link do endereço da arena</label>
+        <label>Link do endereço da organização</label>
         <input value={organizerProfile.mapsLink || ""} onChange={(e) => updateOrganizerProfile("mapsLink", e.target.value)} placeholder="Link do Google Maps" />
       </div>
 

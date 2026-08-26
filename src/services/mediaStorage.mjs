@@ -112,3 +112,13 @@ export async function uploadMemberProfileGalleryPhoto({ supabase, userId, photoU
   });
   return uploaded.publicUrl;
 }
+
+export async function uploadOrganizationProfileGalleryPhoto({ supabase, userId, photoUrl, position }) {
+  const uploaded = await uploadDataUrl({
+    supabase,
+    userId,
+    dataUrl: photoUrl,
+    kind: `organization-profile-gallery-${Number(position) || 1}`,
+  });
+  return uploaded.publicUrl;
+}

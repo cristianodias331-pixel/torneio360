@@ -120,11 +120,15 @@ export default function PublicMemberProfilePage({ supabase, identifier }) {
   return (
     <div className="publicMemberPage">
       <header className="publicMemberTopbar">
-        <button type="button" onClick={() => window.location.assign(window.location.origin)} aria-label="Voltar ao Torneio 360">
+        <button type="button" onClick={() => window.location.assign(`${window.location.origin}/#perfis`)} aria-label="Voltar aos atletas">
           <ArrowLeft aria-hidden="true" />
         </button>
         <img src="/torneio360-logo.png" alt="Torneio 360" />
-        <span>Perfil esportivo</span>
+        <nav aria-label="Navegação pública">
+          <a href="/#visao-geral">Visão geral</a>
+          <a href="/#perfis">Atletas</a>
+          <a href="/#organizacoes">Organizações</a>
+        </nav>
         <button type="button" onClick={shareProfile} aria-label="Compartilhar perfil">
           <Share2 aria-hidden="true" />
         </button>
@@ -212,7 +216,7 @@ export default function PublicMemberProfilePage({ supabase, identifier }) {
                   ? <small>{[organization.city, organization.state].filter(Boolean).join("/")}</small>
                   : <small>Torneios e circuitos publicados</small>}
               </div>
-              <a href={`${window.location.origin}/?arena=${encodeURIComponent(organization.id)}`}>
+              <a href={`${window.location.origin}/?organizacao=${encodeURIComponent(organization.id)}`}>
                 Ver torneios e circuitos <ExternalLink aria-hidden="true" />
               </a>
             </div>

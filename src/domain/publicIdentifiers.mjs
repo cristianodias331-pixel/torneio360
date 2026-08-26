@@ -26,6 +26,18 @@ export function getArenaPublicUrl(arenaId, { origin = window.location.origin } =
   return url.toString();
 }
 
+export function getOrganizationPublicUrl(organizationId, { origin = window.location.origin } = {}) {
+  const url = new URL(origin);
+  url.searchParams.set("organizacao", organizationId);
+  return url.toString();
+}
+
+export function getMemberPublicUrl(identifier, { origin = window.location.origin } = {}) {
+  const url = new URL(origin);
+  url.searchParams.set("perfil", identifier);
+  return url.toString();
+}
+
 export function getArenaPublicShareMessage(arenaId, options) {
   const url = getArenaPublicUrl(arenaId, options);
   return `Acompanhe os torneios e circuitos desta arena no Torneio360:\n${url}`;

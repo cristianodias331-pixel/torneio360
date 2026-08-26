@@ -71,7 +71,7 @@ function PublicImagePreviewButton({ src, previewSrc, alt, title, variant, onPrev
   );
 }
 
-export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWhatsAppUrl }) {
+export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWhatsAppUrl, hasSession = false, onRequireLogin }) {
   if (!open) {
     return <span className="publicRegistrationStatus closed">Inscrições encerradas</span>;
   }
@@ -79,8 +79,16 @@ export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWha
   const message = `Olá! Quero me inscrever em ${eventName || "um evento"} pelo Torneio360.`;
   const whatsappUrl = getWhatsAppUrl(whatsapp, message);
 
+  if (!hasSession) {
+    return (
+      <button type="button" className="publicRegistrationStatus open" onClick={onRequireLogin}>
+        <MessageCircle aria-hidden="true" /> Inscreva-se
+      </button>
+    );
+  }
+
   if (!whatsappUrl) {
-    return <span className="publicRegistrationStatus open unavailable" title="WhatsApp não cadastrado pela arena">Inscreva-se</span>;
+    return <span className="publicRegistrationStatus open unavailable" title="WhatsApp não cadastrado pela organização">Inscreva-se</span>;
   }
 
   return (
@@ -93,7 +101,7 @@ export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWha
 export function PublicArenaHeroHeaderView({
   arenaName,
   organizer,
-  label = "Perfil oficial da arena",
+  label = "Perfil oficial da organização",
   tagline,
   onBack,
   onOrganizerAccess,
@@ -129,7 +137,7 @@ export function PublicArenaHeroHeaderView({
       </div>
 
       <div className="publicTournamentHeaderActions publicArenaHeaderActions">
-        <button type="button" className="publicBackToPlatform" onClick={onBack}>← Voltar às arenas</button>
+        <button type="button" className="publicBackToPlatform" onClick={onBack}>← Voltar às organizações</button>
         <button type="button" className="publicOrganizerAccess" onClick={onOrganizerAccess}>Área do organizador</button>
       </div>
     </header>
@@ -147,6 +155,8 @@ export function PublicArenaTournamentCardsView({
   formatDate,
   sortTournaments,
   RegistrationStatus,
+  hasSession = false,
+  onRequireLogin,
   onPreviewImage,
   onRequestCover,
 }) {
@@ -196,7 +206,7 @@ export function PublicArenaTournamentCardsView({
     const coverVariant = eventCoverImage || eventCoverThumbnail ? "event-cover" : "profile-photo";
     const imageTitle = coverVariant === "event-cover"
       ? grouped ? groupTitle : tournament.name
-      : organizer.arenaName || "Perfil da arena";
+      : organizer.arenaName || "Perfil da organização";
     const registrationOpen = isRegistrationOpen(getRegistrationDeadline(tournament));
 
     return (
@@ -209,7 +219,7 @@ export function PublicArenaTournamentCardsView({
             <PublicImagePreviewButton
               src={coverImage}
               previewSrc={eventCoverImage || eventCoverThumbnail || profileCoverImage}
-              alt={coverVariant === "event-cover" ? `Foto de ${imageTitle}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
+              alt={coverVariant === "event-cover" ? `Foto de ${imageTitle}` : `Foto do perfil de ${organizer.arenaName || "organização"}`}
               title={imageTitle}
               variant={coverVariant}
               onPreview={onPreviewImage}
@@ -224,7 +234,7 @@ export function PublicArenaTournamentCardsView({
             {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDate(details.eventDate)}</span> : null}
             {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
           </p>
-          <RegistrationStatus open={registrationOpen} whatsapp={organizer.whatsapp} eventName={tournament.name} />
+          <RegistrationStatus open={registrationOpen} whatsapp={organizer.whatsapp} eventName={tournament.name} hasSession={hasSession} onRequireLogin={onRequireLogin} />
         </div>
 
         <button type="button" onClick={() => onOpen(tournament)} disabled={openingPublicId === tournament.public_id} aria-busy={openingPublicId === tournament.public_id}>
@@ -267,6 +277,9 @@ export function PublicArenaTournamentCardsView({
 export function PublicArenaPageView({
   arenaName,
   organizer,
+  organizationGallery = [],
+  hasSession = false,
+  onRequireLogin,
   pageClassName = "publicArenaRealPage",
   heroLabel,
   contactDescription = "Torneios e circuitos aparecem aqui automaticamente desde a criação.",
@@ -320,7 +333,7 @@ export function PublicArenaPageView({
 
       <main className="publicContent publicArenaContent">
         <section className="card publicArenaContacts">
-          <div><h2>Eventos da arena</h2><p>{contactDescription}</p></div>
+          <div><h2>Eventos da organização</h2><p>{contactDescription}</p></div>
           <div className="publicOrganizerLinks">
             {organizer.whatsapp ? <a href={getWhatsAppUrl(organizer.whatsapp)} target="_blank" rel="noreferrer"><MessageCircle aria-hidden="true" /> WhatsApp</a> : null}
             {organizer.whatsappGroupLink ? <a href={organizer.whatsappGroupLink} target="_blank" rel="noreferrer"><Users aria-hidden="true" /> Grupo do WhatsApp</a> : null}
@@ -329,7 +342,26 @@ export function PublicArenaPageView({
           </div>
         </section>
 
-        <nav className="publicArenaTabs" aria-label="Conteúdo público da arena">
+        {organizationGallery.length > 0 ? (
+          <section className="card publicOrganizationGallerySection">
+            <header><div><h2>Fotos da organização</h2><p>Galeria institucional do perfil.</p></div><span>{organizationGallery.length}/6</span></header>
+            <div className="publicOrganizationGalleryGrid">
+              {organizationGallery.map((photoUrl, index) => (
+                <button
+                  type="button"
+                  key={`${photoUrl}-${index}`}
+                  onClick={() => setPreviewImage({ src: photoUrl, alt: `Foto ${index + 1} de ${arenaName}`, title: arenaName })}
+                  aria-label={`Ampliar foto ${index + 1} da organização`}
+                >
+                  <img src={photoUrl} alt={`Foto ${index + 1} de ${arenaName}`} loading="lazy" decoding="async" />
+                  <span><ZoomIn aria-hidden="true" /></span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <nav className="publicArenaTabs" aria-label="Conteúdo público da organização">
           <button type="button" className={activeArenaTab === "tournaments" ? "active" : ""} onClick={() => onArenaTabChange("tournaments")}><Trophy aria-hidden="true" /> Torneios</button>
           <button type="button" className={activeArenaTab === "circuits" ? "active" : ""} onClick={() => onArenaTabChange("circuits")}><GitBranch aria-hidden="true" /> Circuitos</button>
         </nav>
@@ -347,7 +379,7 @@ export function PublicArenaPageView({
           ) : visibleItems.length === 0 ? (
             <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
           ) : activeArenaTab === "tournaments" ? (
-            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} onPreviewImage={setPreviewImage} onRequestCover={onRequestTournamentCover} />
+            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} onPreviewImage={setPreviewImage} onRequestCover={onRequestTournamentCover} hasSession={hasSession} onRequireLogin={onRequireLogin} />
           ) : displayedItems.map((item) => {
             const circuitStatus = getCircuitStatus(item);
             const circuitCoverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl || "";
@@ -364,8 +396,8 @@ export function PublicArenaPageView({
                     <PublicImagePreviewButton
                       src={circuitImage}
                       previewSrc={circuitCoverImage || circuitCoverThumbnail || organizer.photoUrl}
-                      alt={circuitImageVariant === "event-cover" ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "arena"}`}
-                      title={circuitImageVariant === "event-cover" ? item.name : organizer.arenaName || "Perfil da arena"}
+                      alt={circuitImageVariant === "event-cover" ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "organização"}`}
+                      title={circuitImageVariant === "event-cover" ? item.name : organizer.arenaName || "Perfil da organização"}
                       variant={circuitImageVariant}
                       onPreview={setPreviewImage}
                     />
@@ -417,7 +449,7 @@ export function PublicArenaDirectoryView({
   ArenaPhoto,
 }) {
   return (
-    <section id="arenas" className="publicArenaDirectorySection">
+    <section id="organizacoes" className="publicArenaDirectorySection publicOrganizationDirectorySection">
       <div className="publicDirectoryHeading">
         <span>Aberto para todos</span>
         <h2>{title}</h2>
@@ -425,21 +457,21 @@ export function PublicArenaDirectoryView({
       </div>
 
       <label className="publicArenaSearch platformUnifiedSearch">
-        <span className="srOnly">Pesquisar arenas</span>
+        <span className="srOnly">Pesquisar organizações</span>
         <Search aria-hidden="true" />
         <input
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Ex.: nome da arena, organizador ou cidade"
+          placeholder="Ex.: organização, responsável ou cidade"
         />
       </label>
 
       {loading ? (
-        <div className="publicDirectoryState">Carregando arenas...</div>
+        <div className="publicDirectoryState">Carregando organizações...</div>
       ) : error ? (
         <div className="publicDirectoryState publicDirectoryError">{error}</div>
       ) : arenas.length === 0 ? (
-        <div className="publicDirectoryState">Nenhuma arena encontrada.</div>
+        <div className="publicDirectoryState">Nenhuma organização encontrada.</div>
       ) : (
         <div className="publicArenaDirectoryGrid">
           {arenas.map((arena) => {
@@ -450,13 +482,13 @@ export function PublicArenaDirectoryView({
                   <ArenaPhoto arena={arena} alt={`Foto de ${arenaName}`} />
                 </div>
                 <div className="publicArenaDirectoryInfo">
-                  <small>Perfil da arena</small>
+                  <small>Perfil da organização</small>
                   <h3>{arenaName}</h3>
-                  <p className="publicArenaDirectoryOrganizer"><UserRound aria-hidden="true" /> Organizador: {arena.name || "Não informado"}</p>
+                  <p className="publicArenaDirectoryOrganizer"><UserRound aria-hidden="true" /> Responsável: {arena.name || "Não informado"}</p>
                   <p className="publicArenaDirectoryLocation"><MapPin aria-hidden="true" /> {[arena.city, arena.state].filter(Boolean).join("/") || "Local não informado"}</p>
                 </div>
                 <button type="button" onClick={() => onOpenArena(arena)}>
-                  Ver perfil e eventos
+                  Ver organização e eventos
                 </button>
               </article>
             );
@@ -469,7 +501,7 @@ export function PublicArenaDirectoryView({
               disabled={loadingMore}
               aria-busy={loadingMore}
             >
-              {loadingMore ? "Carregando mais arenas..." : "Mostrar mais arenas"}
+              {loadingMore ? "Carregando mais organizações..." : "Mostrar mais organizações"}
             </button>
           ) : null}
         </div>
@@ -478,9 +510,188 @@ export function PublicArenaDirectoryView({
   );
 }
 
+function getDirectoryInitials(name) {
+  return String(name || "T3")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toLocaleUpperCase("pt-BR"))
+    .join("") || "T3";
+}
+
+export function PublicMemberDirectoryView({
+  members,
+  search,
+  loading,
+  loadingMore,
+  error,
+  hasMore,
+  onSearchChange,
+  onLoadMore,
+  onOpenMember,
+}) {
+  return (
+    <section id="perfis" className="publicMemberDirectorySection">
+      <div className="publicDirectoryHeading">
+        <span>Comunidade esportiva</span>
+        <h2>Atletas</h2>
+        <p>Encontre perfis esportivos públicos. As fotos pessoais aparecem somente dentro de cada perfil.</p>
+      </div>
+
+      <label className="publicArenaSearch platformUnifiedSearch">
+        <span className="srOnly">Pesquisar atletas</span>
+        <Search aria-hidden="true" />
+        <input
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Ex.: nome, usuário, cidade ou estado"
+        />
+      </label>
+
+      {loading ? <div className="publicDirectoryState">Carregando atletas...</div>
+        : error ? <div className="publicDirectoryState publicDirectoryError">{error}</div>
+          : members.length === 0 ? <div className="publicDirectoryState">Nenhum atleta encontrado.</div>
+            : (
+              <div className="publicMemberDirectoryGrid">
+                {members.map((member) => (
+                  <button
+                    type="button"
+                    className="publicMemberDirectoryCard"
+                    key={member.user_id}
+                    onClick={() => onOpenMember(member)}
+                  >
+                    <span className="publicMemberDirectoryAvatar">
+                      {member.photo_url
+                        ? <img src={member.photo_url} alt="" loading="lazy" decoding="async" />
+                        : getDirectoryInitials(member.display_name)}
+                    </span>
+                    <span className="publicMemberDirectoryCopy">
+                      <strong>{member.display_name}</strong>
+                      <small>{member.handle ? `@${member.handle}` : "Perfil Torneio360"}</small>
+                      {[member.city, member.state].filter(Boolean).length > 0
+                        ? <span><MapPin aria-hidden="true" /> {[member.city, member.state].filter(Boolean).join("/")}</span>
+                        : null}
+                    </span>
+                    <span className="publicMemberDirectoryMeta">{Number(member.gallery_count) || 0} fotos</span>
+                  </button>
+                ))}
+                {hasMore ? (
+                  <button type="button" className="publicArenaLoadMore" onClick={onLoadMore} disabled={loadingMore} aria-busy={loadingMore}>
+                    {loadingMore ? "Carregando mais atletas..." : "Mostrar mais atletas"}
+                  </button>
+                ) : null}
+              </div>
+            )}
+    </section>
+  );
+}
+
+export function PublicTournamentFeedView({
+  items,
+  loading,
+  loadingMore,
+  error,
+  hasMore,
+  formatDate,
+  getModalityName,
+  getRegistrationDeadline,
+  isRegistrationOpen,
+  getWhatsAppUrl,
+  onLoadMore,
+  onOpenTournament,
+  onOpenOrganization,
+  onRegister,
+}) {
+  const [previewImage, setPreviewImage] = React.useState(null);
+
+  return (
+    <section id="visao-geral" className="publicTournamentFeedSection">
+      <div className="publicDirectoryHeading publicFeedHeading">
+        <span>Visão geral</span>
+        <h2>Torneios publicados</h2>
+        <p>Acompanhe as publicações das organizações e abra cada evento para ver informações, jogos, ranking e inscrição.</p>
+      </div>
+
+      {loading ? <div className="publicDirectoryState">Carregando publicações...</div>
+        : error && items.length === 0 ? <div className="publicDirectoryState publicDirectoryError">{error}</div>
+          : items.length === 0 ? <div className="publicDirectoryState">Ainda não há torneios publicados.</div>
+            : (
+              <div className="publicTournamentFeed">
+                {items.map((item) => {
+                  const details = item.data || {};
+                  const organization = item.organization || {};
+                  const eventName = details.eventName || item.name;
+                  const coverImage = details.eventCoverImageThumbnailUrl
+                    || details.coverImageThumbnailUrl
+                    || details.coverImageUrl
+                    || "";
+                  const registrationOpen = isRegistrationOpen(getRegistrationDeadline(item));
+                  const registrationUrl = registrationOpen
+                    ? getWhatsAppUrl(organization.phone, `Olá! Quero me inscrever em ${eventName} pelo Torneio360.`)
+                    : "";
+                  return (
+                    <article className="publicTournamentPost" key={item.id}>
+                      <header>
+                        <button type="button" className="publicTournamentPostOrganization" onClick={() => onOpenOrganization(organization)}>
+                          <span>{organization.photo_url
+                            ? <img src={organization.photo_url} alt="" loading="lazy" decoding="async" />
+                            : getDirectoryInitials(organization.name)}</span>
+                          <span><strong>{organization.name}</strong><small>{[organization.city, organization.state].filter(Boolean).join("/") || "Organização Torneio360"}</small></span>
+                        </button>
+                      </header>
+
+                      {coverImage ? (
+                        <button
+                          type="button"
+                          className="publicTournamentPostImage"
+                          onClick={() => setPreviewImage({ src: details.coverImageUrl || coverImage, alt: `Foto de ${eventName}`, title: eventName })}
+                          aria-label={`Ampliar foto de ${eventName}`}
+                        >
+                          <img src={coverImage} alt={`Foto de ${eventName}`} loading="lazy" decoding="async" />
+                          <span><ZoomIn aria-hidden="true" /></span>
+                        </button>
+                      ) : (
+                        <div className="publicTournamentPostFallback"><Trophy aria-hidden="true" /><span>Evento publicado</span></div>
+                      )}
+
+                      <div className="publicTournamentPostBody">
+                        <small>{getModalityName(item.type)}</small>
+                        <h3>{eventName}</h3>
+                        <p>
+                          {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDate(details.eventDate)}</span> : null}
+                          {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
+                          {details.category ? <span>{details.category}</span> : null}
+                        </p>
+                        <div className="publicTournamentPostActions">
+                          <button type="button" onClick={() => onOpenTournament(item)}>Ver torneio</button>
+                          {registrationOpen
+                            ? <button type="button" className="publicTournamentRegisterButton" onClick={() => onRegister(registrationUrl, item)}><MessageCircle aria-hidden="true" /> Inscrever-se</button>
+                            : <span className="publicTournamentRegistrationClosed">Inscrições encerradas</span>}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+                {error ? <div className="publicDirectoryState publicDirectoryError">{error}</div> : null}
+                {hasMore ? (
+                  <button type="button" className="publicArenaLoadMore" onClick={onLoadMore} disabled={loadingMore} aria-busy={loadingMore}>
+                    {loadingMore ? "Carregando mais publicações..." : "Mostrar mais torneios"}
+                  </button>
+                ) : null}
+              </div>
+            )}
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
+    </section>
+  );
+}
+
 export function PublicPlatformHomeView({
   hasSession,
   onOrganizerAction,
+  onAthleteSignup,
+  onOrganizerSignup,
+  TournamentFeed,
+  MemberDirectory,
   ArenaDirectory,
   tagline,
 }) {
@@ -492,9 +703,11 @@ export function PublicPlatformHomeView({
           <div className="brandTaglineOnly"><span>{tagline}</span></div>
         </div>
         <div className="publicPlatformActions">
-          <a href="#arenas">Explorar arenas</a>
+          <a href="#visao-geral">Visão geral</a>
+          <a href="#perfis">Atletas</a>
+          <a href="#organizacoes">Organizações</a>
           <button type="button" onClick={onOrganizerAction}>
-            {hasSession ? "Painel do organizador" : "Entrar ou criar conta"}
+            {hasSession ? "Abrir meu perfil" : "Entrar"}
           </button>
         </div>
       </header>
@@ -502,10 +715,10 @@ export function PublicPlatformHomeView({
       <main className="publicPlatformMain">
         <section className="publicPlatformHero">
           <div>
-            <span className="publicPlatformEyebrow">Torneios ao vivo, sem barreiras</span>
-            <h1>Acompanhe sua arena sem fazer login</h1>
-            <p>Consulte eventos ativos e encerrados, rodadas, resultados, chaves e rankings diretamente no Torneio360.</p>
-            <a href="#arenas" className="publicPlatformHeroButton">Encontrar uma arena</a>
+            <span className="publicPlatformEyebrow">A comunidade dos torneios</span>
+            <h1>Descubra atletas, organizações e competições sem precisar entrar</h1>
+            <p>Navegue livremente por perfis e torneios. Crie uma conta somente quando quiser ter seu perfil, organizar ou se inscrever.</p>
+            <a href="#visao-geral" className="publicPlatformHeroButton">Ver torneios publicados</a>
           </div>
           <div className="publicPlatformHeroMark" aria-hidden="true">
             <Trophy />
@@ -514,16 +727,23 @@ export function PublicPlatformHomeView({
           </div>
         </section>
 
+        <TournamentFeed />
+        <MemberDirectory />
         <ArenaDirectory />
+
+        <section className="publicProfileSignupCallout">
+          <div><span>Para atletas</span><h2>Crie seu perfil esportivo gratuito</h2><p>Tenha foto, capa, apresentação e uma galeria pessoal com até seis fotos.</p></div>
+          <button type="button" onClick={onAthleteSignup}>Criar perfil de atleta</button>
+        </section>
 
         <section className="publicOrganizerCallout">
           <div>
             <span>Para organizadores</span>
-            <h2>Crie torneios e circuitos com 7 dias grátis</h2>
-            <p>A visualização é aberta para todos. A criação e a administração dos eventos ficam disponíveis para assinantes.</p>
+            <h2>Publique torneios e circuitos pela sua organização</h2>
+            <p>O perfil pessoal continua o mesmo. A assinatura libera uma organização separada, publicações e administração dos eventos.</p>
           </div>
-          <button type="button" onClick={onOrganizerAction}>
-            {hasSession ? "Ir para o painel" : "Começar agora"}
+          <button type="button" onClick={hasSession ? onOrganizerAction : onOrganizerSignup}>
+            {hasSession ? "Ir para o painel" : "Quero organizar"}
           </button>
         </section>
 

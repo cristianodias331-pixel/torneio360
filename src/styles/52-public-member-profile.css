@@ -29,12 +29,18 @@
   object-fit: contain;
 }
 
-.publicMemberTopbar > span {
-  color: #60708a;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.publicMemberTopbar > nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.publicMemberTopbar > nav a {
+  color: #52647d;
+  font-size: .75rem;
+  font-weight: 850;
+  text-decoration: none;
 }
 
 .publicMemberTopbar > button,
@@ -546,8 +552,16 @@ html[data-theme="dark"] .publicMemberAvatar {
     height: 36px;
   }
 
-  .publicMemberTopbar > span {
-    font-size: 0.62rem;
+  .publicMemberTopbar > nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    gap: 20px;
+    padding: 4px 0 2px;
+  }
+
+  .publicMemberTopbar > nav a {
+    font-size: .69rem;
   }
 
   .publicMemberContent {

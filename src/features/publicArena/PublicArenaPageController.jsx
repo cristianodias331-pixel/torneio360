@@ -73,7 +73,7 @@ function PublicArenaLoadingScreen() {
   }, []);
 
   return (
-    <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da arena">
+    <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da organização">
       <video
         ref={videoRef}
         className={`publicArenaLoadingVideo${videoReady ? " isReady" : ""}`}
@@ -89,12 +89,12 @@ function PublicArenaLoadingScreen() {
         onPlaying={() => window.requestAnimationFrame(() => setVideoReady(true))}
         aria-hidden="true"
       />
-      <div className="publicArenaLoadingCaption">Carregando perfil da arena...</div>
+      <div className="publicArenaLoadingCaption">Carregando perfil da organização...</div>
     </div>
   );
 }
 
-export default function PublicArenaPageController({ arenaId = null, publicId = null, runtime }) {
+export default function PublicArenaPageController({ arenaId = null, publicId = null, session = null, runtime }) {
   const {
     PublicArenaHeroHeader,
     PublicArenaTournamentCards,
@@ -109,6 +109,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
     fetchPublicTournamentCover,
     fetchPublicTournamentDetail,
     refreshPublicTournamentDetail,
+    loadPublicOrganizationGallery,
   } = runtime;
   const [loading, setLoading] = useState(true);
   const [minimumLoadingElapsed, setMinimumLoadingElapsed] = useState(false);
@@ -120,6 +121,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   const [selectedCircuit, setSelectedCircuit] = useState(null);
   const [openingPublicId, setOpeningPublicId] = useState(null);
   const [openingCircuitId, setOpeningCircuitId] = useState(null);
+  const [organizationGallery, setOrganizationGallery] = useState([]);
   const [eventPages, setEventPages] = useState(() => createPublicArenaEventPages());
   const requestedTournamentCoversRef = useRef(new Set());
   const requestedCircuitCoversRef = useRef(new Set());
@@ -442,6 +444,20 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   }, [arenaId, publicId]);
 
   useEffect(() => {
+    const organizationId = bundle?.profile?.id;
+    if (!organizationId || !loadPublicOrganizationGallery) {
+      setOrganizationGallery([]);
+      return undefined;
+    }
+    let active = true;
+    loadPublicOrganizationGallery(organizationId).then((result) => {
+      if (!active) return;
+      setOrganizationGallery(result?.error ? [] : (result?.photos || []).slice(0, 6));
+    });
+    return () => { active = false; };
+  }, [bundle?.profile?.id, loadPublicOrganizationGallery]);
+
+  useEffect(() => {
     if (!bundle?.profile || bundle.pagination?.enabled !== true) return;
     const currentPage = eventPagesRef.current?.[activeArenaTab]?.[activeStatusTab];
     if (!currentPage?.loaded && !currentPage?.loading) {
@@ -532,7 +548,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
           <BeachLogo />
           <h1>Perfil indisponível</h1>
           <p>{error || "Este perfil não está disponível."}</p>
-          <button type="button" onClick={() => window.location.assign(window.location.origin)}>Explorar outras arenas</button>
+          <button type="button" onClick={() => window.location.assign(`${window.location.origin}/#organizacoes`)}>Explorar outras organizações</button>
         </div>
       </div>
     );
@@ -609,6 +625,14 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
     <PublicArenaPageView
       arenaName={arenaName}
       organizer={organizer}
+      organizationGallery={organizationGallery}
+      hasSession={Boolean(session)}
+      onRequireLogin={() => {
+        const url = new URL(window.location.origin);
+        url.searchParams.set("cadastro", "atleta");
+        url.hash = "acesso";
+        window.location.assign(url.toString());
+      }}
       activeArenaTab={activeArenaTab}
       activeStatusTab={activeStatusTab}
       activeItems={activeItems}

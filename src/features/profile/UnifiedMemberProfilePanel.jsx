@@ -208,7 +208,7 @@ export default function UnifiedMemberProfilePanel({
         <span><Check aria-hidden="true" /> Torneios, circuitos e a assinatura não são alterados por este formulário.</span>
         <div className="unifiedMemberProfileActions">
           <button type="button" className="secondaryBtn" onClick={onOpenPublicProfile}>
-            <Eye aria-hidden="true" /> Ver perfil público
+            <Eye aria-hidden="true" /> Abrir meu perfil
           </button>
           <button type="button" className="saveProfileBtn actionConfirmBtn" onClick={onSave} disabled={loading || saving || !schemaAvailable} aria-busy={saving}>
             {saving ? "Salvando..." : "Salvar perfil pessoal"}
