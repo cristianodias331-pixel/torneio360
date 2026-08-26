@@ -3388,6 +3388,9 @@ assert.deepEqual(
 assert.ok(
   cupRankingDefaultsSource.includes('PLAY_RANKING_GROUP_CRITERIA_LABEL =')
     && cupRankingDefaultsSource.includes('"Vitórias > Saldo de games > Confronto direto > Coeficiente > Sorteio"')
+    && organizerWorkspaceSource.includes('getAutomaticCupRankingLabel(editForm.type)')
+    && organizerWorkspaceSource.includes('getAutomaticCupRankingLabel(category.type)')
+    && !organizerWorkspaceSource.includes('{PLAY_RANKING_GROUP_CRITERIA_LABEL}')
     && tieBreakPanelsSource.includes('"playranking"')
     && tournamentFormatHelpSource.includes("O Total de Games permanece visível somente como estatística.")
     && tournamentFormatHelpSource.includes("o segundo colocado acompanha a posição do campeão do seu grupo"),

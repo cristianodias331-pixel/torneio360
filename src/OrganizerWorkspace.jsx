@@ -6648,7 +6648,7 @@ setNewPublicInfo({
                 <label>Critério do ranking</label>
                 {modalityConfig[editForm.type]?.type === "playranking" ? (
                   <select value="playranking_group_rule" disabled aria-label="Critério automático do Modelo Torneio 360">
-                    <option value="playranking_group_rule">{PLAY_RANKING_GROUP_CRITERIA_LABEL}</option>
+                    <option value="playranking_group_rule">{getAutomaticCupRankingLabel(editForm.type)}</option>
                   </select>
                 ) : (
                   <select value={editForm.rankingCriteria} onChange={(e) => updateEditForm("rankingCriteria", e.target.value)}>
@@ -6791,7 +6791,7 @@ setNewPublicInfo({
                         <label>Critério do ranking</label>
                         {modalityConfig[category.type]?.type === "playranking" ? (
                           <select value="playranking_group_rule" disabled aria-label="Critério automático do Modelo Torneio 360">
-                            <option value="playranking_group_rule">{PLAY_RANKING_GROUP_CRITERIA_LABEL}</option>
+                            <option value="playranking_group_rule">{getAutomaticCupRankingLabel(category.type)}</option>
                           </select>
                         ) : (
                           <select value={category.rankingCriteria} onChange={(event) => updateEventGroupCategory(category.key, "rankingCriteria", event.target.value)}>
