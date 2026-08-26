@@ -70,6 +70,14 @@
   min-height: 72px;
 }
 
+.embeddedLoginPage .landingHeader {
+  display: none !important;
+}
+
+.embeddedLoginPage > main {
+  min-height: 0;
+}
+
 .unifiedLoginPage > main {
   display: grid;
   min-height: calc(100vh - 72px);

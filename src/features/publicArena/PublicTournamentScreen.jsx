@@ -55,6 +55,7 @@ export default function PublicTournamentScreenView({
   tournament,
   organizer: liveOrganizer = null,
   onBackToArena = null,
+  embedded = false,
   runtime,
 }) {
   const {
@@ -158,8 +159,8 @@ export default function PublicTournamentScreenView({
   const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
 
   return (
-    <div className="publicPage">
-      <header className="publicHeader publicHeaderWithLogo">
+    <div className={`publicPage${embedded ? " embeddedPublicTournament" : ""}`}>
+      {!embedded ? <header className="publicHeader publicHeaderWithLogo">
         <div className="publicBrandRow">
           <BeachLogo />
           <div className="brandTaglineOnly">
@@ -185,9 +186,18 @@ export default function PublicTournamentScreenView({
             {registrationClosed ? "Inscrições encerradas" : "Somente visualização"}
           </div>
         </div>
-      </header>
+      </header> : (
+        <section className="platformEntityHeader">
+          <div>
+            <span>TORNEIO</span>
+            <h1>{tournament.name}</h1>
+            <p>{getModalityDisplayName(tournament.type)} · Somente visualização</p>
+          </div>
+          {onBackToArena ? <button type="button" onClick={onBackToArena}>Voltar à organização</button> : null}
+        </section>
+      )}
 
-      <main className="publicContent">
+      <main className="publicContent embeddedEntityContent">
         <div className={`publicEventMediaInfo ${tournamentCoverDisplay ? "hasCover" : ""}`}>
         {tournamentCoverDisplay ? (
           <button

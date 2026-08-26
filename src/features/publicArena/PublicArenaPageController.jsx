@@ -16,6 +16,7 @@ import {
   sortCircuitsForDisplay,
 } from "../../domain/publicArenaData.mjs";
 import { normalizeCircuitStatus } from "../../domain/statusFormatting.mjs";
+import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import {
   getAutomaticEventStatus,
   isPublicItemFinished,
@@ -595,6 +596,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         tournament={selectedTournament}
         organizer={organizer}
         onBackToArena={() => setSelectedTournament(null)}
+        embedded={embedded}
       />
     );
   }
@@ -606,6 +608,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         tournaments={Array.isArray(selectedCircuit.tournaments) ? selectedCircuit.tournaments : tournaments}
         organizer={organizer}
         onBackToArena={() => setSelectedCircuit(null)}
+        embedded={embedded}
       />
     );
   }
@@ -641,7 +644,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         const url = new URL(window.location.origin);
         url.searchParams.set("cadastro", "conta");
         url.hash = "acesso";
-        window.location.assign(url.toString());
+        navigatePlatform({ cadastro: "conta" });
       }}
       activeArenaTab={activeArenaTab}
       activeStatusTab={activeStatusTab}

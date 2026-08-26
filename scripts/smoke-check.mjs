@@ -450,7 +450,8 @@ import {
 const root = new URL("../", import.meta.url);
 const mainEntrySource = readFileSync(new URL("src/main.jsx", root), "utf8");
 const organizerWorkspaceSource = readFileSync(new URL("src/OrganizerWorkspace.jsx", root), "utf8");
-const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}`;
+const platformChromeSource = readFileSync(new URL("src/features/appShell/PlatformChrome.jsx", root), "utf8");
+const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}\n${platformChromeSource}`;
 const lazyFeaturesSource = readFileSync(
   new URL("src/features/appShell/lazyFeatures.jsx", root),
   "utf8"
@@ -461,6 +462,10 @@ const loginScreenSource = readFileSync(
 );
 const unifiedPlatformFrameSource = readFileSync(
   new URL("src/features/appShell/UnifiedPlatformFrame.jsx", root),
+  "utf8"
+);
+const platformNavigationSource = readFileSync(
+  new URL("src/domain/platformNavigation.mjs", root),
   "utf8"
 );
 const memberProfileWorkspaceSource = readFileSync(
@@ -3923,9 +3928,11 @@ assert.ok(
 assert.ok(
   mainSource.includes('const [sidebarExpanded, setSidebarExpanded] = useState(false)')
     && mainSource.includes('className="sidebarMobileToggle"')
-    && mainSource.includes('className={`sidebarBackdrop ${sidebarExpanded ? "visible" : ""}`}')
-    && mainSource.includes('playSidebar proSidebar ${sidebarExpanded ? "isExpanded" : ""}')
+    && mainSource.includes('className={`sidebarBackdrop ${expanded ? "visible" : ""}`}')
+    && mainSource.includes('playSidebar proSidebar ${expanded ? "isExpanded" : ""}')
     && mainSource.includes("<Menu aria-hidden=\"true\"")
+    && mainSource.includes("<PlatformSidebar")
+    && mainSource.includes("<PlatformTopbar")
     && !mainSource.includes('className="sidebarExpandToggle"')
     && styleSource.includes(".playSidebar.proSidebar:hover")
     && styleSource.includes("@media (min-width: 1025px)")
@@ -5042,13 +5049,24 @@ assert.ok(
   "O cadastro voltou a separar atleta e organizador em tipos diferentes de acesso."
 );
 assert.ok(
-  unifiedPlatformFrameSource.includes('id: "overview"')
-    && unifiedPlatformFrameSource.includes('id: "tournaments"')
-    && unifiedPlatformFrameSource.includes('id: "circuits"')
-    && unifiedPlatformFrameSource.includes('id: "profile"')
+  unifiedPlatformFrameSource.includes('panel: "overview"')
+    && unifiedPlatformFrameSource.includes('panel: "tournaments"')
+    && unifiedPlatformFrameSource.includes('panel: "circuits"')
+    && unifiedPlatformFrameSource.includes('panel: "profile"')
     && memberProfileWorkspaceSource.includes("PublicTournamentFeedSection")
     && memberProfileWorkspaceSource.includes("Torneios e circuitos são recursos para assinantes"),
   "A conta gratuita voltou a usar uma área separada ou perdeu o bloqueio de assinatura."
+);
+assert.ok(
+  organizerWorkspaceSource.includes("<PlatformSidebar")
+    && organizerWorkspaceSource.includes("<PlatformTopbar")
+    && unifiedPlatformFrameSource.includes("<PlatformSidebar")
+    && unifiedPlatformFrameSource.includes("<PlatformTopbar")
+    && mainEntrySource.includes("subscribePlatformNavigation")
+    && platformNavigationSource.includes("window.history[method]")
+    && publicTournamentScreenSource.includes('embedded ? " embeddedPublicTournament"')
+    && publicPlatformHomeControllerSource.includes("navigatePlatform({ public: item.public_id })"),
+  "A navegação pública voltou a criar uma página paralela ou a recarregar a aplicação inteira."
 );
 assert.ok(contactLinksSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");

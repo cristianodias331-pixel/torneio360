@@ -29,7 +29,6 @@ import {
   LockKeyhole,
   LogOut,
   MapPin,
-  Menu,
   MessageCircle,
   Moon,
   PlusCircle,
@@ -106,6 +105,7 @@ import {
   PlanCard,
   PlatformSupportLinks,
 } from "./features/appShell/EntryPresentation.jsx";
+import { PlatformSidebar, PlatformTopbar } from "./features/appShell/PlatformChrome.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
 import UnifiedMemberProfilePanel from "./features/profile/UnifiedMemberProfilePanel.jsx";
 import {
@@ -6122,50 +6122,14 @@ setNewPublicInfo({
       { panel: "modalidades", label: "Modalidades", Icon: Shapes },
     ];
 
-    const closeSidebarAfterNavigation = () => {
-      if (window.matchMedia?.("(max-width: 1024px)").matches) setSidebarExpanded(false);
-    };
-
     return (
-      <>
-        <button
-          type="button"
-          className={`sidebarBackdrop ${sidebarExpanded ? "visible" : ""}`}
-          aria-label="Fechar menu principal"
-          onClick={() => setSidebarExpanded(false)}
-        />
-        <aside
-          id="torneio360-main-sidebar"
-          className={`playSidebar proSidebar ${sidebarExpanded ? "isExpanded" : ""}`}
-          aria-label="Navegação principal"
-        >
-          <div className="sidebarHeader">
-            <span className="sidebarSectionLabel">Menu</span>
-          </div>
-          <nav className="sidebarNav">
-            {navItems.map(({ panel, label, Icon }) => (
-              <button
-                key={panel}
-                className={`playNavItem ${activePanel === panel ? "active" : ""}`}
-                type="button"
-                onClick={() => {
-                  goToPanel(panel);
-                  closeSidebarAfterNavigation();
-                }}
-                aria-current={activePanel === panel ? "page" : undefined}
-                title={label}
-              >
-                <span className="navIcon" aria-hidden="true"><Icon /></span>
-                <small>{label}</small>
-              </button>
-            ))}
-          </nav>
-          <div className="sidebarBrandAccent" aria-hidden="true">
-            <span />
-            <small>Torneio 360</small>
-          </div>
-        </aside>
-      </>
+      <PlatformSidebar
+        activePanel={activePanel}
+        expanded={sidebarExpanded}
+        items={navItems}
+        onNavigate={goToPanel}
+        onExpandedChange={setSidebarExpanded}
+      />
     );
   }
 
@@ -6208,27 +6172,8 @@ setNewPublicInfo({
         : { className: "synced", label: "Dados sincronizados", Icon: CloudCheck };
     const SyncStatusIcon = syncStatus.Icon;
 
-    return (
-      <header className="playTopbar proTopbar">
-        <div className="playTopBrand">
-          <button
-            type="button"
-            className="sidebarMobileToggle"
-            aria-label={sidebarExpanded ? "Fechar menu principal" : "Abrir menu principal"}
-            aria-controls="torneio360-main-sidebar"
-            aria-expanded={sidebarExpanded}
-            onClick={() => setSidebarExpanded((expanded) => !expanded)}
-          >
-            <Menu aria-hidden="true" />
-            <span>Menu</span>
-          </button>
-          <BeachLogo />
-          <div className="brandTaglineOnly">
-            <span>{TORNEIO360_TAGLINE}</span>
-          </div>
-        </div>
-
-        <div className="playUserBox proTopActions">
+    const actions = (
+      <>
           <div
             className={`cloudSyncStatus ${syncStatus.className}`}
             role="status"
@@ -6312,8 +6257,16 @@ setNewPublicInfo({
               </div>
             ) : null}
           </div>
-        </div>
-      </header>
+      </>
+    );
+
+    return (
+      <PlatformTopbar
+        sidebarExpanded={sidebarExpanded}
+        onSidebarExpandedChange={setSidebarExpanded}
+        tagline={TORNEIO360_TAGLINE}
+        actions={actions}
+      />
     );
   }
 

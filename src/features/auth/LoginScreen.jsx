@@ -140,6 +140,7 @@ export default function LoginScreen({
   recoverySession = null,
   onRecoveryFinished,
   onRecoveryExit,
+  embedded = false,
 } = {}) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -427,7 +428,7 @@ export default function LoginScreen({
   }
 
   return (
-    <div className="landingPage unifiedLoginPage">
+    <div className={`landingPage unifiedLoginPage${embedded ? " embeddedLoginPage" : ""}`}>
       <NoticeModal notice={notice} onClose={() => setNotice(null)} />
 
       <header className="landingHeader">

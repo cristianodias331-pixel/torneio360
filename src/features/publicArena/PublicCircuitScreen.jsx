@@ -22,6 +22,7 @@ export default function PublicCircuitScreenView({
   tournaments = [],
   organizer = {},
   onBackToArena,
+  embedded = false,
   runtime,
 }) {
   const {
@@ -206,8 +207,8 @@ export default function PublicCircuitScreenView({
   };
 
   return (
-    <div className="publicPage publicCircuitPage">
-      <header className="publicHeader publicHeaderWithLogo publicCircuitHeader">
+    <div className={`publicPage publicCircuitPage${embedded ? " embeddedPublicCircuit" : ""}`}>
+      {!embedded ? <header className="publicHeader publicHeaderWithLogo publicCircuitHeader">
         <div className="publicBrandRow">
           <BeachLogo />
           <div className="brandTaglineOnly"><span>{tagline}</span></div>
@@ -226,9 +227,18 @@ export default function PublicCircuitScreenView({
           <button type="button" onClick={onBackToArena}>← Voltar ao perfil da arena</button>
           <div className="publicBadge">Somente visualização</div>
         </div>
-      </header>
+      </header> : (
+        <section className="platformEntityHeader">
+          <div>
+            <span>CIRCUITO</span>
+            <h1>{circuit?.name || "Circuito"}</h1>
+            <p>Ranking e torneios · Somente visualização</p>
+          </div>
+          <button type="button" onClick={onBackToArena}>Voltar à organização</button>
+        </section>
+      )}
 
-      <main className="publicContent publicCircuitContent">
+      <main className="publicContent publicCircuitContent embeddedEntityContent">
         <div className={`publicEventMediaInfo ${circuitCoverDisplay ? "hasCover" : ""}`}>
         {circuitCoverDisplay ? (
           <button

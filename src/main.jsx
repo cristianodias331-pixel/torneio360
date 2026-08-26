@@ -88,6 +88,10 @@ import {
   syncCupBracketScores,
 } from "./domain/cupBracketOrchestration.mjs";
 import {
+  navigatePlatform,
+  subscribePlatformNavigation,
+} from "./domain/platformNavigation.mjs";
+import {
   createCupPresentation,
 } from "./domain/cupPresentation.mjs";
 import "./style.css";
@@ -120,12 +124,17 @@ const {
 } = createPublicArenaApi({ supabase });
 
 function navigateFromPublicProfile(panel, hasSession) {
-  if (panel === "profile") return;
-  if (panel === "overview" || hasSession) {
-    window.location.assign(window.location.origin);
+  if (panel === "overview") {
+    navigatePlatform();
     return;
   }
-  window.location.assign(`${window.location.origin}/?entrar=1`);
+  if (!hasSession) {
+    navigatePlatform(panel === "profile" ? { cadastro: "conta" } : { entrar: "1" });
+    return;
+  }
+  navigatePlatform(panel === "profile"
+    ? { aba: "ajustes" }
+    : { aba: panel === "tournaments" ? "criar" : "circuitos" });
 }
 
 const {
@@ -201,7 +210,8 @@ function PublicRegistrationStatus(props) {
 
 
 function App() {
-  const routeParams = new URLSearchParams(window.location.search);
+  const [locationHref, setLocationHref] = useState(() => window.location.href);
+  const routeParams = new URL(locationHref).searchParams;
   const publicId = routeParams.get("public");
   const arenaId = routeParams.get("organizacao") || routeParams.get("arena");
   const memberIdentifier = routeParams.get("perfil") || routeParams.get("membro");
@@ -216,6 +226,8 @@ function App() {
   const [authCallbackError, setAuthCallbackError] = useState(() => getAuthCallbackError());
   const [authNotice, setAuthNotice] = useState(null);
   const activeUserIdRef = useRef(null);
+
+  useEffect(() => subscribePlatformNavigation(setLocationHref), []);
 
   async function reconcileOwnProfile() {
     const result = await supabase.rpc("reconcile_my_profile");
@@ -455,8 +467,8 @@ function App() {
         eyebrow="Torneio360"
         description="Perfil dentro da comunidade Torneio360."
         onNavigate={(panel) => navigateFromPublicProfile(panel, Boolean(session))}
-        onSignup={session ? undefined : () => window.location.assign(`${window.location.origin}/?cadastro=conta`)}
-        onAccountAction={() => window.location.assign(session ? window.location.origin : `${window.location.origin}/?entrar=1`)}
+        onSignup={session ? undefined : () => navigatePlatform({ cadastro: "conta" })}
+        onAccountAction={() => navigatePlatform(session ? {} : { entrar: "1" })}
       >
         <PublicMemberProfilePageView supabase={supabase} identifier={memberIdentifier} embedded />
       </UnifiedPlatformFrame>
@@ -504,11 +516,23 @@ function App() {
 
   if (!session) {
     return (
-      <Login
-        key="guest-login"
-        initialMode={authCallbackError ? "forgotPassword" : signupType ? "signup" : "login"}
-        initialNotice={authCallbackError || authNotice}
-      />
+      <UnifiedPlatformFrame
+        activePanel="overview"
+        hasSession={false}
+        title={signupType ? "Criar conta" : "Entrar"}
+        eyebrow="Conta única"
+        description="Acesse a mesma plataforma para acompanhar eventos, participar e organizar."
+        onNavigate={(panel) => navigateFromPublicProfile(panel, false)}
+        onSignup={signupType ? undefined : () => navigatePlatform({ cadastro: "conta" })}
+        onAccountAction={signupType ? () => navigatePlatform({ entrar: "1" }) : undefined}
+      >
+        <Login
+          key={`guest-${signupType ? "signup" : "login"}`}
+          embedded
+          initialMode={authCallbackError ? "forgotPassword" : signupType ? "signup" : "login"}
+          initialNotice={authCallbackError || authNotice}
+        />
+      </UnifiedPlatformFrame>
     );
   }
 
@@ -557,7 +581,7 @@ function App() {
         expiresAt={profile.expires_at ? formatDateBR(profile.expires_at) : "Não definido"}
         regularizationUrl={getPlanRegularizationWhatsAppUrl(profile, session.user)}
         autoRedirect={status !== "suspended"}
-        onBrowse={() => window.location.assign(`${window.location.origin}/?publico=1`)}
+        onBrowse={() => navigatePlatform({ publico: "1" })}
         onLogout={logout}
       />
     );
@@ -585,16 +609,11 @@ function EmailConfirmationPending(props) {
 }
 
 function openOrganizerAccess() {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.hash = "acesso";
-  url.searchParams.set("entrar", "1");
-  window.location.assign(url.toString());
+  navigatePlatform({ entrar: "1" });
 }
 
 function openOrganizerPanel() {
-  const url = new URL(window.location.origin);
-  window.location.assign(url.toString());
+  navigatePlatform();
 }
 
 function LazyArenaPhoto(props) {
@@ -634,7 +653,7 @@ function PublicArenaHeroHeader(props) {
     <PublicArenaHeroHeaderView
       {...props}
       tagline={TORNEIO360_TAGLINE}
-      onBack={() => window.location.assign(window.location.origin)}
+      onBack={() => navigatePlatform()}
       onOrganizerAccess={openOrganizerAccess}
     />
   );
@@ -679,12 +698,12 @@ function UnifiedPublicArenaProfile({ session = null, ...props }) {
     <UnifiedPlatformFrame
       activePanel="profile"
       hasSession={hasSession}
-      title="Perfil da organização"
-      eyebrow="Organização"
-      description="Informações, fotos, torneios e circuitos publicados."
+      title={props.publicId ? undefined : "Perfil da organização"}
+      eyebrow={props.publicId ? undefined : "Organização"}
+      description={props.publicId ? undefined : "Informações, fotos, torneios e circuitos publicados."}
       onNavigate={(panel) => navigateFromPublicProfile(panel, hasSession)}
-      onSignup={hasSession ? undefined : () => window.location.assign(`${window.location.origin}/?cadastro=conta`)}
-      onAccountAction={() => window.location.assign(hasSession ? window.location.origin : `${window.location.origin}/?entrar=1`)}
+      onSignup={hasSession ? undefined : () => navigatePlatform({ cadastro: "conta" })}
+      onAccountAction={() => navigatePlatform(hasSession ? {} : { entrar: "1" })}
     >
       <PublicArenaPage {...props} session={session} embedded />
     </UnifiedPlatformFrame>

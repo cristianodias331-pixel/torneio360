@@ -12,6 +12,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { loadPublicMemberProfile } from "../../services/memberProfileApi.mjs";
+import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import "../../styles/52-public-member-profile.css";
 
 function getInitials(name) {
@@ -102,12 +103,20 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
       : state.status === "unavailable"
         ? "A página pública de atletas ainda está sendo preparada no site teste."
         : "Não foi possível carregar este perfil agora.";
+    if (embedded) {
+      return (
+        <div className="publicDirectoryState publicDirectoryError">
+          <strong>Perfil indisponível</strong>
+          <span>{message}</span>
+        </div>
+      );
+    }
     return (
       <main className="publicMemberStatePage">
         <img src="/torneio360-logo.png" alt="Torneio 360" />
         <h1>Perfil indisponível</h1>
         <p>{message}</p>
-        <button type="button" onClick={() => window.location.assign(window.location.origin)}>
+        <button type="button" onClick={() => navigatePlatform()}>
           <ArrowLeft aria-hidden="true" /> Voltar ao Torneio 360
         </button>
       </main>
@@ -120,7 +129,7 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
   return (
     <div className={`publicMemberPage${embedded ? " embeddedPublicMemberProfile" : ""}`}>
       {!embedded ? <header className="publicMemberTopbar">
-        <button type="button" onClick={() => window.location.assign(`${window.location.origin}/#perfis`)} aria-label="Voltar aos atletas">
+        <button type="button" onClick={() => navigatePlatform()} aria-label="Voltar à visão geral">
           <ArrowLeft aria-hidden="true" />
         </button>
         <img src="/torneio360-logo.png" alt="Torneio 360" />
@@ -216,9 +225,9 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
                   ? <small>{[organization.city, organization.state].filter(Boolean).join("/")}</small>
                   : <small>Torneios e circuitos publicados</small>}
               </div>
-              <a href={`${window.location.origin}/?organizacao=${encodeURIComponent(organization.id)}`}>
+              <button type="button" onClick={() => navigatePlatform({ organizacao: organization.id })}>
                 Ver torneios e circuitos <ExternalLink aria-hidden="true" />
-              </a>
+              </button>
             </div>
           </section>
         ) : null}

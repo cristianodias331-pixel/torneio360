@@ -3,23 +3,18 @@ import {
   PublicPlatformHomeView,
   PublicTournamentFeedView,
 } from "./PublicArenaPresentation.jsx";
+import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 
 function openLogin() {
-  const url = new URL(window.location.origin);
-  url.searchParams.set("entrar", "1");
-  url.hash = "acesso";
-  window.location.assign(url.toString());
+  navigatePlatform({ entrar: "1" });
 }
 
 function openAccount() {
-  window.location.assign(window.location.origin);
+  navigatePlatform();
 }
 
 function openSignup() {
-  const url = new URL(window.location.origin);
-  url.searchParams.set("cadastro", "conta");
-  url.hash = "acesso";
-  window.location.assign(url.toString());
+  navigatePlatform({ cadastro: "conta" });
 }
 
 export function PublicTournamentFeedSection({ runtime, hasSession = false, embedded = false }) {
@@ -81,10 +76,10 @@ export function PublicTournamentFeedSection({ runtime, hasSession = false, embed
       isRegistrationOpen={isRegistrationOpen}
       getWhatsAppUrl={getWhatsAppUrl}
       onLoadMore={loadMore}
-      onOpenTournament={(item) => window.location.assign(`${window.location.origin}/?public=${encodeURIComponent(item.public_id)}`)}
+      onOpenTournament={(item) => navigatePlatform({ public: item.public_id })}
       onOpenOrganization={(organization) => {
         if (!organization?.id) return;
-        window.location.assign(`${window.location.origin}/?organizacao=${encodeURIComponent(organization.id)}`);
+        navigatePlatform({ organizacao: organization.id });
       }}
       onRegister={(registrationUrl, item) => {
         if (!hasSession) {
@@ -92,7 +87,7 @@ export function PublicTournamentFeedSection({ runtime, hasSession = false, embed
           return;
         }
         if (registrationUrl) window.open(registrationUrl, "_blank", "noopener,noreferrer");
-        else window.location.assign(`${window.location.origin}/?public=${encodeURIComponent(item.public_id)}`);
+        else navigatePlatform({ public: item.public_id });
       }}
     />
   );
@@ -116,7 +111,7 @@ export default function PublicPlatformHomeController({ session = null, runtime, 
       onAthleteSignup={openSignup}
       onNavigate={(panel) => {
         if (panel === "overview") {
-          window.location.assign(window.location.origin);
+          navigatePlatform();
           return;
         }
         if (session) {
