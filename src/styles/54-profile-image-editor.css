@@ -1,0 +1,318 @@
+.profileImageEditorOverlay {
+  position: fixed;
+  z-index: 10220;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 20px;
+  color: var(--ui-text, #253247);
+  background: rgba(2, 8, 23, .76);
+  backdrop-filter: blur(9px);
+}
+
+.profileImageEditorModal {
+  display: grid;
+  width: min(100%, 920px);
+  max-height: calc(100dvh - 40px);
+  gap: 20px;
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 22px;
+  color: var(--ui-text, #253247);
+  background: var(--ui-surface-raised, #fff);
+  box-shadow: 0 28px 90px rgba(2, 8, 23, .42);
+  overscroll-behavior: contain;
+}
+
+.profileImageEditorModal > header,
+.profileImageEditorModal > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.profileImageEditorModal > header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.profileImageEditorModal > header span {
+  color: var(--ui-active-accent, #ea580c);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.profileImageEditorModal h2,
+.profileImageEditorModal p {
+  margin: 0;
+}
+
+.profileImageEditorModal h2 {
+  color: var(--ui-text-strong, #102038);
+}
+
+.profileImageEditorModal > header p,
+.profileImageEditorBody > aside > p {
+  color: var(--ui-muted, #637189);
+  font-size: .88rem;
+}
+
+.profileImageEditorModal > header > button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 12px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-muted, #eef3fa);
+  cursor: pointer;
+}
+
+.profileImageEditorModal > header > button svg,
+.profileImageEditorModal > footer svg,
+.profileImageEditorOutput svg {
+  width: 18px;
+  height: 18px;
+}
+
+.profileImageEditorBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(240px, .7fr);
+  align-items: center;
+  gap: 22px;
+}
+
+.profileImageEditorFrame {
+  position: relative;
+  display: grid;
+  width: 100%;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #0ea5e9;
+  background: #071524;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1), 0 15px 40px rgba(2, 8, 23, .2);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.profileImageEditorFrame:active {
+  cursor: grabbing;
+}
+
+.profileImageEditorFramePhoto {
+  width: min(100%, 430px);
+  justify-self: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.profileImageEditorFrameCover {
+  aspect-ratio: 820 / 312;
+  border-radius: 18px;
+}
+
+.profileImageEditorFrame canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.profileImageEditorFrame.loading > span {
+  position: absolute;
+  color: #d9e8fb;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.profileImageEditorCrosshair {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.profileImageEditorCrosshair::before,
+.profileImageEditorCrosshair::after {
+  position: absolute;
+  content: "";
+  background: rgba(255, 255, 255, .76);
+  box-shadow: 0 0 0 1px rgba(2, 8, 23, .28);
+}
+
+.profileImageEditorCrosshair::before {
+  width: 100%;
+  height: 1px;
+}
+
+.profileImageEditorCrosshair::after {
+  width: 1px;
+  height: 100%;
+}
+
+.profileImageEditorCrosshair svg {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, .8);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(2, 8, 23, .42);
+  filter: drop-shadow(0 2px 5px rgba(2, 8, 23, .55));
+}
+
+.profileImageEditorBody > aside {
+  display: grid;
+  gap: 14px;
+}
+
+.profileImageEditorOutput {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
+.profileImageEditorOutput > span {
+  display: grid;
+  gap: 2px;
+}
+
+.profileImageEditorOutput small,
+.profileImageEditorFileName {
+  color: var(--ui-muted, #637189);
+}
+
+.profileImageEditorZoom {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  background: var(--ui-surface, #fff);
+}
+
+.profileImageEditorZoom > span,
+.profileImageEditorZoom > strong {
+  color: var(--ui-text-strong, #102038);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.profileImageEditorZoom input {
+  width: 100%;
+  accent-color: #0ea5e9;
+}
+
+.profileImageEditorHint {
+  padding: 11px 12px;
+  border: 1px dashed color-mix(in srgb, #0ea5e9 50%, var(--ui-border, #c8d4e6));
+  border-radius: 12px;
+  color: var(--ui-text, #253247);
+  background: color-mix(in srgb, #0ea5e9 8%, var(--ui-surface, #fff));
+  font-size: .77rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.profileImageEditorFileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileImageEditorError {
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, #dc2626 45%, transparent);
+  border-radius: 12px;
+  color: #b91c1c;
+  background: color-mix(in srgb, #dc2626 9%, var(--ui-surface-raised, #fff));
+  font-size: .8rem;
+  font-weight: 750;
+}
+
+.profileImageEditorModal > footer {
+  justify-content: flex-end;
+}
+
+.profileImageEditorModal > footer button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.theme-dark .profileImageEditorModal {
+  border-color: #33445a;
+  color: #dce6f3;
+  background: #172332;
+}
+
+.theme-dark .profileImageEditorModal h2,
+.theme-dark .profileImageEditorOutput,
+.theme-dark .profileImageEditorZoom > span,
+.theme-dark .profileImageEditorZoom > strong {
+  color: #f3f7fb;
+}
+
+.theme-dark .profileImageEditorModal > header > button,
+.theme-dark .profileImageEditorOutput,
+.theme-dark .profileImageEditorZoom {
+  border-color: #3a4b61;
+  background: #101b29;
+}
+
+.theme-dark .profileImageEditorHint {
+  border-color: rgba(56, 189, 248, .5);
+  color: #dce6f3;
+  background: rgba(14, 165, 233, .1);
+}
+
+@media (max-width: 760px) {
+  .profileImageEditorOverlay {
+    padding: 8px;
+  }
+
+  .profileImageEditorModal {
+    max-height: calc(100dvh - 16px);
+    gap: 14px;
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .profileImageEditorBody {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .profileImageEditorFramePhoto {
+    width: min(78vw, 350px);
+  }
+
+  .profileImageEditorModal > footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .profileImageEditorModal > footer button {
+    width: 100%;
+  }
+}

@@ -5,7 +5,7 @@ import {
   normalizeMemberHandle,
   validateMemberProfile,
 } from "../../domain/memberProfile.mjs";
-import { prepareSocialPostImageFile, resizeImageFile } from "../media/imageResize.mjs";
+import { prepareSocialPostImageFile } from "../media/imageResize.mjs";
 import {
   uploadMemberProfileCover,
   uploadMemberProfileGalleryPhoto,
@@ -13,6 +13,7 @@ import {
 } from "../../services/mediaStorage.mjs";
 import { loadMyMemberProfile, saveMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import UnifiedMemberProfilePanel from "./UnifiedMemberProfilePanel.jsx";
+import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 import { PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
@@ -26,6 +27,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState(null);
   const [activePanel, setActivePanel] = useState("overview");
+  const [imageEditor, setImageEditor] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -61,32 +63,29 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     });
   }
 
-  async function selectProfilePhoto(file) {
-    if (!file || saving) return;
-    try {
-      updateProfile("photoUrl", await resizeImageFile(file, {
-        maxWidth: 900,
-        maxHeight: 900,
-        quality: 0.86,
-        outputType: "image/webp",
-      }));
-    } catch (error) {
-      setNotice({ tone: "warning", message: error?.message || "Escolha outra imagem." });
-    }
+  function closeImageEditor() {
+    setImageEditor((current) => {
+      if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
+      return null;
+    });
   }
 
-  async function selectCover(file) {
+  function openImageEditor(file, kind) {
     if (!file || saving) return;
-    try {
-      updateProfile("coverUrl", await resizeImageFile(file, {
-        maxWidth: 1640,
-        maxHeight: 624,
-        quality: 0.86,
-        outputType: "image/webp",
-      }));
-    } catch (error) {
-      setNotice({ tone: "warning", message: error?.message || "Escolha outra imagem." });
+    if (!String(file.type || "").startsWith("image/")) {
+      setNotice({ tone: "warning", message: "Escolha uma foto em JPG, PNG ou WebP." });
+      return;
     }
+    setImageEditor((current) => {
+      if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
+      return { kind, sourceUrl: URL.createObjectURL(file), fileName: file.name || "imagem" };
+    });
+  }
+
+  function applyImageEditor({ imageUrl }) {
+    updateProfile(imageEditor?.kind === "cover" ? "coverUrl" : "photoUrl", imageUrl);
+    closeImageEditor();
+    return true;
   }
 
   async function selectGalleryPhotos(files) {
@@ -214,6 +213,15 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
       onNavigate={navigate}
     >
       {notice ? <div className={`memberProfileWorkspaceNotice ${notice.tone}`} role="status">{notice.message}</div> : null}
+      {imageEditor ? (
+        <ProfileImageEditor
+          kind={imageEditor.kind}
+          sourceUrl={imageEditor.sourceUrl}
+          fileName={imageEditor.fileName}
+          onCancel={closeImageEditor}
+          onApply={applyImageEditor}
+        />
+      ) : null}
       {activePanel === "overview" ? (
         publicPlatformHomeRuntime ? (
           <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded />
@@ -227,9 +235,9 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           saving={saving}
           schemaAvailable={status !== "unavailable"}
           onChange={updateProfile}
-          onPhotoFile={selectProfilePhoto}
+          onPhotoFile={(file) => openImageEditor(file, "photo")}
           onRemovePhoto={() => updateProfile("photoUrl", "")}
-          onCoverFile={selectCover}
+          onCoverFile={(file) => openImageEditor(file, "cover")}
           onRemoveCover={() => updateProfile("coverUrl", "")}
           onGalleryFiles={selectGalleryPhotos}
           onRemoveGalleryPhoto={removeGalleryPhoto}

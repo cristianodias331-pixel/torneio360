@@ -110,6 +110,7 @@ import {
 import { PlatformSidebar, PlatformTopbar } from "./features/appShell/PlatformChrome.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
 import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsModal.jsx";
+import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -550,6 +551,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return normalizeProfileSubtab(params.get("perfil"));
   });
   const [memberProfileEditorOpen, setMemberProfileEditorOpen] = useState(false);
+  const [memberProfileImageEditor, setMemberProfileImageEditor] = useState(null);
   const [activePanel, setActivePanel] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("aba") || "inicio";
@@ -3158,40 +3160,36 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     });
   }
 
-  async function handleMemberProfilePhotoFile(file) {
-    if (!file || memberProfileSaving) return;
-    try {
-      const { resizeImageFile } = await import("./features/media/imageResize.mjs");
-      const photoUrl = await resizeImageFile(file, {
-        maxWidth: 900,
-        maxHeight: 900,
-        quality: 0.86,
-        outputType: "image/webp",
-      });
-      const nextProfile = { ...memberProfile, photoUrl };
-      setMemberProfile(nextProfile);
-      await saveMemberProfile(nextProfile);
-    } catch (error) {
-      showNotice("warning", "Foto não adicionada", error?.message || "Escolha outra imagem.");
-    }
+  function closeMemberProfileImageEditor() {
+    setMemberProfileImageEditor((current) => {
+      if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
+      return null;
+    });
   }
 
-  async function handleMemberProfileCoverFile(file) {
+  function openMemberProfileImageEditor(file, kind) {
     if (!file || memberProfileSaving) return;
-    try {
-      const { resizeImageFile } = await import("./features/media/imageResize.mjs");
-      const coverUrl = await resizeImageFile(file, {
-        maxWidth: 1640,
-        maxHeight: 624,
-        quality: 0.86,
-        outputType: "image/webp",
-      });
-      const nextProfile = { ...memberProfile, coverUrl };
-      setMemberProfile(nextProfile);
-      await saveMemberProfile(nextProfile);
-    } catch (error) {
-      showNotice("warning", "Capa não adicionada", error?.message || "Escolha outra imagem.");
+    if (!String(file.type || "").startsWith("image/")) {
+      showNotice("warning", "Imagem não reconhecida", "Escolha uma foto em JPG, PNG ou WebP.");
+      return;
     }
+    setMemberProfileImageEditor((current) => {
+      if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
+      return {
+        kind,
+        sourceUrl: URL.createObjectURL(file),
+        fileName: file.name || "imagem",
+      };
+    });
+  }
+
+  async function applyMemberProfileImage({ imageUrl }) {
+    const field = memberProfileImageEditor?.kind === "cover" ? "coverUrl" : "photoUrl";
+    const nextProfile = { ...memberProfile, [field]: imageUrl };
+    setMemberProfile(nextProfile);
+    const saved = await saveMemberProfile(nextProfile);
+    if (saved) closeMemberProfileImageEditor();
+    return saved;
   }
 
   async function handleMemberGalleryFiles(files) {
@@ -6467,6 +6465,16 @@ setNewPublicInfo({
         onSave={saveMemberProfileAndClose}
       />
 
+      {memberProfileImageEditor ? (
+        <ProfileImageEditor
+          kind={memberProfileImageEditor.kind}
+          sourceUrl={memberProfileImageEditor.sourceUrl}
+          fileName={memberProfileImageEditor.fileName}
+          onCancel={closeMemberProfileImageEditor}
+          onApply={applyMemberProfileImage}
+        />
+      ) : null}
+
       <ConfirmModal
         target={deleteTarget}
         onCancel={() => setDeleteTarget(null)}
@@ -8233,7 +8241,7 @@ setNewPublicInfo({
         disabled={memberProfileSaving}
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) handleMemberProfileCoverFile(file);
+          if (file) openMemberProfileImageEditor(file, "cover");
           event.target.value = "";
         }}
       />
@@ -8248,7 +8256,7 @@ setNewPublicInfo({
           disabled={memberProfileSaving}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) handleMemberProfilePhotoFile(file);
+            if (file) openMemberProfileImageEditor(file, "photo");
             event.target.value = "";
           }}
         />

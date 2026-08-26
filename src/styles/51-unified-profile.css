@@ -444,6 +444,62 @@
   gap: 7px;
 }
 
+/* O editor possui uma superfície única em cada tema; campos legados não vazam cores. */
+.memberProfileEditModal .formField label,
+.memberProfileEditModal h2 {
+  color: var(--ui-text-strong, #102038) !important;
+}
+
+.memberProfileEditModal .formField > input,
+.memberProfileEditModal .formField > textarea,
+.memberProfileEditModal .unifiedMemberHandleField,
+.memberProfileEditModal .unifiedMemberHandleField > input {
+  border-color: var(--ui-border, #c8d4e6) !important;
+  color: var(--ui-text-strong, #102038) !important;
+  background: var(--ui-surface, #fff) !important;
+  box-shadow: none !important;
+}
+
+.memberProfileEditModal .unifiedMemberHandleField > span {
+  color: var(--ui-muted, #637189) !important;
+  background: var(--ui-surface-muted, #eef3fa) !important;
+}
+
+.memberProfileEditModal :is(input, textarea)::placeholder {
+  color: color-mix(in srgb, var(--ui-muted, #637189) 72%, transparent) !important;
+}
+
+.theme-dark .memberProfileEditModal {
+  border-color: #33445a !important;
+  color: #dce6f3 !important;
+  background: #172332 !important;
+}
+
+.theme-dark .memberProfileEditModal h2,
+.theme-dark .memberProfileEditModal .formField label {
+  color: #f3f7fb !important;
+}
+
+.theme-dark .memberProfileEditModal p,
+.theme-dark .memberProfileEditFields .formField > small {
+  color: #9fb0c4 !important;
+}
+
+.theme-dark .memberProfileEditModal > header > button,
+.theme-dark .memberProfileEditModal .formField > input,
+.theme-dark .memberProfileEditModal .formField > textarea,
+.theme-dark .memberProfileEditModal .unifiedMemberHandleField,
+.theme-dark .memberProfileEditModal .unifiedMemberHandleField > input {
+  border-color: #3a4b61 !important;
+  color: #f3f7fb !important;
+  background: #101b29 !important;
+}
+
+.theme-dark .memberProfileEditModal .unifiedMemberHandleField > span {
+  color: #aebdd0 !important;
+  background: #1e2b3b !important;
+}
+
 @media (max-width: 760px) {
   .socialOwnProfileCard {
     padding: 8px !important;
