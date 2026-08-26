@@ -3,19 +3,17 @@ import {
   AtSign,
   CalendarDays,
   GitBranch,
-  LayoutDashboard,
-  LogIn,
   MapPin,
   MessageCircle,
   Search,
   Trophy,
-  UserPlus,
   UserRound,
   Users,
   X,
   ZoomIn,
 } from "lucide-react";
 import { BeachLogo } from "../appShell/EntryPresentation.jsx";
+import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 
 export function PublicImageLightbox({ image, onClose }) {
   React.useEffect(() => {
@@ -303,6 +301,7 @@ export function PublicArenaPageView({
   onRequestTournamentCover,
   onRequestCircuitCover,
   serverPagination = null,
+  embedded = false,
 }) {
   const initialVisibleItems = 8;
   const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
@@ -328,8 +327,22 @@ export function PublicArenaPageView({
   }, [activeArenaTab, displayedItems, onRequestCircuitCover]);
 
   return (
-    <div className={`publicPage publicArenaPage ${pageClassName}`.trim()}>
-      <HeroHeader arenaName={arenaName} organizer={organizer} label={heroLabel} />
+    <div className={`publicPage publicArenaPage ${pageClassName} ${embedded ? "embeddedPublicOrganizationProfile" : ""}`.trim()}>
+      {!embedded ? <HeroHeader arenaName={arenaName} organizer={organizer} label={heroLabel} /> : (
+        <section className="embeddedOrganizationIdentity">
+          <span className="embeddedOrganizationAvatar">
+            {organizer.photoUrl ? <img src={organizer.photoUrl} alt={`Foto de ${arenaName}`} /> : getDirectoryInitials(arenaName)}
+          </span>
+          <div>
+            <small>Organização</small>
+            <h1>{arenaName}</h1>
+            {organizer.organizerName ? <p>{organizer.organizerName}</p> : null}
+            {[organizer.city, organizer.state].filter(Boolean).length > 0
+              ? <span><MapPin aria-hidden="true" /> {[organizer.city, organizer.state].filter(Boolean).join("/")}</span>
+              : null}
+          </div>
+        </section>
+      )}
 
       <main className="publicContent publicArenaContent">
         <section className="card publicArenaContacts">
@@ -600,6 +613,7 @@ export function PublicTournamentFeedView({
   getWhatsAppUrl,
   onLoadMore,
   onOpenTournament,
+  onOpenOrganization,
   onRegister,
 }) {
   const [previewImage, setPreviewImage] = React.useState(null);
@@ -632,12 +646,12 @@ export function PublicTournamentFeedView({
                   return (
                     <article className="publicTournamentPost" key={item.id}>
                       <header>
-                        <div className="publicTournamentPostOrganization publicTournamentPostOrganizationStatic">
+                        <button type="button" className="publicTournamentPostOrganization" onClick={() => onOpenOrganization?.(organization)}>
                           <span>{organization.photo_url
                             ? <img src={organization.photo_url} alt="" loading="lazy" decoding="async" />
                             : getDirectoryInitials(organization.name)}</span>
                           <span><strong>{organization.name}</strong><small>{[organization.city, organization.state].filter(Boolean).join("/") || "Organização Torneio360"}</small></span>
-                        </div>
+                        </button>
                       </header>
 
                       {coverImage ? (
@@ -689,50 +703,23 @@ export function PublicPlatformHomeView({
   hasSession,
   onAccountAction,
   onAthleteSignup,
+  onNavigate,
   TournamentFeed,
   tagline,
 }) {
   return (
-    <div className="playAppShell proDashboard theme-dark publicOverviewShell">
-      <aside className="playSidebar proSidebar publicOverviewSidebar" aria-label="Navegação principal">
-        <div className="sidebarHeader"><span className="sidebarSectionLabel">Menu</span></div>
-        <nav className="sidebarNav">
-          <a className="playNavItem active" href="#visao-geral" aria-current="page">
-            <span className="navIcon" aria-hidden="true"><LayoutDashboard /></span>
-            <small>Visão geral</small>
-          </a>
-        </nav>
-      </aside>
-
-      <div className="playMain">
-        <header className="playTopbar proTopbar publicOverviewTopbar">
-          <div className="playTopBrand">
-            <BeachLogo />
-            <div className="brandTaglineOnly"><span>{tagline}</span></div>
-          </div>
-          <div className="publicOverviewAccountActions">
-            {!hasSession ? (
-              <button type="button" className="publicOverviewCreateProfile" onClick={onAthleteSignup}>
-                <UserPlus aria-hidden="true" /> Criar perfil
-              </button>
-            ) : null}
-            <button type="button" className="publicOverviewLogin" onClick={onAccountAction}>
-              <LogIn aria-hidden="true" /> {hasSession ? "Minha conta" : "Entrar"}
-            </button>
-          </div>
-        </header>
-
-        <main className="playContent publicOverviewContent">
-          <section className="playTitleBlock">
-            <div>
-              <span className="pageEyebrow">Conteúdo público</span>
-              <h1>Visão geral</h1>
-              <p>Veja os torneios publicados. Para se inscrever ou criar um perfil, entre na plataforma.</p>
-            </div>
-          </section>
-          <TournamentFeed />
-        </main>
-      </div>
-    </div>
+    <UnifiedPlatformFrame
+      activePanel="overview"
+      hasSession={hasSession}
+      tagline={tagline}
+      eyebrow="Conteúdo público"
+      title="Visão geral"
+      description="Veja os torneios publicados. Para se inscrever ou criar um perfil, entre na plataforma."
+      onNavigate={onNavigate}
+      onSignup={onAthleteSignup}
+      onAccountAction={onAccountAction}
+    >
+      <TournamentFeed />
+    </UnifiedPlatformFrame>
   );
 }

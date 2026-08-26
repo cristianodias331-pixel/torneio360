@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, LogOut } from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -14,9 +13,11 @@ import {
 } from "../../services/mediaStorage.mjs";
 import { loadMyMemberProfile, saveMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import UnifiedMemberProfilePanel from "./UnifiedMemberProfilePanel.jsx";
+import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
+import { PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
 
-export default function MemberProfileWorkspace({ supabase, user, accessProfile, onLogout }) {
+export default function MemberProfileWorkspace({ supabase, user, accessProfile, onLogout, publicPlatformHomeRuntime }) {
   const fallback = useMemo(() => createMemberProfileFallback({ user, accessProfile }), [accessProfile?.name, user?.email, user?.id]);
   const [profile, setProfile] = useState(fallback);
   const baseProfileRef = useRef(fallback);
@@ -24,6 +25,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState(null);
+  const [activePanel, setActivePanel] = useState("overview");
 
   useEffect(() => {
     let active = true;
@@ -186,21 +188,37 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     }
   }
 
-  return (
-    <div className="memberProfileWorkspace">
-      <header className="memberProfileWorkspaceHeader">
-        <img src="/torneio360-logo.png" alt="Torneio 360" />
-        <div><span>Conta de atleta</span><strong>Meu perfil esportivo</strong></div>
-        <nav>
-          <button type="button" onClick={() => window.location.assign(`${window.location.origin}/?publico=1`)}>
-            <ArrowLeft aria-hidden="true" /> Explorar torneios
-          </button>
-          <button type="button" onClick={onLogout}><LogOut aria-hidden="true" /> Sair</button>
-        </nav>
-      </header>
+  function navigate(panel) {
+    if (panel === "overview" || panel === "profile") {
+      setNotice(null);
+      setActivePanel(panel);
+      return;
+    }
+    setNotice({
+      tone: "info",
+      message: "Torneios e circuitos são recursos para assinantes. A apresentação dos planos será adicionada aqui.",
+    });
+  }
 
-      <main>
-        {notice ? <div className={`memberProfileWorkspaceNotice ${notice.tone}`} role="status">{notice.message}</div> : null}
+  return (
+    <UnifiedPlatformFrame
+      activePanel={activePanel}
+      hasSession
+      title={activePanel === "profile" ? "Meu perfil" : "Visão geral"}
+      eyebrow={activePanel === "profile" ? "Perfil" : "Publicações"}
+      description={activePanel === "profile"
+        ? "Seu perfil pessoal dentro da mesma plataforma."
+        : "Acompanhe as publicações de torneios das organizações."}
+      accountLabel="Sair"
+      onAccountAction={onLogout}
+      onNavigate={navigate}
+    >
+      {notice ? <div className={`memberProfileWorkspaceNotice ${notice.tone}`} role="status">{notice.message}</div> : null}
+      {activePanel === "overview" ? (
+        publicPlatformHomeRuntime ? (
+          <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded />
+        ) : null
+      ) : (
         <UnifiedMemberProfilePanel
           profile={profile}
           organizationName=""
@@ -218,7 +236,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           onOpenPublicProfile={openPublicProfile}
           onSave={saveProfile}
         />
-      </main>
-    </div>
+      )}
+    </UnifiedPlatformFrame>
   );
 }

@@ -57,3 +57,36 @@
     grid-template-columns: 1fr;
   }
 }
+/* O acesso usa uma conta única e não repete a antiga página comercial. */
+.unifiedLoginPage .landingNav,
+.unifiedLoginPage .landingHeaderActions,
+.unifiedLoginPage .landingTrialBanner,
+.unifiedLoginPage .landingHero,
+.unifiedLoginPage .landingSection:not(.landingAccessSection) {
+  display: none !important;
+}
+
+.unifiedLoginPage .landingHeader {
+  min-height: 72px;
+}
+
+.unifiedLoginPage > main {
+  display: grid;
+  min-height: calc(100vh - 72px);
+  place-items: center;
+}
+
+.unifiedLoginPage .landingAccessSection {
+  width: min(100%, 1000px);
+  margin: 0 auto;
+}
+
+.unifiedLoginPage .accessTrialCallout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+@media (max-width: 700px) {
+  .unifiedLoginPage .landingAccessSection {
+    padding: 20px 12px 36px;
+  }
+}

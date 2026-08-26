@@ -94,7 +94,7 @@ function PublicArenaLoadingScreen() {
   );
 }
 
-export default function PublicArenaPageController({ arenaId = null, publicId = null, session = null, runtime }) {
+export default function PublicArenaPageController({ arenaId = null, publicId = null, session = null, runtime, embedded = false }) {
   const {
     PublicArenaHeroHeader,
     PublicArenaTournamentCards,
@@ -466,6 +466,13 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   }, [bundle?.profile?.id, bundle?.pagination?.enabled, activeArenaTab, activeStatusTab]);
 
   useEffect(() => {
+    const targetPublicId = String(publicId || "").trim();
+    if (!targetPublicId || !bundle?.profile || selectedTournament || openingPublicId) return;
+    const directoryItem = (bundle.tournaments || []).find((item) => String(item.public_id || "") === targetPublicId);
+    if (directoryItem) void openPublicTournament(directoryItem);
+  }, [publicId, bundle?.profile?.id, bundle?.tournaments, selectedTournament, openingPublicId]);
+
+  useEffect(() => {
     const selectedPublicId = String(selectedTournament?.public_id || "").trim();
     if (!selectedPublicId || selectedTournament?.directoryEntry === true) return undefined;
     let active = true;
@@ -538,10 +545,13 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   }
 
   if (loading || !minimumLoadingElapsed) {
-    return <PublicArenaLoadingScreen />;
+    return embedded ? <div className="publicDirectoryState">Carregando perfil da organização...</div> : <PublicArenaLoadingScreen />;
   }
 
   if (error || !bundle?.profile) {
+    if (embedded) {
+      return <div className="publicDirectoryState publicDirectoryError">{error || "Este perfil não está disponível."}</div>;
+    }
     return (
       <div className="publicPage publicUnavailablePage">
         <div className="center">
@@ -629,7 +639,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       hasSession={Boolean(session)}
       onRequireLogin={() => {
         const url = new URL(window.location.origin);
-        url.searchParams.set("cadastro", "atleta");
+        url.searchParams.set("cadastro", "conta");
         url.hash = "acesso";
         window.location.assign(url.toString());
       }}
@@ -653,6 +663,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       getCircuitTournamentCount={(item) => (item.tournament_ids || []).length}
       HeroHeader={PublicArenaHeroHeader}
       TournamentCards={PublicArenaTournamentCards}
+      embedded={embedded}
     />
   );
 }

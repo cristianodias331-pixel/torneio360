@@ -421,6 +421,118 @@
   min-height: 100vh;
 }
 
+.unifiedPlatformNavLock {
+  width: 12px !important;
+  height: 12px !important;
+  margin-left: auto;
+  color: var(--ui-muted, #8fa2ba);
+}
+
+.unifiedPlatformContent {
+  min-height: calc(100vh - 76px);
+}
+
+.embeddedPublicOrganizationProfile.publicPage,
+.embeddedPublicMemberProfile.publicMemberPage {
+  min-height: 0;
+  background: transparent;
+}
+
+.embeddedPublicOrganizationProfile .publicContent,
+.embeddedPublicMemberProfile .publicMemberContent {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 0 48px;
+}
+
+.embeddedOrganizationIdentity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 1180px);
+  margin: 0 auto 18px;
+  border: 1px solid var(--ui-border, #28405c);
+  border-radius: 20px;
+  padding: 18px;
+  background: var(--ui-surface-raised, #112238);
+  color: var(--ui-text, #eaf3ff);
+}
+
+.embeddedOrganizationAvatar {
+  display: grid;
+  width: 82px;
+  height: 82px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 3px solid #2b7cff;
+  border-radius: 50%;
+  background: #e9f2ff;
+  color: #0d4faf;
+  font-weight: 900;
+}
+
+.embeddedOrganizationAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.embeddedOrganizationIdentity h1,
+.embeddedOrganizationIdentity p {
+  margin: 0;
+}
+
+.embeddedOrganizationIdentity small {
+  color: #62a4ff;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.embeddedOrganizationIdentity > div {
+  display: grid;
+  gap: 4px;
+}
+
+.embeddedOrganizationIdentity > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ui-muted, #aebfd2);
+  font-size: .78rem;
+}
+
+.embeddedOrganizationIdentity svg {
+  width: 14px;
+  height: 14px;
+}
+
+.unifiedLoginPage .landingNav,
+.unifiedLoginPage .landingHeaderActions,
+.unifiedLoginPage .landingTrialBanner,
+.unifiedLoginPage .landingHero,
+.unifiedLoginPage .landingSection:not(.landingAccessSection) {
+  display: none !important;
+}
+
+.unifiedLoginPage .landingHeader {
+  min-height: 72px;
+}
+
+.unifiedLoginPage > main {
+  display: grid;
+  min-height: calc(100vh - 72px);
+  place-items: center;
+}
+
+.unifiedLoginPage .landingAccessSection {
+  width: min(100%, 1000px);
+  margin: 0 auto;
+}
+
 .publicOverviewSidebar .playNavItem {
   text-decoration: none;
 }
@@ -534,6 +646,63 @@
     display: none !important;
   }
 
+  .unifiedPlatformShell .unifiedPlatformSidebar {
+    position: fixed !important;
+    inset: auto 0 0 !important;
+    z-index: 100;
+    display: block !important;
+    width: 100% !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    border: 0 !important;
+    border-top: 1px solid rgba(126, 159, 199, .25) !important;
+    border-radius: 0 !important;
+    background: #081629 !important;
+  }
+
+  .unifiedPlatformSidebar .sidebarHeader,
+  .unifiedPlatformSidebar .sidebarBrandAccent {
+    display: none !important;
+  }
+
+  .unifiedPlatformSidebar .sidebarNav {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    height: 100%;
+    gap: 2px !important;
+    padding: 4px 6px !important;
+  }
+
+  .unifiedPlatformSidebar .playNavItem {
+    display: grid !important;
+    min-width: 0;
+    min-height: 52px !important;
+    place-items: center;
+    align-content: center;
+    gap: 1px !important;
+    border-radius: 10px !important;
+    padding: 2px !important;
+  }
+
+  .unifiedPlatformSidebar .playNavItem small {
+    display: block !important;
+    overflow: hidden;
+    max-width: 100%;
+    font-size: .58rem !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .unifiedPlatformSidebar .unifiedPlatformNavLock {
+    position: absolute;
+    right: 7px;
+    top: 5px;
+  }
+
+  .unifiedPlatformShell .unifiedPlatformContent {
+    padding-bottom: 82px !important;
+  }
+
   .publicOverviewShell .playMain {
     width: 100% !important;
     margin-left: 0 !important;
@@ -616,6 +785,25 @@
 
   .publicProfileSignupCallout button {
     width: 100%;
+  }
+
+  .embeddedOrganizationIdentity {
+    gap: 12px;
+    border-radius: 16px;
+    padding: 13px;
+  }
+
+  .embeddedOrganizationAvatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .embeddedOrganizationIdentity h1 {
+    font-size: 1.25rem;
+  }
+
+  .unifiedLoginPage .landingAccessSection {
+    padding: 20px 12px 82px;
   }
 }
 

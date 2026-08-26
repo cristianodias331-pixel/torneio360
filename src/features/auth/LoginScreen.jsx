@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Gift, MessageCircle, Trophy, UserRound } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import "../../styles/54-public-auth-profiles.css";
 import { NoticeModal } from "../dialogs/ConfirmationDialogs.jsx";
 import {
@@ -136,7 +136,6 @@ export default function LoginScreen({
   supabase,
   tagline = "Gestão inteligente de torneios",
   initialMode = "login",
-  initialAccountType = "athlete",
   initialNotice = null,
   recoverySession = null,
   onRecoveryFinished,
@@ -149,7 +148,6 @@ export default function LoginScreen({
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [accountType, setAccountType] = useState(initialAccountType === "organizer" ? "organizer" : "athlete");
   const [mode, setMode] = useState(initialMode);
   const [notice, setNotice] = useState(() => {
     if (!initialNotice) return null;
@@ -216,9 +214,7 @@ export default function LoginScreen({
       }
 
       setResendCooldown(60);
-      showNotice("success", "E-mail reenviado", accountType === "organizer"
-        ? "Confira sua caixa de entrada e abra o link para iniciar os 7 dias grátis."
-        : "Confira sua caixa de entrada e abra o link para ativar seu perfil esportivo.");
+      showNotice("success", "E-mail reenviado", "Confira sua caixa de entrada e abra o link para ativar sua conta.");
     } catch (error) {
       console.error(error);
       showNotice("error", "Não foi possível reenviar", "Verifique sua conexão e tente novamente.");
@@ -379,7 +375,9 @@ export default function LoginScreen({
             first_name: firstName.trim(),
             last_name: lastName.trim(),
             birth_date: birthDate,
-            account_type: accountType,
+            // Toda conta começa como conta gratuita. Organizar eventos é uma
+            // permissão de assinatura, não um tipo diferente de usuário.
+            account_type: "athlete",
           },
         },
       });
@@ -417,12 +415,8 @@ export default function LoginScreen({
         "success",
         confirmationRequired || existingAccountResponse ? "Confira seu e-mail" : "Conta criada",
         confirmationRequired || existingAccountResponse
-          ? accountType === "organizer"
-            ? "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar sua conta e iniciar os 7 dias grátis."
-            : "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar seu perfil esportivo."
-          : accountType === "organizer"
-            ? "Sua conta foi criada e os 7 dias grátis do plano Premium já estão ativos."
-            : "Sua conta e seu perfil esportivo foram criados."
+          ? "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar sua conta."
+          : "Sua conta e seu perfil foram criados."
       );
     } catch (error) {
       console.error(error);
@@ -433,7 +427,7 @@ export default function LoginScreen({
   }
 
   return (
-    <div className="landingPage">
+    <div className="landingPage unifiedLoginPage">
       <NoticeModal notice={notice} onClose={() => setNotice(null)} />
 
       <header className="landingHeader">
@@ -482,18 +476,17 @@ export default function LoginScreen({
       <main>
         <section className="landingTrialBanner" aria-labelledby="landing-trial-title">
           <div className="landingTrialSeal" aria-hidden="true">
-            {mode === "signup" && accountType === "athlete" ? <UserRound /> : <Gift />}
-            <strong>{mode === "signup" && accountType === "athlete" ? "Atleta" : "7"}</strong>
-            <span>{mode === "signup" && accountType === "athlete" ? "perfil gratuito" : "dias grátis"}</span>
+            <strong>1</strong>
+            <span>conta única</span>
           </div>
 
           <div className="landingTrialCopy">
-            <span>{mode === "signup" && accountType === "athlete" ? "Perfil esportivo" : "Oferta para novos usuários"}</span>
-            <h2 id="landing-trial-title">{mode === "signup" && accountType === "athlete" ? "Crie seu perfil de atleta gratuitamente" : "Experimente o plano Premium completo por 7 dias"}</h2>
-            <p>{mode === "signup" && accountType === "athlete" ? "Confirme o e-mail para publicar seu perfil e participar das próximas inscrições." : "Crie sua conta e confirme o e-mail para liberar seu período gratuito."}</p>
+            <span>Conta Torneio360</span>
+            <h2 id="landing-trial-title">Uma conta para participar e organizar</h2>
+            <p>Crie seu perfil gratuitamente. A organização de torneios e circuitos é liberada por assinatura.</p>
             <div className="landingTrialBenefits" aria-label="Benefícios do teste grátis">
-              <span>{mode === "signup" && accountType === "athlete" ? "Foto, capa e apresentação" : "Todos os formatos Premium"}</span>
-              <span>{mode === "signup" && accountType === "athlete" ? "Galeria pessoal com até 6 fotos" : "Rankings e tabelas automáticas"}</span>
+              <span>Foto, capa e apresentação</span>
+              <span>Galeria pessoal com até 6 fotos</span>
               <span>Começa após confirmar o e-mail</span>
             </div>
           </div>
@@ -505,7 +498,7 @@ export default function LoginScreen({
               document.getElementById("acesso")?.scrollIntoView({ behavior: "smooth" });
             }}
           >
-            {mode === "signup" && accountType === "athlete" ? "Criar perfil gratuito" : "Começar teste grátis"}
+            Criar conta
           </button>
         </section>
 
@@ -849,11 +842,9 @@ export default function LoginScreen({
             </h2>
             <p>
               {mode === "login"
-                ? "Acesse seus torneios salvos e continue de onde parou."
+                ? "Acesse seu perfil, suas inscrições e os recursos liberados para sua conta."
                 : mode === "signup"
-                  ? accountType === "organizer"
-                    ? "Confirme seu e-mail e ganhe 7 dias grátis no plano Premium."
-                    : "Confirme seu e-mail para ativar seu perfil esportivo gratuito."
+                  ? "Confirme seu e-mail para ativar sua conta e seu perfil."
                   : mode === "forgotPassword"
                     ? "Informe seu e-mail para receber o link de redefinição."
                     : "Crie uma nova senha com pelo menos 8 caracteres para voltar a acessar sua conta."}
@@ -883,10 +874,9 @@ export default function LoginScreen({
 
             {mode === "signup" ? (
               <div className="accessTrialCallout" role="status">
-                <span className="accessTrialCalloutIcon">{accountType === "organizer" ? <Gift aria-hidden="true" /> : <UserRound aria-hidden="true" />}</span>
                 <span>
-                  <strong>{accountType === "organizer" ? "Seu Premium começa com 7 dias grátis" : "Seu perfil esportivo é gratuito"}</strong>
-                  <small>{accountType === "organizer" ? "Confirme o e-mail depois do cadastro para ativar o teste." : "Entre como atleta e organize apenas se decidir assinar depois."}</small>
+                  <strong>Uma conta para toda a plataforma</strong>
+                  <small>Participe gratuitamente e assine somente quando quiser organizar torneios e circuitos.</small>
                 </span>
               </div>
             ) : null}
@@ -894,15 +884,6 @@ export default function LoginScreen({
             <form onSubmit={handleSubmit} noValidate>
               {mode === "signup" && (
                 <>
-                  <fieldset className="accountTypeSelector">
-                    <legend>Como você quer começar?</legend>
-                    <button type="button" className={accountType === "athlete" ? "active" : ""} onClick={() => setAccountType("athlete")} aria-pressed={accountType === "athlete"}>
-                      <UserRound aria-hidden="true" /><span><strong>Atleta</strong><small>Perfil esportivo gratuito</small></span>
-                    </button>
-                    <button type="button" className={accountType === "organizer" ? "active" : ""} onClick={() => setAccountType("organizer")} aria-pressed={accountType === "organizer"}>
-                      <Trophy aria-hidden="true" /><span><strong>Organizador</strong><small>Publicar e administrar eventos</small></span>
-                    </button>
-                  </fieldset>
                   <div className="twoCols formTwoCols">
                     <div>
                       <label>Nome</label>

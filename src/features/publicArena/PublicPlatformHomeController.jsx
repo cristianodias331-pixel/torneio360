@@ -3,7 +3,6 @@ import {
   PublicPlatformHomeView,
   PublicTournamentFeedView,
 } from "./PublicArenaPresentation.jsx";
-import "../../styles/53-public-social-platform.css";
 
 function openLogin() {
   const url = new URL(window.location.origin);
@@ -18,7 +17,7 @@ function openAccount() {
 
 function openSignup() {
   const url = new URL(window.location.origin);
-  url.searchParams.set("cadastro", "atleta");
+  url.searchParams.set("cadastro", "conta");
   url.hash = "acesso";
   window.location.assign(url.toString());
 }
@@ -83,6 +82,10 @@ export function PublicTournamentFeedSection({ runtime, hasSession = false, embed
       getWhatsAppUrl={getWhatsAppUrl}
       onLoadMore={loadMore}
       onOpenTournament={(item) => window.location.assign(`${window.location.origin}/?public=${encodeURIComponent(item.public_id)}`)}
+      onOpenOrganization={(organization) => {
+        if (!organization?.id) return;
+        window.location.assign(`${window.location.origin}/?organizacao=${encodeURIComponent(organization.id)}`);
+      }}
       onRegister={(registrationUrl, item) => {
         if (!hasSession) {
           openSignup();
@@ -111,6 +114,18 @@ export default function PublicPlatformHomeController({ session = null, runtime, 
       hasSession={Boolean(session)}
       onAccountAction={session ? openAccount : openLogin}
       onAthleteSignup={openSignup}
+      onNavigate={(panel) => {
+        if (panel === "overview") {
+          window.location.assign(window.location.origin);
+          return;
+        }
+        if (session) {
+          openAccount();
+          return;
+        }
+        if (panel === "profile") openSignup();
+        else openLogin();
+      }}
       TournamentFeed={() => (
         <PublicTournamentFeedSection runtime={runtime} hasSession={Boolean(session)} />
       )}

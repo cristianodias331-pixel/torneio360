@@ -459,6 +459,14 @@ const loginScreenSource = readFileSync(
   new URL("src/features/auth/LoginScreen.jsx", root),
   "utf8"
 );
+const unifiedPlatformFrameSource = readFileSync(
+  new URL("src/features/appShell/UnifiedPlatformFrame.jsx", root),
+  "utf8"
+);
+const memberProfileWorkspaceSource = readFileSync(
+  new URL("src/features/profile/MemberProfileWorkspace.jsx", root),
+  "utf8"
+);
 const cupRankingDefaultsSource = readFileSync(
   new URL("src/domain/cupRankingDefaults.mjs", root),
   "utf8"
@@ -3982,7 +3990,8 @@ assert.ok(
     && publicPlatformHomeControllerSource.includes("embedded")
     && !publicPlatformHomeControllerSource.includes("PublicArenaDirectorySection")
     && !publicPlatformHomeControllerSource.includes("PublicMemberDirectorySection")
-    && publicArenaPresentationSource.includes('className="playAppShell proDashboard theme-dark publicOverviewShell"')
+    && publicArenaPresentationSource.includes("UnifiedPlatformFrame")
+    && publicArenaPresentationSource.includes('activePanel="overview"')
     && !publicArenaPresentationSource.includes('<a href="#perfis">Atletas</a>')
     && !publicArenaPresentationSource.includes('<a href="#organizacoes">Organizações</a>'),
   "A visão geral pública voltou a usar uma página paralela ou diretórios fora do fluxo principal."
@@ -5025,8 +5034,22 @@ assert.ok(
 );
 assert.ok(authValidationSource.includes("function isUserAlreadyRegisteredError"), "O cadastro não reconhece e-mails que já possuem conta.");
 assert.ok(loginScreenSource.includes("Este e-mail já possui uma conta"), "O cadastro não orienta o usuário a entrar com a conta existente.");
-assert.ok(loginScreenSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
-assert.ok(loginScreenSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
+assert.ok(
+  !loginScreenSource.includes("Como você quer começar?")
+    && !loginScreenSource.includes("initialAccountType")
+    && loginScreenSource.includes('account_type: "athlete"')
+    && loginScreenSource.includes("Uma conta para toda a plataforma"),
+  "O cadastro voltou a separar atleta e organizador em tipos diferentes de acesso."
+);
+assert.ok(
+  unifiedPlatformFrameSource.includes('id: "overview"')
+    && unifiedPlatformFrameSource.includes('id: "tournaments"')
+    && unifiedPlatformFrameSource.includes('id: "circuits"')
+    && unifiedPlatformFrameSource.includes('id: "profile"')
+    && memberProfileWorkspaceSource.includes("PublicTournamentFeedSection")
+    && memberProfileWorkspaceSource.includes("Torneios e circuitos são recursos para assinantes"),
+  "A conta gratuita voltou a usar uma área separada ou perdeu o bloqueio de assinatura."
+);
 assert.ok(contactLinksSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");

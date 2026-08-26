@@ -23,7 +23,7 @@ function getInitials(name) {
     .join("") || "T3";
 }
 
-export default function PublicMemberProfilePage({ supabase, identifier }) {
+export default function PublicMemberProfilePage({ supabase, identifier, embedded = false }) {
   const [state, setState] = useState({ status: "loading", profile: null, organization: null });
   const [lightboxPhoto, setLightboxPhoto] = useState("");
   const [shareFeedback, setShareFeedback] = useState("");
@@ -118,8 +118,8 @@ export default function PublicMemberProfilePage({ supabase, identifier }) {
   const galleryPhotos = profile.galleryPhotos || [];
 
   return (
-    <div className="publicMemberPage">
-      <header className="publicMemberTopbar">
+    <div className={`publicMemberPage${embedded ? " embeddedPublicMemberProfile" : ""}`}>
+      {!embedded ? <header className="publicMemberTopbar">
         <button type="button" onClick={() => window.location.assign(`${window.location.origin}/#perfis`)} aria-label="Voltar aos atletas">
           <ArrowLeft aria-hidden="true" />
         </button>
@@ -132,7 +132,7 @@ export default function PublicMemberProfilePage({ supabase, identifier }) {
         <button type="button" onClick={shareProfile} aria-label="Compartilhar perfil">
           <Share2 aria-hidden="true" />
         </button>
-      </header>
+      </header> : null}
 
       <main className="publicMemberContent">
         <article className="publicMemberIdentityCard">

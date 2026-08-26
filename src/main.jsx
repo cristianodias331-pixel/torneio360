@@ -41,6 +41,7 @@ import {
   PublicArenaTournamentCardsView,
 } from "./features/publicArena/PublicArenaPresentation.jsx";
 import LazyArenaPhotoView from "./features/publicArena/LazyArenaPhoto.jsx";
+import UnifiedPlatformFrame from "./features/appShell/UnifiedPlatformFrame.jsx";
 import {
   formatDateBR,
   getBrazilTodayISO,
@@ -117,6 +118,15 @@ const {
   fetchPublicTournamentDetail,
   refreshPublicTournamentDetail,
 } = createPublicArenaApi({ supabase });
+
+function navigateFromPublicProfile(panel, hasSession) {
+  if (panel === "profile") return;
+  if (panel === "overview" || hasSession) {
+    window.location.assign(window.location.origin);
+    return;
+  }
+  window.location.assign(`${window.location.origin}/?entrar=1`);
+}
 
 const {
   getCupPlayTimeById,
@@ -437,15 +447,28 @@ function App() {
   }, []);
 
   if (memberIdentifier) {
-    return <PublicMemberProfilePageView supabase={supabase} identifier={memberIdentifier} />;
+    return (
+      <UnifiedPlatformFrame
+        activePanel="profile"
+        hasSession={Boolean(session)}
+        title="Perfil"
+        eyebrow="Torneio360"
+        description="Perfil dentro da comunidade Torneio360."
+        onNavigate={(panel) => navigateFromPublicProfile(panel, Boolean(session))}
+        onSignup={session ? undefined : () => window.location.assign(`${window.location.origin}/?cadastro=conta`)}
+        onAccountAction={() => window.location.assign(session ? window.location.origin : `${window.location.origin}/?entrar=1`)}
+      >
+        <PublicMemberProfilePageView supabase={supabase} identifier={memberIdentifier} embedded />
+      </UnifiedPlatformFrame>
+    );
   }
 
   if (publicId) {
-    return <PublicArenaPage publicId={publicId} session={session} />;
+    return <UnifiedPublicArenaProfile publicId={publicId} session={session} />;
   }
 
   if (arenaId) {
-    return <PublicPlatformHome session={session} />;
+    return <UnifiedPublicArenaProfile arenaId={arenaId} session={session} />;
   }
 
   if (publicMode && authFlow !== "recovery") {
@@ -484,7 +507,6 @@ function App() {
       <Login
         key="guest-login"
         initialMode={authCallbackError ? "forgotPassword" : signupType ? "signup" : "login"}
-        initialAccountType={signupType === "organizador" ? "organizer" : "athlete"}
         initialNotice={authCallbackError || authNotice}
       />
     );
@@ -498,6 +520,7 @@ function App() {
         user={session.user}
         accessProfile={profile}
         onLogout={logout}
+        publicPlatformHomeRuntime={publicPlatformHomeRuntime}
       />
     );
   }
@@ -648,6 +671,24 @@ const publicArenaPageRuntime = {
 
 function PublicArenaPage(props) {
   return <PublicArenaPageController {...props} runtime={publicArenaPageRuntime} />;
+}
+
+function UnifiedPublicArenaProfile({ session = null, ...props }) {
+  const hasSession = Boolean(session);
+  return (
+    <UnifiedPlatformFrame
+      activePanel="profile"
+      hasSession={hasSession}
+      title="Perfil da organização"
+      eyebrow="Organização"
+      description="Informações, fotos, torneios e circuitos publicados."
+      onNavigate={(panel) => navigateFromPublicProfile(panel, hasSession)}
+      onSignup={hasSession ? undefined : () => window.location.assign(`${window.location.origin}/?cadastro=conta`)}
+      onAccountAction={() => window.location.assign(hasSession ? window.location.origin : `${window.location.origin}/?entrar=1`)}
+    >
+      <PublicArenaPage {...props} session={session} embedded />
+    </UnifiedPlatformFrame>
+  );
 }
 
 const publicTournamentPageRuntime = {
