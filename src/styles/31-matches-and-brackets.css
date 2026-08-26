@@ -1671,3 +1671,317 @@ html[data-theme="dark"] .formatInfoTrigger,
   gap: 16px;
 }
 
+/* =========================================================
+   CORREÇÕES RESPONSIVAS DA OPERAÇÃO E DA AGENDA PÚBLICA
+   Mantém os mesmos dados e ações; apenas recompõe os cartões
+   para telas estreitas e evita que regras legadas os achatem.
+   ========================================================= */
+.publicPage .readOnlyRoundCard > .gameCard.publicReadOnlyGame.universalMatchCard {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.publicPage .publicReadOnlyGame.universalMatchCard .matchCardMeta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.publicPage .publicReadOnlyGame.universalMatchCard .matchCardStatus {
+  gap: 5px !important;
+  white-space: nowrap !important;
+}
+
+.publicPage .publicReadOnlyGame.universalMatchCard .matchStatusTimer {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  margin-left: 1px !important;
+  padding-left: 5px !important;
+  border-left: 1px solid currentColor !important;
+  font-size: .9em !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1 !important;
+}
+
+.publicPage .publicReadOnlyGame.universalMatchCard .matchCardControls {
+  display: flex !important;
+}
+
+.publicPage .publicReadOnlyGame.universalMatchCard .matchTeamStack {
+  display: grid !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .proDashboard .tournamentMatchesSection .scheduleOverviewToolbar {
+    height: auto !important;
+    min-height: 0 !important;
+    align-items: stretch !important;
+    gap: 5px !important;
+    padding: 5px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleOverviewPrimary {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    gap: 5px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleStatusFilters {
+    min-height: 31px !important;
+    gap: 2px !important;
+    padding: 0 0 1px !important;
+    overscroll-behavior-inline: contain;
+  }
+
+  .proDashboard.playAppShell .tournamentMatchesSection button.scheduleStatusFilter {
+    height: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 auto !important;
+    gap: 3px !important;
+    padding: 0 6px !important;
+    border-radius: 8px !important;
+    font-size: 10px !important;
+  }
+
+  .proDashboard.playAppShell .tournamentMatchesSection button.scheduleStatusFilter i {
+    width: 6px !important;
+    height: 6px !important;
+    flex-basis: 6px !important;
+  }
+
+  .proDashboard.playAppShell .tournamentMatchesSection button.scheduleStatusFilter strong {
+    min-width: 16px !important;
+    min-height: 16px !important;
+    padding-inline: 4px !important;
+    font-size: 8.5px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleSearch {
+    flex: 0 0 34px !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    align-self: auto !important;
+    margin: 0 !important;
+    padding: 0 9px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleSearch input {
+    min-height: 32px !important;
+    height: 32px !important;
+    line-height: 32px !important;
+    font-size: 11px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox {
+    width: 100% !important;
+    min-height: 32px !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    gap: 5px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox span {
+    font-size: 9.5px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .scheduleOverviewToolbar .voiceRepeatBox select {
+    width: 76px !important;
+    max-width: 76px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding-block: 3px !important;
+    font-size: 10px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) > .roundHeader {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) > .roundHeader h3 {
+    min-height: 28px !important;
+    margin: 0 !important;
+    padding: 6px 9px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) > .roundHeader .voiceActions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 5px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .proDashboard.playAppShell .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) > .roundHeader .voiceActions button {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    margin: 0 !important;
+    padding: 0 7px !important;
+    border-radius: 8px !important;
+    font-size: 8.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamName {
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchTeamRow {
+    grid-template-columns: minmax(0, 1fr) 34px !important;
+    gap: 5px !important;
+    min-height: 36px !important;
+    padding: 5px 4px 5px 8px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchScoreCell {
+    width: 34px !important;
+    min-width: 34px !important;
+  }
+
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchScoreInput,
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchScoreOutput,
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchScorePlaceholder,
+  .proDashboard .tournamentMatchesSection .schedule > .roundCard:not(.bracketRoundLane) .matchByeScore {
+    width: 31px !important;
+    height: 31px !important;
+    min-width: 31px !important;
+    min-height: 31px !important;
+    font-size: 11px !important;
+  }
+
+  .proDashboard .bracketTree .universalMatchCard .matchTeamName {
+    font-size: 10.5px !important;
+    line-height: 1.18 !important;
+  }
+
+  .proDashboard.playAppShell .bracketTree .universalMatchCard button.courtNameBadge,
+  .proDashboard.playAppShell .bracketTree .universalMatchCard button.matchCallButton,
+  .proDashboard.playAppShell .bracketTree button.matchCardStatus {
+    min-height: 27px !important;
+    height: 27px !important;
+    padding: 0 7px !important;
+    font-size: 8.5px !important;
+  }
+
+  .publicPage .readOnlySchedule > .readOnlyRoundCard {
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+    padding: 8px !important;
+    overflow: hidden !important;
+  }
+
+  .publicPage .readOnlyRoundCard > .gameCard.publicReadOnlyGame.universalMatchCard {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    padding: 8px !important;
+    overflow: hidden !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchCardMeta {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 5px !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchCardPhase,
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchCardStatus {
+    min-height: 20px !important;
+    max-width: 100% !important;
+    padding: 3px 6px !important;
+    font-size: 8px !important;
+    line-height: 1 !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchCardPhase {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchCardControls {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    min-width: 0 !important;
+    padding-bottom: 5px !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .courtNameBadge {
+    min-height: 24px !important;
+    padding: 4px 7px !important;
+    font-size: 8.5px !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchTeamStack {
+    display: grid !important;
+    min-width: 0 !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchTeamRow {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 32px !important;
+    align-items: center !important;
+    gap: 5px !important;
+    min-width: 0 !important;
+    min-height: 35px !important;
+    padding: 5px 4px 5px 8px !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchTeamName {
+    display: -webkit-box !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchScoreCell {
+    display: grid !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    place-items: center !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchScoreOutput,
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchScorePlaceholder,
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchByeScore {
+    width: 29px !important;
+    height: 29px !important;
+    min-width: 29px !important;
+    min-height: 29px !important;
+    font-size: 10.5px !important;
+  }
+
+  .publicPage .publicReadOnlyGame.universalMatchCard .matchVsDivider {
+    display: grid !important;
+    height: 14px !important;
+    font-size: 8px !important;
+  }
+}
+
