@@ -20,6 +20,7 @@ const fallback = createMemberProfileFallback({
 assert(fallback.displayName === "Pessoa Teste", "O perfil legado deve preencher somente o nome pessoal inicial.");
 assert(fallback.photoUrl === "", "A foto da arena não deve virar foto pessoal.");
 assert(fallback.galleryPhotos.length === 0, "A galeria deve começar vazia.");
+assert(fallback.followersCount === 0, "O perfil deve começar sem seguidores artificiais.");
 assert(normalizeMemberHandle(" @Meu Nome ") === "meunome", "O nome de usuário deve ser normalizado.");
 assert(normalizeMemberGalleryPhotos(["foto-1.webp", "", "foto-2.webp"]).length === 2, "A galeria deve ignorar posições vazias.");
 
@@ -45,11 +46,13 @@ const databaseProfile = normalizeMemberProfile({
   photo_url: "foto.webp",
   cover_url: "capa.webp",
   gallery_photos: ["foto-1.webp", "foto-2.webp"],
+  followers_count: 32,
   is_public: false,
 }, fallback);
 assert(databaseProfile.displayName === "Nome no banco", "O retorno do banco deve ser normalizado.");
 assert(databaseProfile.isPublic === true, "O perfil armazenado deve ser tratado como público.");
 assert(databaseProfile.galleryPhotos.length === 2, "As fotos públicas devem ser normalizadas.");
+assert(databaseProfile.followersCount === 32, "A contagem de seguidores deve ser normalizada.");
 
 const galleryOverflow = validateMemberProfile({
   ...fallback,

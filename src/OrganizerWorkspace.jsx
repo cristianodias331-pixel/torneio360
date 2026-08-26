@@ -7,6 +7,7 @@ import "./styles/42-workspace-density-and-courts.css";
 import "./styles/51-unified-profile.css";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
+  Award,
   AtSign,
   Camera,
   CalendarDays,
@@ -23,6 +24,7 @@ import {
   Flame,
   GitBranch,
   Grid3X3,
+  Images,
   LayoutDashboard,
   LifeBuoy,
   Link2,
@@ -107,7 +109,7 @@ import {
 } from "./features/appShell/EntryPresentation.jsx";
 import { PlatformSidebar, PlatformTopbar } from "./features/appShell/PlatformChrome.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
-import UnifiedMemberProfilePanel from "./features/profile/UnifiedMemberProfilePanel.jsx";
+import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsModal.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -399,6 +401,13 @@ const HomologationLoadLab = HOMOLOGATION_LOAD_LAB_ENABLED
   ? React.lazy(() => import("./features/testing/HomologationLoadLab.jsx"))
   : null;
 
+function normalizeProfileSubtab(value) {
+  const requested = String(value || "").trim();
+  if (["publicacoes", "fotos", "contato", "conquistas", "conta"].includes(requested)) return requested;
+  if (requested === "editar") return "contato";
+  return "publicacoes";
+}
+
 export function createOrganizerWorkspace(runtime) {
   const { supabase } = runtime;
   const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
@@ -538,8 +547,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [notice, setNotice] = useState(null);
   const [profileSubtab, setProfileSubtab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("perfil") || "pessoal";
+    return normalizeProfileSubtab(params.get("perfil"));
   });
+  const [memberProfileEditorOpen, setMemberProfileEditorOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("aba") || "inicio";
@@ -746,7 +756,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const currentParams = new URLSearchParams(window.location.search);
     if (state.last_panel) setActivePanel(state.last_panel);
-    if (state.last_profile_subtab) setProfileSubtab(state.last_profile_subtab);
+    if (state.last_profile_subtab) setProfileSubtab(normalizeProfileSubtab(state.last_profile_subtab));
     const circuitId = currentParams.get("circuito") || state.last_circuit_id;
     if (circuitId) setExpandedCircuitId(circuitId);
 
@@ -823,6 +833,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function goToPanel(panel) {
     if (!await guardSelectedTournamentBeforeLeaving()) return false;
+    setSidebarExpanded(false);
     setSelected(null);
     setExpandedCircuitId(null);
     setExpandedCircuitToolsId(null);
@@ -848,17 +859,19 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function openProfileSection(nextSubtab = "pessoal") {
+  async function openProfileSection(nextSubtab = "publicacoes") {
     if (!await guardSelectedTournamentBeforeLeaving()) return;
+    const normalizedSubtab = normalizeProfileSubtab(nextSubtab);
+    setSidebarExpanded(false);
     setProfileMenuOpen(false);
     setSelected(null);
-    setProfileSubtab(nextSubtab);
+    setProfileSubtab(normalizedSubtab);
     setActivePanel("ajustes");
-    updateAppUrl({ activePanel: "ajustes", selectedTournamentId: null, profileSubtab: nextSubtab });
+    updateAppUrl({ activePanel: "ajustes", selectedTournamentId: null, profileSubtab: normalizedSubtab });
   }
 
   function openProfileSettings() {
-    void openProfileSection("pessoal");
+    void openProfileSection("publicacoes");
   }
 
   function toggleColorMode() {
@@ -3155,7 +3168,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         quality: 0.86,
         outputType: "image/webp",
       });
-      updateMemberProfile("photoUrl", photoUrl);
+      const nextProfile = { ...memberProfile, photoUrl };
+      setMemberProfile(nextProfile);
+      await saveMemberProfile(nextProfile);
     } catch (error) {
       showNotice("warning", "Foto não adicionada", error?.message || "Escolha outra imagem.");
     }
@@ -3171,7 +3186,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         quality: 0.86,
         outputType: "image/webp",
       });
-      updateMemberProfile("coverUrl", coverUrl);
+      const nextProfile = { ...memberProfile, coverUrl };
+      setMemberProfile(nextProfile);
+      await saveMemberProfile(nextProfile);
     } catch (error) {
       showNotice("warning", "Capa não adicionada", error?.message || "Escolha outra imagem.");
     }
@@ -3215,22 +3232,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }));
   }
 
-  function openPublicMemberProfile() {
-    const identifier = memberProfile.handle || user.id;
-    const url = new URL(window.location.origin);
-    url.searchParams.set("perfil", identifier);
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
-  }
+  async function saveMemberProfile(profileOverride = null) {
+    if (!user?.id || memberProfileSaving) return false;
+    if (!ensureCloudConnection("salvar o perfil pessoal")) return false;
 
-  async function saveMemberProfile() {
-    if (!user?.id || memberProfileSaving) return;
-    if (!ensureCloudConnection("salvar o perfil pessoal")) return;
-
-    const validation = validateMemberProfile(memberProfile);
+    const requestedProfile = profileOverride?.userId ? profileOverride : memberProfile;
+    const validation = validateMemberProfile(requestedProfile);
     setMemberProfileErrors(validation.errors);
     if (!validation.valid) {
       showNotice("warning", "Revise o perfil", "Corrija os campos indicados antes de salvar.");
-      return;
+      return false;
     }
 
     if (memberProfileStatus === "unavailable") {
@@ -3239,12 +3250,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         "Estrutura ainda não aplicada",
         "O banco do site teste precisa receber a nova migração antes de salvar o perfil pessoal."
       );
-      return;
+      return false;
     }
 
     if (JSON.stringify(validation.profile) === JSON.stringify(memberProfileBaseRef.current)) {
       showNotice("info", "Perfil já está atualizado", "Não há novas alterações para enviar.");
-      return;
+      return true;
     }
 
     setMemberProfileSaving(true);
@@ -3299,7 +3310,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           "Estrutura ainda não aplicada",
           "O banco do site teste precisa receber a nova migração antes de salvar o perfil pessoal."
         );
-        return;
+        return false;
       }
 
       memberProfileBaseRef.current = result.profile;
@@ -3310,6 +3321,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         "Perfil pessoal atualizado",
         "Sua identidade foi salva sem alterar os dados da organização."
       );
+      return true;
     } catch (error) {
       console.error("Erro ao salvar o perfil pessoal:", error);
       const duplicateHandle = String(error?.code || "") === "23505"
@@ -3320,9 +3332,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       } else {
         showNotice("error", "Perfil não salvo", "Não foi possível salvar o perfil pessoal agora. Tente novamente.");
       }
+      return false;
     } finally {
       setMemberProfileSaving(false);
     }
+  }
+
+  async function saveMemberProfileAndClose() {
+    const saved = await saveMemberProfile();
+    if (saved) setMemberProfileEditorOpen(false);
   }
 
   function toggleNewPublicInfo(field) {
@@ -6437,6 +6455,18 @@ setNewPublicInfo({
     <div className={`playAppShell proDashboard theme-${colorMode}`}>
       <NoticeModal notice={notice} onClose={() => setNotice(null)} />
 
+      <MemberProfileDetailsModal
+        open={memberProfileEditorOpen}
+        profile={memberProfile}
+        errors={memberProfileErrors}
+        loading={memberProfileStatus === "loading"}
+        saving={memberProfileSaving}
+        schemaAvailable={memberProfileStatus !== "unavailable"}
+        onChange={updateMemberProfile}
+        onClose={() => { if (!memberProfileSaving) setMemberProfileEditorOpen(false); }}
+        onSave={saveMemberProfileAndClose}
+      />
+
       <ConfirmModal
         target={deleteTarget}
         onCancel={() => setDeleteTarget(null)}
@@ -6921,16 +6951,16 @@ setNewPublicInfo({
         {renderDataSafetyBanner()}
 
         <main className="playContent">
-          <section className="playTitleBlock">
+          {activePanel !== "ajustes" ? <section className="playTitleBlock">
             <div>
               <span className="pageEyebrow">Painel de gestão</span>
               <h1>{currentPanelMeta.title}</h1>
               <p>{currentPanelMeta.description}</p>
             </div>
             <div className="playPlanPill">Plano {profile.plan} · {formatStatusBR(profile.status)}</div>
-          </section>
+          </section> : null}
 
-          {freeTrialDetails ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
+          {freeTrialDetails && activePanel !== "ajustes" ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
 
           {activePanel === "inicio" && (
             <React.Suspense fallback={<section className="card"><p>Carregando publicações...</p></section>}>
@@ -8195,18 +8225,40 @@ setNewPublicInfo({
 
 {activePanel === "ajustes" && (
 <>
-  <section className="card instagramProfileCard">
-    <div className={`unifiedProfilePublicCover${memberProfile.coverUrl ? " hasCover" : ""}`}>
+  <section className="card instagramProfileCard socialOwnProfileCard">
+    <label className={`unifiedProfilePublicCover editableProfileCover${memberProfile.coverUrl ? " hasCover" : ""}`} title="Alterar foto de capa">
+      <input
+        type="file"
+        accept="image/*"
+        disabled={memberProfileSaving}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) handleMemberProfileCoverFile(file);
+          event.target.value = "";
+        }}
+      />
       {memberProfile.coverUrl ? <img src={memberProfile.coverUrl} alt="" /> : null}
-    </div>
+      <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> Alterar capa</span>
+    </label>
     <div className="instagramProfileHeader unifiedProfileHeader">
-      <div className="instagramProfilePhoto">
+      <label className="instagramProfilePhoto editableProfileAvatar" title="Alterar foto do perfil">
+        <input
+          type="file"
+          accept="image/*"
+          disabled={memberProfileSaving}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) handleMemberProfilePhotoFile(file);
+            event.target.value = "";
+          }}
+        />
         {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil pessoal" /> : <span><UserRound aria-hidden="true" /></span>}
-      </div>
+        <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
+      </label>
       <div className="instagramProfileInfo">
         <div className="instagramProfileTopline">
           <h2>{profileDisplayName}</h2>
-          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => openProfileSection("pessoal")}>
+          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => setMemberProfileEditorOpen(true)}>
             <Settings aria-hidden="true" />
             Editar perfil
           </button>
@@ -8220,36 +8272,12 @@ setNewPublicInfo({
           <span><strong>{memberProfile.galleryPhotos.length}</strong><small>Fotos</small></span>
           <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
           <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
-        </div>
-        <div className="profileAlwaysPublicBadge">
-          <span aria-hidden="true">●</span>
-          <div>
-            <strong>Perfil esportivo público</strong>
-            <small>A organização {organizerProfile.arenaName || "vinculada"} mantém seus próprios dados e suas publicações separadas.</small>
-          </div>
+          <span><strong>{memberProfile.followersCount || 0}</strong><small>Seguidores</small></span>
         </div>
       </div>
     </div>
 
-    {memberProfile.galleryPhotos.length > 0 ? (
-      <div className="unifiedProfileGalleryPreview" aria-label="Galeria pública do perfil">
-        {memberProfile.galleryPhotos.map((photoUrl, index) => (
-          <img key={`${photoUrl}-${index}`} src={photoUrl} alt={`Foto ${index + 1} da galeria`} loading="lazy" />
-        ))}
-      </div>
-    ) : null}
-
     <div className="profileSubtabs" role="tablist" aria-label="Seções do perfil">
-      <button
-        type="button"
-        role="tab"
-        className={profileSubtab === "pessoal" ? "active" : ""}
-        onClick={() => openProfileSection("pessoal")}
-        aria-selected={profileSubtab === "pessoal"}
-      >
-        <UserRound aria-hidden="true" />
-        Perfil
-      </button>
       <button
         type="button"
         role="tab"
@@ -8263,46 +8291,34 @@ setNewPublicInfo({
       <button
         type="button"
         role="tab"
-        className={profileSubtab === "editar" ? "active" : ""}
-        onClick={() => openProfileSection("editar")}
-        aria-selected={profileSubtab === "editar"}
+        className={profileSubtab === "fotos" ? "active" : ""}
+        onClick={() => openProfileSection("fotos")}
+        aria-selected={profileSubtab === "fotos"}
       >
-        <Settings aria-hidden="true" />
-        Organização
+        <Images aria-hidden="true" />
+        Fotos
       </button>
       <button
         type="button"
         role="tab"
-        className={profileSubtab === "conta" ? "active" : ""}
-        onClick={() => openProfileSection("conta")}
-        aria-selected={profileSubtab === "conta"}
+        className={profileSubtab === "contato" ? "active" : ""}
+        onClick={() => openProfileSection("contato")}
+        aria-selected={profileSubtab === "contato"}
       >
-        <LifeBuoy aria-hidden="true" />
-        Conta e suporte
+        <AtSign aria-hidden="true" />
+        Informações de contato
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "conquistas" ? "active" : ""}
+        onClick={() => openProfileSection("conquistas")}
+        aria-selected={profileSubtab === "conquistas"}
+      >
+        <Award aria-hidden="true" />
+        Conquistas
       </button>
     </div>
-
-    {profileSubtab === "pessoal" ? (
-      <div className="profileSubtabPanel unifiedMemberProfileTab">
-        <UnifiedMemberProfilePanel
-          profile={memberProfile}
-          organizationName={organizerProfile.arenaName}
-          errors={memberProfileErrors}
-          loading={memberProfileStatus === "loading"}
-          saving={memberProfileSaving}
-          schemaAvailable={memberProfileStatus !== "unavailable"}
-          onChange={updateMemberProfile}
-          onPhotoFile={handleMemberProfilePhotoFile}
-          onRemovePhoto={() => updateMemberProfile("photoUrl", "")}
-          onCoverFile={handleMemberProfileCoverFile}
-          onRemoveCover={() => updateMemberProfile("coverUrl", "")}
-          onGalleryFiles={handleMemberGalleryFiles}
-          onRemoveGalleryPhoto={removeMemberGalleryPhoto}
-          onOpenPublicProfile={openPublicMemberProfile}
-          onSave={saveMemberProfile}
-        />
-      </div>
-    ) : null}
 
     {profileSubtab === "publicacoes" ? (
       <div className="profileSubtabPanel">
@@ -8346,19 +8362,99 @@ setNewPublicInfo({
       })}
     </div>
 
+    <div className="profilePublicationsHeader profileCircuitsHeading">
+      <strong>Circuitos</strong>
+      <span>{circuits.length} circuito(s) publicado(s)</span>
+    </div>
+    <div className="profileCircuitPublicationGrid">
+      {circuits.length === 0 ? (
+        <div className="profileEmptyPost">Nenhum circuito criado ainda.</div>
+      ) : circuits.map((circuit) => (
+        <article className="profileCircuitPublication" key={circuit.id}>
+          <span className="profileCircuitPublicationIcon"><GitBranch aria-hidden="true" /></span>
+          <div>
+            <strong>{circuit.name}</strong>
+            <small>
+              {(circuit.tournamentIds || []).length} torneio(s)
+              {circuit.startDate ? ` · ${formatDateBR(circuit.startDate)}` : ""}
+            </small>
+          </div>
+          <button type="button" onClick={() => openOrganizerCircuit(circuit)}>Abrir</button>
+        </article>
+      ))}
+    </div>
+
+      </div>
+    ) : null}
+
+    {profileSubtab === "fotos" ? (
+      <div className="profileSubtabPanel profilePhotosPanel">
+        <section className="unifiedMemberGalleryEditor" aria-labelledby="member-gallery-profile-title">
+          <header>
+            <div>
+              <span><Images aria-hidden="true" /></span>
+              <div>
+                <h3 id="member-gallery-profile-title">Fotos do perfil</h3>
+                <p>Até seis fotos. Elas aparecem somente no seu perfil, sem curtidas ou comentários.</p>
+              </div>
+            </div>
+            <strong>{memberProfile.galleryPhotos.length}/{MAX_MEMBER_GALLERY_PHOTOS}</strong>
+          </header>
+
+          <div className="unifiedMemberGalleryGrid">
+            {memberProfile.galleryPhotos.map((photoUrl, index) => (
+              <figure key={`${photoUrl}-${index}`}>
+                <img src={photoUrl} alt={`Foto ${index + 1} do perfil`} />
+                <button type="button" onClick={() => removeMemberGalleryPhoto(index)} disabled={memberProfileSaving}>Remover</button>
+              </figure>
+            ))}
+            {memberProfile.galleryPhotos.length < MAX_MEMBER_GALLERY_PHOTOS ? (
+              <label className="unifiedMemberGalleryAdd">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={memberProfileSaving}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files || []);
+                    if (files.length) handleMemberGalleryFiles(files);
+                    event.target.value = "";
+                  }}
+                />
+                <PlusCircle aria-hidden="true" />
+                <strong>Adicionar fotos</strong>
+                <small>Restam {MAX_MEMBER_GALLERY_PHOTOS - memberProfile.galleryPhotos.length}</small>
+              </label>
+            ) : null}
+          </div>
+          {memberProfileErrors.galleryPhotos ? <small className="unifiedMemberFieldError">{memberProfileErrors.galleryPhotos}</small> : null}
+          <div className="profilePhotosActions">
+            <button type="button" className="saveProfileBtn actionConfirmBtn" onClick={saveMemberProfile} disabled={memberProfileSaving || memberProfileStatus === "unavailable"}>
+              {memberProfileSaving ? "Salvando..." : "Salvar fotos"}
+            </button>
+          </div>
+        </section>
+      </div>
+    ) : null}
+
+    {profileSubtab === "conquistas" ? (
+      <div className="profileSubtabPanel profileAchievementsPanel">
+        <Award aria-hidden="true" />
+        <strong>Conquistas</strong>
+        <span>Os resultados e títulos reconhecidos pela plataforma aparecerão aqui.</span>
       </div>
     ) : null}
   </section>
 
-  {profileSubtab === "editar" ? (
-  <section className="card organizerProfileCard profileEditSubtab">
+  {profileSubtab === "contato" ? (
+  <section className="card organizerProfileCard profileEditSubtab profileContactSubtab">
     <div className="profileEditSubtabHeader">
       <div>
         <span>Dados públicos</span>
-        <h2>Organização</h2>
+        <h2>Informações de contato</h2>
       </div>
     </div>
-    <p className="profileSectionHint">Organize as informações profissionais da organização sem misturá-las com o seu perfil pessoal.</p>
+    <p className="profileSectionHint">Mantenha atualizados os canais que atletas e outras organizações podem usar para falar com você.</p>
 
     <div className="profileFormSectionHeader">
       <span><UserRound aria-hidden="true" /></span>

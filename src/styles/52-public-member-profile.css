@@ -396,23 +396,84 @@
   color: #6b7a90;
 }
 
-.publicMemberOrganizationCard > a {
+.publicMemberOrganizationCard > :is(a, button) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 40px;
   padding: 8px 12px;
+  border: 0;
   border-radius: 11px;
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #0891b2);
   font-size: 0.76rem;
   font-weight: 800;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.publicMemberOrganizationCard > a svg {
+.publicMemberOrganizationCard > :is(a, button) svg {
   width: 14px;
   height: 14px;
+}
+
+.publicMemberProfileTabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid #d1dbea;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(27, 52, 88, .06);
+}
+
+.publicMemberProfileTabs button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: #64748b;
+  background: transparent;
+  font-size: .76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.publicMemberProfileTabs button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.publicMemberProfileTabs button.active {
+  border-color: #2563eb;
+  color: #153c78;
+  background: #edf4ff;
+  box-shadow: inset 0 -3px 0 #2563eb;
+}
+
+.publicMemberEmptyProfileSection {
+  display: grid;
+  min-height: 190px;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: #718097;
+  text-align: center;
+}
+
+.publicMemberEmptyProfileSection > svg {
+  width: 36px;
+  height: 36px;
+  color: #7b8ba3;
+}
+
+.publicMemberEmptyProfileSection > strong {
+  color: #273b57;
 }
 
 .publicMemberStatePage {
@@ -510,7 +571,8 @@ html[data-theme="dark"] .publicMemberPage {
 
 html[data-theme="dark"] .publicMemberTopbar,
 html[data-theme="dark"] .publicMemberIdentityCard,
-html[data-theme="dark"] .publicMemberSection {
+html[data-theme="dark"] .publicMemberSection,
+html[data-theme="dark"] .publicMemberProfileTabs {
   border-color: #293a52;
   background: #121e2e;
 }
@@ -530,6 +592,17 @@ html[data-theme="dark"] .publicMemberEmptyGallery {
 
 html[data-theme="dark"] :is(.publicMemberNameRow h1, .publicMemberSection h2, .publicMemberSummary strong, .publicMemberOrganizationCard > div strong, .publicMemberEmptyGallery strong) {
   color: #eff5ff;
+}
+
+html[data-theme="dark"] .publicMemberProfileTabs button {
+  color: #9daec3;
+}
+
+html[data-theme="dark"] .publicMemberProfileTabs button.active {
+  border-color: #4c8dff;
+  color: #eff5ff;
+  background: #19345b;
+  box-shadow: inset 0 -3px 0 #4c8dff;
 }
 
 html[data-theme="dark"] :is(.publicMemberNameRow p, .publicMemberBio, .publicMemberLocation, .publicMemberSection > header > span, .publicMemberOrganizationCard > div small, .publicMemberGalleryPrivacy) {
@@ -626,7 +699,7 @@ html[data-theme="dark"] .publicMemberAvatar {
 
   .publicMemberSummary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
     margin-top: 12px;
   }
@@ -664,8 +737,23 @@ html[data-theme="dark"] .publicMemberAvatar {
     height: 46px;
   }
 
-  .publicMemberOrganizationCard > a {
+  .publicMemberOrganizationCard > :is(a, button) {
     grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .publicMemberProfileTabs {
+    display: flex;
+    overflow-x: auto;
+    border-radius: 13px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .publicMemberProfileTabs button {
+    min-width: 112px;
+    flex: 0 0 auto;
+    padding: 7px 9px;
+    font-size: .69rem;
   }
 }

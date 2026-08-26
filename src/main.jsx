@@ -214,7 +214,8 @@ function App() {
   const routeParams = new URL(locationHref).searchParams;
   const publicId = routeParams.get("public");
   const arenaId = routeParams.get("organizacao") || routeParams.get("arena");
-  const memberIdentifier = routeParams.get("perfil") || routeParams.get("membro");
+  const memberIdentifier = routeParams.get("membro")
+    || (!routeParams.get("aba") ? routeParams.get("perfil") : null);
   const signupType = routeParams.get("cadastro");
   const wantsLogin = routeParams.get("entrar") === "1";
   const publicMode = routeParams.get("publico") === "1";

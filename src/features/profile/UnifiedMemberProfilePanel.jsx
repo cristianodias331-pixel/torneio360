@@ -148,10 +148,6 @@ export default function UnifiedMemberProfilePanel({
             <input id="member-state" value={profile.state} maxLength={80} autoComplete="address-level1" onChange={(event) => onChange("state", event.target.value)} />
           </div>
 
-          <div className="unifiedMemberPublicNotice fullField">
-            <Eye aria-hidden="true" />
-            <span><strong>Perfil esportivo público</strong><small>Nome de exibição, foto, apresentação, localização esportiva e galeria poderão ser vistos. E-mail, assinatura, documentos e dados privados nunca aparecem.</small></span>
-          </div>
         </div>
       </div>
 

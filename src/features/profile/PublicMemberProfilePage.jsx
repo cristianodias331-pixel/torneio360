@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Award,
   ArrowLeft,
+  AtSign,
   Building2,
   ExternalLink,
+  Grid3X3,
   Images,
   MapPin,
   Share2,
-  ShieldCheck,
   UserRound,
   X,
   ZoomIn,
@@ -28,6 +30,7 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
   const [state, setState] = useState({ status: "loading", profile: null, organization: null });
   const [lightboxPhoto, setLightboxPhoto] = useState("");
   const [shareFeedback, setShareFeedback] = useState("");
+  const [activeTab, setActiveTab] = useState("publicacoes");
 
   useEffect(() => {
     let active = true;
@@ -162,7 +165,6 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
                   <h1>{profile.displayName}</h1>
                   <p>{profile.handle ? `@${profile.handle}` : "Perfil Torneio 360"}</p>
                 </div>
-                <span className="publicMemberPublicBadge"><ShieldCheck aria-hidden="true" /> Público</span>
               </div>
             </div>
 
@@ -171,13 +173,29 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
 
             <div className="publicMemberSummary">
               <span><strong>{galleryPhotos.length}</strong><small>Fotos</small></span>
+              <span><strong>{profile.followersCount || 0}</strong><small>Seguidores</small></span>
               <span><strong>Atleta</strong><small>Perfil esportivo</small></span>
               {organization ? <span><strong>1</strong><small>Organização</small></span> : null}
             </div>
           </div>
         </article>
 
-        <section className="publicMemberSection publicMemberGallerySection">
+        <nav className="publicMemberProfileTabs" aria-label="Seções do perfil">
+          <button type="button" className={activeTab === "publicacoes" ? "active" : ""} onClick={() => setActiveTab("publicacoes")}>
+            <Grid3X3 aria-hidden="true" /> Publicações
+          </button>
+          <button type="button" className={activeTab === "fotos" ? "active" : ""} onClick={() => setActiveTab("fotos")}>
+            <Images aria-hidden="true" /> Fotos
+          </button>
+          <button type="button" className={activeTab === "contato" ? "active" : ""} onClick={() => setActiveTab("contato")}>
+            <AtSign aria-hidden="true" /> Informações de contato
+          </button>
+          <button type="button" className={activeTab === "conquistas" ? "active" : ""} onClick={() => setActiveTab("conquistas")}>
+            <Award aria-hidden="true" /> Conquistas
+          </button>
+        </nav>
+
+        {activeTab === "fotos" ? <section className="publicMemberSection publicMemberGallerySection">
           <header>
             <div><Images aria-hidden="true" /><h2>Fotos</h2></div>
             <span>{galleryPhotos.length}/6</span>
@@ -206,9 +224,9 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
           )}
 
           <p className="publicMemberGalleryPrivacy">Esta galeria não possui curtidas, comentários nem contadores de interação.</p>
-        </section>
+        </section> : null}
 
-        {organization ? (
+        {activeTab === "publicacoes" && organization ? (
           <section className="publicMemberSection publicMemberOrganization">
             <header>
               <div><Building2 aria-hidden="true" /><h2>Organização</h2></div>
@@ -229,6 +247,42 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
                 Ver torneios e circuitos <ExternalLink aria-hidden="true" />
               </button>
             </div>
+          </section>
+        ) : activeTab === "publicacoes" ? (
+          <section className="publicMemberSection publicMemberEmptyProfileSection">
+            <Grid3X3 aria-hidden="true" />
+            <strong>Nenhuma publicação disponível</strong>
+            <span>Os torneios e circuitos publicados aparecerão aqui.</span>
+          </section>
+        ) : null}
+
+        {activeTab === "contato" ? (
+          <section className="publicMemberSection publicMemberContactSection">
+            <header><div><AtSign aria-hidden="true" /><h2>Informações de contato</h2></div></header>
+            {organization ? (
+              <div className="publicMemberOrganizationCard">
+                <span className="publicMemberOrganizationLogo">
+                  {organization.photo_url ? <img src={organization.photo_url} alt={`Foto de ${organization.name}`} /> : <Building2 aria-hidden="true" />}
+                </span>
+                <div>
+                  <strong>{organization.name}</strong>
+                  <small>{[organization.city, organization.state].filter(Boolean).join("/") || "Organização vinculada"}</small>
+                </div>
+                <button type="button" onClick={() => navigatePlatform({ organizacao: organization.id })}>
+                  Abrir organização <ExternalLink aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <div className="publicMemberEmptyProfileSection"><AtSign aria-hidden="true" /><strong>Nenhum contato público informado</strong></div>
+            )}
+          </section>
+        ) : null}
+
+        {activeTab === "conquistas" ? (
+          <section className="publicMemberSection publicMemberEmptyProfileSection">
+            <Award aria-hidden="true" />
+            <strong>Conquistas</strong>
+            <span>Resultados e títulos reconhecidos pela plataforma aparecerão aqui.</span>
           </section>
         ) : null}
       </main>

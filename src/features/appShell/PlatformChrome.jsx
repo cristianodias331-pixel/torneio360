@@ -26,6 +26,9 @@ export function PlatformSidebar({
         id="torneio360-main-sidebar"
         className={`playSidebar proSidebar ${expanded ? "isExpanded" : ""}`}
         aria-label="Navegação principal"
+        onMouseLeave={() => {
+          if (window.matchMedia?.("(min-width: 1025px)").matches) onExpandedChange?.(false);
+        }}
       >
         <div className="sidebarHeader"><span className="sidebarSectionLabel">Menu</span></div>
         <nav className="sidebarNav">

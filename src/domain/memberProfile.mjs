@@ -42,6 +42,7 @@ export function createMemberProfileFallback({ user, accessProfile } = {}) {
     city: "",
     state: "",
     galleryPhotos: [],
+    followersCount: 0,
     isPublic: true,
   };
 }
@@ -59,6 +60,7 @@ export function normalizeMemberProfile(row, fallback = {}) {
     galleryPhotos: normalizeMemberGalleryPhotos(
       row?.gallery_photos ?? row?.galleryPhotos ?? fallback.galleryPhotos
     ),
+    followersCount: Math.max(0, Number(row?.followers_count ?? row?.followersCount ?? fallback.followersCount) || 0),
     isPublic: true,
   };
 }
