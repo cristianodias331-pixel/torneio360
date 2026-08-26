@@ -1,0 +1,657 @@
+.publicMemberPage {
+  min-height: 100vh;
+  color: #13233a;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 197, 94, 0.1), transparent 28%),
+    radial-gradient(circle at 88% 5%, rgba(37, 99, 235, 0.12), transparent 32%),
+    #f2f6fb;
+}
+
+.publicMemberTopbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: grid;
+  grid-template-columns: 42px auto 1fr 42px;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px max(16px, calc((100vw - 1000px) / 2));
+  border-bottom: 1px solid rgba(130, 151, 182, 0.28);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 28px rgba(24, 48, 82, 0.06);
+  backdrop-filter: blur(16px);
+}
+
+.publicMemberTopbar > img {
+  width: 102px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.publicMemberTopbar > span {
+  color: #60708a;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.publicMemberTopbar > button,
+.publicMemberStatePage button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid #c9d5e6;
+  border-radius: 12px;
+  color: #263a56;
+  background: #fff;
+  cursor: pointer;
+}
+
+.publicMemberTopbar > button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.publicMemberContent {
+  display: grid;
+  gap: 18px;
+  width: min(100% - 24px, 1000px);
+  margin: 22px auto 50px;
+}
+
+.publicMemberIdentityCard,
+.publicMemberSection {
+  overflow: hidden;
+  border: 1px solid #d1dbea;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 38px rgba(27, 52, 88, 0.08);
+}
+
+.publicMemberCover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 820 / 312;
+  max-height: 380px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 25%, rgba(34, 197, 94, 0.28), transparent 36%),
+    radial-gradient(circle at 80% 25%, rgba(37, 99, 235, 0.32), transparent 38%),
+    linear-gradient(135deg, #e7eff9, #f8fbff);
+}
+
+.publicMemberCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publicMemberIdentity {
+  position: relative;
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  column-gap: 22px;
+  row-gap: 0;
+  padding: 0 28px 25px;
+}
+
+.publicMemberAvatar {
+  display: grid;
+  grid-row: 1 / span 4;
+  place-items: center;
+  width: 144px;
+  height: 144px;
+  margin-top: -58px;
+  overflow: hidden;
+  border: 6px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #0891b2);
+  box-shadow: 0 12px 30px rgba(22, 54, 96, 0.2);
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.publicMemberAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publicMemberCopy {
+  min-width: 0;
+  padding-top: 18px;
+}
+
+.publicMemberNameRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.publicMemberNameRow h1,
+.publicMemberNameRow p,
+.publicMemberBio,
+.publicMemberLocation {
+  margin: 0;
+}
+
+.publicMemberNameRow h1 {
+  overflow-wrap: anywhere;
+  color: #10213a;
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+  line-height: 1.08;
+}
+
+.publicMemberNameRow p {
+  margin-top: 4px;
+  color: #5f6f88;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.publicMemberPublicBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid #aee2c8;
+  border-radius: 999px;
+  color: #087946;
+  background: #effcf5;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.publicMemberPublicBadge svg,
+.publicMemberLocation svg {
+  width: 15px;
+  height: 15px;
+}
+
+.publicMemberBio {
+  grid-column: 2;
+  max-width: 680px;
+  margin-top: 12px;
+  color: #31435d;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.publicMemberLocation {
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: #60708a;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.publicMemberSummary {
+  display: flex;
+  grid-column: 2;
+  align-items: stretch;
+  gap: 7px;
+  margin-top: 17px;
+}
+
+.publicMemberSummary > span {
+  display: grid;
+  min-width: 104px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #f3f7fc;
+}
+
+.publicMemberSummary strong {
+  color: #1b3150;
+  font-size: 0.88rem;
+}
+
+.publicMemberSummary small {
+  margin-top: 2px;
+  color: #6c7a90;
+  font-size: 0.66rem;
+}
+
+.publicMemberSection {
+  padding: 20px;
+}
+
+.publicMemberSection > header,
+.publicMemberSection > header > div {
+  display: flex;
+  align-items: center;
+}
+
+.publicMemberSection > header {
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.publicMemberSection > header > div {
+  gap: 8px;
+}
+
+.publicMemberSection > header svg {
+  width: 19px;
+  height: 19px;
+  color: #2563eb;
+}
+
+.publicMemberSection h2 {
+  margin: 0;
+  color: #152944;
+  font-size: 1.05rem;
+}
+
+.publicMemberSection > header > span {
+  color: #718097;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.publicMemberGallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.publicMemberGallery > button {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #eaf0f8;
+  cursor: zoom-in;
+}
+
+.publicMemberGallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 180ms ease;
+}
+
+.publicMemberGallery button:hover img {
+  transform: scale(1.025);
+}
+
+.publicMemberGallery button > svg {
+  position: absolute;
+  right: 9px;
+  bottom: 9px;
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(9, 24, 46, 0.72);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.publicMemberGallery button:hover > svg,
+.publicMemberGallery button:focus-visible > svg {
+  opacity: 1;
+}
+
+.publicMemberEmptyGallery {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 38px 18px;
+  border: 1px dashed #c9d5e6;
+  border-radius: 14px;
+  color: #687890;
+  background: #f7f9fc;
+  text-align: center;
+}
+
+.publicMemberEmptyGallery svg {
+  width: 32px;
+  height: 32px;
+}
+
+.publicMemberEmptyGallery strong {
+  color: #273b57;
+}
+
+.publicMemberEmptyGallery span,
+.publicMemberGalleryPrivacy {
+  font-size: 0.76rem;
+}
+
+.publicMemberGalleryPrivacy {
+  margin: 12px 0 0;
+  color: #7a879a;
+  text-align: center;
+}
+
+.publicMemberOrganizationCard {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 13px;
+  border: 1px solid #d6dfed;
+  border-radius: 15px;
+  background: #f8fafd;
+}
+
+.publicMemberOrganizationLogo {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 50%;
+  color: #2563eb;
+  background: #e8f0ff;
+}
+
+.publicMemberOrganizationLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publicMemberOrganizationLogo svg {
+  width: 25px;
+  height: 25px;
+}
+
+.publicMemberOrganizationCard > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.publicMemberOrganizationCard > div strong {
+  overflow: hidden;
+  color: #1a2f4b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publicMemberOrganizationCard > div small {
+  color: #6b7a90;
+}
+
+.publicMemberOrganizationCard > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #0891b2);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.publicMemberOrganizationCard > a svg {
+  width: 14px;
+  height: 14px;
+}
+
+.publicMemberStatePage {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 24px;
+  color: #233750;
+  background: #f2f6fb;
+  text-align: center;
+}
+
+.publicMemberStatePage > img {
+  width: 150px;
+}
+
+.publicMemberStatePage h1,
+.publicMemberStatePage p {
+  margin: 0;
+}
+
+.publicMemberStatePage button {
+  margin-top: 8px;
+  padding: 8px 13px;
+  font-weight: 800;
+}
+
+.publicMemberStatePage button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.publicMemberLightbox {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(3, 10, 24, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.publicMemberLightbox > img {
+  max-width: min(94vw, 1100px);
+  max-height: 88vh;
+  border-radius: 14px;
+  object-fit: contain;
+}
+
+.publicMemberLightbox > button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(10, 21, 40, 0.75);
+  cursor: pointer;
+}
+
+.publicMemberLightbox > button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.publicMemberToast {
+  position: fixed;
+  z-index: 100;
+  left: 50%;
+  bottom: 24px;
+  translate: -50% 0;
+  padding: 10px 14px;
+  border-radius: 11px;
+  color: #fff;
+  background: #12365f;
+  box-shadow: 0 12px 30px rgba(13, 35, 65, 0.25);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+html[data-theme="dark"] .publicMemberPage {
+  color: #e7eef9;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 197, 94, 0.09), transparent 28%),
+    radial-gradient(circle at 88% 5%, rgba(37, 99, 235, 0.12), transparent 32%),
+    #09111e;
+}
+
+html[data-theme="dark"] .publicMemberTopbar,
+html[data-theme="dark"] .publicMemberIdentityCard,
+html[data-theme="dark"] .publicMemberSection {
+  border-color: #293a52;
+  background: #121e2e;
+}
+
+html[data-theme="dark"] .publicMemberTopbar {
+  background: rgba(9, 17, 30, 0.92);
+}
+
+html[data-theme="dark"] .publicMemberTopbar > button,
+html[data-theme="dark"] .publicMemberSummary > span,
+html[data-theme="dark"] .publicMemberOrganizationCard,
+html[data-theme="dark"] .publicMemberEmptyGallery {
+  border-color: #32445e;
+  color: #d8e3f2;
+  background: #182638;
+}
+
+html[data-theme="dark"] :is(.publicMemberNameRow h1, .publicMemberSection h2, .publicMemberSummary strong, .publicMemberOrganizationCard > div strong, .publicMemberEmptyGallery strong) {
+  color: #eff5ff;
+}
+
+html[data-theme="dark"] :is(.publicMemberNameRow p, .publicMemberBio, .publicMemberLocation, .publicMemberSection > header > span, .publicMemberOrganizationCard > div small, .publicMemberGalleryPrivacy) {
+  color: #9daec3;
+}
+
+html[data-theme="dark"] .publicMemberAvatar {
+  border-color: #121e2e;
+}
+
+@media (max-width: 700px) {
+  .publicMemberTopbar {
+    grid-template-columns: 38px auto 1fr 38px;
+    min-height: 56px;
+    padding: 6px 10px;
+  }
+
+  .publicMemberTopbar > img {
+    width: 82px;
+    height: 36px;
+  }
+
+  .publicMemberTopbar > span {
+    font-size: 0.62rem;
+  }
+
+  .publicMemberContent {
+    width: min(100% - 12px, 1000px);
+    margin-top: 8px;
+    gap: 9px;
+  }
+
+  .publicMemberIdentityCard,
+  .publicMemberSection {
+    border-radius: 15px;
+  }
+
+  .publicMemberCover {
+    min-height: 128px;
+  }
+
+  .publicMemberIdentity {
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 11px;
+    padding: 0 12px 16px;
+  }
+
+  .publicMemberAvatar {
+    grid-row: 1;
+    width: 92px;
+    height: 92px;
+    margin-top: -35px;
+    border-width: 4px;
+    font-size: 1.35rem;
+  }
+
+  .publicMemberCopy {
+    padding-top: 9px;
+  }
+
+  .publicMemberNameRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .publicMemberNameRow h1 {
+    font-size: 1.18rem;
+  }
+
+  .publicMemberPublicBadge {
+    padding: 4px 7px;
+    font-size: 0.62rem;
+  }
+
+  .publicMemberBio,
+  .publicMemberLocation,
+  .publicMemberSummary {
+    grid-column: 1 / -1;
+  }
+
+  .publicMemberBio {
+    margin-top: 12px;
+    font-size: 0.82rem;
+  }
+
+  .publicMemberSummary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 12px;
+  }
+
+  .publicMemberSummary > span {
+    min-width: 0;
+    padding: 8px 5px;
+    text-align: center;
+  }
+
+  .publicMemberSection {
+    padding: 13px;
+  }
+
+  .publicMemberGallery {
+    gap: 3px;
+  }
+
+  .publicMemberGallery > button {
+    border-radius: 5px;
+  }
+
+  .publicMemberGallery button > svg {
+    display: none;
+  }
+
+  .publicMemberOrganizationCard {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .publicMemberOrganizationLogo {
+    width: 46px;
+    height: 46px;
+  }
+
+  .publicMemberOrganizationCard > a {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

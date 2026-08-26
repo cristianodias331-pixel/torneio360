@@ -11,6 +11,8 @@ function isUnavailableSchemaError(error) {
     || code === "42P01"
     || message.includes("get_my_member_profile")
     || message.includes("upsert_my_member_profile")
+    || message.includes("replace_my_member_profile_photos")
+    || message.includes("get_public_member_profile")
     || message.includes("member_profiles");
 }
 
@@ -42,8 +44,42 @@ export async function saveMyMemberProfile({ supabase, profile, fallback }) {
     throw error;
   }
 
+  const { data: galleryData, error: galleryError } = await supabase.rpc(
+    "replace_my_member_profile_photos",
+    { p_photo_urls: profile.galleryPhotos || [] }
+  );
+
+  if (galleryError) {
+    if (isUnavailableSchemaError(galleryError)) {
+      return { profile: normalizeMemberProfile(profile, fallback), schemaAvailable: false };
+    }
+    throw galleryError;
+  }
+
   return {
-    profile: normalizeMemberProfile(data, fallback),
+    profile: normalizeMemberProfile({
+      ...data,
+      gallery_photos: galleryData,
+    }, fallback),
+    schemaAvailable: true,
+  };
+}
+
+export async function loadPublicMemberProfile({ supabase, identifier }) {
+  const { data, error } = await supabase.rpc("get_public_member_profile", {
+    p_identifier: String(identifier || "").trim(),
+  });
+
+  if (error) {
+    if (isUnavailableSchemaError(error)) return { profile: null, schemaAvailable: false };
+    throw error;
+  }
+
+  if (!data?.profile) return { profile: null, schemaAvailable: true };
+
+  return {
+    profile: normalizeMemberProfile(data.profile),
+    organization: data.organization || null,
     schemaAvailable: true,
   };
 }

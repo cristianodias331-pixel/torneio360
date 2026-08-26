@@ -102,3 +102,13 @@ export async function uploadMemberProfileCover({ supabase, userId, coverUrl }) {
   });
   return uploaded.publicUrl;
 }
+
+export async function uploadMemberProfileGalleryPhoto({ supabase, userId, photoUrl, position }) {
+  const uploaded = await uploadDataUrl({
+    supabase,
+    userId,
+    dataUrl: photoUrl,
+    kind: `member-profile-gallery-${Number(position) || 1}`,
+  });
+  return uploaded.publicUrl;
+}

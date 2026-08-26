@@ -109,6 +109,7 @@ import {
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
 import UnifiedMemberProfilePanel from "./features/profile/UnifiedMemberProfilePanel.jsx";
 import {
+  MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
   getMemberProfileInitials,
   normalizeMemberHandle,
@@ -3179,8 +3180,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     try {
       const { resizeImageFile } = await import("./features/media/imageResize.mjs");
       const coverUrl = await resizeImageFile(file, {
-        maxWidth: 1800,
-        maxHeight: 900,
+        maxWidth: 1640,
+        maxHeight: 624,
         quality: 0.86,
         outputType: "image/webp",
       });
@@ -3188,6 +3189,51 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     } catch (error) {
       showNotice("warning", "Capa não adicionada", error?.message || "Escolha outra imagem.");
     }
+  }
+
+  async function handleMemberGalleryFiles(files) {
+    if (!files?.length || memberProfileSaving) return;
+    const availableSlots = Math.max(0, MAX_MEMBER_GALLERY_PHOTOS - memberProfile.galleryPhotos.length);
+    const selectedFiles = Array.from(files).slice(0, availableSlots);
+    if (selectedFiles.length === 0) {
+      showNotice("info", "Galeria completa", `O perfil aceita até ${MAX_MEMBER_GALLERY_PHOTOS} fotos.`);
+      return;
+    }
+
+    try {
+      const { prepareSocialPostImageFile } = await import("./features/media/imageResize.mjs");
+      const preparedPhotos = await Promise.all(selectedFiles.map(async (file) => {
+        const prepared = await prepareSocialPostImageFile(file);
+        return prepared.imageUrl;
+      }));
+      setMemberProfile((current) => ({
+        ...current,
+        galleryPhotos: [...current.galleryPhotos, ...preparedPhotos].slice(0, MAX_MEMBER_GALLERY_PHOTOS),
+      }));
+      setMemberProfileErrors((current) => {
+        if (!current.galleryPhotos) return current;
+        const next = { ...current };
+        delete next.galleryPhotos;
+        return next;
+      });
+    } catch (error) {
+      showNotice("warning", "Fotos não adicionadas", error?.message || "Escolha outras imagens.");
+    }
+  }
+
+  function removeMemberGalleryPhoto(index) {
+    if (memberProfileSaving) return;
+    setMemberProfile((current) => ({
+      ...current,
+      galleryPhotos: current.galleryPhotos.filter((_, photoIndex) => photoIndex !== index),
+    }));
+  }
+
+  function openPublicMemberProfile() {
+    const identifier = memberProfile.handle || user.id;
+    const url = new URL(window.location.origin);
+    url.searchParams.set("membro", identifier);
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 
   async function saveMemberProfile() {
@@ -3237,6 +3283,21 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           coverUrl: profileToSave.coverUrl,
         });
         profileToSave = { ...profileToSave, coverUrl };
+      }
+
+      if (profileToSave.galleryPhotos.some((photoUrl) => /^data:image\//i.test(photoUrl))) {
+        const { uploadMemberProfileGalleryPhoto } = await import("./services/mediaStorage.mjs");
+        const galleryPhotos = await Promise.all(profileToSave.galleryPhotos.map((photoUrl, index) => (
+          /^data:image\//i.test(photoUrl)
+            ? uploadMemberProfileGalleryPhoto({
+              supabase,
+              userId: user.id,
+              photoUrl,
+              position: index + 1,
+            })
+            : photoUrl
+        )));
+        profileToSave = { ...profileToSave, galleryPhotos };
       }
 
       const result = await saveMyMemberProfile({
@@ -8423,19 +8484,27 @@ setNewPublicInfo({
           <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {[memberProfile.city, memberProfile.state].filter(Boolean).join("/")}</p>
         ) : null}
         <div className="unifiedProfileStats" aria-label="Resumo do perfil">
+          <span><strong>{memberProfile.galleryPhotos.length}</strong><small>Fotos</small></span>
           <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
           <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
-          <span><strong>1</strong><small>Organização</small></span>
         </div>
         <div className="profileAlwaysPublicBadge">
           <span aria-hidden="true">●</span>
           <div>
-            <strong>{memberProfile.isPublic ? "Perfil pessoal público" : "Perfil pessoal privado"}</strong>
-            <small>A organização {organizerProfile.arenaName || "vinculada"} mantém seus próprios dados e sua própria visibilidade.</small>
+            <strong>Perfil esportivo público</strong>
+            <small>A organização {organizerProfile.arenaName || "vinculada"} mantém seus próprios dados e suas publicações separadas.</small>
           </div>
         </div>
       </div>
     </div>
+
+    {memberProfile.galleryPhotos.length > 0 ? (
+      <div className="unifiedProfileGalleryPreview" aria-label="Galeria pública do perfil">
+        {memberProfile.galleryPhotos.map((photoUrl, index) => (
+          <img key={`${photoUrl}-${index}`} src={photoUrl} alt={`Foto ${index + 1} da galeria`} loading="lazy" />
+        ))}
+      </div>
+    ) : null}
 
     <div className="profileSubtabs" role="tablist" aria-label="Seções do perfil">
       <button
@@ -8494,6 +8563,9 @@ setNewPublicInfo({
           onRemovePhoto={() => updateMemberProfile("photoUrl", "")}
           onCoverFile={handleMemberProfileCoverFile}
           onRemoveCover={() => updateMemberProfile("coverUrl", "")}
+          onGalleryFiles={handleMemberGalleryFiles}
+          onRemoveGalleryPhoto={removeMemberGalleryPhoto}
+          onOpenPublicProfile={openPublicMemberProfile}
           onSave={saveMemberProfile}
         />
       </div>

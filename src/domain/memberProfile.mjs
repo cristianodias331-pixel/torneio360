@@ -6,6 +6,8 @@ const maximumLengths = {
   state: 80,
 };
 
+export const MAX_MEMBER_GALLERY_PHOTOS = 6;
+
 function cleanText(value, maximumLength) {
   return String(value || "").trim().slice(0, maximumLength);
 }
@@ -16,6 +18,14 @@ export function normalizeMemberHandle(value) {
     .replace(/^@+/, "")
     .toLocaleLowerCase("pt-BR")
     .replace(/\s+/g, "");
+}
+
+export function normalizeMemberGalleryPhotos(value) {
+  const source = Array.isArray(value) ? value : [];
+  return source
+    .map((entry) => String(entry?.photo_url ?? entry?.photoUrl ?? entry ?? "").trim())
+    .filter(Boolean)
+    .slice(0, MAX_MEMBER_GALLERY_PHOTOS);
 }
 
 export function createMemberProfileFallback({ user, accessProfile } = {}) {
@@ -31,6 +41,7 @@ export function createMemberProfileFallback({ user, accessProfile } = {}) {
     bio: "",
     city: "",
     state: "",
+    galleryPhotos: [],
     isPublic: true,
   };
 }
@@ -45,7 +56,10 @@ export function normalizeMemberProfile(row, fallback = {}) {
     bio: cleanText(row?.bio ?? fallback.bio, maximumLengths.bio),
     city: cleanText(row?.city ?? fallback.city, maximumLengths.city),
     state: cleanText(row?.state ?? fallback.state, maximumLengths.state),
-    isPublic: row?.is_public ?? row?.isPublic ?? fallback.isPublic ?? true,
+    galleryPhotos: normalizeMemberGalleryPhotos(
+      row?.gallery_photos ?? row?.galleryPhotos ?? fallback.galleryPhotos
+    ),
+    isPublic: true,
   };
 }
 
@@ -61,6 +75,9 @@ export function getMemberProfileInitials(profile) {
 export function validateMemberProfile(profile) {
   const normalized = normalizeMemberProfile(profile);
   const errors = {};
+  const requestedGalleryPhotos = Array.isArray(profile?.galleryPhotos)
+    ? profile.galleryPhotos.filter((entry) => String(entry || "").trim())
+    : [];
 
   if (normalized.displayName.length < 2) {
     errors.displayName = "Informe um nome com pelo menos 2 caracteres.";
@@ -68,6 +85,10 @@ export function validateMemberProfile(profile) {
 
   if (normalized.handle && !/^[a-z0-9._]{3,30}$/.test(normalized.handle)) {
     errors.handle = "Use de 3 a 30 caracteres: letras minúsculas, números, ponto ou sublinhado.";
+  }
+
+  if (requestedGalleryPhotos.length > MAX_MEMBER_GALLERY_PHOTOS) {
+    errors.galleryPhotos = `Escolha no máximo ${MAX_MEMBER_GALLERY_PHOTOS} fotos.`;
   }
 
   return { valid: Object.keys(errors).length === 0, errors, profile: normalized };
@@ -83,6 +104,6 @@ export function toMemberProfileRpcPayload(profile) {
     p_bio: normalized.bio,
     p_city: normalized.city,
     p_state: normalized.state,
-    p_is_public: normalized.isPublic,
+    p_is_public: true,
   };
 }

@@ -16,10 +16,12 @@ import {
   CupPodiumView,
   EmailConfirmationPendingScreen,
   LoginScreen,
+  MemberProfileWorkspaceView,
   OrganizerWorkspaceDashboard,
   PublicArenaPageController,
   PublicCircuitScreenView,
   PublicCupBracketView,
+  PublicMemberProfilePageView,
   PublicPlatformHomeController,
   PublicTournamentPageController,
   PublicTournamentScreenView,
@@ -185,6 +187,7 @@ function App() {
   const routeParams = new URLSearchParams(window.location.search);
   const publicId = routeParams.get("public");
   const arenaId = routeParams.get("arena");
+  const memberIdentifier = routeParams.get("membro");
   const wantsLogin = routeParams.get("entrar") === "1";
   const publicMode = routeParams.get("publico") === "1";
 
@@ -425,6 +428,10 @@ function App() {
     };
   }, []);
 
+  if (memberIdentifier) {
+    return <PublicMemberProfilePageView supabase={supabase} identifier={memberIdentifier} />;
+  }
+
   if (publicId || arenaId) {
     return <PublicArenaPage publicId={publicId} arenaId={arenaId} />;
   }
@@ -472,7 +479,14 @@ function App() {
 
   const sessionRole = String(session.user?.app_metadata?.role || "organizer").toLowerCase();
   if (["athlete", "visitor", "spectator"].includes(sessionRole)) {
-    return <PublicPlatformHome session={session} />;
+    return (
+      <MemberProfileWorkspaceView
+        supabase={supabase}
+        user={session.user}
+        accessProfile={profile}
+        onLogout={logout}
+      />
+    );
   }
 
   if (!profile) {
