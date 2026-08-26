@@ -4,6 +4,7 @@ import "./styles/30-organizer-event-management.css";
 import "./styles/40-organizer-data-and-navigation.css";
 import "./styles/41-responsive-public-covers.css";
 import "./styles/42-workspace-density-and-courts.css";
+import "./styles/51-unified-profile.css";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   AtSign,
@@ -106,6 +107,17 @@ import {
   PlatformSupportLinks,
 } from "./features/appShell/EntryPresentation.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
+import UnifiedMemberProfilePanel from "./features/profile/UnifiedMemberProfilePanel.jsx";
+import {
+  createMemberProfileFallback,
+  getMemberProfileInitials,
+  normalizeMemberHandle,
+  validateMemberProfile,
+} from "./domain/memberProfile.mjs";
+import {
+  loadMyMemberProfile,
+  saveMyMemberProfile,
+} from "./services/memberProfileApi.mjs";
 import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
@@ -548,7 +560,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [notice, setNotice] = useState(null);
   const [profileSubtab, setProfileSubtab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("perfil") || "publicacoes";
+    return params.get("perfil") || "pessoal";
   });
   const [activePanel, setActivePanel] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -858,7 +870,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function openProfileSection(nextSubtab = "editar") {
+  async function openProfileSection(nextSubtab = "pessoal") {
     if (!await guardSelectedTournamentBeforeLeaving()) return;
     setProfileMenuOpen(false);
     setSelected(null);
@@ -868,7 +880,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function openProfileSettings() {
-    void openProfileSection("editar");
+    void openProfileSection("pessoal");
   }
 
   function toggleColorMode() {
@@ -1208,15 +1220,47 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     isPublic: true,
   });
 
+  const memberProfileFallback = useMemo(() => createMemberProfileFallback({
+    user,
+    accessProfile: profile,
+  }), [profile.name, user.email, user.id, user.user_metadata?.full_name, user.user_metadata?.name]);
+  const [memberProfile, setMemberProfile] = useState(() => createMemberProfileFallback({
+    user,
+    accessProfile: profile,
+  }));
+  const memberProfileBaseRef = useRef(memberProfile);
+  const [memberProfileStatus, setMemberProfileStatus] = useState("loading");
+  const [memberProfileSaving, setMemberProfileSaving] = useState(false);
+  const [memberProfileErrors, setMemberProfileErrors] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    setMemberProfileStatus("loading");
+
+    loadMyMemberProfile({ supabase, fallback: memberProfileFallback })
+      .then(({ profile: loadedProfile, schemaAvailable }) => {
+        if (!mounted) return;
+        memberProfileBaseRef.current = loadedProfile;
+        setMemberProfile(loadedProfile);
+        setMemberProfileStatus(schemaAvailable ? "ready" : "unavailable");
+      })
+      .catch((error) => {
+        console.error("Erro ao carregar o perfil pessoal:", error);
+        if (!mounted) return;
+        memberProfileBaseRef.current = memberProfileFallback;
+        setMemberProfile(memberProfileFallback);
+        setMemberProfileStatus("error");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [memberProfileFallback, supabase]);
+
   const allowedTypes = allowedByPlan[profile.plan] || [];
   const freeTrialDetails = getFreeTrialDetails(profile, user);
-  const profileDisplayName = organizerProfile.organizerName || profile.name || user.email?.split("@")[0] || "Organizador";
-  const profileInitials = profileDisplayName
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("") || "T3";
+  const profileDisplayName = memberProfile.displayName || memberProfileFallback.displayName;
+  const profileInitials = getMemberProfileInitials(memberProfile);
   const panelMeta = {
     inicio: {
       title: "Visão geral",
@@ -3098,6 +3142,139 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       );
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  function updateMemberProfile(field, value) {
+    setMemberProfile((current) => ({
+      ...current,
+      [field]: field === "handle" ? normalizeMemberHandle(value) : value,
+    }));
+    setMemberProfileErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  async function handleMemberProfilePhotoFile(file) {
+    if (!file || memberProfileSaving) return;
+    try {
+      const { resizeImageFile } = await import("./features/media/imageResize.mjs");
+      const photoUrl = await resizeImageFile(file, {
+        maxWidth: 900,
+        maxHeight: 900,
+        quality: 0.86,
+        outputType: "image/webp",
+      });
+      updateMemberProfile("photoUrl", photoUrl);
+    } catch (error) {
+      showNotice("warning", "Foto não adicionada", error?.message || "Escolha outra imagem.");
+    }
+  }
+
+  async function handleMemberProfileCoverFile(file) {
+    if (!file || memberProfileSaving) return;
+    try {
+      const { resizeImageFile } = await import("./features/media/imageResize.mjs");
+      const coverUrl = await resizeImageFile(file, {
+        maxWidth: 1800,
+        maxHeight: 900,
+        quality: 0.86,
+        outputType: "image/webp",
+      });
+      updateMemberProfile("coverUrl", coverUrl);
+    } catch (error) {
+      showNotice("warning", "Capa não adicionada", error?.message || "Escolha outra imagem.");
+    }
+  }
+
+  async function saveMemberProfile() {
+    if (!user?.id || memberProfileSaving) return;
+    if (!ensureCloudConnection("salvar o perfil pessoal")) return;
+
+    const validation = validateMemberProfile(memberProfile);
+    setMemberProfileErrors(validation.errors);
+    if (!validation.valid) {
+      showNotice("warning", "Revise o perfil", "Corrija os campos indicados antes de salvar.");
+      return;
+    }
+
+    if (memberProfileStatus === "unavailable") {
+      showNotice(
+        "warning",
+        "Estrutura ainda não aplicada",
+        "O banco do site teste precisa receber a nova migração antes de salvar o perfil pessoal."
+      );
+      return;
+    }
+
+    if (JSON.stringify(validation.profile) === JSON.stringify(memberProfileBaseRef.current)) {
+      showNotice("info", "Perfil já está atualizado", "Não há novas alterações para enviar.");
+      return;
+    }
+
+    setMemberProfileSaving(true);
+    let profileToSave = validation.profile;
+
+    try {
+      if (/^data:image\//i.test(profileToSave.photoUrl)) {
+        const { uploadMemberProfilePhoto } = await import("./services/mediaStorage.mjs");
+        const photoUrl = await uploadMemberProfilePhoto({
+          supabase,
+          userId: user.id,
+          photoUrl: profileToSave.photoUrl,
+        });
+        profileToSave = { ...profileToSave, photoUrl };
+      }
+
+      if (/^data:image\//i.test(profileToSave.coverUrl)) {
+        const { uploadMemberProfileCover } = await import("./services/mediaStorage.mjs");
+        const coverUrl = await uploadMemberProfileCover({
+          supabase,
+          userId: user.id,
+          coverUrl: profileToSave.coverUrl,
+        });
+        profileToSave = { ...profileToSave, coverUrl };
+      }
+
+      const result = await saveMyMemberProfile({
+        supabase,
+        profile: profileToSave,
+        fallback: memberProfileFallback,
+      });
+
+      if (!result.schemaAvailable) {
+        setMemberProfileStatus("unavailable");
+        showNotice(
+          "warning",
+          "Estrutura ainda não aplicada",
+          "O banco do site teste precisa receber a nova migração antes de salvar o perfil pessoal."
+        );
+        return;
+      }
+
+      memberProfileBaseRef.current = result.profile;
+      setMemberProfile(result.profile);
+      setMemberProfileStatus("ready");
+      showNotice(
+        "success",
+        "Perfil pessoal atualizado",
+        "Sua identidade foi salva sem alterar os dados da organização."
+      );
+    } catch (error) {
+      console.error("Erro ao salvar o perfil pessoal:", error);
+      const duplicateHandle = String(error?.code || "") === "23505"
+        || String(error?.message || "").toLocaleLowerCase("pt-BR").includes("nome de usuário já está em uso");
+      if (duplicateHandle) {
+        setMemberProfileErrors((current) => ({ ...current, handle: "Este nome de usuário já está em uso." }));
+        showNotice("warning", "Nome de usuário indisponível", "Escolha outro identificador e tente novamente.");
+      } else {
+        showNotice("error", "Perfil não salvo", "Não foi possível salvar o perfil pessoal agora. Tente novamente.");
+      }
+    } finally {
+      setMemberProfileSaving(false);
     }
   }
 
@@ -6106,7 +6283,7 @@ setNewPublicInfo({
             <div className={`profileControl ${activePanel === "ajustes" || activePanel === "lixeira" ? "accountAreaActive" : ""}`}>
               <button type="button" className="profileTrigger" onClick={openProfileSettings} title="Abrir configurações do perfil">
                 <span className="profileAvatar" aria-hidden="true">
-                  {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="" /> : <span>{profileInitials}</span>}
+                  {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="" /> : <span>{profileInitials}</span>}
                 </span>
                 <span className="profileTriggerCopy">
                   <strong>{profileDisplayName}</strong>
@@ -6134,7 +6311,7 @@ setNewPublicInfo({
                   aria-current={activePanel === "ajustes" && profileSubtab !== "conta" ? "page" : undefined}
                 >
                   <Settings aria-hidden="true" />
-                  <span><strong>Meu perfil</strong><small>Dados e foto da arena</small></span>
+                  <span><strong>Meu perfil</strong><small>Identidade pessoal</small></span>
                 </button>
                 <button
                   type="button"
@@ -8220,30 +8397,52 @@ setNewPublicInfo({
 {activePanel === "ajustes" && (
 <>
   <section className="card instagramProfileCard">
-    <div className="instagramProfileHeader">
+    <div className={`unifiedProfilePublicCover${memberProfile.coverUrl ? " hasCover" : ""}`}>
+      {memberProfile.coverUrl ? <img src={memberProfile.coverUrl} alt="" /> : null}
+    </div>
+    <div className="instagramProfileHeader unifiedProfileHeader">
       <div className="instagramProfilePhoto">
-        {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="Foto do perfil" /> : <span><UserRound aria-hidden="true" /></span>}
+        {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil pessoal" /> : <span><UserRound aria-hidden="true" /></span>}
       </div>
       <div className="instagramProfileInfo">
         <div className="instagramProfileTopline">
-          <h2>{organizerProfile.arenaName || profile.name || "Meu perfil"}</h2>
-          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => openProfileSection("editar")}>
+          <h2>{profileDisplayName}</h2>
+          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => openProfileSection("pessoal")}>
             <Settings aria-hidden="true" />
             Editar perfil
           </button>
         </div>
-        <p>{organizerProfile.city || organizerProfile.state ? [organizerProfile.city, organizerProfile.state].filter(Boolean).join("/") : "Complete seu perfil para receber visitas de outros usuários."}</p>
+        <p className="unifiedProfileHandle">{memberProfile.handle ? `@${memberProfile.handle}` : "Escolha seu nome de usuário"}</p>
+        {memberProfile.bio ? <p className="unifiedProfileBio">{memberProfile.bio}</p> : null}
+        {memberProfile.city || memberProfile.state ? (
+          <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {[memberProfile.city, memberProfile.state].filter(Boolean).join("/")}</p>
+        ) : null}
+        <div className="unifiedProfileStats" aria-label="Resumo do perfil">
+          <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
+          <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
+          <span><strong>1</strong><small>Organização</small></span>
+        </div>
         <div className="profileAlwaysPublicBadge">
           <span aria-hidden="true">●</span>
           <div>
-            <strong>Perfil público da arena</strong>
-            <small>Com o nome da organização e do responsável preenchidos, seus eventos aparecem automaticamente para os visitantes.</small>
+            <strong>{memberProfile.isPublic ? "Perfil pessoal público" : "Perfil pessoal privado"}</strong>
+            <small>A organização {organizerProfile.arenaName || "vinculada"} mantém seus próprios dados e sua própria visibilidade.</small>
           </div>
         </div>
       </div>
     </div>
 
     <div className="profileSubtabs" role="tablist" aria-label="Seções do perfil">
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "pessoal" ? "active" : ""}
+        onClick={() => openProfileSection("pessoal")}
+        aria-selected={profileSubtab === "pessoal"}
+      >
+        <UserRound aria-hidden="true" />
+        Perfil
+      </button>
       <button
         type="button"
         role="tab"
@@ -8262,7 +8461,7 @@ setNewPublicInfo({
         aria-selected={profileSubtab === "editar"}
       >
         <Settings aria-hidden="true" />
-        Dados da arena
+        Organização
       </button>
       <button
         type="button"
@@ -8275,6 +8474,25 @@ setNewPublicInfo({
         Conta e suporte
       </button>
     </div>
+
+    {profileSubtab === "pessoal" ? (
+      <div className="profileSubtabPanel unifiedMemberProfileTab">
+        <UnifiedMemberProfilePanel
+          profile={memberProfile}
+          organizationName={organizerProfile.arenaName}
+          errors={memberProfileErrors}
+          loading={memberProfileStatus === "loading"}
+          saving={memberProfileSaving}
+          schemaAvailable={memberProfileStatus !== "unavailable"}
+          onChange={updateMemberProfile}
+          onPhotoFile={handleMemberProfilePhotoFile}
+          onRemovePhoto={() => updateMemberProfile("photoUrl", "")}
+          onCoverFile={handleMemberProfileCoverFile}
+          onRemoveCover={() => updateMemberProfile("coverUrl", "")}
+          onSave={saveMemberProfile}
+        />
+      </div>
+    ) : null}
 
     {profileSubtab === "publicacoes" ? (
       <div className="profileSubtabPanel">
@@ -8327,10 +8545,10 @@ setNewPublicInfo({
     <div className="profileEditSubtabHeader">
       <div>
         <span>Dados públicos</span>
-        <h2>Dados da arena</h2>
+        <h2>Organização</h2>
       </div>
     </div>
-    <p className="profileSectionHint">Organize as informações que identificam sua arena e facilitam o contato com atletas.</p>
+    <p className="profileSectionHint">Organize as informações profissionais da arena sem misturá-las com o seu perfil pessoal.</p>
 
     <div className="profileFormSectionHeader">
       <span><UserRound aria-hidden="true" /></span>

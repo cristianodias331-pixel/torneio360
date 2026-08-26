@@ -82,3 +82,23 @@ export async function uploadProfilePhoto({ supabase, userId, photoUrl }) {
   });
   return uploaded.publicUrl;
 }
+
+export async function uploadMemberProfilePhoto({ supabase, userId, photoUrl }) {
+  const uploaded = await uploadDataUrl({
+    supabase,
+    userId,
+    dataUrl: photoUrl,
+    kind: "member-profile-photo",
+  });
+  return uploaded.publicUrl;
+}
+
+export async function uploadMemberProfileCover({ supabase, userId, coverUrl }) {
+  const uploaded = await uploadDataUrl({
+    supabase,
+    userId,
+    dataUrl: coverUrl,
+    kind: "member-profile-cover",
+  });
+  return uploaded.publicUrl;
+}

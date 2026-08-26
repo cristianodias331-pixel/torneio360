@@ -1,0 +1,507 @@
+.unifiedMemberProfilePanel {
+  display: grid;
+  gap: 22px;
+}
+
+.proDashboard .profileSubtabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.unifiedProfilePublicCover {
+  height: clamp(150px, 19vw, 230px);
+  overflow: hidden;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(34, 197, 94, 0.22), transparent 35%),
+    radial-gradient(circle at 82% 30%, rgba(37, 99, 235, 0.24), transparent 38%),
+    linear-gradient(135deg, var(--ui-surface-muted, #eef3fa), var(--ui-surface, #fff));
+}
+
+.unifiedProfilePublicCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.proDashboard .unifiedProfileHeader {
+  position: relative;
+  z-index: 1;
+  margin-top: -52px;
+  padding: 0 18px 8px;
+  align-items: end;
+}
+
+.proDashboard .unifiedProfileHeader .instagramProfilePhoto {
+  width: 118px !important;
+  height: 118px !important;
+  border-width: 5px !important;
+  background: var(--ui-surface, #fff) !important;
+}
+
+.proDashboard .unifiedProfileHeader .instagramProfileInfo {
+  min-width: 0;
+  padding-top: 58px;
+}
+
+.unifiedProfileHandle {
+  margin: 1px 0 0 !important;
+  font-weight: 800;
+}
+
+.unifiedProfileBio {
+  max-width: 720px;
+  margin: 8px 0 0 !important;
+  color: var(--ui-text, #253247) !important;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.unifiedProfileLocation {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 7px 0 0 !important;
+}
+
+.unifiedProfileLocation svg {
+  width: 14px;
+  height: 14px;
+}
+
+.unifiedProfileStats {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 4vw, 48px);
+  margin: 14px 0 12px;
+}
+
+.unifiedProfileStats > span {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.unifiedProfileStats strong {
+  color: var(--ui-text-strong, #102038);
+  font-size: 1rem;
+}
+
+.unifiedProfileStats small {
+  color: var(--ui-muted, #637189);
+  font-size: 0.78rem;
+}
+
+.unifiedMemberProfileHeading,
+.unifiedMemberProfileFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.unifiedMemberProfileHeading > div:first-child > span {
+  color: var(--orange-strong, #dd5d20);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.unifiedMemberProfileHeading h2 {
+  margin: 4px 0 5px;
+}
+
+.unifiedMemberProfileHeading p,
+.unifiedMemberOrganizationBadge small,
+.unifiedMemberPhotoPicker small,
+.unifiedMemberFields .formField > small,
+.unifiedMemberPrivacy small,
+.unifiedMemberProfileFooter > span {
+  color: var(--muted, #637189);
+}
+
+.unifiedMemberOrganizationBadge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--green, #16965b) 30%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--green, #16965b) 8%, var(--card, #fff));
+}
+
+.unifiedMemberOrganizationBadge > svg {
+  width: 22px;
+  height: 22px;
+  color: var(--green, #16965b);
+  flex: 0 0 auto;
+}
+
+.unifiedMemberOrganizationBadge span {
+  display: grid;
+  gap: 2px;
+}
+
+.unifiedMemberOrganizationBadge small {
+  font-size: 0.7rem;
+}
+
+.unifiedMemberOrganizationBadge strong {
+  font-size: 0.86rem;
+}
+
+.unifiedMemberSchemaNotice {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #d97706 45%, transparent);
+  border-radius: 12px;
+  color: #9a4b08;
+  background: color-mix(in srgb, #f59e0b 10%, var(--card, #fff));
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.unifiedMemberCoverPicker {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px dashed color-mix(in srgb, var(--blue, #2563eb) 45%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(34, 197, 94, 0.16), transparent 35%),
+    radial-gradient(circle at 82% 30%, rgba(37, 99, 235, 0.18), transparent 38%),
+    var(--ui-surface-muted, #eef3fa);
+}
+
+.unifiedMemberCoverPicker > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.unifiedMemberCoverPicker > label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(8, 23, 45, 0.72);
+  backdrop-filter: blur(8px);
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.unifiedMemberCoverPicker > label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.unifiedMemberCoverPicker > label svg {
+  width: 17px;
+  height: 17px;
+}
+
+.unifiedMemberCoverPicker > button {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 10px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(112, 22, 22, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.unifiedMemberProfileBody {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.unifiedMemberPhotoColumn,
+.unifiedMemberPhotoPicker {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.unifiedMemberPhotoPicker {
+  cursor: pointer;
+  width: 100%;
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--blue, #2563eb) 45%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--blue, #2563eb) 4%, var(--card, #fff));
+}
+
+.unifiedMemberPhotoPicker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.unifiedMemberPhotoPreview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 128px;
+  aspect-ratio: 1;
+  overflow: visible;
+  border: 3px solid var(--card, #fff);
+  border-radius: 50%;
+  outline: 2px solid color-mix(in srgb, var(--blue, #2563eb) 55%, transparent);
+  color: var(--muted, #637189);
+  background: color-mix(in srgb, var(--blue, #2563eb) 8%, var(--card, #fff));
+  box-shadow: 0 12px 30px rgba(12, 35, 70, 0.12);
+}
+
+.unifiedMemberPhotoPreview > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.unifiedMemberPhotoPreview > svg {
+  width: 44px;
+  height: 44px;
+}
+
+.unifiedMemberPhotoPreview > i {
+  position: absolute;
+  right: -3px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--card, #fff);
+  border-radius: 50%;
+  color: #fff;
+  background: var(--blue, #2563eb);
+}
+
+.unifiedMemberPhotoPreview > i svg {
+  width: 16px;
+  height: 16px;
+}
+
+.unifiedMemberRemovePhoto {
+  padding: 7px 10px;
+  border: 0;
+  color: var(--danger, #c43838);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.unifiedMemberFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.unifiedMemberFields .formField label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unifiedMemberFields .formField label svg {
+  width: 15px;
+  height: 15px;
+}
+
+.unifiedMemberFields textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 104px;
+}
+
+.unifiedMemberHandleField {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border, #c8d4e6);
+  border-radius: 12px;
+  background: var(--input-bg, #fff);
+}
+
+.unifiedMemberHandleField:focus-within {
+  border-color: var(--blue, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue, #2563eb) 14%, transparent);
+}
+
+.unifiedMemberHandleField > span {
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  color: var(--muted, #637189);
+  background: color-mix(in srgb, var(--blue, #2563eb) 7%, transparent);
+  font-weight: 900;
+}
+
+.unifiedMemberHandleField input {
+  min-width: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.unifiedMemberFieldError {
+  color: var(--danger, #c43838) !important;
+  font-weight: 700;
+}
+
+.unifiedMemberCharacterCount {
+  justify-self: end;
+  margin-top: -2px;
+}
+
+.unifiedMemberPrivacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 14px;
+  border: 1px solid var(--border, #c8d4e6);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--green, #16965b) 5%, var(--card, #fff));
+  cursor: pointer;
+}
+
+.unifiedMemberPrivacy input {
+  margin-top: 3px;
+  accent-color: var(--green, #16965b);
+}
+
+.unifiedMemberPrivacy span {
+  display: grid;
+  gap: 3px;
+}
+
+.unifiedMemberPrivacy small {
+  line-height: 1.45;
+}
+
+.unifiedMemberProfileFooter {
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #c8d4e6);
+}
+
+.unifiedMemberProfileFooter > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 620px;
+  font-size: 0.78rem;
+}
+
+.unifiedMemberProfileFooter > span svg {
+  width: 16px;
+  height: 16px;
+  color: var(--green, #16965b);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .proDashboard .profileSubtabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .unifiedProfilePublicCover {
+    height: 125px;
+    border-radius: 14px;
+  }
+
+  .proDashboard .unifiedProfileHeader {
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+    margin-top: -38px;
+    padding: 0 8px 6px;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  .proDashboard .unifiedProfileHeader .instagramProfilePhoto {
+    width: 76px !important;
+    height: 76px !important;
+    border-width: 4px !important;
+  }
+
+  .proDashboard .unifiedProfileHeader .instagramProfileInfo {
+    padding-top: 42px;
+  }
+
+  .unifiedProfileStats {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 10px 0 8px;
+  }
+
+  .unifiedProfileStats > span {
+    display: grid;
+    justify-items: center;
+    gap: 1px;
+    flex: 1;
+  }
+
+  .unifiedProfileStats strong {
+    font-size: 0.92rem;
+  }
+
+  .unifiedProfileStats small {
+    font-size: 0.68rem;
+  }
+
+  .unifiedMemberCoverPicker {
+    min-height: 125px;
+  }
+
+  .unifiedMemberProfileHeading,
+  .unifiedMemberProfileFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .unifiedMemberOrganizationBadge {
+    min-width: 0;
+  }
+
+  .unifiedMemberProfileBody {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .unifiedMemberPhotoPicker {
+    max-width: 320px;
+  }
+
+  .unifiedMemberFields {
+    grid-template-columns: 1fr;
+  }
+
+  .unifiedMemberProfileFooter .saveProfileBtn {
+    width: 100%;
+  }
+}

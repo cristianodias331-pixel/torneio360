@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:homologation": "vite build --mode homologation",
     "preview": "vite preview",
-    "test": "node scripts/smoke-check.mjs",
+    "test": "node scripts/smoke-check.mjs && node scripts/member-profile-check.mjs",
     "test:load:public": "node scripts/public-load-check.mjs",
     "test:pagination:circuit": "node scripts/public-circuit-pagination-check.mjs",
     "test:browser:public": "node scripts/browser-performance-check.mjs",
