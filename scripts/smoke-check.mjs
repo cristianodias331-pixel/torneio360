@@ -387,6 +387,7 @@ import {
 } from "../src/domain/cupBracketConstruction.mjs";
 import {
   playRankingLegacyV2MainBracketPlans,
+  playRankingLegacyV3MainBracketPlans,
   playRankingMainBracketPlans,
 } from "../src/domain/cupBracketPlans.mjs";
 import {
@@ -2531,6 +2532,34 @@ const playRankingFourGroupEntries = [
   ...Array.from({ length: 4 }, (_, index) => ({ id: index + 1, groupPosition: 1, groupRank: index + 1 })),
   ...Array.from({ length: 4 }, (_, index) => ({ id: index + 5, groupPosition: 2, groupRank: index + 1 })),
 ];
+const playRankingTwoGroupEntries = [
+  { id: 1, groupPosition: 1, groupRank: 1 },
+  { id: 2, groupPosition: 1, groupRank: 2 },
+  { id: 3, groupPosition: 2, groupRank: 1 },
+  { id: 4, groupPosition: 2, groupRank: 2 },
+];
+const playRankingTwoGroupOpening = buildCopinhaBracketFromPlan(
+  playRankingTwoGroupEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingMainBracketPlans[2])
+)[0].games;
+assert.deepEqual(
+  playRankingTwoGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [[1, 4], [3, 2]],
+  "A chave oficial com dois grupos deixou de posicionar Seed 1 × Seed 4 e Seed 3 × Seed 2."
+);
+const playRankingLegacyV3TwoGroupOpening = buildCopinhaBracketFromPlan(
+  playRankingTwoGroupEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingLegacyV3MainBracketPlans[2])
+)[0].games;
+assert.deepEqual(
+  playRankingLegacyV3TwoGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [[1, 4], [2, 3]],
+  "A versão 3 deixou de preservar a orientação anterior para torneios de outros perfis."
+);
 const playRankingFourGroupOpening = buildCopinhaBracketFromPlan(
   playRankingFourGroupEntries,
   "main",
@@ -2541,6 +2570,21 @@ assert.deepEqual(
   playRankingFourGroupOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
   [[1, 7], [6, 4], [3, 5], [8, 2]],
   "A chave oficial com quatro grupos não reproduziu os quatro confrontos de referência."
+);
+const playRankingFiveGroupReferenceEntries = [
+  ...[12, 3, 6, 0, 9].map((id, index) => ({ id, groupPosition: 1, groupRank: index + 1 })),
+  ...[13, 4, 7, 1, 10].map((id, index) => ({ id, groupPosition: 2, groupRank: index + 1 })),
+];
+const playRankingFiveGroupReferenceOpening = buildCopinhaBracketFromPlan(
+  playRankingFiveGroupReferenceEntries,
+  "main",
+  "Eliminatória Principal",
+  expandBracketPlanWithVisualByes(playRankingMainBracketPlans[5])
+)[0].games;
+assert.deepEqual(
+  playRankingFiveGroupReferenceOpening.map((game) => [game.ids1[0] ?? null, game.ids2[0] ?? null]),
+  [[12, null], [4, 7], [0, null], [null, 9], [6, null], [null, 13], [1, 10], [null, 3]],
+  "A chave com cinco grupos deixou de reproduzir a matriz de seeds da plataforma de referência."
 );
 const playRankingSixGroupEntries = [
   ...Array.from({ length: 6 }, (_, index) => ({ id: index + 1, groupPosition: 1, groupRank: index + 1 })),
@@ -2599,6 +2643,13 @@ for (let groupCount = 2; groupCount <= 10; groupCount += 1) {
       `Campeão e segundo colocado do grupo ${groupRank} não ficaram em metades opostas com ${groupCount} grupos.`
     );
   }
+}
+for (let teamCount = 4; teamCount <= 32; teamCount += 1) {
+  const groupCount = createCearenseGroups(teamCount).length;
+  assert.ok(
+    playRankingMainBracketPlans[groupCount],
+    `O Modelo Torneio 360 ficou sem matriz oficial para ${teamCount} duplas (${groupCount} grupos).`
+  );
 }
 const copinhaEliminationEntries = [
   { id: 0, groupId: 0 },
@@ -3153,6 +3204,57 @@ assert.equal(
   migratePlayRankingBracketForReferenceProfile(referenceTournament, otherModalityData).applied,
   false,
   "A migração do PLAY RANKING atingiu outra modalidade do mesmo perfil."
+);
+const referenceSeedTeams = createNamedTeams(15);
+referenceSeedTeams.teams[3] = { a: "Cristiano Oliveira", b: "Juliana Cassundé" };
+referenceSeedTeams.teams[6] = { a: "Weverton Marques", b: "Julia Pinto" };
+const referenceSeedTieKey = "campeoes:1/1:9/2:0.833333333333";
+const referenceSeedData = {
+  cupConfig: {
+    teamCount: 15,
+    format: "playranking",
+    playRankingBracketVersion: PLAY_RANKING_BRACKET_VERSION,
+    campaignTieBreakOverrides: { [referenceSeedTieKey]: [6, 3] },
+  },
+  players: referenceSeedTeams,
+  schedule: [],
+  brackets: [],
+};
+const referenceSeedTournament = {
+  id: "6d5447dc-ffb1-4adb-ac11-8a80ea37ef3c",
+  user_id: PLAY_RANKING_RETROACTIVE_PROFILE_ID,
+  type: "Modelo Play Ranking",
+  data: referenceSeedData,
+};
+assert.equal(
+  shouldMigratePlayRankingBracket(referenceSeedTournament, referenceSeedData),
+  true,
+  "O desempate histórico invertido do PLAY RANKING® deixou de ser reconhecido."
+);
+const referenceSeedMigration = migratePlayRankingBracketForReferenceProfile(
+  referenceSeedTournament,
+  referenceSeedData
+);
+assert.deepEqual(
+  referenceSeedMigration.data.cupConfig.campaignTieBreakOverrides[referenceSeedTieKey],
+  [3, 6],
+  "A ordem histórica não foi corrigida para Cristiano/Juliana antes de Weverton/Julia."
+);
+assert.equal(
+  shouldMigratePlayRankingBracket(
+    { ...referenceSeedTournament, data: referenceSeedMigration.data },
+    referenceSeedMigration.data
+  ),
+  false,
+  "A correção histórica deixou de ser idempotente."
+);
+assert.equal(
+  shouldMigratePlayRankingBracket(
+    { ...referenceSeedTournament, user_id: "95f7aefa-d2b9-4df5-9c64-97902f4298e4" },
+    referenceSeedData
+  ),
+  false,
+  "A correção específica do seed atingiu um perfil diferente do PLAY RANKING®."
 );
 const standardGroupPlayers = createNamedTeams(6);
 const standardGroupSchedule = completeGroupScheduleWithLowerIdWinning(

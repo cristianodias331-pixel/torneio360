@@ -209,7 +209,7 @@ export const playRankingLegacyV2MainBracketPlans = {
 // às melhores sementes. As quantidades possíveis do modelo geram de 1 a 10
 // grupos; os planos compatíveis já existentes são reutilizados onde coincidem
 // com a estrutura oficial, com planos próprios para seis e sete grupos.
-export const playRankingMainBracketPlans = {
+export const playRankingLegacyV3MainBracketPlans = {
   1: [
     { title: "Final", games: [["m1", "c1", "r1"]] },
   ],
@@ -287,4 +287,45 @@ export const playRankingMainBracketPlans = {
   8: copinhaBracketPlans[8].main,
   9: copinhaBracketPlans[9].main,
   10: copinhaBracketPlans[10].main,
+};
+
+// A versão 4 conserva toda a distribuição oficial já validada para uma a dez
+// chaves de grupo. Ela corrige a orientação Seed 3 × Seed 2 com dois grupos e
+// reproduz explicitamente as oito posições, seis BYEs e cruzamentos mostrados
+// pela referência com cinco grupos. Em todas as quantidades, campeão e vice do
+// mesmo grupo permanecem em metades opostas.
+export const playRankingMainBracketPlans = {
+  ...playRankingLegacyV3MainBracketPlans,
+  2: [
+    { title: "Semifinal", games: [["m1", "c1", "r2"], ["m2", "r1", "c2"]] },
+    { title: "3º lugar", games: [["m3", "l:m1", "l:m2"]] },
+    { title: "Final", games: [["m4", "w:m1", "w:m2"]] },
+  ],
+  5: [
+    {
+      title: "Oitavas de final",
+      games: [
+        ["b1", "c1", null],
+        ["m1", "r2", "r3"],
+        ["b2", "c4", null],
+        ["b3", null, "c5"],
+        ["b4", "c3", null],
+        ["b5", null, "r1"],
+        ["m2", "r4", "r5"],
+        ["b6", null, "c2"],
+      ],
+    },
+    {
+      title: "Quartas de final",
+      games: [
+        ["m3", "w:b1", "w:m1"],
+        ["m4", "w:b2", "w:b3"],
+        ["m5", "w:b4", "w:b5"],
+        ["m6", "w:m2", "w:b6"],
+      ],
+    },
+    { title: "Semifinal", games: [["m7", "w:m3", "w:m4"], ["m8", "w:m5", "w:m6"]] },
+    { title: "3º lugar", games: [["m9", "l:m7", "l:m8"]] },
+    { title: "Final", games: [["m10", "w:m7", "w:m8"]] },
+  ],
 };
