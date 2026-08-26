@@ -47,10 +47,35 @@ function createPublicArenaEventPages(counts = {}) {
 
 function PublicArenaLoadingScreen() {
   const [videoReady, setVideoReady] = useState(false);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+
+    // Alguns navegadores móveis não disparam `playing` antes de a tela de
+    // abertura terminar. Exiba o primeiro quadro assim que houver dados e
+    // reforce as propriedades exigidas pelo autoplay silencioso no iOS.
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
+    const revealVideo = () => setVideoReady(true);
+    const revealTimer = window.setTimeout(revealVideo, 900);
+    const playback = video.play();
+    playback?.catch(() => {
+      // O quadro carregado continua visível mesmo quando o sistema bloqueia
+      // a reprodução automática. A página não fica presa em uma tela vazia.
+      revealVideo();
+    });
+
+    return () => window.clearTimeout(revealTimer);
+  }, []);
 
   return (
     <div className="publicArenaLoadingScreen" role="status" aria-live="polite" aria-label="Carregando perfil da arena">
       <video
+        ref={videoRef}
         className={`publicArenaLoadingVideo${videoReady ? " isReady" : ""}`}
         src="/arena-profile-loading.mp4"
         autoPlay
@@ -58,6 +83,9 @@ function PublicArenaLoadingScreen() {
         playsInline
         loop
         preload="auto"
+        onLoadedMetadata={() => setVideoReady(true)}
+        onLoadedData={() => setVideoReady(true)}
+        onCanPlay={() => setVideoReady(true)}
         onPlaying={() => window.requestAnimationFrame(() => setVideoReady(true))}
         aria-hidden="true"
       />
