@@ -261,6 +261,7 @@
   }
 
   .proDashboard .circuitStatusSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 5px !important;
   }
 
@@ -275,20 +276,32 @@
   }
 
   .proDashboard .circuitStatusSummary .eventListSearch {
+    position: static !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
     min-height: 34px !important;
     height: 34px !important;
-    margin-top: 1px !important;
+    margin: 1px 0 0 !important;
+    box-sizing: border-box !important;
   }
 
   .proDashboard.playAppShell button.circuitItemSummary,
   .proDashboard.playAppShell button.circuitListOpenButton {
+    position: relative !important;
     gap: 8px !important;
     padding: 10px !important;
+  }
+
+  .proDashboard.playAppShell button.circuitListOpenButton {
+    display: block !important;
+    padding-right: 10px !important;
   }
 
   .proDashboard .circuitSummaryIdentity {
     align-items: center !important;
     gap: 8px !important;
+    width: 100% !important;
   }
 
   .proDashboard .circuitMonogram {
@@ -299,9 +312,36 @@
     font-size: 9px !important;
   }
 
-  .proDashboard .circuitItemMain strong {
+  .proDashboard .circuitTitleLine {
+    min-height: 27px !important;
+    padding-right: 58px !important;
+  }
+
+  .proDashboard .circuitTitleLine h3 {
     font-size: 12px !important;
     line-height: 1.15 !important;
+  }
+
+  .proDashboard .circuitItemMain .circuitDateRange {
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    font-size: 8.5px !important;
+    line-height: 1.2 !important;
+  }
+
+  .proDashboard .circuitItemMain .circuitDateRange svg {
+    width: 11px !important;
+    min-width: 11px !important;
+    height: 11px !important;
+  }
+
+  .proDashboard .circuitItemMain .circuitDateSeparator {
+    color: var(--ui-muted) !important;
+    font-size: .9em !important;
   }
 
   .proDashboard .circuitItemMain small {
@@ -310,9 +350,21 @@
   }
 
   .proDashboard .circuitOpenAction {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    min-width: 54px !important;
     min-height: 32px !important;
-    padding: 6px 9px !important;
-    font-size: 9.5px !important;
+    height: 32px !important;
+    padding: 6px 7px !important;
+    font-size: 9px !important;
+    box-sizing: border-box !important;
+  }
+
+  .proDashboard .circuitOpenAction svg {
+    width: 12px !important;
+    height: 12px !important;
   }
 }
 
