@@ -72,9 +72,6 @@ import {
   createPublicArenaApi,
 } from "./services/publicArenaApi.mjs";
 import {
-  fetchPublicMemberDirectory,
-} from "./services/memberProfileApi.mjs";
-import {
   fetchPublicTournamentFeed,
   loadPublicOrganizationGallery,
 } from "./services/publicSocialApi.mjs";
@@ -109,7 +106,6 @@ if (import.meta.env.DEV) globalThis.__torneio360Supabase = supabase;
 
 const {
   fetchPublicArenaBundle,
-  fetchPublicArenaDirectory,
   fetchPublicArenaEventsPage,
   fetchPublicArenaInitialView,
   fetchPublicArenaPhoto,
@@ -149,9 +145,6 @@ const {
 
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
 const publicPlatformHomeRuntime = Object.freeze({
-  fetchPublicArenaDirectory,
-  fetchPublicArenaPhoto,
-  fetchPublicMemberDirectory: (options) => fetchPublicMemberDirectory({ supabase, ...options }),
   fetchPublicTournamentFeed: (options) => fetchPublicTournamentFeed({ supabase, ...options }),
   formatDate: formatDateBR,
   getModalityName: getModalityDisplayName,
@@ -447,8 +440,12 @@ function App() {
     return <PublicMemberProfilePageView supabase={supabase} identifier={memberIdentifier} />;
   }
 
-  if (publicId || arenaId) {
-    return <PublicArenaPage publicId={publicId} arenaId={arenaId} session={session} />;
+  if (publicId) {
+    return <PublicArenaPage publicId={publicId} session={session} />;
+  }
+
+  if (arenaId) {
+    return <PublicPlatformHome session={session} />;
   }
 
   if (publicMode && authFlow !== "recovery") {
@@ -600,7 +597,13 @@ function Login(props) {
 }
 
 function Dashboard(props) {
-  return <OrganizerWorkspaceDashboard {...props} supabase={supabase} />;
+  return (
+    <OrganizerWorkspaceDashboard
+      {...props}
+      supabase={supabase}
+      publicPlatformHomeRuntime={publicPlatformHomeRuntime}
+    />
+  );
 }
 
 function PublicArenaHeroHeader(props) {
@@ -608,7 +611,7 @@ function PublicArenaHeroHeader(props) {
     <PublicArenaHeroHeaderView
       {...props}
       tagline={TORNEIO360_TAGLINE}
-      onBack={() => window.location.assign(`${window.location.origin}/#organizacoes`)}
+      onBack={() => window.location.assign(window.location.origin)}
       onOrganizerAccess={openOrganizerAccess}
     />
   );

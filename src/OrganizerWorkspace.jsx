@@ -224,14 +224,10 @@ import {
   sortCircuitsForDisplay,
 } from "./domain/publicArenaData.mjs";
 import {
-  ARENA_DIRECTORY_FOCUS_MIN_AGE_MS,
-  ARENA_DIRECTORY_PAGE_SIZE,
-  ARENA_DIRECTORY_REFRESH_INTERVAL_MS,
   PUBLIC_ARENA_BUNDLE_REFRESH_INTERVAL_MS,
   PUBLIC_ARENA_EVENT_PAGE_SIZE,
   PUBLIC_TOURNAMENT_REFRESH_INTERVAL_MS,
   readPublicArenaBundleCache,
-  readPublicArenaDirectoryCache,
 } from "./domain/publicArenaCache.mjs";
 import { copyToClipboard } from "./services/clipboard.mjs";
 import { createLatestEntitySignalProcessor } from "./services/latestEntitySignalProcessor.mjs";
@@ -393,11 +389,9 @@ import {
   PLAY_RANKING_RETROACTIVE_PROFILE_ID,
   migratePlayRankingBracketForReferenceProfile,
 } from "./domain/playRankingBracketMigration.mjs";
-import { createPublicArenaApi } from "./services/publicArenaApi.mjs";
 import { createTournamentOperations } from "./domain/tournamentOperations.mjs";
 import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { createTournamentRuntimeAdapters } from "./features/tournamentWorkspace/TournamentRuntimeAdapters.jsx";
-import LazyArenaPhotoView from "./features/publicArena/LazyArenaPhoto.jsx";
 
 const HOMOLOGATION_LOAD_LAB_ENABLED = String(import.meta.env.VITE_SUPABASE_URL || "")
   .includes("vcixhzvytkrautotinpi.supabase.co");
@@ -408,10 +402,6 @@ const HomologationLoadLab = HOMOLOGATION_LOAD_LAB_ENABLED
 export function createOrganizerWorkspace(runtime) {
   const { supabase } = runtime;
   const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
-  const {
-    fetchPublicArenaDirectory,
-    fetchPublicArenaPhoto,
-  } = createPublicArenaApi({ supabase });
   const {
     capExpiredTournamentMatchTimers,
     getCupPlayTimeById,
@@ -463,22 +453,10 @@ export function createOrganizerWorkspace(runtime) {
     window.location.replace("/");
   }
 
-  function LazyArenaPhoto(props) {
-    return <LazyArenaPhotoView {...props} fetchPublicArenaPhoto={fetchPublicArenaPhoto} />;
-  }
-
-function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile }) {
+function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile, publicPlatformHomeRuntime }) {
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
   const [trashCircuits, setTrashCircuits] = useState([]);
-  const [publicArenaProfiles, setPublicArenaProfiles] = useState([]);
-  const [publicArenaProfilesCursor, setPublicArenaProfilesCursor] = useState(null);
-  const [publicArenaProfilesHasMore, setPublicArenaProfilesHasMore] = useState(false);
-  const [publicArenaProfilesLoadingMore, setPublicArenaProfilesLoadingMore] = useState(false);
-  const [arenaProfileSearch, setArenaProfileSearch] = useState("");
-  const [selectedArenaProfile, setSelectedArenaProfile] = useState(null);
-  const [selectedArenaTournaments, setSelectedArenaTournaments] = useState([]);
-  const [selectedArenaLoading, setSelectedArenaLoading] = useState(false);
   const [selected, setSelected] = useState(null);
   const [networkOnline, setNetworkOnline] = useState(() => !isBrowserOffline());
   const [pendingSyncCount, setPendingSyncCount] = useState(() => listLocalTournamentDrafts(user.id).length);
@@ -489,11 +467,6 @@ function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile }) {
   const [liveCourtUsagesByTournament, setLiveCourtUsagesByTournament] = useState({});
   const tournamentNavigationGuardRef = useRef(null);
   const openTournamentNavigationRef = useRef(readOpenTournamentNavigation(user.id));
-  const publicArenaProfilesLoaderRef = useRef(null);
-  const publicArenaProfilesInFlightRef = useRef(false);
-  const publicArenaProfilesRequestRef = useRef(0);
-  const publicArenaProfilesMountedRef = useRef(true);
-  const publicArenaProfilesLastLoadedAtRef = useRef(0);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("");
 const [newCategory, setNewCategory] = useState("");
@@ -1289,7 +1262,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const panelMeta = {
     inicio: {
       title: "Visão geral",
-      description: "Acompanhe seus torneios, circuitos e atividades em um só lugar.",
+      description: "Veja os torneios publicados pelas organizações.",
     },
     criar: {
       title: "Torneios",
@@ -1411,14 +1384,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const organizerCircuitsToRender = openedOrganizerCircuit
     ? [openedOrganizerCircuit]
     : visibleOrganizerCircuits;
-
-  const filteredArenaProfiles = publicArenaProfiles.filter((arena) => {
-    const term = arenaProfileSearch.trim().toLowerCase();
-    if (!term) return true;
-    return [arena.arena_name, arena.name, arena.city, arena.state]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(term));
-  });
 
   async function loadCircuits({ silentError = false, retryAfterRealtime = true } = {}) {
     const realtimeEpoch = circuitRealtimeEpochRef.current;
@@ -3155,9 +3120,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         setProfileSaveSuccess(false);
         profileSaveSuccessTimerRef.current = null;
       }, 2600);
-      void loadPublicArenaProfiles().catch((refreshError) => {
-        console.warn("Perfil salvo; a lista pública será atualizada depois:", refreshError);
-      });
     } catch (error) {
       console.error("Erro inesperado ao salvar o perfil:", error);
       showNotice(
@@ -4397,94 +4359,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return migrationRequest;
   }
 
-  async function openArenaProfile(arena) {
-    window.location.assign(getArenaPublicUrl(arena.id));
-  }
-
-  function closeArenaProfilePage() {
-    setSelectedArenaProfile(null);
-    setSelectedArenaTournaments([]);
-  }
-
-  async function loadPublicArenaProfiles({ searchTerm = arenaProfileSearch, append = false } = {}) {
-    if (publicArenaProfilesInFlightRef.current) return;
-    publicArenaProfilesInFlightRef.current = true;
-    if (append) setPublicArenaProfilesLoadingMore(true);
-    const requestId = publicArenaProfilesRequestRef.current + 1;
-    publicArenaProfilesRequestRef.current = requestId;
-    const normalizedSearch = String(searchTerm || "").trim();
-
-    try {
-      const currentArenaProfile = {
-        id: user.id,
-        name: organizerProfile.organizerName || profile.name || user.email || "Organizador",
-        arena_name: organizerProfile.arenaName || profile.arena_name || profile.name || "Minha arena",
-        city: organizerProfile.city || profile.city || "",
-        state: organizerProfile.state || profile.state || "",
-        photo_url: organizerProfile.photoUrl || profile.photo_url || "",
-        phone: organizerProfile.whatsapp || profile.phone || "",
-        address: organizerProfile.address || profile.address || "",
-        maps_link: organizerProfile.mapsLink || profile.maps_link || "",
-        instagram_handle: organizerProfile.instagramHandle || profile.instagram_handle || "",
-        instagram_link: organizerProfile.instagramLink || profile.instagram_link || "",
-        whatsapp_group_link: organizerProfile.whatsappGroupLink || profile.whatsapp_group_link || "",
-        is_public: true,
-      };
-
-      const cachedProfiles = !normalizedSearch && !append ? readPublicArenaDirectoryCache() : null;
-      if (cachedProfiles && publicArenaProfilesMountedRef.current) {
-        const cachedWithoutCurrent = cachedProfiles
-          .filter((item) => item?.id && item.id !== user.id)
-          .map((item) => ({ ...item, is_public: true }));
-        setPublicArenaProfiles([currentArenaProfile, ...cachedWithoutCurrent]);
-      }
-
-      const { data, error, hasMore, nextCursor } = await fetchPublicArenaDirectory({
-        search: normalizedSearch || null,
-        limit: ARENA_DIRECTORY_PAGE_SIZE,
-        cursor: append ? publicArenaProfilesCursor : null,
-      });
-      if (!publicArenaProfilesMountedRef.current || requestId !== publicArenaProfilesRequestRef.current) return;
-
-      if (error) {
-        console.error("Erro ao carregar perfis públicos:", error);
-        setPublicArenaProfiles((currentProfiles) => (
-          currentProfiles.length > 0 ? currentProfiles : [currentArenaProfile]
-        ));
-        return;
-      }
-
-      const profiles = (data || [])
-        .filter((item) => item?.id)
-        .map((item) => ({ ...item, is_public: true }));
-
-      const currentSearchText = [
-        currentArenaProfile.arena_name,
-        currentArenaProfile.name,
-        currentArenaProfile.city,
-        currentArenaProfile.state,
-      ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
-      const includeCurrentProfile = !normalizedSearch
-        || currentSearchText.includes(normalizedSearch.toLocaleLowerCase("pt-BR"));
-
-      setPublicArenaProfiles((current) => {
-        const source = append ? [...current, ...profiles] : profiles;
-        const unique = Array.from(
-          new Map(source.filter((item) => item?.id).map((item) => [String(item.id), item])).values()
-        ).filter((item) => item.id !== user.id);
-        return includeCurrentProfile ? [currentArenaProfile, ...unique] : unique;
-      });
-      setPublicArenaProfilesCursor(nextCursor || null);
-      setPublicArenaProfilesHasMore(hasMore === true);
-      publicArenaProfilesLastLoadedAtRef.current = Date.now();
-    } finally {
-      publicArenaProfilesInFlightRef.current = false;
-      if (append) setPublicArenaProfilesLoadingMore(false);
-    }
-  }
-
-  publicArenaProfilesLoaderRef.current = loadPublicArenaProfiles;
-
   async function loadDashboardData({ reconnecting = false } = {}) {
     if (dashboardLoadInFlightRef.current) return;
     dashboardLoadInFlightRef.current = true;
@@ -4865,49 +4739,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       void supabase.removeChannel(channel);
     };
   }, [user.id]);
-
-  useEffect(() => {
-    const shouldLoadArenaDirectory = activePanel === "inicio";
-    publicArenaProfilesMountedRef.current = shouldLoadArenaDirectory;
-    if (!shouldLoadArenaDirectory) {
-      publicArenaProfilesRequestRef.current += 1;
-      return undefined;
-    }
-    let refreshInFlight = false;
-    const normalizedSearch = arenaProfileSearch.trim();
-
-    const refreshProfiles = () => {
-      if (refreshInFlight) return;
-      refreshInFlight = true;
-      Promise.resolve(publicArenaProfilesLoaderRef.current?.({ searchTerm: normalizedSearch, append: false }))
-        .catch((error) => console.error("Erro ao atualizar diretório de arenas:", error))
-        .finally(() => { refreshInFlight = false; });
-    };
-    const refreshVisibleProfiles = () => {
-      if (document.visibilityState !== "visible") return;
-      if (Date.now() - publicArenaProfilesLastLoadedAtRef.current < ARENA_DIRECTORY_FOCUS_MIN_AGE_MS) return;
-      refreshProfiles();
-    };
-    const handleVisibilityChange = () => {
-      refreshVisibleProfiles();
-    };
-    const initialRefreshTimer = window.setTimeout(refreshProfiles, normalizedSearch ? 320 : 0);
-    const refreshTimer = normalizedSearch
-      ? null
-      : window.setInterval(refreshVisibleProfiles, ARENA_DIRECTORY_REFRESH_INTERVAL_MS);
-
-    window.addEventListener("focus", refreshVisibleProfiles);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      publicArenaProfilesMountedRef.current = false;
-      publicArenaProfilesRequestRef.current += 1;
-      window.clearTimeout(initialRefreshTimer);
-      if (refreshTimer) window.clearInterval(refreshTimer);
-      window.removeEventListener("focus", refreshVisibleProfiles);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [activePanel, user.id, arenaProfileSearch]);
 
   async function createTournament() {
     if (saving) return;
@@ -7149,144 +6980,14 @@ setNewPublicInfo({
           {freeTrialDetails ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
 
           {activePanel === "inicio" && (
-            <>
-              <section className="playTabs homeQuickActions homeQuickActionsThree" aria-label="Ações rápidas">
-                <button type="button" className="primaryQuickAction" onClick={() => goToPanel("criar")}><PlusCircle aria-hidden="true" /> Novo torneio</button>
-                <button type="button" onClick={() => goToPanel("circuitos")}><GitBranch aria-hidden="true" /> Circuitos</button>
-                <button type="button" onClick={() => goToPanel("modalidades")}><Shapes aria-hidden="true" /> Modalidades</button>
-              </section>
-
-              <section className="playStatsGrid">
-                <div><strong>{tournaments.length}</strong><span>Torneios criados</span></div>
-                <div><strong>{circuits.length}</strong><span>Circuitos cadastrados</span></div>
-                <div><strong>{allowedTypes.length}</strong><span>Modalidades disponíveis</span></div>
-              </section>
-            </>
+            <React.Suspense fallback={<section className="card"><p>Carregando publicações...</p></section>}>
+              <PublicPlatformHomeController
+                session={{ user }}
+                runtime={publicPlatformHomeRuntime}
+                embedded
+              />
+            </React.Suspense>
           )}
-
-{activePanel === "inicio" && selectedArenaProfile ? (
-<section className="arenaPublicPage card">
-  <button type="button" className="arenaPublicBackBtn" onClick={closeArenaProfilePage}>← Voltar para arenas</button>
-
-  <div className="arenaPublicHero">
-    <div className="arenaPublicPhoto">
-      {selectedArenaProfile.photo_url ? (
-        <img src={selectedArenaProfile.photo_url} alt={selectedArenaProfile.arena_name || selectedArenaProfile.name || "Arena"} />
-      ) : (
-        <span>{(selectedArenaProfile.arena_name || selectedArenaProfile.name || "Arena").slice(0, 2).toUpperCase()}</span>
-      )}
-    </div>
-    <div className="arenaPublicInfo">
-      <span>Arena verificada</span>
-      <h2>{selectedArenaProfile.arena_name || selectedArenaProfile.name || "Arena cadastrada"}</h2>
-      <p>{[selectedArenaProfile.city, selectedArenaProfile.state].filter(Boolean).join("/") || "Local não informado"}</p>
-      <small>Organizador: {selectedArenaProfile.name || "Não informado"}</small>
-    </div>
-  </div>
-
-  <div className="arenaPublicDetailsGrid">
-    {selectedArenaProfile.address ? <div><strong>Endereço</strong><span><MapPin aria-hidden="true" /> {selectedArenaProfile.address}</span></div> : null}
-    {selectedArenaProfile.phone ? <div><strong>WhatsApp</strong><span>{selectedArenaProfile.phone}</span></div> : null}
-    {selectedArenaProfile.instagram_handle ? <div><strong>Instagram</strong><span>{selectedArenaProfile.instagram_handle}</span></div> : null}
-  </div>
-
-  <div className="arenaPublicLinksTitle">Links</div>
-
-  <div className="arenaProfileLinks arenaPublicLinks">
-    {selectedArenaProfile.instagram_link ? (
-      <a href={selectedArenaProfile.instagram_link} target="_blank" rel="noreferrer">Instagram</a>
-    ) : selectedArenaProfile.instagram_handle ? (
-      <a href={"https://instagram.com/" + String(selectedArenaProfile.instagram_handle).replace("@", "")} target="_blank" rel="noreferrer">Instagram</a>
-    ) : null}
-    {selectedArenaProfile.whatsapp_group_link ? <a href={selectedArenaProfile.whatsapp_group_link} target="_blank" rel="noreferrer">Grupo WhatsApp</a> : null}
-    {selectedArenaProfile.phone ? <a href={getBrazilianWhatsAppUrl(selectedArenaProfile.phone)} target="_blank" rel="noreferrer">WhatsApp</a> : null}
-    {selectedArenaProfile.maps_link ? <a href={selectedArenaProfile.maps_link} target="_blank" rel="noreferrer">Google Maps</a> : null}
-  </div>
-
-  <div className="arenaProfilePublicationsHeader arenaPublicPublicationsHeader">
-    <strong>Campeonatos publicados</strong>
-    <span>{selectedArenaTournaments.length} publicação(ões)</span>
-  </div>
-
-  {selectedArenaLoading ? (
-    <div className="arenaProfileEmpty">Carregando publicações...</div>
-  ) : selectedArenaTournaments.length === 0 ? (
-    <div className="arenaProfileEmpty">Esta arena ainda não publicou torneios.</div>
-  ) : (
-    <div className="arenaPublicTournamentGrid">
-      {selectedArenaTournaments.map((t) => {
-        const details = t.data || {};
-        return (
-          <article className="arenaPublicTournamentCard" key={t.id}>
-            <div>
-              <strong>{t.name}</strong>
-              <small>{getModalityDisplayName(t.type)}</small>
-            </div>
-            <div className="tournamentMeta">
-              {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
-              {details.eventStartTime ? <span><Clock3 aria-hidden="true" /> {details.eventStartTime}</span> : null}
-              {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
-              {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
-            </div>
-            {selectedArenaProfile.whatsapp_group_link ? (
-              <button type="button" onClick={() => window.open(selectedArenaProfile.whatsapp_group_link, "_blank", "noopener,noreferrer")}>Inscreva-se</button>
-            ) : selectedArenaProfile.phone ? (
-              <button type="button" onClick={() => window.open(getBrazilianWhatsAppUrl(selectedArenaProfile.phone), "_blank", "noopener,noreferrer")}>Inscreva-se</button>
-            ) : (
-              <span className="arenaTournamentDraftBadge">Inscrições pelo organizador</span>
-            )}
-          </article>
-        );
-      })}
-    </div>
-  )}
-</section>
-) : activePanel === "inicio" && (
-<section className="arenaFeedSection">
-  <div className="arenaSearchRow">
-    <div className="arenaSearchBox platformSearchBox platformUnifiedSearch">
-      <Search aria-hidden="true" />
-      <input
-        value={arenaProfileSearch}
-        onChange={(e) => setArenaProfileSearch(e.target.value)}
-        placeholder="Ex.: arena, organizador, cidade ou estado"
-      />
-    </div>
-
-    <button
-      type="button"
-      className="mapsMiniBtn"
-      onClick={() => window.open("https://www.google.com/maps/search/arena+beach+tennis+perto+de+mim", "_blank", "noopener,noreferrer")}
-    >
-      Google Maps
-    </button>
-  </div>
-
-  <div className="arenaFeedGrid">
-    {filteredArenaProfiles.map((arena) => (
-      <article className="arenaFeedCard" key={arena.id}>
-        <div className="arenaFeedCover registeredArenaCover">
-          <LazyArenaPhoto arena={arena} alt={arena.arena_name || arena.name || "Arena"} />
-        </div>
-        <strong>{arena.arena_name || arena.name || "Arena cadastrada"}</strong>
-        <small className="arenaFeedOrganizer"><UserRound aria-hidden="true" /> Organizador: {arena.name || "Não informado"}</small>
-        <small><MapPin aria-hidden="true" /> {[arena.city, arena.state].filter(Boolean).join("/") || "Local não informado"}</small>
-        <button type="button" className="actionNavigateBtn" onClick={() => openArenaProfile(arena)}>Acessar arena</button>
-      </article>
-    ))}
-  </div>
-  {publicArenaProfilesHasMore ? (
-    <button
-      type="button"
-      className="publicArenaLoadMore"
-      disabled={publicArenaProfilesLoadingMore}
-      onClick={() => void loadPublicArenaProfiles({ searchTerm: arenaProfileSearch, append: true })}
-    >
-      {publicArenaProfilesLoadingMore ? "Carregando mais arenas..." : "Mostrar mais arenas"}
-    </button>
-  ) : null}
-</section>
-)}
 
     {activePanel === "criar" && (
     <>

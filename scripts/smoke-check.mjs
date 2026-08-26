@@ -3936,7 +3936,6 @@ for (const actionClass of [
   "actionShuffleBtn",
   "actionGenerateBtn",
   "actionOpenBtn",
-  "actionNavigateBtn",
 ]) {
   assert.ok(
     mainSource.includes(actionClass) && styleSource.includes(`button.${actionClass}`),
@@ -3972,19 +3971,21 @@ assert.ok(
     && publicArenaApiSource.includes("fetchPublicArenaDirectory")
     && publicArenaApiSource.includes("list_public_arenas_page")
     && publicArenaApiSource.includes("nextCursor")
-    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_PAGE_SIZE")
-    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_FOCUS_MIN_AGE_MS")
-    && publicPlatformHomeControllerSource.includes("ARENA_DIRECTORY_REFRESH_INTERVAL_MS")
     && publicArenaApiSource.includes("ARENA_DIRECTORY_CACHE_KEY")
-    && publicPlatformHomeControllerSource.includes("readPublicArenaDirectoryCache")
     && publicArenaApiSource.includes("directoryRequestInFlight")
-    && mainSource.includes("publicArenaProfilesInFlightRef")
-    && publicPlatformHomeControllerSource.includes("loadMoreArenas")
-    && mainSource.includes("refreshVisibleProfiles")
-    && !publicPlatformHomeControllerSource.includes("fetchPublicArenaDirectory({ limit: 250 })")
-    && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"')
-    && mainSource.includes('className="arenaFeedOrganizer"'),
-  "O diretório de arenas perdeu a paginação, a busca escalável ou a identificação do organizador."
+    && publicArenaPresentationSource.includes('className="publicArenaDirectoryOrganizer"'),
+  "A compatibilidade do diretório de organizações perdeu paginação ou identificação do responsável."
+);
+assert.ok(
+  publicPlatformHomeControllerSource.includes("PublicTournamentFeedSection")
+    && publicPlatformHomeControllerSource.includes("fetchPublicTournamentFeed")
+    && publicPlatformHomeControllerSource.includes("embedded")
+    && !publicPlatformHomeControllerSource.includes("PublicArenaDirectorySection")
+    && !publicPlatformHomeControllerSource.includes("PublicMemberDirectorySection")
+    && publicArenaPresentationSource.includes('className="playAppShell proDashboard theme-dark publicOverviewShell"')
+    && !publicArenaPresentationSource.includes('<a href="#perfis">Atletas</a>')
+    && !publicArenaPresentationSource.includes('<a href="#organizacoes">Organizações</a>'),
+  "A visão geral pública voltou a usar uma página paralela ou diretórios fora do fluxo principal."
 );
 assert.ok(
   platformTrafficScalingMigrationSource.includes("profiles_public_directory_search_trgm_idx")
@@ -5015,9 +5016,11 @@ assert.ok(styleSource.includes('"team1 score1"'), "No celular, cada placar não 
 assert.ok(contactLinksSource.includes("function getBrazilianWhatsAppUrl"), "Os links de WhatsApp não possuem normalização brasileira.");
 assert.ok(contactLinksSource.includes('digits.startsWith("55") && digits.length >= 12'), "O código do país não é preservado quando já foi informado.");
 assert.ok(
-  ([mainSource, publicArenaPageControllerSource, publicTournamentScreenSource]
-    .join("\n").match(/getBrazilianWhatsAppUrl\(/g) || []).length >= 3
-    && publicArenaPageControllerSource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}"),
+  mainEntrySource.includes("getWhatsAppUrl: getBrazilianWhatsAppUrl")
+    && mainEntrySource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}")
+    && publicArenaPageControllerSource.includes("getWhatsAppUrl={getBrazilianWhatsAppUrl}")
+    && publicTournamentScreenSource.includes("getBrazilianWhatsAppUrl(publicOrganizer.whatsapp)")
+    && publicPlatformHomeControllerSource.includes("getWhatsAppUrl={getWhatsAppUrl}"),
   "Nem todos os links de WhatsApp usam o código +55 automático."
 );
 assert.ok(authValidationSource.includes("function isUserAlreadyRegisteredError"), "O cadastro não reconhece e-mails que já possuem conta.");

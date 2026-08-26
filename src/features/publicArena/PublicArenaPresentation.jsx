@@ -3,19 +3,19 @@ import {
   AtSign,
   CalendarDays,
   GitBranch,
+  LayoutDashboard,
+  LogIn,
   MapPin,
   MessageCircle,
   Search,
   Trophy,
+  UserPlus,
   UserRound,
   Users,
   X,
   ZoomIn,
 } from "lucide-react";
-import {
-  BeachLogo,
-  PlatformSupportLinks,
-} from "../appShell/EntryPresentation.jsx";
+import { BeachLogo } from "../appShell/EntryPresentation.jsx";
 
 export function PublicImageLightbox({ image, onClose }) {
   React.useEffect(() => {
@@ -137,7 +137,7 @@ export function PublicArenaHeroHeaderView({
       </div>
 
       <div className="publicTournamentHeaderActions publicArenaHeaderActions">
-        <button type="button" className="publicBackToPlatform" onClick={onBack}>← Voltar às organizações</button>
+        <button type="button" className="publicBackToPlatform" onClick={onBack}>← Voltar à visão geral</button>
         <button type="button" className="publicOrganizerAccess" onClick={onOrganizerAccess}>Área do organizador</button>
       </div>
     </header>
@@ -587,6 +587,7 @@ export function PublicMemberDirectoryView({
 }
 
 export function PublicTournamentFeedView({
+  embedded = false,
   items,
   loading,
   loadingMore,
@@ -599,15 +600,14 @@ export function PublicTournamentFeedView({
   getWhatsAppUrl,
   onLoadMore,
   onOpenTournament,
-  onOpenOrganization,
   onRegister,
 }) {
   const [previewImage, setPreviewImage] = React.useState(null);
 
   return (
-    <section id="visao-geral" className="publicTournamentFeedSection">
+    <section id="visao-geral" className={`publicTournamentFeedSection ${embedded ? "embeddedTournamentFeed" : ""}`}>
       <div className="publicDirectoryHeading publicFeedHeading">
-        <span>Visão geral</span>
+        <span>{embedded ? "Publicações" : "Visão geral"}</span>
         <h2>Torneios publicados</h2>
         <p>Acompanhe as publicações das organizações e abra cada evento para ver informações, jogos, ranking e inscrição.</p>
       </div>
@@ -632,12 +632,12 @@ export function PublicTournamentFeedView({
                   return (
                     <article className="publicTournamentPost" key={item.id}>
                       <header>
-                        <button type="button" className="publicTournamentPostOrganization" onClick={() => onOpenOrganization(organization)}>
+                        <div className="publicTournamentPostOrganization publicTournamentPostOrganizationStatic">
                           <span>{organization.photo_url
                             ? <img src={organization.photo_url} alt="" loading="lazy" decoding="async" />
                             : getDirectoryInitials(organization.name)}</span>
                           <span><strong>{organization.name}</strong><small>{[organization.city, organization.state].filter(Boolean).join("/") || "Organização Torneio360"}</small></span>
-                        </button>
+                        </div>
                       </header>
 
                       {coverImage ? (
@@ -687,71 +687,52 @@ export function PublicTournamentFeedView({
 
 export function PublicPlatformHomeView({
   hasSession,
-  onOrganizerAction,
+  onAccountAction,
   onAthleteSignup,
-  onOrganizerSignup,
   TournamentFeed,
-  MemberDirectory,
-  ArenaDirectory,
   tagline,
 }) {
   return (
-    <div className="publicPlatformHome">
-      <header className="publicPlatformTopbar">
-        <div className="landingBrand">
-          <BeachLogo />
-          <div className="brandTaglineOnly"><span>{tagline}</span></div>
-        </div>
-        <div className="publicPlatformActions">
-          <a href="#visao-geral">Visão geral</a>
-          <a href="#perfis">Atletas</a>
-          <a href="#organizacoes">Organizações</a>
-          <button type="button" onClick={onOrganizerAction}>
-            {hasSession ? "Abrir meu perfil" : "Entrar"}
-          </button>
-        </div>
-      </header>
+    <div className="playAppShell proDashboard theme-dark publicOverviewShell">
+      <aside className="playSidebar proSidebar publicOverviewSidebar" aria-label="Navegação principal">
+        <div className="sidebarHeader"><span className="sidebarSectionLabel">Menu</span></div>
+        <nav className="sidebarNav">
+          <a className="playNavItem active" href="#visao-geral" aria-current="page">
+            <span className="navIcon" aria-hidden="true"><LayoutDashboard /></span>
+            <small>Visão geral</small>
+          </a>
+        </nav>
+      </aside>
 
-      <main className="publicPlatformMain">
-        <section className="publicPlatformHero">
-          <div>
-            <span className="publicPlatformEyebrow">A comunidade dos torneios</span>
-            <h1>Descubra atletas, organizações e competições sem precisar entrar</h1>
-            <p>Navegue livremente por perfis e torneios. Crie uma conta somente quando quiser ter seu perfil, organizar ou se inscrever.</p>
-            <a href="#visao-geral" className="publicPlatformHeroButton">Ver torneios publicados</a>
+      <div className="playMain">
+        <header className="playTopbar proTopbar publicOverviewTopbar">
+          <div className="playTopBrand">
+            <BeachLogo />
+            <div className="brandTaglineOnly"><span>{tagline}</span></div>
           </div>
-          <div className="publicPlatformHeroMark" aria-hidden="true">
-            <Trophy />
-            <strong>360°</strong>
-            <span>Toda a competição em um só lugar</span>
+          <div className="publicOverviewAccountActions">
+            {!hasSession ? (
+              <button type="button" className="publicOverviewCreateProfile" onClick={onAthleteSignup}>
+                <UserPlus aria-hidden="true" /> Criar perfil
+              </button>
+            ) : null}
+            <button type="button" className="publicOverviewLogin" onClick={onAccountAction}>
+              <LogIn aria-hidden="true" /> {hasSession ? "Minha conta" : "Entrar"}
+            </button>
           </div>
-        </section>
+        </header>
 
-        <TournamentFeed />
-        <MemberDirectory />
-        <ArenaDirectory />
-
-        <section className="publicProfileSignupCallout">
-          <div><span>Para atletas</span><h2>Crie seu perfil esportivo gratuito</h2><p>Tenha foto, capa, apresentação e uma galeria pessoal com até seis fotos.</p></div>
-          <button type="button" onClick={onAthleteSignup}>Criar perfil de atleta</button>
-        </section>
-
-        <section className="publicOrganizerCallout">
-          <div>
-            <span>Para organizadores</span>
-            <h2>Publique torneios e circuitos pela sua organização</h2>
-            <p>O perfil pessoal continua o mesmo. A assinatura libera uma organização separada, publicações e administração dos eventos.</p>
-          </div>
-          <button type="button" onClick={hasSession ? onOrganizerAction : onOrganizerSignup}>
-            {hasSession ? "Ir para o painel" : "Quero organizar"}
-          </button>
-        </section>
-
-        <section className="publicPlatformSupport">
-          <div><span>Atendimento</span><h2>Fale com o Torneio360</h2></div>
-          <PlatformSupportLinks />
-        </section>
-      </main>
+        <main className="playContent publicOverviewContent">
+          <section className="playTitleBlock">
+            <div>
+              <span className="pageEyebrow">Conteúdo público</span>
+              <h1>Visão geral</h1>
+              <p>Veja os torneios publicados. Para se inscrever ou criar um perfil, entre na plataforma.</p>
+            </div>
+          </section>
+          <TournamentFeed />
+        </main>
+      </div>
     </div>
   );
 }
