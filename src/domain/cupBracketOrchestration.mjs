@@ -18,6 +18,7 @@ import {
   cearenseMainBracketPlans,
   copinhaBracketPlans,
   playRankingLegacyV2MainBracketPlans,
+  playRankingLegacyV3MainBracketPlans,
   playRankingMainBracketPlans,
 } from "./cupBracketPlans.mjs";
 import {
@@ -54,11 +55,13 @@ export function generatePlayRankingBrackets(data) {
     cupConfig.groupSizes,
   ).length;
   const bracketVersion = Number(cupConfig.playRankingBracketVersion) || 0;
-  const mainPlan = bracketVersion >= 3
+  const mainPlan = bracketVersion >= 4
     ? playRankingMainBracketPlans[groupCount]
-    : bracketVersion === 2
-      ? playRankingLegacyV2MainBracketPlans[groupCount]
-      : null;
+    : bracketVersion === 3
+      ? playRankingLegacyV3MainBracketPlans[groupCount]
+      : bracketVersion === 2
+        ? playRankingLegacyV2MainBracketPlans[groupCount]
+        : null;
   const mainRounds = mainPlan
     ? buildCopinhaBracketFromPlan(qualified.main, "main", mainName, expandBracketPlanWithVisualByes(mainPlan))
     : buildCearenseEliminationRounds(qualified.main, "main", mainName, true);
