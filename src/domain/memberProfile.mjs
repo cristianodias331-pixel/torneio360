@@ -6,7 +6,11 @@ const maximumLengths = {
   bio: 240,
   city: 80,
   state: 80,
+  sportsCategory: 40,
 };
+
+const dominantHandOptions = new Set(["Destro", "Canhoto", "Ambidestro", "Não informado"]);
+const shirtSizeOptions = new Set(["PP", "P", "M", "G", "GG", "XGG", "Não informado"]);
 
 export const MAX_MEMBER_GALLERY_PHOTOS = 6;
 
@@ -43,6 +47,9 @@ export function createMemberProfileFallback({ user, accessProfile } = {}) {
     bio: "",
     city: "",
     state: "",
+    sportsCategory: cleanText(user?.user_metadata?.sports_category || "", maximumLengths.sportsCategory),
+    dominantHand: dominantHandOptions.has(user?.user_metadata?.dominant_hand) ? user.user_metadata.dominant_hand : "Não informado",
+    shirtSize: shirtSizeOptions.has(user?.user_metadata?.shirt_size) ? user.user_metadata.shirt_size : "Não informado",
     galleryPhotos: [],
     followersCount: 0,
     isPublic: true,
@@ -59,6 +66,13 @@ export function normalizeMemberProfile(row, fallback = {}) {
     bio: cleanText(row?.bio ?? fallback.bio, maximumLengths.bio),
     city: cleanText(row?.city ?? fallback.city, maximumLengths.city),
     state: cleanText(row?.state ?? fallback.state, maximumLengths.state),
+    sportsCategory: cleanText(row?.sports_category ?? row?.sportsCategory ?? fallback.sportsCategory, maximumLengths.sportsCategory),
+    dominantHand: dominantHandOptions.has(row?.dominant_hand ?? row?.dominantHand)
+      ? (row?.dominant_hand ?? row?.dominantHand)
+      : dominantHandOptions.has(fallback.dominantHand) ? fallback.dominantHand : "Não informado",
+    shirtSize: shirtSizeOptions.has(row?.shirt_size ?? row?.shirtSize)
+      ? (row?.shirt_size ?? row?.shirtSize)
+      : shirtSizeOptions.has(fallback.shirtSize) ? fallback.shirtSize : "Não informado",
     galleryPhotos: normalizeMemberGalleryPhotos(
       row?.gallery_photos ?? row?.galleryPhotos ?? fallback.galleryPhotos
     ),
@@ -99,6 +113,10 @@ export function validateMemberProfile(profile) {
 
   if (!moderatePublicText(normalized.bio).allowed) {
     errors.bio = "A apresentação contém conteúdo não permitido.";
+  }
+
+  if (!moderatePublicText(normalized.sportsCategory).allowed) {
+    errors.sportsCategory = "A categoria contém conteúdo não permitido.";
   }
 
   return { valid: Object.keys(errors).length === 0, errors, profile: normalized };

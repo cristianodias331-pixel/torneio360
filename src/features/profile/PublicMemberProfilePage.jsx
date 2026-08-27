@@ -158,7 +158,10 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
     ...(organization ? [
       { value: publications.tournaments.length, label: "Torneios" },
       { value: publications.circuits.length, label: "Circuitos" },
-    ] : [{ value: "Atleta", label: "Perfil esportivo" }]),
+    ] : [
+      { value: profile.sportsCategory || "A definir", label: "Categoria" },
+      { value: profile.dominantHand || "Não informado", label: "Mão dominante" },
+    ]),
     { value: profile.followersCount || 0, label: "Seguidores" },
   ];
 
@@ -299,7 +302,12 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
                 </button>
               </div>
             ) : (
-              <div className="publicMemberEmptyProfileSection"><AtSign aria-hidden="true" /><strong>Nenhum contato público informado</strong></div>
+              <div className="publicMemberAthleteDetails">
+                <div><span aria-hidden="true">🎾</span><span><strong>Categoria</strong><small>{profile.sportsCategory || "Não informada"}</small></span></div>
+                <div><span aria-hidden="true">✋</span><span><strong>Mão dominante</strong><small>{profile.dominantHand || "Não informada"}</small></span></div>
+                <div><span aria-hidden="true">👕</span><span><strong>Tamanho da camiseta</strong><small>{profile.shirtSize || "Não informado"}</small></span></div>
+                <p>Telefone, documento e demais dados privados não são exibidos no perfil público.</p>
+              </div>
             )}
           </section>
         ) : null}

@@ -24,8 +24,34 @@ import { PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeCo
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
 
+function readLocalAthleteDetails(userId) {
+  if (!userId) return {};
+  try {
+    const value = JSON.parse(localStorage.getItem(`torneio360:athlete-details:${userId}`) || "null");
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalAthleteDetails(userId, profile) {
+  if (!userId) return;
+  try {
+    localStorage.setItem(`torneio360:athlete-details:${userId}`, JSON.stringify({
+      sportsCategory: profile.sportsCategory || "",
+      dominantHand: profile.dominantHand || "Não informado",
+      shirtSize: profile.shirtSize || "Não informado",
+    }));
+  } catch {
+    // O perfil público continua funcional mesmo sem armazenamento local.
+  }
+}
+
 export default function MemberProfileWorkspace({ supabase, user, accessProfile, onLogout, publicPlatformHomeRuntime }) {
-  const fallback = useMemo(() => createMemberProfileFallback({ user, accessProfile }), [accessProfile?.name, user?.email, user?.id]);
+  const fallback = useMemo(() => ({
+    ...createMemberProfileFallback({ user, accessProfile }),
+    ...readLocalAthleteDetails(user?.id),
+  }), [accessProfile?.name, user?.email, user?.id]);
   const [profile, setProfile] = useState(fallback);
   const baseProfileRef = useRef(fallback);
   const [status, setStatus] = useState("loading");
@@ -184,6 +210,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         return false;
       }
       baseProfileRef.current = result.profile;
+      saveLocalAthleteDetails(user.id, result.profile);
       setProfile(result.profile);
       setStatus("ready");
       setNotice({ tone: "success", message: "Perfil esportivo atualizado com sucesso." });
@@ -275,9 +302,16 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
       {activePanel === "overview" ? (
         browsingTournament
           ? publicPlatformHomeRuntime.renderPublicTournament({
-              tournament: browsingTournament,
-              embedded: true,
-              viewer: user,
+            tournament: browsingTournament,
+            embedded: true,
+              viewer: {
+                ...user,
+                user_metadata: {
+                  ...user.user_metadata,
+                  category: profile.sportsCategory,
+                  dominant_hand: profile.dominantHand,
+                },
+              },
               onBackToArena: () => setBrowsingTournament(null),
             })
           : browsingTournamentLoading
@@ -299,8 +333,9 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
             editable
             busy={saving || status === "loading"}
             summaryItems={[
+              { value: profile.sportsCategory || "A definir", label: "Categoria" },
               { value: profile.galleryPhotos.length, label: "Fotos" },
-              { value: "Atleta", label: "Perfil esportivo" },
+              { value: profile.dominantHand || "Não informado", label: "Mão dominante" },
               { value: profile.followersCount || 0, label: "Seguidores" },
             ]}
             onCoverFile={(file) => openImageEditor(file, "cover")}
@@ -373,6 +408,18 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
               <div>
                 <MapPin aria-hidden="true" />
                 <span><strong>Localização pública</strong><small>{[profile.city, profile.state].filter(Boolean).join("/") || "Não informada"}</small></span>
+              </div>
+              <div>
+                <span aria-hidden="true">🎾</span>
+                <span><strong>Categoria</strong><small>{profile.sportsCategory || "Não informada"}</small></span>
+              </div>
+              <div>
+                <span aria-hidden="true">✋</span>
+                <span><strong>Mão dominante</strong><small>{profile.dominantHand || "Não informada"}</small></span>
+              </div>
+              <div>
+                <span aria-hidden="true">👕</span>
+                <span><strong>Tamanho da camiseta</strong><small>{profile.shirtSize || "Não informado"}</small></span>
               </div>
               <p>Dados pessoais de contato não são publicados automaticamente.</p>
               <button type="button" className="secondaryBtn" onClick={() => setDetailsOpen(true)}>Editar informações do perfil</button>

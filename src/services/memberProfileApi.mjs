@@ -16,6 +16,16 @@ function isUnavailableSchemaError(error) {
     || message.includes("member_profiles");
 }
 
+function readLocalAthleteDetails(userId) {
+  if (!userId || typeof localStorage === "undefined") return {};
+  try {
+    const value = JSON.parse(localStorage.getItem(`torneio360:athlete-details:${userId}`) || "null");
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function loadMyMemberProfile({ supabase, fallback }) {
   const { data, error } = await supabase.rpc("get_my_member_profile");
   if (error) {
@@ -60,7 +70,7 @@ export async function saveMyMemberProfile({ supabase, profile, fallback }) {
     profile: normalizeMemberProfile({
       ...data,
       gallery_photos: galleryData,
-    }, fallback),
+    }, { ...fallback, ...profile }),
     schemaAvailable: true,
   };
 }
@@ -77,8 +87,10 @@ export async function loadPublicMemberProfile({ supabase, identifier }) {
 
   if (!data?.profile) return { profile: null, schemaAvailable: true };
 
+  const localAthleteDetails = readLocalAthleteDetails(data.profile.user_id);
+
   return {
-    profile: normalizeMemberProfile(data.profile),
+    profile: normalizeMemberProfile({ ...data.profile, ...localAthleteDetails }),
     organization: data.organization || null,
     schemaAvailable: true,
   };

@@ -505,6 +505,8 @@ const [newEndDate, setNewEndDate] = useState("");
 const [newRegistrationDeadline, setNewRegistrationDeadline] = useState("");
 const [newPartnerFinderEnabled, setNewPartnerFinderEnabled] = useState(true);
 const [newPartnerFinderDeadline, setNewPartnerFinderDeadline] = useState("");
+const [newRegulationsText, setNewRegulationsText] = useState("");
+const [newRegulationsPdfUrl, setNewRegulationsPdfUrl] = useState("");
 const [newEventStartTime, setNewEventStartTime] = useState("");
 const [newDailyStartTimes, setNewDailyStartTimes] = useState({});
 const [newDay, setNewDay] = useState("");
@@ -1211,6 +1213,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       instagramHandle: profile.instagram_handle || "",
       instagramLink: profile.instagram_link || "",
       whatsappGroupLink: profile.whatsapp_group_link || "",
+      pixKey: "",
       isPublic: true,
     };
   });
@@ -1221,21 +1224,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const currentState = String(organizerProfile.state || "").trim();
     return Boolean(currentState && !normalizeBrazilianState(currentState));
   });
-  const organizerProfileBaseRef = useRef({
-    photoUrl: profile.photo_url || "",
-    arenaName: profile.arena_name || "",
-    organizerName: profile.name || "",
-    email: user.email || "",
-    whatsapp: profile.phone || "",
-    address: profile.address || "",
-    mapsLink: profile.maps_link || "",
-    city: profile.city || "",
-    state: profile.state || "",
-    instagramHandle: profile.instagram_handle || "",
-    instagramLink: profile.instagram_link || "",
-    whatsappGroupLink: profile.whatsapp_group_link || "",
-    isPublic: true,
-  });
+  const organizerProfileBaseRef = useRef({ ...organizerProfile });
   const [organizationGallery, setOrganizationGallery] = useState([]);
   const organizationGalleryBaseRef = useRef([]);
   const [organizationGalleryStatus, setOrganizationGalleryStatus] = useState("loading");
@@ -2980,6 +2969,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       instagramHandle: row?.instagram_handle ?? fallback.instagramHandle ?? "",
       instagramLink: row?.instagram_link ?? fallback.instagramLink ?? "",
       whatsappGroupLink: row?.whatsapp_group_link ?? fallback.whatsappGroupLink ?? "",
+      pixKey: fallback.pixKey ?? "",
       isPublic: row?.is_public ?? fallback.isPublic ?? true,
     };
   }
@@ -3099,8 +3089,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const changedProfileData = Object.fromEntries(
       Object.entries(publicProfileData).filter(([key, value]) => value !== basePublicProfileData[key])
     );
+    const privateProfileChanged = String(organizerProfile.pixKey || "") !== String(baseProfile.pixKey || "");
 
-    if (Object.keys(changedProfileData).length === 0) {
+    if (Object.keys(changedProfileData).length === 0 && !privateProfileChanged) {
       setProfileSaving(false);
       showNotice("info", "Perfil já está atualizado", "Não há novas alterações para enviar.");
       return;
@@ -3115,6 +3106,18 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       }));
     } catch (storageError) {
       console.warn("Não foi possível preparar a cópia local do perfil.", storageError);
+    }
+
+    if (Object.keys(changedProfileData).length === 0 && privateProfileChanged) {
+      organizerProfileBaseRef.current = { ...organizerProfile };
+      setProfileSaving(false);
+      setProfileSaveSuccess(true);
+      showNotice("success", "Dado privado salvo", "A chave Pix foi mantida somente neste dispositivo de homologação.");
+      profileSaveSuccessTimerRef.current = setTimeout(() => {
+        setProfileSaveSuccess(false);
+        profileSaveSuccessTimerRef.current = null;
+      }, 2600);
+      return;
     }
 
     try {
@@ -4811,9 +4814,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       category: newCategory,
       categoryNames: newCategorySchedules.map((item) => item.category).join(" "),
       location: newLocation,
+      regulations: newRegulationsText,
     });
     if (!tournamentModeration.allowed) {
       showNotice("warning", "Conteúdo não permitido", tournamentModeration.message);
+      return;
+    }
+
+    if (newRegulationsPdfUrl.trim() && !/^https?:\/\/\S+$/i.test(newRegulationsPdfUrl.trim())) {
+      showNotice("warning", "Link do regulamento inválido", "Informe um link público iniciado por http:// ou https://.");
       return;
     }
 
@@ -4916,6 +4925,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         deadline: newPartnerFinderDeadline || newRegistrationDeadline || "",
         paymentAfterPair: true,
         organizerCanSuggest: true,
+      },
+      regulations: {
+        text: newRegulationsText.trim(),
+        pdfUrl: newRegulationsPdfUrl.trim(),
       },
       location: isMultiCategory ? "" : newLocation.trim(),
       publicInfo: buildTournamentPublicInfo(),
@@ -5060,6 +5073,8 @@ setNewEndDate("");
 setNewRegistrationDeadline("");
 setNewPartnerFinderEnabled(true);
 setNewPartnerFinderDeadline("");
+setNewRegulationsText("");
+setNewRegulationsPdfUrl("");
 setNewEventStartTime("");
 setNewDailyStartTimes({});
 setNewDay("");
@@ -5522,6 +5537,8 @@ setNewPublicInfo({
       registrationDeadline: details.registrationDeadline || "",
       partnerFinderEnabled: details.partnerFinder?.enabled !== false,
       partnerFinderDeadline: details.partnerFinder?.deadline || details.registrationDeadline || "",
+      regulationsText: details.regulations?.text || "",
+      regulationsPdfUrl: details.regulations?.pdfUrl || "",
       eventStartTime: details.eventStartTime || "",
       location: details.location || "",
       coverImageUrl: details.coverImageUrl || "",
@@ -5555,9 +5572,15 @@ setNewPublicInfo({
       eventName: editForm.eventName,
       category: editForm.category,
       location: editForm.location,
+      regulations: editForm.regulationsText,
     });
     if (!tournamentModeration.allowed) {
       showNotice("warning", "Conteúdo não permitido", tournamentModeration.message);
+      return;
+    }
+
+    if (editForm.regulationsPdfUrl?.trim() && !/^https?:\/\/\S+$/i.test(editForm.regulationsPdfUrl.trim())) {
+      showNotice("warning", "Link do regulamento inválido", "Informe um link público iniciado por http:// ou https://.");
       return;
     }
 
@@ -5633,6 +5656,10 @@ setNewPublicInfo({
         deadline: editForm.partnerFinderDeadline || editForm.registrationDeadline || "",
         paymentAfterPair: true,
         organizerCanSuggest: true,
+      },
+      regulations: {
+        text: String(editForm.regulationsText || "").trim(),
+        pdfUrl: String(editForm.regulationsPdfUrl || "").trim(),
       },
       eventStartTime: editForm.eventStartTime,
       location: editForm.location.trim(),
@@ -6541,6 +6568,7 @@ setNewPublicInfo({
         loading={memberProfileStatus === "loading"}
         saving={memberProfileSaving}
         schemaAvailable={memberProfileStatus !== "unavailable"}
+        profileKind="organization"
         onChange={updateMemberProfile}
         onClose={() => { if (!memberProfileSaving) setMemberProfileEditorOpen(false); }}
         onSave={saveMemberProfileAndClose}
@@ -6689,6 +6717,18 @@ setNewPublicInfo({
                     <input className="clickableDateInput" type="date" value={editForm.partnerFinderDeadline || ""} max={editForm.eventDate || undefined} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => updateEditForm("partnerFinderDeadline", event.target.value)} />
                   </label>
                 ) : null}
+              </section>
+
+              <section className="tournamentRegulationsConfig fullField">
+                <header><ClipboardPaste aria-hidden="true" /><div><strong>Regulamento do torneio</strong><small>Escreva as regras e/ou informe um link público para o PDF.</small></div></header>
+                <label>
+                  <span>Texto do regulamento</span>
+                  <textarea rows={5} maxLength={5000} value={editForm.regulationsText || ""} onChange={(event) => updateEditForm("regulationsText", event.target.value)} placeholder="Categorias, formato, critérios, conduta, premiação e demais regras." />
+                </label>
+                <label>
+                  <span>Link público do PDF</span>
+                  <input type="url" value={editForm.regulationsPdfUrl || ""} onChange={(event) => updateEditForm("regulationsPdfUrl", event.target.value)} placeholder="https://.../regulamento.pdf" />
+                </label>
               </section>
 
               <div className="formField">
@@ -7369,6 +7409,19 @@ setNewPublicInfo({
         <small>Se ficar vazio, será usado o encerramento das inscrições.</small>
       </label>
     ) : null}
+  </section>
+
+  <section className="tournamentRegulationsConfig fullField">
+    <header><ClipboardPaste aria-hidden="true" /><div><strong>Regulamento do torneio</strong><small>Escreva as regras e/ou informe um link público para o PDF.</small></div></header>
+    <label>
+      <span>Texto do regulamento</span>
+      <textarea rows={5} maxLength={5000} value={newRegulationsText} onChange={(event) => setNewRegulationsText(event.target.value)} placeholder="Categorias, formato, critérios, conduta, premiação e demais regras." />
+      <small>{newRegulationsText.length}/5000</small>
+    </label>
+    <label>
+      <span>Link público do PDF</span>
+      <input type="url" value={newRegulationsPdfUrl} onChange={(event) => setNewRegulationsPdfUrl(event.target.value)} placeholder="https://.../regulamento.pdf" />
+    </label>
   </section>
 
   <div className="formField fullField tournamentCoverField">
@@ -8465,8 +8518,11 @@ setNewPublicInfo({
     {profileSubtab === "publicacoes" ? (
       <div className="profileSubtabPanel">
     <div className="profilePublicationsHeader">
-      <strong>Publicações</strong>
-      <span>{tournaments.length} campeonato(s) criado(s)</span>
+      <div><strong>Publicações</strong><span>{tournaments.length} campeonato(s) criado(s)</span></div>
+      <div className="profilePublicationCreateActions">
+        <button type="button" onClick={() => { goToPanel("criar"); setCreateTournamentOpen(true); }}><PlusCircle aria-hidden="true" /> Criar torneio</button>
+        <button type="button" onClick={() => { goToPanel("circuitos"); setCreateCircuitOpen(true); }}><GitBranch aria-hidden="true" /> Criar circuito</button>
+      </div>
     </div>
 
     <div className="profileTournamentGrid">
@@ -8794,6 +8850,25 @@ setNewPublicInfo({
             ))}
           </select>
         )}
+      </div>
+
+      <div className="profileFormSectionHeader fullField">
+        <span>🔒</span>
+        <div>
+          <strong>Dados privados de gestão</strong>
+          <small>Não aparecem no perfil público. Nesta homologação ficam somente neste dispositivo.</small>
+        </div>
+      </div>
+
+      <div className="formField fullField">
+        <label>Chave Pix da organização</label>
+        <input
+          value={organizerProfile.pixKey || ""}
+          onChange={(event) => updateOrganizerProfile("pixKey", event.target.value)}
+          placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+          autoComplete="off"
+        />
+        <small>Usada futuramente em cobranças e repasses. Nunca será exibida na página pública.</small>
       </div>
 
     </div>

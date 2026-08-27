@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   AtSign,
   CalendarDays,
+  ClipboardPaste,
   Clock3,
   Flame,
   Grid3X3,
@@ -51,6 +52,15 @@ import {
   migratePlayRankingBracketForReferenceProfile,
 } from "../../domain/playRankingBracketMigration.mjs";
 import TournamentPartnerFinder from "../registration/TournamentPartnerFinder.jsx";
+
+function getSafePublicDocumentUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
 
 export default function PublicTournamentScreenView({
   tournament,
@@ -160,6 +170,8 @@ export default function PublicTournamentScreenView({
 
   const publicAthletes = getRegisteredAthletesForPublic(data, config);
   const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
+  const regulationsText = String(data.regulations?.text || "").trim();
+  const regulationsPdfUrl = getSafePublicDocumentUrl(data.regulations?.pdfUrl);
 
   return (
     <div className={`publicPage${embedded ? " embeddedPublicTournament" : ""}`}>
@@ -252,6 +264,14 @@ export default function PublicTournamentScreenView({
               {publicVisibility.showCityState && (publicOrganizer.city || publicOrganizer.state) ? <span><MapPin aria-hidden="true" /> {[publicOrganizer.city, publicOrganizer.state].filter(Boolean).join("/")}</span> : null}
               {publicVisibility.showMapsLink && publicOrganizer.mapsLink ? <a href={publicOrganizer.mapsLink} target="_blank" rel="noreferrer"><MapPin aria-hidden="true" /> Ver endereço no mapa</a> : null}
             </div>
+          </section>
+        ) : null}
+
+        {regulationsText || regulationsPdfUrl ? (
+          <section className="card publicTournamentRegulationsCard">
+            <h2><ClipboardPaste aria-hidden="true" /> Regulamento</h2>
+            {regulationsText ? <p>{regulationsText}</p> : null}
+            {regulationsPdfUrl ? <a href={regulationsPdfUrl} target="_blank" rel="noreferrer">Abrir regulamento em PDF</a> : null}
           </section>
         ) : null}
         </div>

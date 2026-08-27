@@ -14,6 +14,7 @@ import {
   isEmailNotConfirmedError,
   isProfilePendingEmailConfirmation,
   isUserAlreadyRegisteredError,
+  isValidBrazilianTaxId,
   isValidEmail,
   normalizeEmail,
 } from "../../domain/authValidation.mjs";
@@ -146,6 +147,10 @@ export default function LoginScreen({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [taxIdType, setTaxIdType] = useState("cpf");
+  const [taxId, setTaxId] = useState("");
+  const [communityGuidelinesAccepted, setCommunityGuidelinesAccepted] = useState(false);
+  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -186,6 +191,10 @@ export default function LoginScreen({
     setFirstName("");
     setLastName("");
     setBirthDate("");
+    setTaxIdType("cpf");
+    setTaxId("");
+    setCommunityGuidelinesAccepted(false);
+    setPrivacyNoticeAccepted(false);
     setEmail("");
     setPassword("");
     setNewPassword("");
@@ -292,6 +301,25 @@ export default function LoginScreen({
 
         if (birthDate > getBrazilTodayISO()) {
           showNotice("warning", "Data de nascimento inválida", "A data de nascimento não pode estar no futuro.");
+          return;
+        }
+
+        if (!isValidBrazilianTaxId(taxId, taxIdType)) {
+          showNotice(
+            "warning",
+            `${taxIdType === "cnpj" ? "CNPJ" : "CPF"} inválido`,
+            `Confira os números do ${taxIdType === "cnpj" ? "CNPJ" : "CPF"} antes de continuar.`
+          );
+          return;
+        }
+
+        if (!communityGuidelinesAccepted) {
+          showNotice("warning", "Diretrizes obrigatórias", "Confirme o compromisso com uma convivência respeitosa e sem discriminação.");
+          return;
+        }
+
+        if (!privacyNoticeAccepted) {
+          showNotice("warning", "Aviso de privacidade", "Leia e aceite o aviso sobre o uso dos dados necessários ao cadastro.");
           return;
         }
 
@@ -924,6 +952,28 @@ export default function LoginScreen({
                     onFocus={(e) => e.currentTarget.showPicker?.()}
                     onChange={(e) => setBirthDate(e.target.value)}
                   />
+
+                  <div className="authDocumentGrid">
+                    <div>
+                      <label>Documento</label>
+                      <select value={taxIdType} onChange={(event) => { setTaxIdType(event.target.value); setTaxId(""); }}>
+                        <option value="cpf">CPF da pessoa</option>
+                        <option value="cnpj">CNPJ da organização</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>{taxIdType === "cnpj" ? "CNPJ" : "CPF"}</label>
+                      <input
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={taxId}
+                        maxLength={taxIdType === "cnpj" ? 18 : 14}
+                        onChange={(event) => setTaxId(event.target.value)}
+                        placeholder={taxIdType === "cnpj" ? "00.000.000/0000-00" : "000.000.000-00"}
+                      />
+                    </div>
+                  </div>
+                  <small className="authSensitiveDataHint">O documento é validado nesta demonstração, mas ainda não é enviado nem salvo. A persistência será ligada somente a um cadastro privado e protegido.</small>
                 </>
               )}
 
@@ -988,6 +1038,26 @@ export default function LoginScreen({
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Digite a senha novamente"
                         />
+
+                        <section className="authLegalAgreements" aria-label="Concordâncias para criar a conta">
+                          <div>
+                            <strong>Compromisso de convivência</strong>
+                            <small>Respeito à dignidade humana. Não são permitidos discriminação, assédio, ameaças, conteúdo sexual explícito ou linguagem abusiva.</small>
+                          </div>
+                          <label>
+                            <input type="checkbox" checked={communityGuidelinesAccepted} onChange={(event) => setCommunityGuidelinesAccepted(event.target.checked)} />
+                            <span>Li e concordo com os Termos de uso e as Diretrizes da comunidade.</span>
+                          </label>
+                          <div>
+                            <strong>Aviso de privacidade</strong>
+                            <small>Os dados necessários ao cadastro devem ser usados para criar a conta, identificar participantes, proteger a plataforma e cumprir obrigações aplicáveis, com acesso restrito.</small>
+                          </div>
+                          <label>
+                            <input type="checkbox" checked={privacyNoticeAccepted} onChange={(event) => setPrivacyNoticeAccepted(event.target.checked)} />
+                            <span>Estou ciente dos meus direitos de acesso, correção e solicitação de exclusão dos dados.</span>
+                          </label>
+                          <p>Textos de homologação: exigem revisão jurídica e publicação das versões integrais antes do lançamento oficial.</p>
+                        </section>
                       </>
                     )}
                   </>

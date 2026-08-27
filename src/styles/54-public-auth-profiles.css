@@ -104,8 +104,85 @@
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
+.unifiedLoginPage .authDocumentGrid {
+  display: grid;
+  grid-template-columns: minmax(150px, .8fr) minmax(0, 1.2fr);
+  gap: 12px;
+}
+
+.unifiedLoginPage .authDocumentGrid > div {
+  display: grid;
+  gap: 7px;
+}
+
+.unifiedLoginPage .authDocumentGrid select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border, #ccd8e7);
+  border-radius: 12px;
+  padding: 0 12px;
+  color: var(--text, #11243d);
+  background: var(--card, #fff);
+}
+
+.unifiedLoginPage .authSensitiveDataHint {
+  display: block;
+  margin: -5px 0 15px;
+  color: var(--text-muted, #68768a);
+  line-height: 1.45;
+}
+
+.unifiedLoginPage .authLegalAgreements {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  border: 1px solid var(--border, #ccd8e7);
+  border-radius: 16px;
+  padding: 15px;
+  background: color-mix(in srgb, #1f6ed4 4%, var(--card, #fff));
+}
+
+.unifiedLoginPage .authLegalAgreements > div {
+  display: grid;
+  gap: 3px;
+}
+
+.unifiedLoginPage .authLegalAgreements > div strong {
+  color: var(--text, #11243d);
+  font-size: .84rem;
+}
+
+.unifiedLoginPage .authLegalAgreements > div small,
+.unifiedLoginPage .authLegalAgreements p {
+  margin: 0;
+  color: var(--text-muted, #68768a);
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.unifiedLoginPage .authLegalAgreements > label {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  margin: 0;
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
+.unifiedLoginPage .authLegalAgreements input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #ff6b2c;
+}
+
 @media (max-width: 700px) {
   .unifiedLoginPage .landingAccessSection {
     padding: 20px 12px 36px;
+  }
+
+  .unifiedLoginPage .authDocumentGrid {
+    grid-template-columns: 1fr;
   }
 }

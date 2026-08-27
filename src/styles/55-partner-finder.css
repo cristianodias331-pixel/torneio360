@@ -71,6 +71,21 @@
 .partnerFinderConfigToggle { display: inline-flex; gap: 8px; align-items: center; font-weight: 800; }
 .partnerFinderConfigToggle input { width: 18px; height: 18px; accent-color: #ff6b2c; }
 .partnerFinderConfigDeadline { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(160px, 240px) minmax(180px, 250px) 1fr; gap: 10px; align-items: center; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--border, #d9e1ea) 70%, transparent); }
+.tournamentRegulationsConfig { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; padding: 16px; border: 1px solid color-mix(in srgb, #1f75d6 38%, var(--border, #d9e1ea)); border-radius: 15px; background: color-mix(in srgb, #1f75d6 5%, var(--surface, #fff)); }
+.tournamentRegulationsConfig > header { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; }
+.tournamentRegulationsConfig > header > svg { width: 24px; color: #1f75d6; }
+.tournamentRegulationsConfig > header > div { display: grid; gap: 3px; }
+.tournamentRegulationsConfig > header small { color: var(--muted, #66758a); }
+.tournamentRegulationsConfig > label { display: grid; gap: 7px; }
+.tournamentRegulationsConfig > label > span { font-size: 12px; font-weight: 800; }
+.tournamentRegulationsConfig textarea,
+.tournamentRegulationsConfig input { width: 100%; border: 1px solid var(--border, #d9e1ea); border-radius: 11px; padding: 11px 12px; color: var(--text, #10233d); background: var(--surface, #fff); }
+.tournamentRegulationsConfig textarea { resize: vertical; }
+.tournamentRegulationsConfig label > small { justify-self: end; color: var(--muted, #66758a); }
+.publicTournamentRegulationsCard h2 { display: flex; gap: 8px; align-items: center; }
+.publicTournamentRegulationsCard h2 svg { width: 21px; color: #ff6b2c; }
+.publicTournamentRegulationsCard p { margin: 10px 0 0; white-space: pre-wrap; line-height: 1.55; }
+.publicTournamentRegulationsCard a { display: inline-flex; margin-top: 13px; border-radius: 10px; padding: 10px 13px; color: #fff; font-weight: 800; text-decoration: none; background: #1f75d6; }
 
 /* O torneio público possui regras legadas de cor com maior especificidade. */
 .publicContent .partnerFinder .partnerFinderHero h3,
@@ -107,4 +122,6 @@
   .partnerFinderConfig { grid-template-columns: 1fr; }
   .partnerFinderConfigToggle { justify-self: start; }
   .partnerFinderConfigDeadline { grid-column: auto; grid-template-columns: 1fr; }
+  .tournamentRegulationsConfig { grid-template-columns: 1fr; }
+  .tournamentRegulationsConfig > header { grid-column: auto; }
 }

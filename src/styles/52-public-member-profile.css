@@ -1075,3 +1075,43 @@ html[data-theme="dark"] :is(.memberProfileIdentityActions button, .memberProfile
     grid-template-columns: 1fr;
   }
 }
+.publicMemberAthleteDetails {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.publicMemberAthleteDetails > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--public-member-border, #d9e1ea);
+  border-radius: 13px;
+  padding: 13px;
+  background: var(--public-member-surface-soft, #f5f8fc);
+}
+
+.publicMemberAthleteDetails > div > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.publicMemberAthleteDetails small,
+.publicMemberAthleteDetails p {
+  color: var(--public-member-muted, #66758a);
+}
+
+.publicMemberAthleteDetails p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .publicMemberAthleteDetails {
+    grid-template-columns: 1fr;
+  }
+
+  .publicMemberAthleteDetails p {
+    grid-column: auto;
+  }
+}

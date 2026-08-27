@@ -1268,3 +1268,44 @@
     width: 100%;
   }
 }
+.profilePublicationsHeader > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.profilePublicationCreateActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profilePublicationCreateActions button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, #ff6b2c 58%, var(--ui-border, #d9e1ea));
+  border-radius: 11px;
+  padding: 0 13px;
+  color: #fff;
+  font-weight: 850;
+  background: linear-gradient(135deg, #ff6b2c, #ff8238);
+}
+
+.profilePublicationCreateActions button svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 700px) {
+  .profilePublicationsHeader {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .profilePublicationCreateActions button {
+    flex: 1 1 150px;
+    justify-content: center;
+  }
+}

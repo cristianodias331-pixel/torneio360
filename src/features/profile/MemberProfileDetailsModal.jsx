@@ -8,6 +8,7 @@ export default function MemberProfileDetailsModal({
   loading = false,
   saving = false,
   schemaAvailable = true,
+  profileKind = "athlete",
   onChange,
   onClose,
   onSave,
@@ -125,6 +126,40 @@ export default function MemberProfileDetailsModal({
               onChange={(event) => onChange("state", event.target.value)}
             />
           </div>
+
+          {profileKind === "athlete" ? <>
+          <div className="profileFormSectionHeader fullField">
+            <span>🎾</span>
+            <div><strong>Dados esportivos do atleta</strong><small>A categoria aparece no resumo; mão dominante e camiseta ficam nas informações detalhadas.</small></div>
+          </div>
+
+          <div className="formField">
+            <label htmlFor="member-modal-category">Categoria</label>
+            <input
+              id="member-modal-category"
+              value={profile.sportsCategory || ""}
+              maxLength={40}
+              placeholder="Ex.: B, C ou Open"
+              onChange={(event) => onChange("sportsCategory", event.target.value)}
+              aria-invalid={Boolean(errors.sportsCategory)}
+            />
+            {errors.sportsCategory ? <small className="unifiedMemberFieldError">{errors.sportsCategory}</small> : null}
+          </div>
+
+          <div className="formField">
+            <label htmlFor="member-modal-dominant-hand">Mão dominante</label>
+            <select id="member-modal-dominant-hand" value={profile.dominantHand || "Não informado"} onChange={(event) => onChange("dominantHand", event.target.value)}>
+              <option>Não informado</option><option>Destro</option><option>Canhoto</option><option>Ambidestro</option>
+            </select>
+          </div>
+
+          <div className="formField">
+            <label htmlFor="member-modal-shirt-size">Tamanho da camiseta</label>
+            <select id="member-modal-shirt-size" value={profile.shirtSize || "Não informado"} onChange={(event) => onChange("shirtSize", event.target.value)}>
+              <option>Não informado</option><option>PP</option><option>P</option><option>M</option><option>G</option><option>GG</option><option>XGG</option>
+            </select>
+          </div>
+          </> : null}
         </div>
 
         <footer>
