@@ -73,21 +73,21 @@
 .partnerFinderConfigDeadline { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(160px, 240px) minmax(180px, 250px) 1fr; gap: 10px; align-items: center; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--border, #d9e1ea) 70%, transparent); }
 
 /* O torneio público possui regras legadas de cor com maior especificidade. */
-.publicTournamentContent .partnerFinder .partnerFinderHero h3,
-.publicTournamentContent .partnerFinder .partnerFinderEmpty strong,
-.publicTournamentContent .partnerFinder .partnerInvitationEmpty strong,
-.publicTournamentContent .partnerFinder .partnerSearchIdentity strong,
-.publicTournamentContent .partnerFinder .partnerFinderDialog h3,
-.publicTournamentContent .partnerFinder .partnerFinderFields label > span { color: #10233d; }
-.publicTournamentContent .partnerFinder .partnerFinderHero p,
-.publicTournamentContent .partnerFinder .partnerFinderCount small,
-.publicTournamentContent .partnerFinder .partnerFinderEmpty small,
-.publicTournamentContent .partnerFinder .partnerInvitationEmpty small,
-.publicTournamentContent .partnerFinder .partnerSearchIdentity p,
-.publicTournamentContent .partnerFinder .partnerSearchIdentity blockquote { color: #52627a; }
-.publicTournamentContent .partnerFinder .partnerFinderStatus,
-.publicTournamentContent .partnerFinder .partnerFinderStatus span { color: #52627a; }
-.publicTournamentContent .partnerFinder .partnerFinderStatus strong { color: #155e46; }
+.publicContent .partnerFinder .partnerFinderHero h3,
+.publicContent .partnerFinder .partnerFinderEmpty strong,
+.publicContent .partnerFinder .partnerInvitationEmpty strong,
+.publicContent .partnerFinder .partnerSearchIdentity strong,
+.publicContent .partnerFinder .partnerFinderDialog h3,
+.publicContent .partnerFinder .partnerFinderFields label > span { color: #10233d; }
+.publicContent .partnerFinder .partnerFinderHero p,
+.publicContent .partnerFinder .partnerFinderCount small,
+.publicContent .partnerFinder .partnerFinderEmpty small,
+.publicContent .partnerFinder .partnerInvitationEmpty small,
+.publicContent .partnerFinder .partnerSearchIdentity p,
+.publicContent .partnerFinder .partnerSearchIdentity blockquote { color: #52627a; }
+.publicContent .partnerFinder .partnerFinderStatus,
+.publicContent .partnerFinder .partnerFinderStatus span { color: #52627a; }
+.publicContent .partnerFinder .partnerFinderStatus strong { color: #155e46; }
 
 @media (max-width: 680px) {
   .partnerFinderHero { grid-template-columns: 44px minmax(0, 1fr); padding: 14px; }
