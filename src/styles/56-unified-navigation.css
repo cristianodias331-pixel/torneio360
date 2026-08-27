@@ -578,6 +578,16 @@ html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publi
   background: var(--ui-surface-muted) !important;
 }
 
+.proDashboard.theme-dark .embeddedPublicTournament
+  .organizerLikeParticipants
+  .publicAthleteEntry
+  > .athleteIdentityLink {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text-strong) !important;
+  background: var(--ui-surface-muted) !important;
+  box-shadow: none !important;
+}
+
 .proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyScoreRow,
 .proDashboard.theme-dark .embeddedPublicTournament .publicBracketScore,
 .proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyScoreRow > span:not(.publicScorePending),

@@ -158,7 +158,9 @@
   overflow: visible;
   border: 0 !important;
   color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
   background: transparent !important;
+  font-size: 0 !important;
 }
 
 .organizerLikeParticipants .publicAthleteEntry > .athleteIdentitySeparator::before {
@@ -172,8 +174,9 @@
   border: 1px solid var(--ui-border, #d7e2ee);
   border-radius: 50%;
   color: var(--ui-muted, #60738b);
+  -webkit-text-fill-color: var(--ui-muted, #60738b);
   background: var(--ui-surface, #fff);
-  font-size: 0.65rem;
+  font-size: 0.65rem !important;
   font-weight: 900;
 }
 

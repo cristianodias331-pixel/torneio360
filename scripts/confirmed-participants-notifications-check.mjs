@@ -52,6 +52,7 @@ const migration = read("supabase/migrations/202608270008_confirmed_participants_
 const feedStyles = read("src/styles/53-public-social-platform.css");
 const loadingStyles = read("src/styles/22-public-links-and-interactions.css");
 const coverStyles = read("src/styles/41-responsive-public-covers.css");
+const navigationStyles = read("src/styles/56-unified-navigation.css");
 const registrantStyles = read("src/styles/58-organization-registrants.css");
 
 assert.ok(chrome.includes("navUnreadDot") && notificationHook.includes("!item.read_at"), "O sino perdeu o indicador de não visualizadas.");
@@ -63,6 +64,7 @@ assert.ok(migration.includes("pair_approved_tournament_registrations") && migrat
 assert.ok(arenaController.includes("EmbeddedArenaLoadingState") && arenaController.includes("EMBEDDED_ARENA_LOADING_MIN_DURATION_MS = 650") && loadingStyles.includes("embeddedArenaLoadingSkeleton"), "O perfil voltou ao carregamento demorado e sem estrutura visual.");
 assert.ok(coverStyles.includes("grid-template-columns: clamp(220px, 23vw, 264px)") && coverStyles.includes("width: min(72vw, 224px)"), "O cartaz do torneio perdeu o enquadramento responsivo.");
 assert.ok(tournamentScreen.includes("publicAthleteEntry") && tournamentScreen.includes("publicAthleteGroupHeader") && coverStyles.includes("PARTICIPANTES PÚBLICOS"), "A lista pública de participantes perdeu os cartões de duplas.");
+assert.ok(coverStyles.includes("-webkit-text-fill-color: transparent") && navigationStyles.includes(".publicAthleteEntry\n  > .athleteIdentityLink"), "A dupla voltou a duplicar o conector ou perdeu contraste no modo escuro.");
 assert.ok(registrants.includes("organizationRegistrantControls") && registrants.includes("Organizar inscritos") && registrantStyles.includes("selectedForPair"), "A gestão de inscritos perdeu a hierarquia visual e a seleção de duplas.");
 
 console.log("Notificações, fotos e participantes confirmados passaram.");
