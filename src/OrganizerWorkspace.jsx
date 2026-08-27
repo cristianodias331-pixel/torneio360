@@ -5,7 +5,6 @@ import "./styles/40-organizer-data-and-navigation.css";
 import "./styles/41-responsive-public-covers.css";
 import "./styles/42-workspace-density-and-courts.css";
 import "./styles/51-unified-profile.css";
-import "./styles/52-public-member-profile.css";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   Award,
@@ -111,10 +110,6 @@ import {
 import { PlatformSidebar, PlatformTopbar } from "./features/appShell/PlatformChrome.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
 import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsModal.jsx";
-import {
-  MemberProfileIdentityCard,
-  MemberProfileTabs,
-} from "./features/profile/MemberProfilePresentation.jsx";
 import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
@@ -3344,12 +3339,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   async function saveMemberProfileAndClose() {
     const saved = await saveMemberProfile();
     if (saved) setMemberProfileEditorOpen(false);
-  }
-
-  function openMemberPublicProfile() {
-    const url = new URL(window.location.origin);
-    url.searchParams.set("perfil", memberProfile.handle || user.id);
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 
   function toggleNewPublicInfo(field) {
@@ -8244,24 +8233,100 @@ setNewPublicInfo({
 
 {activePanel === "ajustes" && (
 <>
-  <section className="socialOwnProfileCard sharedMemberProfileOwner">
-    <MemberProfileIdentityCard
-      profile={memberProfile}
-      editable
-      busy={memberProfileSaving || memberProfileStatus === "loading"}
-      summaryItems={[
-        { value: memberProfile.galleryPhotos.length, label: "Fotos" },
-        { value: tournaments.length, label: "Torneios" },
-        { value: circuits.length, label: "Circuitos" },
-        { value: memberProfile.followersCount || 0, label: "Seguidores" },
-      ]}
-      onCoverFile={(file) => openMemberProfileImageEditor(file, "cover")}
-      onPhotoFile={(file) => openMemberProfileImageEditor(file, "photo")}
-      onEdit={() => setMemberProfileEditorOpen(true)}
-      onView={openMemberPublicProfile}
-    />
+  <section className="card instagramProfileCard socialOwnProfileCard">
+    <label className={`unifiedProfilePublicCover editableProfileCover${memberProfile.coverUrl ? " hasCover" : ""}`} title="Alterar foto de capa">
+      <input
+        type="file"
+        accept="image/*"
+        disabled={memberProfileSaving}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) openMemberProfileImageEditor(file, "cover");
+          event.target.value = "";
+        }}
+      />
+      {memberProfile.coverUrl ? <img src={memberProfile.coverUrl} alt="" /> : null}
+      <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> Alterar capa</span>
+    </label>
+    <div className="instagramProfileHeader unifiedProfileHeader">
+      <label className="instagramProfilePhoto editableProfileAvatar" title="Alterar foto do perfil">
+        <input
+          type="file"
+          accept="image/*"
+          disabled={memberProfileSaving}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) openMemberProfileImageEditor(file, "photo");
+            event.target.value = "";
+          }}
+        />
+        {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil pessoal" /> : <span><UserRound aria-hidden="true" /></span>}
+        <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
+      </label>
+      <div className="instagramProfileInfo">
+        <div className="instagramProfileTopline">
+          <h2>{profileDisplayName}</h2>
+          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => setMemberProfileEditorOpen(true)}>
+            <Settings aria-hidden="true" />
+            Editar perfil
+          </button>
+        </div>
+        <p className="unifiedProfileHandle">{memberProfile.handle ? `@${memberProfile.handle}` : "Escolha seu nome de usuário"}</p>
+        {memberProfile.bio ? <p className="unifiedProfileBio">{memberProfile.bio}</p> : null}
+        {memberProfile.city || memberProfile.state ? (
+          <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {[memberProfile.city, memberProfile.state].filter(Boolean).join("/")}</p>
+        ) : null}
+        <div className="unifiedProfileStats" aria-label="Resumo do perfil">
+          <span><strong>{memberProfile.galleryPhotos.length}</strong><small>Fotos</small></span>
+          <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
+          <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
+          <span><strong>{memberProfile.followersCount || 0}</strong><small>Seguidores</small></span>
+        </div>
+      </div>
+    </div>
 
-    <MemberProfileTabs activeTab={profileSubtab} onChange={openProfileSection} />
+    <div className="profileSubtabs" role="tablist" aria-label="Seções do perfil">
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "publicacoes" ? "active" : ""}
+        onClick={() => openProfileSection("publicacoes")}
+        aria-selected={profileSubtab === "publicacoes"}
+      >
+        <Grid3X3 aria-hidden="true" />
+        Publicações
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "fotos" ? "active" : ""}
+        onClick={() => openProfileSection("fotos")}
+        aria-selected={profileSubtab === "fotos"}
+      >
+        <Images aria-hidden="true" />
+        Fotos
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "contato" ? "active" : ""}
+        onClick={() => openProfileSection("contato")}
+        aria-selected={profileSubtab === "contato"}
+      >
+        <AtSign aria-hidden="true" />
+        Informações de contato
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "conquistas" ? "active" : ""}
+        onClick={() => openProfileSection("conquistas")}
+        aria-selected={profileSubtab === "conquistas"}
+      >
+        <Award aria-hidden="true" />
+        Conquistas
+      </button>
+    </div>
 
     {profileSubtab === "publicacoes" ? (
       <div className="profileSubtabPanel">

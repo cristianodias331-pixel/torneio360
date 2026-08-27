@@ -576,6 +576,10 @@
   cursor: pointer;
 }
 
+.publicMemberCover.memberProfileEditableMedia {
+  display: block;
+}
+
 .memberProfileEditableMedia > input {
   position: absolute;
   width: 1px;
