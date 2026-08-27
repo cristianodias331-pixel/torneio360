@@ -753,6 +753,7 @@ const publicTournamentScreenRuntime = {
   calculateRanking,
   getSafeCupPresentation,
   getTournamentTimingSummary,
+  supabase,
   tagline: TORNEIO360_TAGLINE,
 };
 

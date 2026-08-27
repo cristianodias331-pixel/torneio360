@@ -298,6 +298,34 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 .organizationAboutGrid small,
 .organizationAboutGrid em { color: var(--ui-muted); font-size: .7rem; font-style: normal; }
 .organizationAboutGrid strong { overflow-wrap: anywhere; color: var(--ui-text-strong); font-size: .86rem; }
+.organizationAboutGrid article a {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-text-strong);
+  text-decoration: none;
+}
+.organizationAboutGrid article a:hover { color: var(--ui-active-accent); text-decoration: underline; }
+.organizationAboutGrid article a svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+.organizationCopyValue,
+.proDashboard.playAppShell button.organizationCopyValue {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 30px !important;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 5px 9px !important;
+  border: 1px solid color-mix(in srgb, #16a36a 42%, var(--ui-border)) !important;
+  border-radius: 9px !important;
+  color: color-mix(in srgb, #087f50 82%, var(--ui-text-strong)) !important;
+  background: color-mix(in srgb, #16a36a 9%, var(--ui-surface-raised)) !important;
+  font-size: .68rem !important;
+}
+.organizationCopyValue svg { width: 13px; height: 13px; }
 
 .organizationPrivateDataNotice {
   display: flex;
@@ -314,6 +342,21 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 .organizationPrivateDataNotice > span { display: grid; gap: 2px; }
 .organizationPrivateDataNotice strong { color: var(--ui-text-strong); font-size: .8rem; }
 .organizationPrivateDataNotice small { color: var(--ui-muted); font-size: .7rem; }
+
+.organizationPublicPaymentNotice {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid color-mix(in srgb, #16a36a 36%, var(--ui-border));
+  border-radius: 14px;
+  padding: 13px 14px;
+  color: var(--ui-text);
+  background: color-mix(in srgb, #16a36a 8%, var(--ui-surface-raised));
+}
+.organizationPublicPaymentNotice > svg { width: 19px; height: 19px; flex: 0 0 auto; color: #16a36a; }
+.organizationPublicPaymentNotice > span { display: grid; gap: 2px; }
+.organizationPublicPaymentNotice strong { color: var(--ui-text-strong); font-size: .8rem; }
+.organizationPublicPaymentNotice small { color: var(--ui-muted); font-size: .7rem; line-height: 1.45; }
 
 .organizationProfileEditActions {
   display: flex;
@@ -339,7 +382,7 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 .organizerProfileModalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 1800;
+  z-index: 10110;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -386,6 +429,24 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
   background: color-mix(in srgb, #16a36a 8%, var(--ui-surface));
 }
 
+.organizerProfileModal .organizationPaymentFormHeader {
+  border-color: color-mix(in srgb, #16a36a 34%, var(--ui-border));
+  background: color-mix(in srgb, #16a36a 8%, var(--ui-surface-muted));
+}
+
+html body .proDashboard.playAppShell label.organizationProfileCoverShortcut {
+  display: block !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 18px !important;
+  padding: 0 !important;
+  color: inherit !important;
+  background: var(--ui-surface-muted, #eef3fa) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
 html body .proDashboard.playAppShell label.organizationProfileAvatarShortcut {
   display: block !important;
   min-height: 0 !important;
@@ -396,6 +457,11 @@ html body .proDashboard.playAppShell label.organizationProfileAvatarShortcut {
   box-shadow: none !important;
   cursor: pointer;
 }
+
+.organizationProfileAvatarShortcut .profileAvatarEditBadge { display: none !important; }
+
+.profileTournamentToolbar { margin: 2px 0 10px; }
+.profileTournamentGenderFilters { margin-bottom: 16px; }
 
 /* Publicações: uma única coluna social no Início e cartões compactos no Explorar. */
 html body .proDashboard.playAppShell .publicTournamentPost {

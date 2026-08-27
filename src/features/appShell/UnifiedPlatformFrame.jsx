@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Compass, Home, LogIn, Moon, PlusCircle, Sun, UserRound } from "lucide-react";
+import { Home, LogIn, Moon, Sun, UserRound } from "lucide-react";
 import { PlatformSidebar, PlatformTopbar } from "./PlatformChrome.jsx";
 import "../../styles/53-public-social-platform.css";
 
 const NAV_ITEMS = [
   { panel: "overview", label: "Início", Icon: Home },
-  { panel: "explore", label: "Explorar", Icon: Compass },
-  { panel: "create", label: "Criar", Icon: PlusCircle, requiresCreationPermission: true },
   { panel: "profile", label: "Perfil", Icon: UserRound },
 ];
 

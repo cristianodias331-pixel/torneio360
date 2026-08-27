@@ -2,6 +2,7 @@ import React from "react";
 import {
   AtSign,
   CalendarDays,
+  CreditCard,
   GitBranch,
   MapPin,
   MessageCircle,
@@ -352,6 +353,9 @@ export function PublicArenaPageView({
             {organizer.whatsappGroupLink ? <a href={organizer.whatsappGroupLink} target="_blank" rel="noreferrer"><Users aria-hidden="true" /> Grupo do WhatsApp</a> : null}
             {organizer.instagramLink ? <a href={organizer.instagramLink} target="_blank" rel="noreferrer"><AtSign aria-hidden="true" /> Instagram</a> : null}
             {organizer.mapsLink ? <a href={organizer.mapsLink} target="_blank" rel="noreferrer"><MapPin aria-hidden="true" /> Google Maps</a> : null}
+            {organizer.address ? <span><MapPin aria-hidden="true" /> {organizer.address}</span> : null}
+            {organizer.pixKey ? <span><CreditCard aria-hidden="true" /> Pix: {organizer.pixKey}</span> : null}
+            {organizer.cardPaymentLink ? <a href={organizer.cardPaymentLink} target="_blank" rel="noreferrer"><CreditCard aria-hidden="true" /> Pagar com cartão</a> : null}
           </div>
         </section>
 

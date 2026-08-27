@@ -496,6 +496,18 @@ const organizationRegistrantsMigrationSource = readFileSync(
   new URL("supabase/migrations/202608270002_organization_registrants.sql", root),
   "utf8"
 );
+const organizationPaymentApiSource = readFileSync(
+  new URL("src/services/organizationPaymentApi.mjs", root),
+  "utf8"
+);
+const tournamentPaymentPanelSource = readFileSync(
+  new URL("src/features/registration/TournamentPaymentPanel.jsx", root),
+  "utf8"
+);
+const organizationPublicPaymentsMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608270003_organization_public_payments.sql", root),
+  "utf8"
+);
 const cupRankingDefaultsSource = readFileSync(
   new URL("src/domain/cupRankingDefaults.mjs", root),
   "utf8"
@@ -3875,9 +3887,8 @@ const requiredApplicationMarkers = [
   '.eq("is_public", true)',
   '?public=${publicId}',
   'panel: "inicio"',
-  'panel: "explorar"',
-  'panel: "criar"',
   'panel: "ajustes"',
+  'setCreateTournamentOpen(true)',
 ];
 
 for (const marker of requiredApplicationMarkers) {
@@ -5079,9 +5090,9 @@ assert.ok(
 );
 assert.ok(
   unifiedPlatformFrameSource.includes('panel: "overview"')
-    && unifiedPlatformFrameSource.includes('panel: "explore"')
-    && unifiedPlatformFrameSource.includes('panel: "create"')
     && unifiedPlatformFrameSource.includes('panel: "profile"')
+    && !unifiedPlatformFrameSource.includes('panel: "explore"')
+    && !unifiedPlatformFrameSource.includes('panel: "create"')
     && memberProfileWorkspaceSource.includes("PublicTournamentFeedSection")
     && memberProfileWorkspaceSource.includes("A criação de torneios e circuitos pertence a uma identidade de organização"),
   "A conta gratuita voltou a usar uma área separada ou perdeu o bloqueio de assinatura."
@@ -5149,6 +5160,34 @@ assert.ok(
     && organizationRegistrantsMigrationSource.includes("payment_status in ('pending', 'paid')")
     && organizationRegistrantsMigrationSource.includes("revoke all on function public.get_my_organization_registrations"),
   "A organização perdeu o painel protegido de inscritos, os estados financeiros ou a edição unificada do perfil."
+);
+assert.ok(
+  organizerWorkspaceSource.includes('openOrganizationProfileImageEditor(file, "cover")')
+    && organizerWorkspaceSource.includes("A nova capa já foi salva no perfil público da organização")
+    && !organizerWorkspaceSource.includes('<i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>\n        </label>\n      )}')
+    && styleSource.includes("z-index: 10110")
+    && organizerWorkspaceSource.includes("Entrar no grupo do WhatsApp")
+    && organizerWorkspaceSource.includes("Chave Pix pública")
+    && organizerWorkspaceSource.includes("Pagamento com cartão")
+    && organizationPaymentApiSource.includes("get_public_organization_payment_settings")
+    && organizationPublicPaymentsMigrationSource.includes("pix_key text not null default ''")
+    && organizationPublicPaymentsMigrationSource.includes("card_payment_link text not null default ''")
+    && organizationPublicPaymentsMigrationSource.includes("public.build_public_arena_profile_uncached")
+    && tournamentPaymentPanelSource.includes("Selecionar comprovante")
+    && tournamentPaymentPanelSource.includes("permanece somente neste dispositivo"),
+  "A capa, o modal, os dados públicos ou a preparação segura do pagamento da organização regrediram."
+);
+assert.ok(
+  organizerWorkspaceSource.includes('const navItems = [\n      { panel: "inicio", label: "Início", Icon: LayoutDashboard },\n      { panel: "ajustes", label: "Perfis", Icon: UserRound },')
+    && !unifiedPlatformFrameSource.includes('label: "Explorar"')
+    && !unifiedPlatformFrameSource.includes('label: "Criar"')
+    && organizerWorkspaceSource.includes("profileTournamentToolbar")
+    && organizerWorkspaceSource.includes("Pesquisar torneios no perfil da organização")
+    && organizerWorkspaceSource.includes("profileTournamentGenderFilters")
+    && organizerWorkspaceSource.includes('setOrganizationGalleryStatus("local")')
+    && organizerWorkspaceSource.includes("A capa já aparece neste perfil")
+    && !organizerWorkspaceSource.match(/organizationProfileAvatarShortcut[\s\S]{0,900}profileAvatarEditBadge/),
+  "A navegação simplificada, os filtros do perfil ou a remoção da câmera azul da organização regrediram."
 );
 assert.ok(
   publicPlatformHomeControllerSource.includes('variant="discovery"')

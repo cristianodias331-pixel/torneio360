@@ -1,0 +1,69 @@
+.tournamentPaymentPanel {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #16a36a 32%, var(--ui-border, #d5dfec));
+  border-radius: 18px;
+  padding: 17px;
+  color: var(--ui-text, #263850);
+  background: color-mix(in srgb, #16a36a 5%, var(--ui-surface-raised, #fff));
+}
+
+.tournamentPaymentPanel > header { display: flex; align-items: flex-start; gap: 12px; }
+.tournamentPaymentPanel > header > div { display: grid; gap: 3px; }
+.tournamentPaymentPanel > header small { color: #16a36a; font-size: .65rem; font-weight: 900; letter-spacing: .08em; }
+.tournamentPaymentPanel h3,
+.tournamentPaymentPanel p { margin: 0; }
+.tournamentPaymentPanel h3 { color: var(--ui-text-strong, #102038); font-size: 1rem; }
+.tournamentPaymentPanel > header p { color: var(--ui-muted, #65758b); font-size: .75rem; line-height: 1.45; }
+.tournamentPaymentIcon { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border-radius: 13px; color: #fff; background: #16a36a; }
+.tournamentPaymentIcon svg { width: 21px; height: 21px; }
+
+.tournamentPaymentMethods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.tournamentPaymentMethods article { display: flex; min-width: 0; align-items: center; gap: 10px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 13px; padding: 12px; background: var(--ui-surface-raised, #fff); }
+.tournamentPaymentMethods article > svg { width: 20px; height: 20px; flex: 0 0 auto; color: #16a36a; }
+.tournamentPaymentMethods article > span { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.tournamentPaymentMethods small { color: var(--ui-muted, #65758b); font-size: .65rem; }
+.tournamentPaymentMethods strong { overflow-wrap: anywhere; color: var(--ui-text-strong, #102038); font-size: .76rem; }
+.tournamentPaymentMethods button,
+.tournamentPaymentMethods a { display: inline-flex; min-height: 32px; align-items: center; gap: 5px; border: 1px solid color-mix(in srgb, #16a36a 38%, var(--ui-border, #d5dfec)); border-radius: 9px; padding: 6px 9px; color: #087f50; background: color-mix(in srgb, #16a36a 8%, var(--ui-surface-raised, #fff)); font-size: .68rem; font-weight: 850; text-decoration: none; white-space: nowrap; }
+.tournamentPaymentMethods button svg { width: 13px; height: 13px; }
+.tournamentPaymentEmpty { border: 1px dashed var(--ui-border, #d5dfec); border-radius: 12px; padding: 13px; color: var(--ui-muted, #65758b); background: var(--ui-surface-muted, #f1f5f9); font-size: .74rem; }
+
+.tournamentReceiptArea { display: grid; gap: 9px; border-top: 1px solid var(--ui-border, #d5dfec); padding-top: 14px; }
+.tournamentReceiptHeading { display: flex; align-items: center; gap: 9px; }
+.tournamentReceiptHeading > svg { width: 19px; height: 19px; color: #16a36a; }
+.tournamentReceiptHeading > span { display: grid; gap: 2px; }
+.tournamentReceiptHeading strong { color: var(--ui-text-strong, #102038); font-size: .78rem; }
+.tournamentReceiptHeading small { color: var(--ui-muted, #65758b); font-size: .66rem; }
+.tournamentReceiptPicker { display: flex; align-items: center; gap: 10px; border: 1px dashed color-mix(in srgb, #16a36a 45%, var(--ui-border, #d5dfec)); border-radius: 13px; padding: 12px; color: var(--ui-text, #263850); background: var(--ui-surface-raised, #fff); cursor: pointer; }
+.tournamentReceiptPicker.hasFile { border-style: solid; background: color-mix(in srgb, #16a36a 7%, var(--ui-surface-raised, #fff)); }
+.tournamentReceiptPicker input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.tournamentReceiptPicker > svg { width: 20px; height: 20px; flex: 0 0 auto; color: #16a36a; }
+.tournamentReceiptPicker > span { display: grid; min-width: 0; gap: 2px; }
+.tournamentReceiptPicker strong { overflow-wrap: anywhere; color: var(--ui-text-strong, #102038); font-size: .76rem; }
+.tournamentReceiptPicker small { color: var(--ui-muted, #65758b); font-size: .66rem; }
+.tournamentReceiptSubmit,
+.tournamentReceiptLogin { justify-self: end; min-height: 36px; border-radius: 10px; padding: 7px 12px; font-size: .72rem; font-weight: 850; }
+.tournamentReceiptSubmit:disabled { cursor: not-allowed; opacity: .52; }
+.tournamentReceiptError { color: #c03535; font-size: .7rem; }
+.tournamentReceiptPrivacy { display: flex; align-items: flex-start; gap: 7px; color: var(--ui-muted, #65758b); font-size: .66rem; line-height: 1.45; }
+.tournamentReceiptPrivacy svg { width: 15px; height: 15px; flex: 0 0 auto; color: #16a36a; }
+
+.proDashboard.theme-dark .tournamentPaymentPanel { border-color: #29664f; background: #12271f; }
+.proDashboard.theme-dark .tournamentPaymentMethods article,
+.proDashboard.theme-dark .tournamentReceiptPicker { border-color: #365064; background: #172536; }
+.proDashboard.theme-dark .tournamentPaymentMethods button,
+.proDashboard.theme-dark .tournamentPaymentMethods a { border-color: #2c795c; color: #a7f3d0; background: #143529; }
+
+@media (max-width: 720px) {
+  .tournamentPaymentMethods { grid-template-columns: 1fr; }
+  .tournamentPaymentMethods article { align-items: flex-start; flex-wrap: wrap; }
+  .tournamentPaymentMethods article > span { min-width: calc(100% - 32px); }
+  .tournamentPaymentMethods button,
+  .tournamentPaymentMethods a { margin-left: 30px; }
+  .tournamentReceiptSubmit,
+  .tournamentReceiptLogin { width: 100%; justify-self: stretch; }
+}
+

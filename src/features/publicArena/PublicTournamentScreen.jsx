@@ -52,6 +52,7 @@ import {
   migratePlayRankingBracketForReferenceProfile,
 } from "../../domain/playRankingBracketMigration.mjs";
 import TournamentPartnerFinder from "../registration/TournamentPartnerFinder.jsx";
+import TournamentPaymentPanel from "../registration/TournamentPaymentPanel.jsx";
 
 function getSafePublicDocumentUrl(value) {
   try {
@@ -83,6 +84,7 @@ export default function PublicTournamentScreenView({
     calculateRanking,
     getSafeCupPresentation,
     getTournamentTimingSummary,
+    supabase,
     tagline,
   } = runtime;
   const publicTabStorageKey = `publicTournamentTab:${tournament.public_id || tournament.id}`;
@@ -293,6 +295,14 @@ export default function PublicTournamentScreenView({
             tournament={tournament}
             data={data}
             viewer={viewer}
+            registrationClosed={registrationClosed}
+            onRequireLogin={onRequireLogin}
+          />
+          <TournamentPaymentPanel
+            tournament={tournament}
+            organizer={publicOrganizer}
+            viewer={viewer}
+            supabase={supabase}
             registrationClosed={registrationClosed}
             onRequireLogin={onRequireLogin}
           />

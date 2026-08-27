@@ -586,6 +586,8 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
     instagramHandle: profile.instagram_handle || "",
     instagramLink: profile.instagram_link || "",
     whatsappGroupLink: profile.whatsapp_group_link || "",
+    pixKey: profile.pix_key || "",
+    cardPaymentLink: profile.card_payment_link || "",
     city: profile.city || "",
     state: profile.state || "",
   };

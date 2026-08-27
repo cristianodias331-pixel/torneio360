@@ -20,9 +20,9 @@ import {
   CircleHelp,
   CloudCheck,
   CloudOff,
-  Compass,
   Clock3,
   Copy,
+  CreditCard,
   Dices,
   Flame,
   GitBranch,
@@ -133,6 +133,11 @@ import {
   loadMyOrganizationGallery,
   saveMyOrganizationGallery,
 } from "./services/publicSocialApi.mjs";
+import {
+  getSafePaymentLink,
+  loadMyOrganizationPaymentSettings,
+  saveMyOrganizationPaymentSettings,
+} from "./services/organizationPaymentApi.mjs";
 import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
@@ -1256,6 +1261,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       instagramLink: profile.instagram_link || "",
       whatsappGroupLink: profile.whatsapp_group_link || "",
       pixKey: "",
+      cardPaymentLink: "",
       isPublic: true,
     };
   });
@@ -1283,10 +1289,44 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       })
       .catch((error) => {
         console.warn("Galeria da organização ainda não está disponível:", error);
-        if (active) setOrganizationGalleryStatus("unavailable");
+        if (!active) return;
+        try {
+          const localPhotos = JSON.parse(localStorage.getItem(`organizationGallery:${user.id}`) || "[]");
+          const safeLocalPhotos = Array.isArray(localPhotos) ? localPhotos.filter((photo) => typeof photo === "string").slice(0, 6) : [];
+          organizationGalleryBaseRef.current = safeLocalPhotos;
+          setOrganizationGallery(safeLocalPhotos);
+        } catch {
+          organizationGalleryBaseRef.current = [];
+          setOrganizationGallery([]);
+        }
+        setOrganizationGalleryStatus("local");
       });
     return () => { active = false; };
-  }, [supabase]);
+  }, [supabase, user.id]);
+
+  useEffect(() => {
+    let active = true;
+    const localSettings = {
+      pixKey: organizerProfileBaseRef.current.pixKey || "",
+      cardPaymentLink: organizerProfileBaseRef.current.cardPaymentLink || "",
+    };
+    loadMyOrganizationPaymentSettings({ supabase, fallback: localSettings })
+      .then((settings) => {
+        if (!active) return;
+        organizerProfileBaseRef.current = {
+          ...organizerProfileBaseRef.current,
+          pixKey: settings.pixKey,
+          cardPaymentLink: settings.cardPaymentLink,
+        };
+        setOrganizerProfile((current) => ({
+          ...current,
+          pixKey: settings.pixKey || current.pixKey || "",
+          cardPaymentLink: settings.cardPaymentLink || current.cardPaymentLink || "",
+        }));
+      })
+      .catch((error) => console.warn("Configurações públicas de pagamento ainda não estão disponíveis:", error));
+    return () => { active = false; };
+  }, [supabase, user.id]);
 
   const memberProfileFallback = useMemo(() => createMemberProfileFallback({
     user,
@@ -3020,7 +3060,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       instagramHandle: row?.instagram_handle ?? fallback.instagramHandle ?? "",
       instagramLink: row?.instagram_link ?? fallback.instagramLink ?? "",
       whatsappGroupLink: row?.whatsapp_group_link ?? fallback.whatsappGroupLink ?? "",
-      pixKey: fallback.pixKey ?? "",
+      pixKey: row?.pix_key ?? fallback.pixKey ?? "",
+      cardPaymentLink: row?.card_payment_link ?? fallback.cardPaymentLink ?? "",
       isPublic: row?.is_public ?? fallback.isPublic ?? true,
     };
   }
@@ -3101,6 +3142,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       showNotice("warning", "Conteúdo não permitido", profileModeration.message);
       return false;
     }
+    if (String(profileToSave.cardPaymentLink || "").trim() && !getSafePaymentLink(profileToSave.cardPaymentLink)) {
+      showNotice("warning", "Link de pagamento inválido", "Informe um endereço iniciado por https:// ou http://.");
+      return false;
+    }
     setProfileSaveSuccess(false);
     if (profileSaveSuccessTimerRef.current) clearTimeout(profileSaveSuccessTimerRef.current);
     setProfileSaving(true);
@@ -3140,9 +3185,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const changedProfileData = Object.fromEntries(
       Object.entries(publicProfileData).filter(([key, value]) => value !== basePublicProfileData[key])
     );
-    const privateProfileChanged = String(profileToSave.pixKey || "") !== String(baseProfile.pixKey || "");
+    const paymentSettingsChanged = String(profileToSave.pixKey || "") !== String(baseProfile.pixKey || "")
+      || String(profileToSave.cardPaymentLink || "") !== String(baseProfile.cardPaymentLink || "");
 
-    if (Object.keys(changedProfileData).length === 0 && !privateProfileChanged) {
+    if (Object.keys(changedProfileData).length === 0 && !paymentSettingsChanged) {
       setProfileSaving(false);
       showNotice("info", "Perfil já está atualizado", "Não há novas alterações para enviar.");
       setProfileEditing(false);
@@ -3160,18 +3206,41 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       console.warn("Não foi possível preparar a cópia local do perfil.", storageError);
     }
 
-    if (Object.keys(changedProfileData).length === 0 && privateProfileChanged) {
-      organizerProfileBaseRef.current = { ...profileToSave };
-      setOrganizerProfile(profileToSave);
-      setProfileSaving(false);
-      setProfileSaveSuccess(true);
-      setProfileEditing(false);
-      showNotice("success", "Dado privado salvo", "A chave Pix foi mantida somente neste dispositivo de homologação.");
-      profileSaveSuccessTimerRef.current = setTimeout(() => {
-        setProfileSaveSuccess(false);
-        profileSaveSuccessTimerRef.current = null;
-      }, 2600);
-      return true;
+    if (Object.keys(changedProfileData).length === 0 && paymentSettingsChanged) {
+      try {
+        const paymentSettings = await saveMyOrganizationPaymentSettings({
+          supabase,
+          pixKey: profileToSave.pixKey,
+          cardPaymentLink: profileToSave.cardPaymentLink,
+        });
+        const nextProfile = {
+          ...profileToSave,
+          pixKey: paymentSettings.pixKey,
+          cardPaymentLink: paymentSettings.cardPaymentLink,
+        };
+        organizerProfileBaseRef.current = { ...nextProfile };
+        setOrganizerProfile(nextProfile);
+        setProfileSaveSuccess(true);
+        setProfileEditing(false);
+        showNotice(
+          "success",
+          paymentSettings.schemaAvailable ? "Recebimentos atualizados" : "Recebimentos preparados",
+          paymentSettings.schemaAvailable
+            ? "Pix e cartão agora aparecem nas informações públicas da organização."
+            : "Os dados ficaram salvos neste dispositivo; a migração do banco teste ainda precisa ser aplicada para publicá-los."
+        );
+        profileSaveSuccessTimerRef.current = setTimeout(() => {
+          setProfileSaveSuccess(false);
+          profileSaveSuccessTimerRef.current = null;
+        }, 2600);
+        return true;
+      } catch (error) {
+        console.error("Erro ao salvar configurações públicas de pagamento:", error);
+        showNotice("error", "Recebimentos não salvos", "Não foi possível atualizar Pix e cartão agora.");
+        return false;
+      } finally {
+        setProfileSaving(false);
+      }
     }
 
     try {
@@ -3210,7 +3279,22 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       }
 
       onProfileChange?.((prev) => ({ ...prev, ...data }));
-      const savedOrganizerProfile = organizerProfileFromRow(data, profileToSave);
+      const paymentSettings = paymentSettingsChanged
+        ? await saveMyOrganizationPaymentSettings({
+          supabase,
+          pixKey: profileToSave.pixKey,
+          cardPaymentLink: profileToSave.cardPaymentLink,
+        })
+        : {
+          pixKey: profileToSave.pixKey || "",
+          cardPaymentLink: profileToSave.cardPaymentLink || "",
+          schemaAvailable: true,
+        };
+      const savedOrganizerProfile = {
+        ...organizerProfileFromRow(data, profileToSave),
+        pixKey: paymentSettings.pixKey,
+        cardPaymentLink: paymentSettings.cardPaymentLink,
+      };
       organizerProfileBaseRef.current = savedOrganizerProfile;
       setOrganizerProfile(savedOrganizerProfile);
       setProfileEditing(false);
@@ -3225,7 +3309,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       showNotice(
         "success",
         "Alterações salvas",
-        "O perfil da sua organização foi atualizado com sucesso."
+        paymentSettingsChanged && !paymentSettings.schemaAvailable
+          ? "O perfil foi atualizado; Pix e cartão aguardam a migração do banco teste para aparecer a visitantes."
+          : "O perfil da sua organização foi atualizado com sucesso."
       );
       profileSaveSuccessTimerRef.current = setTimeout(() => {
         setProfileSaveSuccess(false);
@@ -3297,7 +3383,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     });
   }
 
-  function openOrganizationProfileImageEditor(file) {
+  function openOrganizationProfileImageEditor(file, kind = "photo") {
     if (!file || profileSaving) return;
     if (!String(file.type || "").startsWith("image/")) {
       showNotice("warning", "Imagem não reconhecida", "Escolha uma foto em JPG, PNG ou WebP.");
@@ -3306,14 +3392,64 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setOrganizationProfileImageEditor((current) => {
       if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
       return {
-        kind: "photo",
+        kind,
         sourceUrl: URL.createObjectURL(file),
-        fileName: file.name || "foto-da-organizacao",
+        fileName: file.name || (kind === "cover" ? "capa-da-organizacao" : "foto-da-organizacao"),
       };
     });
   }
 
   async function applyOrganizationProfileImage({ imageUrl }) {
+    if (organizationProfileImageEditor?.kind === "cover") {
+      if (organizationGalleryStatus === "local") {
+        const nextGallery = [
+          imageUrl,
+          ...organizationGallery.filter((photoUrl) => photoUrl !== imageUrl),
+        ].slice(0, 6);
+        try {
+          localStorage.setItem(`organizationGallery:${user.id}`, JSON.stringify(nextGallery));
+          organizationGalleryBaseRef.current = nextGallery;
+          setOrganizationGallery(nextGallery);
+          closeOrganizationProfileImageEditor();
+          showNotice("success", "Capa atualizada", "A capa já aparece neste perfil. A publicação para visitantes será sincronizada quando a estrutura do banco teste estiver disponível.");
+          return true;
+        } catch (error) {
+          console.error("Erro ao salvar a capa local da organização:", error);
+          showNotice("error", "Capa não salva", "A imagem ficou grande demais para o armazenamento local. Escolha outra foto.");
+          return false;
+        }
+      }
+      if (organizationGalleryStatus !== "ready") {
+        showNotice("warning", "Capa sendo preparada", "Aguarde o carregamento das fotos da organização e tente novamente.");
+        return false;
+      }
+      setOrganizationGallerySaving(true);
+      try {
+        const { uploadOrganizationProfileGalleryPhoto } = await import("./services/mediaStorage.mjs");
+        const uploadedCover = await uploadOrganizationProfileGalleryPhoto({
+          supabase,
+          userId: user.id,
+          photoUrl: imageUrl,
+          position: 1,
+        });
+        const nextGallery = [
+          uploadedCover,
+          ...organizationGallery.filter((photoUrl) => photoUrl !== uploadedCover),
+        ].slice(0, 6);
+        const savedPhotos = await saveMyOrganizationGallery({ supabase, photoUrls: nextGallery });
+        organizationGalleryBaseRef.current = savedPhotos;
+        setOrganizationGallery(savedPhotos);
+        closeOrganizationProfileImageEditor();
+        showNotice("success", "Capa atualizada", "A nova capa já foi salva no perfil público da organização.");
+        return true;
+      } catch (error) {
+        console.error("Erro ao salvar a capa da organização:", error);
+        showNotice("error", "Capa não salva", "Não foi possível enviar e salvar a capa agora.");
+        return false;
+      } finally {
+        setOrganizationGallerySaving(false);
+      }
+    }
     const nextProfile = { ...organizerProfile, photoUrl: imageUrl };
     setOrganizerProfile(nextProfile);
     const saved = await saveOrganizerProfile(nextProfile);
@@ -3485,6 +3621,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         instagramHandle: organizerProfile.instagramHandle || "",
         instagramLink: organizerProfile.instagramLink || "",
         whatsappGroupLink: organizerProfile.whatsappGroupLink || "",
+        pixKey: organizerProfile.pixKey || "",
+        cardPaymentLink: organizerProfile.cardPaymentLink || "",
         address: organizerProfile.address || "",
         mapsLink: organizerProfile.mapsLink || "",
         city: organizerProfile.city || "",
@@ -3609,8 +3747,18 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function saveOrganizationGallery() {
     if (!user?.id || organizationGallerySaving) return;
+    if (organizationGalleryStatus === "local") {
+      try {
+        localStorage.setItem(`organizationGallery:${user.id}`, JSON.stringify(organizationGallery));
+        organizationGalleryBaseRef.current = organizationGallery;
+        showNotice("success", "Fotos atualizadas", "As fotos já aparecem neste dispositivo e serão sincronizadas quando o banco teste estiver disponível.");
+      } catch {
+        showNotice("error", "Fotos não salvas", "As imagens ultrapassaram o espaço local disponível.");
+      }
+      return;
+    }
     if (organizationGalleryStatus !== "ready") {
-      showNotice("warning", "Galeria indisponível", "A estrutura da galeria precisa estar disponível no site teste.");
+      showNotice("warning", "Galeria carregando", "Aguarde alguns instantes e tente novamente.");
       return;
     }
     if (JSON.stringify(organizationGallery) === JSON.stringify(organizationGalleryBaseRef.current)) {
@@ -6183,8 +6331,6 @@ setNewPublicInfo({
   function renderAppSidebar() {
     const navItems = [
       { panel: "inicio", label: "Início", Icon: LayoutDashboard },
-      { panel: "explorar", label: "Explorar", Icon: Compass },
-      { panel: "criar", label: "Criar", Icon: PlusCircle },
       { panel: "ajustes", label: "Perfis", Icon: UserRound },
     ];
     const sidebarActivePanel = ["criar", "circuitos", "modalidades"].includes(activePanel)
@@ -6559,7 +6705,7 @@ setNewPublicInfo({
 
       {organizationProfileImageEditor ? (
         <ProfileImageEditor
-          kind="photo"
+          kind={organizationProfileImageEditor.kind}
           sourceUrl={organizationProfileImageEditor.sourceUrl}
           fileName={organizationProfileImageEditor.fileName}
           onCancel={closeOrganizationProfileImageEditor}
@@ -7074,6 +7220,22 @@ setNewPublicInfo({
                     tournament: browsingPublicTournament,
                     embedded: true,
                     viewer: user,
+                    organizer: {
+                      id: user.id,
+                      photoUrl: organizerProfile.photoUrl || "",
+                      arenaName: organizerProfile.arenaName || "",
+                      organizerName: organizerProfile.organizerName || "",
+                      whatsapp: organizerProfile.whatsapp || "",
+                      address: organizerProfile.address || "",
+                      mapsLink: organizerProfile.mapsLink || "",
+                      instagramHandle: organizerProfile.instagramHandle || "",
+                      instagramLink: organizerProfile.instagramLink || "",
+                      whatsappGroupLink: organizerProfile.whatsappGroupLink || "",
+                      pixKey: organizerProfile.pixKey || "",
+                      cardPaymentLink: organizerProfile.cardPaymentLink || "",
+                      city: organizerProfile.city || "",
+                      state: organizerProfile.state || "",
+                    },
                     onBackToArena: () => {
                       setBrowsingPublicTournament(null);
                       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -8428,15 +8590,23 @@ setNewPublicInfo({
         <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> Alterar capa do atleta</span>
       </label>
     ) : (
-      <button
-        type="button"
+      <label
         className={`unifiedProfilePublicCover editableProfileCover organizationProfileCoverShortcut${organizationGallery[0] ? " hasCover" : ""}`}
         title="Escolher a capa da organização"
-        onClick={() => openProfileSection("fotos", "organization")}
       >
+        <input
+          type="file"
+          accept="image/*"
+          disabled={organizationGallerySaving}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) openOrganizationProfileImageEditor(file, "cover");
+            event.target.value = "";
+          }}
+        />
         {organizationGallery[0] ? <img src={organizationGallery[0]} alt="Capa da organização" /> : null}
-        <span className="profileMediaEditBadge"><Images aria-hidden="true" /> Escolher capa da organização</span>
-      </button>
+        <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> {organizationGallerySaving ? "Salvando capa..." : "Alterar capa da organização"}</span>
+      </label>
     )}
     <div className="instagramProfileHeader unifiedProfileHeader">
       {profileIdentity === "athlete" ? (
@@ -8467,7 +8637,6 @@ setNewPublicInfo({
             }}
           />
           {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="Foto da organização" /> : <span><Building2 aria-hidden="true" /></span>}
-          <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
         </label>
       )}
       <div className="instagramProfileInfo">
@@ -8601,10 +8770,58 @@ setNewPublicInfo({
       <button type="button" role="tab" aria-selected={profilePublicationFilter === "circuits"} className={profilePublicationFilter === "circuits" ? "active" : ""} onClick={() => setProfilePublicationFilter("circuits")}>Circuitos <span>{circuits.length}</span></button>
     </nav>
 
+    {profilePublicationFilter !== "circuits" ? <>
+    <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar" aria-label="Filtrar torneios do perfil por situação">
+      <button type="button" className={`active ${tournamentStatusFilter === "active" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "active"} onClick={() => setTournamentStatusFilter("active")}>
+        <strong>{tournamentLifecycleCounts.active}</strong> Em andamento
+      </button>
+      <button type="button" className={`upcoming ${tournamentStatusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "upcoming"} onClick={() => setTournamentStatusFilter("upcoming")}>
+        <strong>{tournamentLifecycleCounts.upcoming}</strong> Próximos
+      </button>
+      <button type="button" className={`finished ${tournamentStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "finished"} onClick={() => setTournamentStatusFilter("finished")}>
+        <strong>{tournamentLifecycleCounts.finished}</strong> Encerrados
+      </button>
+      <label className="eventListSearch platformUnifiedSearch">
+        <Search aria-hidden="true" />
+        <input
+          type="search"
+          value={tournamentSearch}
+          onChange={(event) => setTournamentSearch(event.target.value)}
+          aria-label="Pesquisar torneios no perfil da organização"
+          placeholder="Ex.: nome, modalidade, categoria ou local"
+        />
+        {tournamentSearch ? <button type="button" aria-label="Limpar pesquisa de torneios do perfil" onClick={() => setTournamentSearch("")}><X aria-hidden="true" /></button> : null}
+      </label>
+    </div>
+    <div className="tournamentGenderSubtabs profileTournamentGenderFilters" aria-label="Filtrar torneios do perfil por gênero">
+      <span className="tournamentGenderSubtabsLabel">Gênero</span>
+      {[
+        { value: tournamentListGenderFilters.all, label: "Todos" },
+        { value: tournamentListGenderFilters.masculine, label: "Masculino" },
+        { value: tournamentListGenderFilters.feminine, label: "Feminino" },
+        { value: tournamentListGenderFilters.mixed, label: "Misto/Livre" },
+      ].map((option) => (
+        <button
+          type="button"
+          key={option.value}
+          className={tournamentGenderFilter === option.value ? "selected" : ""}
+          aria-pressed={tournamentGenderFilter === option.value}
+          onClick={() => setTournamentGenderFilter(option.value)}
+        >
+          {option.label} <strong>{tournamentGenderCounts[option.value]}</strong>
+        </button>
+      ))}
+    </div>
+    </> : null}
+
     {profilePublicationFilter !== "circuits" ? <div className="profileTournamentGrid">
       {tournaments.length === 0 ? (
         <div className="profileEmptyPost">Nenhum campeonato criado ainda.</div>
-      ) : tournaments.map((t) => {
+      ) : organizerVisibleTournaments.length === 0 ? (
+        <div className="profileEmptyPost">{tournamentSearch.trim()
+          ? `Nenhum torneio encontrado para “${tournamentSearch.trim()}” nos filtros selecionados.`
+          : "Nenhum torneio corresponde aos filtros selecionados."}</div>
+      ) : organizerVisibleTournaments.map((t) => {
         const details = t.data || {};
         return (
           <article className="profileTournamentPost tournamentItem" key={t.id}>
@@ -8828,13 +9045,16 @@ setNewPublicInfo({
     </header>
     <div className="organizationAboutGrid">
       <article><UserRound aria-hidden="true" /><span><small>Responsável</small><strong>{organizerProfile.organizerName || "Não informado"}</strong></span></article>
-      <article><MapPin aria-hidden="true" /><span><small>Localização</small><strong>{[organizerProfile.city, organizerProfile.state].filter(Boolean).join("/") || "Não informada"}</strong><em>{organizerProfile.address || "Endereço não informado"}</em></span></article>
-      <article><MessageCircle aria-hidden="true" /><span><small>Contato público</small><strong>{organizerProfile.whatsapp || "WhatsApp não informado"}</strong></span></article>
-      <article><AtSign aria-hidden="true" /><span><small>Instagram</small><strong>{organizerProfile.instagramHandle || "Não informado"}</strong></span></article>
+      <article><MapPin aria-hidden="true" /><span><small>Endereço</small><strong>{[organizerProfile.city, organizerProfile.state].filter(Boolean).join("/") || "Não informado"}</strong><em>{organizerProfile.address || "Endereço não informado"}</em>{getSafePaymentLink(organizerProfile.mapsLink) ? <a href={getSafePaymentLink(organizerProfile.mapsLink)} target="_blank" rel="noreferrer"><Link2 aria-hidden="true" /> Abrir no mapa</a> : null}</span></article>
+      <article><MessageCircle aria-hidden="true" /><span><small>WhatsApp</small>{organizerProfile.whatsapp ? <a href={getBrazilianWhatsAppUrl(organizerProfile.whatsapp)} target="_blank" rel="noreferrer"><strong>{organizerProfile.whatsapp}</strong></a> : <strong>Não informado</strong>}</span></article>
+      <article><AtSign aria-hidden="true" /><span><small>Instagram</small>{getSafePaymentLink(organizerProfile.instagramLink) ? <a href={getSafePaymentLink(organizerProfile.instagramLink)} target="_blank" rel="noreferrer"><strong>{organizerProfile.instagramHandle || "Abrir Instagram"}</strong></a> : <strong>{organizerProfile.instagramHandle || "Não informado"}</strong>}</span></article>
+      <article><Users aria-hidden="true" /><span><small>Grupo da organização</small>{getSafePaymentLink(organizerProfile.whatsappGroupLink) ? <a href={getSafePaymentLink(organizerProfile.whatsappGroupLink)} target="_blank" rel="noreferrer"><strong>Entrar no grupo do WhatsApp</strong></a> : <strong>Link não informado</strong>}</span></article>
+      <article><Copy aria-hidden="true" /><span><small>Chave Pix pública</small><strong>{organizerProfile.pixKey || "Não informada"}</strong>{organizerProfile.pixKey ? <button type="button" className="organizationCopyValue" onClick={() => { navigator.clipboard?.writeText(organizerProfile.pixKey); showNotice("success", "Chave Pix copiada", "A chave foi copiada para a área de transferência."); }}><Copy aria-hidden="true" /> Copiar chave</button> : null}</span></article>
+      <article><CreditCard aria-hidden="true" /><span><small>Pagamento com cartão</small>{getSafePaymentLink(organizerProfile.cardPaymentLink) ? <a href={getSafePaymentLink(organizerProfile.cardPaymentLink)} target="_blank" rel="noreferrer"><strong>Abrir link seguro de pagamento</strong></a> : <strong>Link não informado</strong>}</span></article>
     </div>
-    <aside className="organizationPrivateDataNotice">
-      <LockKeyhole aria-hidden="true" />
-      <span><strong>Dados privados continuam separados</strong><small>Chave Pix, assinatura e informações da conta nunca aparecem para visitantes.</small></span>
+    <aside className="organizationPublicPaymentNotice">
+      <CreditCard aria-hidden="true" />
+      <span><strong>Recebimentos visíveis no perfil</strong><small>Pix e link de cartão podem ser usados pelos atletas. Para evitar expor CPF ou telefone, prefira uma chave Pix aleatória ou empresarial.</small></span>
     </aside>
   </section>
   ) : null}
@@ -9001,11 +9221,11 @@ setNewPublicInfo({
         )}
       </div>
 
-      <div className="profileFormSectionHeader fullField">
-        <span>🔒</span>
+      <div className="profileFormSectionHeader fullField organizationPaymentFormHeader">
+        <span><CreditCard aria-hidden="true" /></span>
         <div>
-          <strong>Dados privados de gestão</strong>
-          <small>Não aparecem no perfil público. Nesta homologação ficam somente neste dispositivo.</small>
+          <strong>Recebimentos públicos</strong>
+          <small>Esses meios de pagamento aparecem na aba Sobre e no processo de inscrição.</small>
         </div>
       </div>
 
@@ -9017,7 +9237,19 @@ setNewPublicInfo({
           placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
           autoComplete="off"
         />
-        <small>Usada futuramente em cobranças e repasses. Nunca será exibida na página pública.</small>
+        <small>Esta chave será pública. Prefira uma chave aleatória ou empresarial para não expor dados pessoais.</small>
+      </div>
+
+      <div className="formField fullField">
+        <label>Link para pagamento com cartão de crédito</label>
+        <input
+          type="url"
+          value={organizerProfile.cardPaymentLink || ""}
+          onChange={(event) => updateOrganizerProfile("cardPaymentLink", event.target.value)}
+          placeholder="https://seu-provedor.com/pagamento"
+          autoComplete="url"
+        />
+        <small>Use o link de checkout do provedor escolhido pela organização.</small>
       </div>
 
     </div>
