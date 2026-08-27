@@ -453,10 +453,18 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
     let active = true;
     loadPublicOrganizationGallery(organizationId).then((result) => {
       if (!active) return;
-      setOrganizationGallery(result?.error ? [] : (result?.photos || []).slice(0, 6));
+      if (result?.error) {
+        setOrganizationGallery([]);
+        return;
+      }
+      const photos = (result?.photos || []).slice(0, 6);
+      const separateCoverUrl = String(bundle?.profile?.cover_url || "").trim();
+      setOrganizationGallery(separateCoverUrl
+        ? photos.filter((photoUrl) => photoUrl !== separateCoverUrl)
+        : photos.slice(1));
     });
     return () => { active = false; };
-  }, [bundle?.profile?.id, loadPublicOrganizationGallery]);
+  }, [bundle?.profile?.id, bundle?.profile?.cover_url, loadPublicOrganizationGallery]);
 
   useEffect(() => {
     if (!bundle?.profile || bundle.pagination?.enabled !== true) return;

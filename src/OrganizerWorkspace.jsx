@@ -139,6 +139,10 @@ import {
   saveMyOrganizationPaymentSettings,
 } from "./services/organizationPaymentApi.mjs";
 import {
+  loadMyOrganizationCover,
+  saveMyOrganizationCover,
+} from "./services/organizationCoverApi.mjs";
+import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
   getEffectiveTournamentGenderMode,
@@ -1241,7 +1245,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const saved = localStorage.getItem(`organizerProfile:${user.id}`);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const savedProfile = JSON.parse(saved);
+        return {
+          ...savedProfile,
+          coverUrl: savedProfile.coverUrl || profile.cover_url || "",
+        };
       } catch {
         localStorage.removeItem(`organizerProfile:${user.id}`);
       }
@@ -1249,6 +1257,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     return {
       photoUrl: profile.photo_url || "",
+      coverUrl: profile.cover_url || "",
       arenaName: profile.arena_name || "",
       organizerName: profile.name || "",
       email: user.email || "",
@@ -1277,6 +1286,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const organizationGalleryBaseRef = useRef([]);
   const [organizationGalleryStatus, setOrganizationGalleryStatus] = useState("loading");
   const [organizationGallerySaving, setOrganizationGallerySaving] = useState(false);
+  const [organizationCoverStatus, setOrganizationCoverStatus] = useState("loading");
+  const [organizationCoverSaving, setOrganizationCoverSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -1303,6 +1314,46 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       });
     return () => { active = false; };
   }, [supabase, user.id]);
+
+  useEffect(() => {
+    if (organizationGalleryStatus === "loading") return undefined;
+    let active = true;
+    const legacyGallery = organizationGalleryBaseRef.current;
+    const legacyCover = organizerProfileBaseRef.current.coverUrl || legacyGallery[0] || "";
+
+    const applyLoadedCover = ({ coverUrl, schemaAvailable }) => {
+      if (!active) return;
+      const resolvedCover = coverUrl || legacyCover;
+      const visibleGallery = resolvedCover
+        ? legacyGallery.filter((photoUrl) => photoUrl !== resolvedCover)
+        : legacyGallery;
+      const nextProfile = {
+        ...organizerProfileBaseRef.current,
+        coverUrl: resolvedCover,
+      };
+
+      organizerProfileBaseRef.current = nextProfile;
+      organizationGalleryBaseRef.current = visibleGallery;
+      setOrganizerProfile((current) => ({ ...current, coverUrl: resolvedCover }));
+      setOrganizationGallery(visibleGallery);
+      setOrganizationCoverStatus(schemaAvailable ? "ready" : "local");
+      try {
+        localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(nextProfile));
+        localStorage.setItem(`organizationGallery:${user.id}`, JSON.stringify(visibleGallery));
+      } catch (error) {
+        console.warn("Não foi possível migrar a capa antiga para o armazenamento local.", error);
+      }
+    };
+
+    loadMyOrganizationCover({ supabase, fallback: legacyCover })
+      .then(applyLoadedCover)
+      .catch((error) => {
+        console.warn("Capa separada da organização ainda não está disponível:", error);
+        applyLoadedCover({ coverUrl: legacyCover, schemaAvailable: false });
+      });
+
+    return () => { active = false; };
+  }, [organizationGalleryStatus, supabase, user.id]);
 
   useEffect(() => {
     let active = true;
@@ -3049,6 +3100,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   function organizerProfileFromRow(row, fallback = {}) {
     return {
       photoUrl: row?.photo_url ?? fallback.photoUrl ?? "",
+      coverUrl: row?.cover_url ?? fallback.coverUrl ?? "",
       arenaName: row?.arena_name ?? fallback.arenaName ?? "",
       organizerName: row?.name ?? fallback.organizerName ?? "",
       email: user.email || fallback.email || "",
@@ -3401,53 +3453,72 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function applyOrganizationProfileImage({ imageUrl }) {
     if (organizationProfileImageEditor?.kind === "cover") {
-      if (organizationGalleryStatus === "local") {
-        const nextGallery = [
-          imageUrl,
-          ...organizationGallery.filter((photoUrl) => photoUrl !== imageUrl),
-        ].slice(0, 6);
-        try {
-          localStorage.setItem(`organizationGallery:${user.id}`, JSON.stringify(nextGallery));
-          organizationGalleryBaseRef.current = nextGallery;
-          setOrganizationGallery(nextGallery);
-          closeOrganizationProfileImageEditor();
-          showNotice("success", "Capa atualizada", "A capa já aparece neste perfil. A publicação para visitantes será sincronizada quando a estrutura do banco teste estiver disponível.");
-          return true;
-        } catch (error) {
-          console.error("Erro ao salvar a capa local da organização:", error);
-          showNotice("error", "Capa não salva", "A imagem ficou grande demais para o armazenamento local. Escolha outra foto.");
-          return false;
-        }
-      }
-      if (organizationGalleryStatus !== "ready") {
-        showNotice("warning", "Capa sendo preparada", "Aguarde o carregamento das fotos da organização e tente novamente.");
+      if (organizationCoverStatus === "loading" || organizationCoverSaving) {
+        showNotice("warning", "Capa sendo preparada", "Aguarde alguns instantes e tente novamente.");
         return false;
       }
-      setOrganizationGallerySaving(true);
+      setOrganizationCoverSaving(true);
       try {
-        const { uploadOrganizationProfileGalleryPhoto } = await import("./services/mediaStorage.mjs");
-        const uploadedCover = await uploadOrganizationProfileGalleryPhoto({
-          supabase,
-          userId: user.id,
-          photoUrl: imageUrl,
-          position: 1,
-        });
-        const nextGallery = [
-          uploadedCover,
-          ...organizationGallery.filter((photoUrl) => photoUrl !== uploadedCover),
-        ].slice(0, 6);
-        const savedPhotos = await saveMyOrganizationGallery({ supabase, photoUrls: nextGallery });
-        organizationGalleryBaseRef.current = savedPhotos;
-        setOrganizationGallery(savedPhotos);
+        let savedCoverUrl = imageUrl;
+        let schemaAvailable = organizationCoverStatus === "ready";
+
+        if (schemaAvailable) {
+          const { uploadOrganizationProfileCover } = await import("./services/mediaStorage.mjs");
+          const uploadedCover = await uploadOrganizationProfileCover({
+            supabase,
+            userId: user.id,
+            coverUrl: imageUrl,
+          });
+          const savedCover = await saveMyOrganizationCover({ supabase, coverUrl: uploadedCover });
+          savedCoverUrl = savedCover.coverUrl;
+          schemaAvailable = savedCover.schemaAvailable;
+        }
+
+        const previousCoverUrl = organizerProfile.coverUrl || "";
+        const nextGallery = organizationGallery.filter((photoUrl) => (
+          photoUrl !== previousCoverUrl && photoUrl !== savedCoverUrl
+        ));
+        const nextProfile = { ...organizerProfile, coverUrl: savedCoverUrl };
+
+        organizerProfileBaseRef.current = { ...organizerProfileBaseRef.current, coverUrl: savedCoverUrl };
+        organizationGalleryBaseRef.current = nextGallery;
+        setOrganizerProfile(nextProfile);
+        setOrganizationGallery(nextGallery);
+        setOrganizationCoverStatus(schemaAvailable ? "ready" : "local");
+
+        try {
+          localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(nextProfile));
+          localStorage.setItem(`organizationGallery:${user.id}`, JSON.stringify(nextGallery));
+        } catch (storageError) {
+          if (!schemaAvailable) throw storageError;
+          console.warn("Não foi possível atualizar a cópia local da capa.", storageError);
+        }
+
+        if (organizationGalleryStatus === "ready" && nextGallery.length !== organizationGallery.length) {
+          try {
+            const savedPhotos = await saveMyOrganizationGallery({ supabase, photoUrls: nextGallery });
+            organizationGalleryBaseRef.current = savedPhotos;
+            setOrganizationGallery(savedPhotos);
+          } catch (galleryError) {
+            console.warn("A capa foi separada, mas a limpeza da galeria será repetida no próximo salvamento.", galleryError);
+          }
+        }
+
         closeOrganizationProfileImageEditor();
-        showNotice("success", "Capa atualizada", "A nova capa já foi salva no perfil público da organização.");
+        showNotice(
+          "success",
+          "Capa atualizada",
+          schemaAvailable
+            ? "A nova capa foi salva separadamente e não aparece mais na galeria de fotos."
+            : "A capa já aparece separada neste perfil. A sincronização pública será ativada quando a migração do banco teste for aplicada."
+        );
         return true;
       } catch (error) {
         console.error("Erro ao salvar a capa da organização:", error);
-        showNotice("error", "Capa não salva", "Não foi possível enviar e salvar a capa agora.");
+        showNotice("error", "Capa não salva", "Não foi possível preparar essa imagem. Escolha outra foto e tente novamente.");
         return false;
       } finally {
-        setOrganizationGallerySaving(false);
+        setOrganizationCoverSaving(false);
       }
     }
     const nextProfile = { ...organizerProfile, photoUrl: imageUrl };
@@ -3733,16 +3804,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   function removeOrganizationGalleryPhoto(index) {
     if (organizationGallerySaving) return;
     setOrganizationGallery((current) => current.filter((_, photoIndex) => photoIndex !== index));
-  }
-
-  function setOrganizationGalleryCover(index) {
-    if (organizationGallerySaving || index <= 0) return;
-    setOrganizationGallery((current) => {
-      const selectedPhoto = current[index];
-      if (!selectedPhoto) return current;
-      return [selectedPhoto, ...current.filter((_, photoIndex) => photoIndex !== index)];
-    });
-    showNotice("info", "Nova capa selecionada", "Salve as fotos para atualizar a capa pública da organização.");
   }
 
   async function saveOrganizationGallery() {
@@ -8591,21 +8652,21 @@ setNewPublicInfo({
       </label>
     ) : (
       <label
-        className={`unifiedProfilePublicCover editableProfileCover organizationProfileCoverShortcut${organizationGallery[0] ? " hasCover" : ""}`}
+        className={`unifiedProfilePublicCover editableProfileCover organizationProfileCoverShortcut${organizerProfile.coverUrl ? " hasCover" : ""}`}
         title="Escolher a capa da organização"
       >
         <input
           type="file"
           accept="image/*"
-          disabled={organizationGallerySaving}
+          disabled={organizationCoverSaving || organizationCoverStatus === "loading"}
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) openOrganizationProfileImageEditor(file, "cover");
             event.target.value = "";
           }}
         />
-        {organizationGallery[0] ? <img src={organizationGallery[0]} alt="Capa da organização" /> : null}
-        <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> {organizationGallerySaving ? "Salvando capa..." : "Alterar capa da organização"}</span>
+        {organizerProfile.coverUrl ? <img src={organizerProfile.coverUrl} alt="Capa da organização" /> : null}
+        <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> {organizationCoverSaving ? "Salvando capa..." : "Alterar capa da organização"}</span>
       </label>
     )}
     <div className="instagramProfileHeader unifiedProfileHeader">
@@ -8622,7 +8683,6 @@ setNewPublicInfo({
             }}
           />
           {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil de atleta" /> : <span><UserRound aria-hidden="true" /></span>}
-          <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
         </label>
       ) : (
         <label className="instagramProfilePhoto editableProfileAvatar organizationProfileAvatarShortcut" title="Alterar foto da organização">
@@ -8949,7 +9009,7 @@ setNewPublicInfo({
               <span><Building2 aria-hidden="true" /></span>
               <div>
                 <h3 id="organization-gallery-profile-title">Fotos da organização</h3>
-                <p>Até seis fotos institucionais. A primeira foto é usada como capa do perfil.</p>
+                <p>Até seis fotos institucionais escolhidas para esta galeria. A capa do perfil é separada.</p>
               </div>
             </div>
             <strong>{organizationGallery.length}/6</strong>
@@ -8957,11 +9017,8 @@ setNewPublicInfo({
 
           <div className="unifiedMemberGalleryGrid">
             {organizationGallery.map((photoUrl, index) => (
-              <figure className={index === 0 ? "organizationCoverPhoto" : ""} key={`${photoUrl}-${index}`}>
-                <img src={photoUrl} alt={index === 0 ? "Capa da organização" : `Foto ${index + 1} da organização`} />
-                {index === 0 ? <span className="organizationCoverBadge">Capa atual</span> : (
-                  <button type="button" className="useAsOrganizationCover" onClick={() => setOrganizationGalleryCover(index)} disabled={organizationGallerySaving}>Usar como capa</button>
-                )}
+              <figure key={`${photoUrl}-${index}`}>
+                <img src={photoUrl} alt={`Foto ${index + 1} da organização`} />
                 <button type="button" className="removeOrganizationGalleryPhoto" onClick={() => removeOrganizationGalleryPhoto(index)} disabled={organizationGallerySaving}>Remover</button>
               </figure>
             ))}

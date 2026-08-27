@@ -1,7 +1,7 @@
 .profileImageEditorOverlay {
   position: fixed;
   z-index: 10220;
-  inset: 0;
+  inset: 76px 0 0;
   display: grid;
   place-items: center;
   overflow-y: auto;
@@ -14,7 +14,7 @@
 .profileImageEditorModal {
   display: grid;
   width: min(100%, 920px);
-  max-height: calc(100dvh - 40px);
+  max-height: calc(100dvh - 116px);
   gap: 20px;
   overflow-y: auto;
   padding: 24px;
@@ -115,7 +115,7 @@
 }
 
 .profileImageEditorFrameCover {
-  aspect-ratio: 820 / 312;
+  aspect-ratio: 851 / 315;
   border-radius: 18px;
 }
 
@@ -288,11 +288,12 @@
 
 @media (max-width: 760px) {
   .profileImageEditorOverlay {
+    inset: 70px 0 0;
     padding: 8px;
   }
 
   .profileImageEditorModal {
-    max-height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 86px);
     gap: 14px;
     padding: 15px;
     border-radius: 18px;

@@ -381,18 +381,19 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 
 .organizerProfileModalBackdrop {
   position: fixed;
-  inset: 0;
+  inset: 76px 0 0;
   z-index: 10110;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 18px 24px 24px;
+  overflow-y: auto;
   background: rgba(2, 10, 24, 0.72);
   backdrop-filter: blur(8px);
 }
 
 .proDashboard.playAppShell .organizerProfileModal {
   width: min(920px, 100%);
-  max-height: min(90vh, 900px);
+  max-height: min(900px, calc(100dvh - 118px));
   margin: 0;
   overflow: auto;
   border: 1px solid var(--ui-border) !important;
@@ -458,7 +459,7 @@ html body .proDashboard.playAppShell label.organizationProfileAvatarShortcut {
   cursor: pointer;
 }
 
-.organizationProfileAvatarShortcut .profileAvatarEditBadge { display: none !important; }
+.editableProfileAvatar .profileAvatarEditBadge { display: none !important; }
 
 .profileTournamentToolbar { margin: 2px 0 10px; }
 .profileTournamentGenderFilters { margin-bottom: 16px; }
@@ -651,6 +652,7 @@ html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publi
 }
 
 @media (max-width: 760px) {
+  .organizerProfileModalBackdrop { inset: 70px 0 0; }
   .creationContextNavigation,
   .organizationAboutOverview > header { align-items: stretch; flex-direction: column; }
   .creationContextNavigation > div:last-child { width: 100%; overflow-x: auto; }
@@ -670,7 +672,7 @@ html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publi
   .organizerProfileModalBackdrop { align-items: end; padding: 0; }
   .proDashboard.playAppShell .organizerProfileModal {
     width: 100%;
-    max-height: 94vh;
+    max-height: calc(100dvh - 70px);
     border-right: 0 !important;
     border-bottom: 0 !important;
     border-left: 0 !important;

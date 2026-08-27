@@ -15,13 +15,22 @@ const IMAGE_PRESETS = {
   cover: {
     title: "Enquadrar foto de capa",
     eyebrow: "Foto de capa",
-    description: "A prévia usa a mesma proporção da capa exibida no perfil.",
-    outputWidth: 1640,
-    outputHeight: 624,
-    outputLabel: "1640 × 624 px",
+    description: "A imagem inteira aparece por padrão na proporção de capa do Facebook. Use o zoom somente se quiser aproximar.",
+    outputWidth: 1702,
+    outputHeight: 630,
+    outputLabel: "1702 × 630 px · proporção 851:315",
     frameClass: "profileImageEditorFrameCover",
+    fit: "contain",
   },
 };
+
+function getBaseScale(imageSize, preset) {
+  const widthScale = preset.outputWidth / imageSize.width;
+  const heightScale = preset.outputHeight / imageSize.height;
+  return preset.fit === "contain"
+    ? Math.min(widthScale, heightScale)
+    : Math.max(widthScale, heightScale);
+}
 
 function getPointerDistance(points) {
   return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
@@ -29,10 +38,7 @@ function getPointerDistance(points) {
 
 function clampTransform(transform, imageSize, preset) {
   if (!imageSize) return transform;
-  const baseScale = Math.max(
-    preset.outputWidth / imageSize.width,
-    preset.outputHeight / imageSize.height
-  );
+  const baseScale = getBaseScale(imageSize, preset);
   const zoom = Math.min(4, Math.max(1, Number(transform.zoom) || 1));
   const renderedWidth = imageSize.width * baseScale * zoom;
   const renderedHeight = imageSize.height * baseScale * zoom;
@@ -113,10 +119,7 @@ export default function ProfileImageEditor({
     if (!context) return false;
 
     const safeTransform = clampTransform(transform, imageSize, preset);
-    const baseScale = Math.max(
-      preset.outputWidth / imageSize.width,
-      preset.outputHeight / imageSize.height
-    );
+    const baseScale = getBaseScale(imageSize, preset);
     const renderedWidth = imageSize.width * baseScale * safeTransform.zoom;
     const renderedHeight = imageSize.height * baseScale * safeTransform.zoom;
     const outputLeft = ((preset.outputWidth - renderedWidth) / 2) + safeTransform.x;

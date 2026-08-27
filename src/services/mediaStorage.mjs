@@ -122,3 +122,13 @@ export async function uploadOrganizationProfileGalleryPhoto({ supabase, userId, 
   });
   return uploaded.publicUrl;
 }
+
+export async function uploadOrganizationProfileCover({ supabase, userId, coverUrl }) {
+  const uploaded = await uploadDataUrl({
+    supabase,
+    userId,
+    dataUrl: coverUrl,
+    kind: "organization-profile-cover",
+  });
+  return uploaded.publicUrl;
+}

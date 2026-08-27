@@ -500,6 +500,18 @@ const organizationPaymentApiSource = readFileSync(
   new URL("src/services/organizationPaymentApi.mjs", root),
   "utf8"
 );
+const organizationCoverApiSource = readFileSync(
+  new URL("src/services/organizationCoverApi.mjs", root),
+  "utf8"
+);
+const organizationCoverMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608270004_organization_profile_cover.sql", root),
+  "utf8"
+);
+const profileImageEditorSource = readFileSync(
+  new URL("src/features/profile/ProfileImageEditor.jsx", root),
+  "utf8"
+);
 const tournamentPaymentPanelSource = readFileSync(
   new URL("src/features/registration/TournamentPaymentPanel.jsx", root),
   "utf8"
@@ -5117,7 +5129,7 @@ assert.ok(
     && organizerWorkspaceSource.includes("Conta e segurança")
     && organizerWorkspaceSource.includes('profileIdentity === "athlete"')
     && organizerWorkspaceSource.includes("organizerProfile.photoUrl")
-    && organizerWorkspaceSource.includes("organizationGallery[0]"),
+    && organizerWorkspaceSource.includes("organizerProfile.coverUrl"),
   "A barra superior voltou a duplicar a identidade ou ocultou o acesso ao perfil da organização."
 );
 assert.ok(
@@ -5163,9 +5175,19 @@ assert.ok(
 );
 assert.ok(
   organizerWorkspaceSource.includes('openOrganizationProfileImageEditor(file, "cover")')
-    && organizerWorkspaceSource.includes("A nova capa já foi salva no perfil público da organização")
-    && !organizerWorkspaceSource.includes('<i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>\n        </label>\n      )}')
+    && organizerWorkspaceSource.includes("A nova capa foi salva separadamente")
+    && !organizerWorkspaceSource.includes("profileAvatarEditBadge")
     && styleSource.includes("z-index: 10110")
+    && styleSource.includes("inset: 76px 0 0")
+    && styleSource.includes("inset: 70px 0 0")
+    && profileImageEditorSource.includes("outputWidth: 1702")
+    && profileImageEditorSource.includes("outputHeight: 630")
+    && profileImageEditorSource.includes('fit: "contain"')
+    && styleSource.includes("aspect-ratio: 851 / 315")
+    && styleSource.includes("object-fit: contain")
+    && organizationCoverApiSource.includes("get_my_organization_profile_cover")
+    && organizationCoverApiSource.includes("set_my_organization_profile_cover")
+    && organizationCoverMigrationSource.includes("cover_url text not null default ''")
     && organizerWorkspaceSource.includes("Entrar no grupo do WhatsApp")
     && organizerWorkspaceSource.includes("Chave Pix pública")
     && organizerWorkspaceSource.includes("Pagamento com cartão")
@@ -5185,7 +5207,9 @@ assert.ok(
     && organizerWorkspaceSource.includes("Pesquisar torneios no perfil da organização")
     && organizerWorkspaceSource.includes("profileTournamentGenderFilters")
     && organizerWorkspaceSource.includes('setOrganizationGalleryStatus("local")')
-    && organizerWorkspaceSource.includes("A capa já aparece neste perfil")
+    && organizerWorkspaceSource.includes("A capa já aparece separada neste perfil")
+    && organizerWorkspaceSource.includes("A capa do perfil é separada")
+    && !organizerWorkspaceSource.includes("A primeira foto é usada como capa")
     && !organizerWorkspaceSource.match(/organizationProfileAvatarShortcut[\s\S]{0,900}profileAvatarEditBadge/),
   "A navegação simplificada, os filtros do perfil ou a remoção da câmera azul da organização regrediram."
 );

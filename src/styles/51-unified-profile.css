@@ -8,7 +8,9 @@
 }
 
 .unifiedProfilePublicCover {
-  height: clamp(150px, 19vw, 230px);
+  width: 100%;
+  height: auto;
+  aspect-ratio: 851 / 315;
   overflow: hidden;
   border: 1px solid var(--ui-border, #c8d4e6);
   border-radius: 18px;
@@ -21,7 +23,8 @@
 .unifiedProfilePublicCover img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .proDashboard .unifiedProfileHeader {
@@ -166,7 +169,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 820 / 312;
+  aspect-ratio: 851 / 315;
   min-height: 190px;
   overflow: hidden;
   border: 1px dashed color-mix(in srgb, var(--blue, #2563eb) 45%, transparent);
@@ -470,7 +473,7 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
 .memberProfileEditOverlay {
   position: fixed;
   z-index: 10120;
-  inset: 0;
+  inset: 76px 0 0;
   display: grid;
   place-items: center;
   overflow-y: auto;
@@ -482,7 +485,7 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
 .memberProfileEditModal {
   display: grid;
   width: min(100%, 780px);
-  max-height: min(900px, calc(100dvh - 36px));
+  max-height: min(900px, calc(100dvh - 112px));
   gap: 18px;
   overflow-y: auto;
   padding: 22px;
@@ -631,6 +634,8 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
 }
 
 @media (max-width: 760px) {
+  .memberProfileEditOverlay { inset: 70px 0 0; }
+  .memberProfileEditModal { max-height: calc(100dvh - 106px); }
   .profileIdentitySwitcher {
     grid-template-columns: 1fr;
     gap: 6px;
@@ -1179,7 +1184,8 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
 .unifiedMemberGalleryGrid figure img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .unifiedMemberGalleryGrid figure button {
@@ -1306,7 +1312,8 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   }
 
   .unifiedProfilePublicCover {
-    height: 125px;
+    height: auto;
+    aspect-ratio: 851 / 315;
     border-radius: 14px;
   }
 
@@ -1351,7 +1358,7 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   }
 
   .unifiedMemberCoverPicker {
-    aspect-ratio: 820 / 312;
+    aspect-ratio: 851 / 315;
     min-height: 125px;
   }
 

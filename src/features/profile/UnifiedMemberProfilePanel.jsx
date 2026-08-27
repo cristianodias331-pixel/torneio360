@@ -62,7 +62,7 @@ export default function UnifiedMemberProfilePanel({
           <span>{profile.coverUrl ? "Alterar capa" : "Adicionar foto de capa"}</span>
         </label>
         {profile.coverUrl ? <button type="button" onClick={onRemoveCover} disabled={loading || saving}>Remover</button> : null}
-        <small className="unifiedMemberCoverGuide">Padrão de capa: 1640 × 624 px, proporção 820:312.</small>
+        <small className="unifiedMemberCoverGuide">Padrão de capa do Facebook: proporção 851:315. A imagem inteira é preservada por padrão.</small>
       </div>
 
       <div className="unifiedMemberProfileBody" aria-busy={loading || saving}>
