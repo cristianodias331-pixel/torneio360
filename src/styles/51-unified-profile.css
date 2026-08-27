@@ -190,6 +190,7 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  grid-column: 1 / -1 !important;
   gap: 22px;
   color: var(--ui-text, #253247);
   background: var(--ui-surface-raised, #fff);
