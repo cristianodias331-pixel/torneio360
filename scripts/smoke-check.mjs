@@ -5073,6 +5073,26 @@ assert.ok(
     && publicPlatformHomeControllerSource.includes("navigatePlatform({ public: item.public_id })"),
   "A navegação pública voltou a criar uma página paralela ou a recarregar a aplicação inteira."
 );
+assert.ok(
+  !platformChromeSource.includes("Usando como")
+    && !platformChromeSource.includes("PlatformIdentityContext")
+    && organizerWorkspaceSource.includes("Abrir perfil da organização")
+    && organizerWorkspaceSource.includes('label: "Perfil da organização"'),
+  "A barra superior voltou a duplicar a identidade ou ocultou o acesso ao perfil da organização."
+);
+assert.ok(
+  publicPlatformHomeControllerSource.includes('variant="discovery"')
+    && publicArenaPresentationSource.includes("publicTournamentDiscoverySearch")
+    && publicArenaPresentationSource.includes("Encontre um torneio"),
+  "Início e Explorar voltaram a apresentar o mesmo feed sem uma experiência de descoberta."
+);
+assert.ok(
+  /\.publicTournamentPostImage\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*5/s.test(styleSource)
+    && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament.publicPage")
+    && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament .rankingTable td")
+    && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament .partnerFinder"),
+  "As publicações ou o torneio público perderam a organização visual e o contraste do modo escuro."
+);
 assert.ok(contactLinksSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");

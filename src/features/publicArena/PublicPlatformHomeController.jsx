@@ -24,6 +24,7 @@ export function PublicTournamentFeedSection({
   runtime,
   hasSession = false,
   embedded = false,
+  variant = "feed",
   onOpenTournament = null,
   onOpenOrganization = null,
   onRegister = null,
@@ -75,6 +76,7 @@ export function PublicTournamentFeedSection({
   return (
     <PublicTournamentFeedView
       embedded={embedded}
+      variant={variant}
       items={items}
       loading={loading}
       loadingMore={loadingMore}
@@ -214,7 +216,7 @@ export function PublicExploreSection({
       </nav>
 
       {activeKind === "tournaments" ? (
-        <PublicTournamentFeedSection runtime={runtime} hasSession={hasSession} embedded onOpenTournament={onOpenTournament} />
+        <PublicTournamentFeedSection runtime={runtime} hasSession={hasSession} embedded variant="discovery" onOpenTournament={onOpenTournament} />
       ) : null}
       {activeKind === "organizations" ? (
         <PublicArenaDirectoryView

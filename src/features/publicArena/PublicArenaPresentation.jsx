@@ -601,6 +601,7 @@ export function PublicMemberDirectoryView({
 
 export function PublicTournamentFeedView({
   embedded = false,
+  variant = "feed",
   items,
   loading,
   loadingMore,
@@ -617,21 +618,56 @@ export function PublicTournamentFeedView({
   onRegister,
 }) {
   const [previewImage, setPreviewImage] = React.useState(null);
+  const [discoverySearch, setDiscoverySearch] = React.useState("");
+  const discoveryMode = variant === "discovery";
+  const normalizedDiscoverySearch = discoverySearch.trim().toLocaleLowerCase("pt-BR");
+  const visibleItems = discoveryMode && normalizedDiscoverySearch
+    ? items.filter((item) => {
+      const details = item.data || {};
+      const organization = item.organization || {};
+      return [
+        item.name,
+        details.eventName,
+        details.location,
+        details.category,
+        organization.name,
+        organization.city,
+        organization.state,
+        getModalityName(item.type),
+      ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(normalizedDiscoverySearch);
+    })
+    : items;
 
   return (
-    <section id="visao-geral" className={`publicTournamentFeedSection ${embedded ? "embeddedTournamentFeed" : ""}`}>
+    <section id="visao-geral" className={`publicTournamentFeedSection ${embedded ? "embeddedTournamentFeed" : ""} ${discoveryMode ? "publicTournamentDiscovery" : ""}`.trim()}>
       <div className="publicDirectoryHeading publicFeedHeading">
-        <span>{embedded ? "Publicações" : "Visão geral"}</span>
-        <h2>Torneios publicados</h2>
-        <p>Acompanhe as publicações das organizações e abra cada evento para ver informações, jogos, ranking e inscrição.</p>
+        <span>{discoveryMode ? "Catálogo" : embedded ? "Publicações" : "Visão geral"}</span>
+        <h2>{discoveryMode ? "Encontre um torneio" : "Torneios publicados"}</h2>
+        <p>{discoveryMode
+          ? "Pesquise por nome, modalidade, categoria, local ou organização."
+          : "Acompanhe as publicações das organizações e abra cada evento para ver informações, jogos, ranking e inscrição."}</p>
       </div>
+
+      {discoveryMode ? (
+        <label className="publicTournamentDiscoverySearch">
+          <Search aria-hidden="true" />
+          <input
+            type="search"
+            value={discoverySearch}
+            onChange={(event) => setDiscoverySearch(event.target.value)}
+            placeholder="Buscar torneio, organização, modalidade ou cidade"
+            aria-label="Buscar torneios"
+          />
+        </label>
+      ) : null}
 
       {loading ? <div className="publicDirectoryState">Carregando publicações...</div>
         : error && items.length === 0 ? <div className="publicDirectoryState publicDirectoryError">{error}</div>
           : items.length === 0 ? <div className="publicDirectoryState">Ainda não há torneios publicados.</div>
             : (
               <div className="publicTournamentFeed">
-                {items.map((item) => {
+                {visibleItems.length === 0 ? <div className="publicDirectoryState">Nenhum torneio corresponde à sua busca.</div> : null}
+                {visibleItems.map((item) => {
                   const details = item.data || {};
                   const organization = item.organization || {};
                   const eventName = details.eventName || item.name;

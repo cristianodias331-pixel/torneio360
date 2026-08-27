@@ -1,68 +1,4 @@
-/* Navegação única, identidade ativa e ações contextuais. */
-.platformIdentityContext {
-  display: flex;
-  min-width: 188px;
-  height: 46px;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid rgba(141, 180, 226, .34);
-  border-radius: 13px;
-  padding: 5px 11px 5px 6px;
-  color: #f5f9ff;
-  background: rgba(255, 255, 255, .07);
-}
-
-.platformIdentityAvatar {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, .38);
-  border-radius: 10px;
-  color: #b9d5ff;
-  background: rgba(8, 31, 61, .76);
-}
-
-.platformIdentityAvatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.platformIdentityAvatar svg { width: 17px; height: 17px; }
-
-.platformIdentityCopy {
-  display: grid;
-  min-width: 0;
-  line-height: 1.05;
-}
-
-.platformIdentityCopy small {
-  color: #9fb4cc;
-  font-size: .58rem;
-  font-weight: 800;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-.platformIdentityCopy strong {
-  max-width: 145px;
-  overflow: hidden;
-  color: #f8fbff;
-  font-size: .74rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.platformIdentityCopy em {
-  margin-top: 3px;
-  color: #9fbee1;
-  font-size: .57rem;
-  font-style: normal;
-  font-weight: 700;
-}
+/* Navegação única e ações contextuais. */
 
 .creationContextNavigation {
   display: flex;
@@ -374,9 +310,191 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
   background: #132a46;
 }
 
-@media (max-width: 1180px) {
-  .platformIdentityContext { min-width: 46px; width: 46px; padding-right: 5px; }
-  .platformIdentityCopy { display: none; }
+/* Publicações: uma única coluna social no Início e cartões compactos no Explorar. */
+html body .proDashboard.playAppShell .publicTournamentPost {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-surface-raised) !important;
+  box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html body .proDashboard.playAppShell .publicTournamentPost > header {
+  background: var(--ui-surface-raised) !important;
+}
+
+html body .proDashboard.playAppShell .publicTournamentPostOrganization {
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  color: var(--ui-text-strong) !important;
+  -webkit-text-fill-color: currentColor !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.proDashboard .publicTournamentPostOrganization strong,
+.proDashboard .publicTournamentPostBody h3 { color: var(--ui-text-strong) !important; }
+.proDashboard .publicTournamentPostOrganization small,
+.proDashboard .publicTournamentPostBody > p { color: var(--ui-muted) !important; }
+
+.proDashboard .publicTournamentDiscoverySearch {
+  border-color: var(--ui-border);
+  color: var(--ui-muted);
+  background: var(--ui-input);
+}
+
+.proDashboard .publicTournamentDiscoverySearch input {
+  color: var(--ui-text-strong);
+  -webkit-text-fill-color: var(--ui-text-strong);
+}
+
+.proDashboard .publicTournamentDiscoverySearch input::placeholder {
+  color: var(--ui-muted);
+  -webkit-text-fill-color: var(--ui-muted);
+}
+
+.proDashboard.theme-dark .publicTournamentRegistrationClosed {
+  color: #fdba74;
+  background: #3a241c;
+}
+
+/* Torneio aberto dentro da plataforma: o tema escuro permanece contínuo. */
+.proDashboard.theme-dark .embeddedPublicTournament.publicPage {
+  color: var(--ui-text) !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .publicContent,
+.proDashboard.theme-dark .embeddedPublicTournament .publicEventMediaInfo,
+.proDashboard.theme-dark .embeddedPublicTournament .publicEventMediaInfoDetails {
+  color: var(--ui-text) !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .card,
+.proDashboard.theme-dark .embeddedPublicTournament .publicTournamentTabs,
+.proDashboard.theme-dark .embeddedPublicTournament .rankingTablePanel,
+.proDashboard.theme-dark .embeddedPublicTournament .rankingTableScroll,
+.proDashboard.theme-dark .embeddedPublicTournament .groupsPreviewBox,
+.proDashboard.theme-dark .embeddedPublicTournament .publicAthleteGroup,
+.proDashboard.theme-dark .embeddedPublicTournament .roundCard,
+.proDashboard.theme-dark .embeddedPublicTournament .publicBracketColumn {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-surface-raised) !important;
+  box-shadow: none !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .publicTournamentTabs {
+  background: var(--ui-surface-muted) !important;
+}
+
+html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publicTournamentTabs button {
+  border-color: transparent !important;
+  color: var(--ui-muted) !important;
+  -webkit-text-fill-color: var(--ui-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publicTournamentTabs button.active {
+  border-color: #ff6b2c !important;
+  color: #fff7ed !important;
+  -webkit-text-fill-color: #fff7ed !important;
+  background: #30241f !important;
+  box-shadow: inset 0 -3px 0 #ff6b2c !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament :is(h2, h3, .publicOrganizerHeader strong, .publicAthleteGroup h3) {
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament :is(.publicOrganizerHeader span, .publicAthleteGroup p) {
+  color: var(--ui-muted) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .publicAthleteList span,
+.proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyGame .publicGameTeams > div,
+.proDashboard.theme-dark .embeddedPublicTournament .publicBracketGame .publicBracketTeams > div {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text-strong) !important;
+  background: var(--ui-surface-muted) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyScoreRow,
+.proDashboard.theme-dark .embeddedPublicTournament .publicBracketScore,
+.proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyScoreRow > span:not(.publicScorePending),
+.proDashboard.theme-dark .embeddedPublicTournament .publicBracketScore > strong {
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .publicScorePending {
+  color: var(--ui-muted) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .publicScoreValue {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text-strong) !important;
+  background: #0d1724 !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .rankingTableHeading h3 {
+  color: var(--ui-text-strong) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .rankingTable th {
+  border-color: #2a3b50 !important;
+  color: #f8fafc !important;
+  background: #0d1724 !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .rankingTable td {
+  border-color: #2a3b50 !important;
+  color: #e7eef8 !important;
+  background: #18222f !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinder {
+  border-color: #9a4d2b !important;
+  color: var(--ui-text) !important;
+  background: linear-gradient(145deg, #2b201d, var(--ui-surface-muted)) !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinder :is(
+  .partnerFinderHero h3,
+  .partnerFinderEmpty strong,
+  .partnerInvitationEmpty strong,
+  .partnerSearchIdentity strong,
+  .partnerFinderDialog h3,
+  .partnerFinderFields label > span
+) { color: var(--ui-text-strong) !important; }
+
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinder :is(
+  .partnerFinderHero p,
+  .partnerFinderCount small,
+  .partnerFinderEmpty small,
+  .partnerInvitationEmpty small,
+  .partnerSearchIdentity p,
+  .partnerSearchIdentity blockquote
+) { color: var(--ui-muted) !important; }
+
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinderStatus {
+  border-color: var(--ui-border) !important;
+  color: #b9c8d8 !important;
+  background: #142b27 !important;
+}
+
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinderStatus span { color: #b9c8d8 !important; }
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinderStatus strong { color: #86efac !important; }
+
+.proDashboard.theme-dark .embeddedPublicTournament .partnerSearchCard,
+.proDashboard.theme-dark .embeddedPublicTournament .partnerFinderDialog {
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-surface-raised) !important;
 }
 
 @media (max-width: 760px) {
@@ -389,7 +507,6 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 }
 
 @media (max-width: 560px) {
-  .platformIdentityContext { display: none; }
   .platformExploreHeader { padding: 17px; }
   .platformExploreTabs { width: 100%; }
   .platformExploreTabs button { min-width: 108px; }

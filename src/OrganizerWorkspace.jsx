@@ -6251,7 +6251,7 @@ setNewPublicInfo({
       { panel: "inicio", label: "Início", Icon: LayoutDashboard },
       { panel: "explorar", label: "Explorar", Icon: Compass },
       { panel: "criar", label: "Criar", Icon: PlusCircle },
-      { panel: "ajustes", label: "Perfil", Icon: UserRound },
+      { panel: "ajustes", label: "Perfil da organização", Icon: UserRound },
     ];
     const sidebarActivePanel = ["criar", "circuitos", "modalidades"].includes(activePanel)
       ? "criar"
@@ -6349,13 +6349,13 @@ setNewPublicInfo({
 
           <div className="profileMenuWrap" ref={profileMenuRef}>
             <div className={`profileControl ${activePanel === "ajustes" || activePanel === "lixeira" ? "accountAreaActive" : ""}`}>
-              <button type="button" className="profileTrigger" onClick={openProfileSettings} title="Abrir configurações do perfil">
+              <button type="button" className="profileTrigger" onClick={openProfileSettings} title="Abrir perfil da organização">
                 <span className="profileAvatar" aria-hidden="true">
                   {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="" /> : <span>{profileInitials}</span>}
                 </span>
                 <span className="profileTriggerCopy">
                   <strong>{organizerProfile.arenaName || profileDisplayName}</strong>
-                  <small>Perfil da organização</small>
+                  <small>Abrir perfil da organização</small>
                 </span>
               </button>
               <button
@@ -6417,12 +6417,6 @@ setNewPublicInfo({
         sidebarExpanded={sidebarExpanded}
         onSidebarExpandedChange={setSidebarExpanded}
         tagline={TORNEIO360_TAGLINE}
-        identity={{
-          kind: "organization",
-          label: organizerProfile.arenaName || profileDisplayName,
-          subtitle: "Organização • gerencia eventos",
-          photoUrl: organizerProfile.photoUrl || memberProfile.photoUrl || "",
-        }}
         actions={actions}
       />
     );

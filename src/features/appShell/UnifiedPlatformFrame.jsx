@@ -19,7 +19,6 @@ export default function UnifiedPlatformFrame({
   eyebrow,
   accountLabel,
   canCreate = false,
-  identity = null,
   onNavigate,
   onAccountAction,
   onSignup,
@@ -90,7 +89,6 @@ export default function UnifiedPlatformFrame({
           sidebarExpanded={sidebarExpanded}
           onSidebarExpandedChange={setSidebarExpanded}
           tagline={tagline}
-          identity={identity}
           actions={topbarActions}
         />
 

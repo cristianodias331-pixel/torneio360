@@ -279,12 +279,6 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         : activePanel === "explore"
           ? "Encontre torneios, organizações e outros atletas."
           : "Acompanhe as publicações de torneios das organizações."}
-      identity={{
-        kind: "athlete",
-        label: profile.displayName || "Perfil de atleta",
-        subtitle: "Atleta • perfil pessoal",
-        photoUrl: profile.photoUrl || "",
-      }}
       accountLabel="Sair"
       onAccountAction={onLogout}
       onNavigate={navigate}
