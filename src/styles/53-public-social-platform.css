@@ -761,6 +761,155 @@
   }
 }
 
+/* Em telas menores, mantém o mesmo painel lateral deslizante da área de gestão. */
+@media (max-width: 1024px) {
+  .unifiedPlatformShell.proDashboard .playMain {
+    width: 100% !important;
+    padding: 70px 12px calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .unifiedPlatformShell.proDashboard.playAppShell button.sidebarBackdrop {
+    position: fixed !important;
+    z-index: 9995 !important;
+    inset: 70px 0 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgba(2, 8, 23, .60) !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    backdrop-filter: blur(2px) !important;
+    transition: opacity 170ms ease !important;
+    touch-action: none;
+  }
+
+  .unifiedPlatformShell.proDashboard.playAppShell button.sidebarBackdrop.visible {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .playSidebar.proSidebar.unifiedPlatformSidebar {
+    top: 70px !important;
+    right: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 10020 !important;
+    display: flex !important;
+    width: min(278px, 84vw) !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 14px 12px max(14px, env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    border-width: 0 1px 0 0 !important;
+    border-radius: 0 20px 20px 0 !important;
+    background: linear-gradient(165deg, #0b1628 0%, #111c2b 100%) !important;
+    box-shadow: 20px 0 52px rgba(2, 8, 23, .40) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(-104%) !important;
+    transition: transform 190ms ease, opacity 150ms ease !important;
+    overscroll-behavior: contain;
+  }
+
+  .unifiedPlatformShell.proDashboard .playSidebar.proSidebar.unifiedPlatformSidebar.isExpanded {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateX(0) !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarHeader {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarSectionLabel {
+    display: block !important;
+    padding: 0 9px !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarNav {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    height: auto !important;
+    gap: 7px !important;
+    padding: 0 !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 13px !important;
+    border-radius: 13px !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem.active {
+    box-shadow: inset 4px 0 0 var(--brand-highlight) !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem .navIcon,
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem .navIcon svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem small {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem::after {
+    top: 50% !important;
+    right: 12px !important;
+    bottom: auto !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarBrandAccent {
+    display: flex !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .unifiedPlatformShell.proDashboard .playMain {
+    padding-top: 64px !important;
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+  }
+
+  .unifiedPlatformShell.proDashboard .playSidebar.proSidebar.unifiedPlatformSidebar,
+  .unifiedPlatformShell.proDashboard.playAppShell button.sidebarBackdrop {
+    top: 64px !important;
+  }
+}
+
 .publicOverviewShell .publicTournamentPost {
   border-color: rgba(116, 161, 211, .24);
   background: #101f32;
