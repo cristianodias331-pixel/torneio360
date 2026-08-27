@@ -450,6 +450,7 @@ import {
 const root = new URL("../", import.meta.url);
 const mainEntrySource = readFileSync(new URL("src/main.jsx", root), "utf8");
 const organizerWorkspaceSource = readFileSync(new URL("src/OrganizerWorkspace.jsx", root), "utf8");
+const organizationProfilePresentationSource = readFileSync(new URL("src/features/profile/OrganizationProfilePresentation.jsx", root), "utf8");
 const platformChromeSource = readFileSync(new URL("src/features/appShell/PlatformChrome.jsx", root), "utf8");
 const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}\n${platformChromeSource}`;
 const lazyFeaturesSource = readFileSync(
@@ -5160,8 +5161,9 @@ assert.ok(
 );
 assert.ok(
   organizerWorkspaceSource.includes("<OrganizationRegistrantsPanel")
-    && organizerWorkspaceSource.includes("Inscritos")
-    && organizerWorkspaceSource.includes("organizationIdentityBadge")
+    && organizationProfilePresentationSource.includes("Inscritos")
+    && organizationProfilePresentationSource.includes("organizationIdentityBadge")
+    && organizerWorkspaceSource.includes("<OrganizationProfilePresentation")
     && organizerWorkspaceSource.includes("athleteIdentityBadge")
     && organizerWorkspaceSource.includes("openOrganizationProfileImageEditor")
     && organizerWorkspaceSource.includes("organizationProfileImageEditor")
@@ -5231,7 +5233,7 @@ assert.ok(
   "Início e Explorar voltaram a apresentar o mesmo feed sem uma experiência de descoberta."
 );
 assert.ok(
-  /\.publicTournamentPost\s*\{[^}]*grid-template-columns:\s*minmax\(260px,\s*32%\)/s.test(styleSource)
+  /\.publicTournamentPost\s*\{[^}]*grid-template-columns:\s*minmax\(230px,\s*31%\)/s.test(styleSource)
     && /\.publicTournamentPostImage\s+img\s*\{[^}]*object-fit:\s*contain/s.test(styleSource)
     && styleSource.includes('"poster organization"')
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament.publicPage")

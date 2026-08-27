@@ -17,13 +17,13 @@
 .publicTournamentFeed {
   display: grid;
   gap: 20px;
-  width: min(100%, 980px);
+  width: min(100%, 860px);
   margin: 28px auto 0;
 }
 
 .publicTournamentPost {
   display: grid;
-  grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+  grid-template-columns: minmax(230px, 31%) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "poster organization"
@@ -201,8 +201,41 @@
   flex-wrap: wrap;
   gap: 9px;
   align-self: stretch;
-  margin-top: auto;
+  margin-top: 8px;
   padding-top: 5px;
+}
+
+.publicTournamentPostStatusRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.publicTournamentPostStatusRow > span {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, #16965b 45%, transparent);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: #087443;
+  background: color-mix(in srgb, #18a867 10%, var(--ui-surface-raised, #fff));
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.publicTournamentPostStatusRow > span.closed {
+  border-color: color-mix(in srgb, #dd5d20 42%, transparent);
+  color: #b44315;
+  background: color-mix(in srgb, #f97316 10%, var(--ui-surface-raised, #fff));
+}
+
+.publicTournamentPostStatusRow small {
+  color: var(--ui-muted, #65758b);
+  font-size: .74rem;
+  font-weight: 800;
 }
 
 .publicTournamentPostActions button,

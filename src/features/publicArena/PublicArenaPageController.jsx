@@ -608,6 +608,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   const organizer = {
     id: profile.id,
     photoUrl: profile.photo_url || "",
+    coverUrl: profile.cover_url || "",
     arenaName,
     organizerName: profile.name || "",
     whatsapp: profile.phone || "",
@@ -672,12 +673,21 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       append: true,
     }),
   } : null;
+  const profileCounts = {
+    tournaments: bundle.pagination?.enabled === true
+      ? (eventPages?.tournaments?.active?.total || 0) + (eventPages?.tournaments?.finished?.total || 0)
+      : tournaments.length,
+    circuits: bundle.pagination?.enabled === true
+      ? (eventPages?.circuits?.active?.total || 0) + (eventPages?.circuits?.finished?.total || 0)
+      : circuits.length,
+  };
 
   return (
     <PublicArenaPageView
       arenaName={arenaName}
       organizer={organizer}
       organizationGallery={organizationGallery}
+      profileCounts={profileCounts}
       hasSession={Boolean(session)}
       onRequireLogin={() => {
         const url = new URL(window.location.origin);

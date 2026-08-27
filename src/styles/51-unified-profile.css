@@ -185,6 +185,88 @@
   padding: 18px !important;
 }
 
+/* O perfil visitado usa o mesmo quadro real do perfil do proprietário. */
+.publicOrganizationRealProfile {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  gap: 22px;
+  color: var(--ui-text, #253247);
+  background: var(--ui-surface-raised, #fff);
+}
+
+.publicOrganizationRealProfile .organizationProfileCoverShortcut {
+  cursor: default;
+}
+
+.publicOrganizationRealProfile .unifiedProfileHeader {
+  position: relative;
+  z-index: 1;
+  margin-top: -52px;
+  padding: 0 18px 8px;
+  align-items: start;
+}
+
+.publicOrganizationRealProfile .unifiedProfileHeader .instagramProfilePhoto {
+  width: 118px;
+  height: 118px;
+  border: 5px solid var(--ui-surface-raised, #fff);
+  background: var(--ui-surface-raised, #fff);
+}
+
+.publicOrganizationRealProfile .unifiedProfileHeader .instagramProfileInfo {
+  min-width: 0;
+  padding-top: 58px;
+}
+
+.publicOrganizationRealProfile :is(.instagramProfileTopline h2, .profilePublicationsHeader strong) {
+  color: var(--ui-text-strong, #102038);
+}
+
+.publicOrganizationRealProfile .profileSubtabs {
+  grid-template-columns: repeat(3, minmax(126px, 1fr)) !important;
+}
+
+.publicProfilePublicationsHeader {
+  margin-top: 8px;
+}
+
+.publicProfilePublicationsHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.publicProfilePublicationsHeader span,
+.publicOrganizationRealProfile .publicOrganizationGallerySection p {
+  color: var(--ui-muted, #637189);
+}
+
+.publicOrganizationRealProfile .publicArenaTabs,
+.publicOrganizationRealProfile .publicArenaStatusTabs,
+.publicOrganizationRealProfile .publicArenaEventCard,
+.publicOrganizationRealProfile .publicOrganizationGallerySection,
+.publicOrganizationRealProfile .publicOrganizationAboutOverview {
+  border-color: var(--ui-border, #c8d4e6);
+  background: var(--ui-surface, #fff);
+}
+
+.publicOrganizationRealProfile .publicOrganizationAboutOverview {
+  display: grid !important;
+  align-items: stretch !important;
+  gap: 18px !important;
+  padding: 20px !important;
+}
+
+.publicOrganizationRealProfile .publicOrganizationAboutOverview > header,
+.publicOrganizationRealProfile .publicOrganizationAboutOverview > .organizationAboutGrid {
+  width: 100%;
+}
+
+.publicOrganizationRealProfile .profileEmptyPost {
+  color: var(--ui-muted, #637189);
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
 .profileIdentitySwitcher {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -664,6 +746,34 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
     padding: 8px !important;
   }
 
+  .publicOrganizationRealProfile .unifiedProfileHeader {
+    margin-top: -34px;
+    padding: 0 8px 4px;
+  }
+
+  .publicOrganizationRealProfile .unifiedProfileHeader .instagramProfilePhoto {
+    width: 84px;
+    height: 84px;
+    border-width: 4px;
+  }
+
+  .publicOrganizationRealProfile .unifiedProfileHeader .instagramProfileInfo {
+    padding-top: 39px;
+  }
+
+  .publicOrganizationRealProfile .profileSubtabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+
+  .proDashboard.playAppShell .publicOrganizationRealProfile .profileSubtabs > button,
+  .proDashboard.playAppShell .publicOrganizationRealProfile .profileSubtabs > button:not(.active) {
+    min-width: 0 !important;
+    padding-right: 6px !important;
+    padding-left: 6px !important;
+  }
+
   .profileMediaEditBadge {
     right: 8px;
     bottom: 8px;
@@ -691,6 +801,18 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   .proDashboard.playAppShell .socialOwnProfileCard .profileSubtabs > button:not(.active) {
     min-width: 112px !important;
     flex: 0 0 auto !important;
+  }
+
+  .socialOwnProfileCard.publicOrganizationRealProfile .profileSubtabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+
+  .proDashboard.playAppShell .socialOwnProfileCard.publicOrganizationRealProfile .profileSubtabs > button,
+  .proDashboard.playAppShell .socialOwnProfileCard.publicOrganizationRealProfile .profileSubtabs > button:not(.active) {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
   }
 
   .profileCircuitPublicationGrid {

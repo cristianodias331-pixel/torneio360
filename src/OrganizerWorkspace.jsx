@@ -121,6 +121,7 @@ import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsMo
 import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
 import OrganizationRegistrantsPanel from "./features/profile/OrganizationRegistrantsPanel.jsx";
+import OrganizationProfilePresentation from "./features/profile/OrganizationProfilePresentation.jsx";
 import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "./features/notifications/useUnreadNotificationCount.js";
 import { createAthleteIdentityIndex, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
@@ -8753,7 +8754,24 @@ setNewPublicInfo({
 
   {profileSubtab !== "conta" ? (
   <section className="card instagramProfileCard socialOwnProfileCard">
-    {profileIdentity === "athlete" ? (
+    {profileIdentity === "organization" ? (
+      <OrganizationProfilePresentation
+        profile={organizerProfile}
+        canEdit
+        canManageRegistrants
+        activeTab={profileSubtab}
+        onTabChange={(tab) => openProfileSection(tab, "organization")}
+        onEdit={openOrganizationProfileEditor}
+        onSelectCover={(file) => openOrganizationProfileImageEditor(file, "cover")}
+        onSelectAvatar={(file) => openOrganizationProfileImageEditor(file)}
+        coverBusy={organizationCoverSaving || organizationCoverStatus === "loading"}
+        avatarBusy={profileSaving}
+        galleryCount={organizationGallery.length}
+        tournamentCount={tournaments.length}
+        circuitCount={circuits.length}
+      />
+    ) : (
+    <>
       <label className={`unifiedProfilePublicCover editableProfileCover${memberProfile.coverUrl ? " hasCover" : ""}`} title="Alterar capa do perfil de atleta">
         <input
           type="file"
@@ -8768,88 +8786,40 @@ setNewPublicInfo({
         {memberProfile.coverUrl ? <img src={memberProfile.coverUrl} alt="Capa do perfil de atleta" /> : null}
         <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> Alterar capa do atleta</span>
       </label>
-    ) : (
-      <label
-        className={`unifiedProfilePublicCover editableProfileCover organizationProfileCoverShortcut${organizerProfile.coverUrl ? " hasCover" : ""}`}
-        title="Escolher a capa da organização"
-      >
+    <div className="instagramProfileHeader unifiedProfileHeader">
+      <label className="instagramProfilePhoto editableProfileAvatar" title="Alterar foto do perfil de atleta">
         <input
           type="file"
           accept="image/*"
-          disabled={organizationCoverSaving || organizationCoverStatus === "loading"}
+          disabled={memberProfileSaving}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) openOrganizationProfileImageEditor(file, "cover");
+            if (file) openMemberProfileImageEditor(file, "photo");
             event.target.value = "";
           }}
         />
-        {organizerProfile.coverUrl ? <img src={organizerProfile.coverUrl} alt="Capa da organização" /> : null}
-        <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> {organizationCoverSaving ? "Salvando capa..." : "Alterar capa da organização"}</span>
+        {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil de atleta" /> : <span><UserRound aria-hidden="true" /></span>}
       </label>
-    )}
-    <div className="instagramProfileHeader unifiedProfileHeader">
-      {profileIdentity === "athlete" ? (
-        <label className="instagramProfilePhoto editableProfileAvatar" title="Alterar foto do perfil de atleta">
-          <input
-            type="file"
-            accept="image/*"
-            disabled={memberProfileSaving}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) openMemberProfileImageEditor(file, "photo");
-              event.target.value = "";
-            }}
-          />
-          {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil de atleta" /> : <span><UserRound aria-hidden="true" /></span>}
-        </label>
-      ) : (
-        <label className="instagramProfilePhoto editableProfileAvatar organizationProfileAvatarShortcut" title="Alterar foto da organização">
-          <input
-            type="file"
-            accept="image/*"
-            disabled={profileSaving}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) openOrganizationProfileImageEditor(file);
-              event.target.value = "";
-            }}
-          />
-          {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="Foto da organização" /> : <span><Building2 aria-hidden="true" /></span>}
-        </label>
-      )}
       <div className="instagramProfileInfo">
         <div className="instagramProfileTopline">
           <div className="organizationProfileName">
-            <h2>{profileIdentity === "athlete" ? profileDisplayName : organizerProfile.arenaName || "Minha organização"}</h2>
-            <span className={profileIdentity === "athlete" ? "athleteIdentityBadge" : "organizationIdentityBadge"}>{profileIdentity === "athlete" ? "Atleta" : "Organização"}</span>
+            <h2>{profileDisplayName}</h2>
+            <span className="athleteIdentityBadge">Atleta</span>
           </div>
-          <button type="button" className="secondaryBtn profileEditShortcut" onClick={profileIdentity === "athlete" ? () => setMemberProfileEditorOpen(true) : openOrganizationProfileEditor}>
-            <Settings aria-hidden="true" />
-            Editar {profileIdentity === "athlete" ? "atleta" : "organização"}
+          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => setMemberProfileEditorOpen(true)}>
+            <Settings aria-hidden="true" /> Editar atleta
           </button>
         </div>
-        <p className="unifiedProfileHandle">{profileIdentity === "athlete"
-          ? memberProfile.handle ? `@${memberProfile.handle}` : "Escolha seu nome de usuário"
-          : organizerProfile.instagramHandle || "Perfil oficial da organização"}</p>
-        {profileIdentity === "athlete" && memberProfile.bio ? <p className="unifiedProfileBio">{memberProfile.bio}</p> : null}
-        {profileIdentity === "organization" && organizerProfile.organizerName ? <p className="unifiedProfileBio">Responsável: {organizerProfile.organizerName}</p> : null}
-        {(profileIdentity === "athlete" ? memberProfile.city || memberProfile.state : organizerProfile.city || organizerProfile.state) ? (
-          <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {(profileIdentity === "athlete"
-            ? [memberProfile.city, memberProfile.state]
-            : [organizerProfile.city, organizerProfile.state]).filter(Boolean).join("/")}</p>
+        <p className="unifiedProfileHandle">{memberProfile.handle ? `@${memberProfile.handle}` : "Escolha seu nome de usuário"}</p>
+        {memberProfile.bio ? <p className="unifiedProfileBio">{memberProfile.bio}</p> : null}
+        {memberProfile.city || memberProfile.state ? (
+          <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {[memberProfile.city, memberProfile.state].filter(Boolean).join("/")}</p>
         ) : null}
         <div className="unifiedProfileStats" aria-label="Resumo do perfil">
-          {profileIdentity === "athlete" ? <>
-            <span><small>Categoria:</small><strong>{memberProfile.sportsCategory || "A definir"}</strong></span>
-            <span><small>Fotos:</small><strong>{memberProfile.galleryPhotos.length}</strong></span>
-            <span><small>Mão dominante:</small><strong>{memberProfile.dominantHand || "Não informado"}</strong></span>
-            <span><small>Seguidores:</small><strong>{memberProfile.followersCount || 0}</strong></span>
-          </> : <>
-            <span><strong>{organizationGallery.length}</strong><small>Fotos</small></span>
-            <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
-            <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
-            <span><strong>0</strong><small>Seguidores</small></span>
-          </>}
+          <span><small>Categoria:</small><strong>{memberProfile.sportsCategory || "A definir"}</strong></span>
+          <span><small>Fotos:</small><strong>{memberProfile.galleryPhotos.length}</strong></span>
+          <span><small>Mão dominante:</small><strong>{memberProfile.dominantHand || "Não informado"}</strong></span>
+          <span><small>Seguidores:</small><strong>{memberProfile.followersCount || 0}</strong></span>
         </div>
       </div>
     </div>
@@ -8858,14 +8828,12 @@ setNewPublicInfo({
       <button
         type="button"
         role="tab"
-        className={profileSubtab === (profileIdentity === "athlete" ? "atividades" : "publicacoes") ? "active" : ""}
-        onClick={() => openProfileSection(profileIdentity === "athlete" ? "atividades" : "publicacoes")}
-        aria-selected={profileSubtab === (profileIdentity === "athlete" ? "atividades" : "publicacoes")}
+        className={profileSubtab === "atividades" ? "active" : ""}
+        onClick={() => openProfileSection("atividades", "athlete")}
+        aria-selected={profileSubtab === "atividades"}
       >
-        {profileIdentity === "athlete" ? <Trophy aria-hidden="true" /> : <Grid3X3 aria-hidden="true" />}
-        {profileIdentity === "athlete" ? "Torneios/Circuitos" : "Publicações"}
+        <Trophy aria-hidden="true" /> Torneios/Circuitos
       </button>
-      {profileIdentity === "athlete" ? <>
       <button
         type="button"
         role="tab"
@@ -8886,12 +8854,11 @@ setNewPublicInfo({
         <Swords aria-hidden="true" />
         Desafios
       </button>
-      </> : null}
       <button
         type="button"
         role="tab"
         className={profileSubtab === "fotos" ? "active" : ""}
-        onClick={() => openProfileSection("fotos")}
+        onClick={() => openProfileSection("fotos", "athlete")}
         aria-selected={profileSubtab === "fotos"}
       >
         <Images aria-hidden="true" />
@@ -8901,36 +8868,24 @@ setNewPublicInfo({
         type="button"
         role="tab"
         className={profileSubtab === "contato" ? "active" : ""}
-        onClick={() => openProfileSection("contato")}
+        onClick={() => openProfileSection("contato", "athlete")}
         aria-selected={profileSubtab === "contato"}
       >
         <AtSign aria-hidden="true" />
         Sobre
       </button>
-      {profileIdentity === "athlete" ? (
-        <button
-          type="button"
-          role="tab"
-          className={profileSubtab === "conquistas" ? "active" : ""}
-          onClick={() => openProfileSection("conquistas", "athlete")}
-          aria-selected={profileSubtab === "conquistas"}
-        >
-          <Award aria-hidden="true" />
-          Conquistas
-        </button>
-      ) : (
-        <button
-          type="button"
-          role="tab"
-          className={profileSubtab === "inscritos" ? "active" : ""}
-          onClick={() => openProfileSection("inscritos", "organization")}
-          aria-selected={profileSubtab === "inscritos"}
-        >
-          <Users aria-hidden="true" />
-          Inscritos
-        </button>
-      )}
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "conquistas" ? "active" : ""}
+        onClick={() => openProfileSection("conquistas", "athlete")}
+        aria-selected={profileSubtab === "conquistas"}
+      >
+        <Award aria-hidden="true" /> Conquistas
+      </button>
     </div>
+    </>
+    )}
 
     {profileSubtab === "publicacoes" && profileIdentity === "organization" ? (
       <div className="profileSubtabPanel">

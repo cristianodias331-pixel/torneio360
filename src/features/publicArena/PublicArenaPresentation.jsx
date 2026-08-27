@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { BeachLogo } from "../appShell/EntryPresentation.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
+import OrganizationProfilePresentation from "../profile/OrganizationProfilePresentation.jsx";
 
 export function PublicImageLightbox({ image, onClose }) {
   React.useEffect(() => {
@@ -279,6 +280,7 @@ export function PublicArenaPageView({
   arenaName,
   organizer,
   organizationGallery = [],
+  profileCounts = { tournaments: 0, circuits: 0 },
   hasSession = false,
   onRequireLogin,
   pageClassName = "publicArenaRealPage",
@@ -309,6 +311,7 @@ export function PublicArenaPageView({
   const initialVisibleItems = 8;
   const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
   const [previewImage, setPreviewImage] = React.useState(null);
+  const [activeProfileTab, setActiveProfileTab] = React.useState("publicacoes");
 
   React.useEffect(() => {
     setVisibleLimit(initialVisibleItems);
@@ -331,40 +334,44 @@ export function PublicArenaPageView({
 
   return (
     <div className={`publicPage publicArenaPage ${pageClassName} ${embedded ? "embeddedPublicOrganizationProfile" : ""}`.trim()}>
-      {!embedded ? <HeroHeader arenaName={arenaName} organizer={organizer} label={heroLabel} /> : (
-        <section className="embeddedOrganizationIdentity">
-          <span className="embeddedOrganizationAvatar">
-            {organizer.photoUrl ? <img src={organizer.photoUrl} alt={`Foto de ${arenaName}`} /> : getDirectoryInitials(arenaName)}
-          </span>
-          <div>
-            <small>Organização</small>
-            <h1>{arenaName}</h1>
-            {organizer.organizerName ? <p>{organizer.organizerName}</p> : null}
-            {[organizer.city, organizer.state].filter(Boolean).length > 0
-              ? <span><MapPin aria-hidden="true" /> {[organizer.city, organizer.state].filter(Boolean).join("/")}</span>
-              : null}
-          </div>
-        </section>
-      )}
-
       <main className="publicContent publicArenaContent">
-        <section className="card publicArenaContacts">
-          <div><h2>Eventos da organização</h2><p>{contactDescription}</p></div>
-          <div className="publicOrganizerLinks">
-            {organizer.whatsapp ? <a href={getWhatsAppUrl(organizer.whatsapp)} target="_blank" rel="noreferrer"><MessageCircle aria-hidden="true" /> WhatsApp</a> : null}
-            {organizer.whatsappGroupLink ? <a href={organizer.whatsappGroupLink} target="_blank" rel="noreferrer"><Users aria-hidden="true" /> Grupo do WhatsApp</a> : null}
-            {organizer.instagramLink ? <a href={organizer.instagramLink} target="_blank" rel="noreferrer"><AtSign aria-hidden="true" /> Instagram</a> : null}
-            {organizer.mapsLink ? <a href={organizer.mapsLink} target="_blank" rel="noreferrer"><MapPin aria-hidden="true" /> Google Maps</a> : null}
-            {organizer.address ? <span><MapPin aria-hidden="true" /> {organizer.address}</span> : null}
-            {organizer.pixKey ? <span><CreditCard aria-hidden="true" /> Pix: {organizer.pixKey}</span> : null}
-            {organizer.cardPaymentLink ? <a href={organizer.cardPaymentLink} target="_blank" rel="noreferrer"><CreditCard aria-hidden="true" /> Pagar com cartão</a> : null}
+        <section className="card instagramProfileCard socialOwnProfileCard publicOrganizationRealProfile">
+          <OrganizationProfilePresentation
+            profile={organizer}
+            canEdit={false}
+            canManageRegistrants={false}
+            activeTab={activeProfileTab}
+            onTabChange={setActiveProfileTab}
+            galleryCount={organizationGallery.length}
+            tournamentCount={profileCounts.tournaments}
+            circuitCount={profileCounts.circuits}
+          />
+
+        {activeProfileTab === "contato" ? (
+        <section className="publicArenaContacts organizationAboutOverview publicOrganizationAboutOverview">
+          <header>
+            <div>
+              <span>Sobre a organização</span>
+              <h2>{arenaName}</h2>
+              <p>{contactDescription}</p>
+            </div>
+          </header>
+          <div className="organizationAboutGrid">
+            <article><UserRound aria-hidden="true" /><span><small>Responsável</small><strong>{organizer.organizerName || "Não informado"}</strong></span></article>
+            <article><MapPin aria-hidden="true" /><span><small>Endereço</small><strong>{[organizer.city, organizer.state].filter(Boolean).join("/") || "Não informado"}</strong><em>{organizer.address || "Endereço não informado"}</em>{organizer.mapsLink ? <a href={organizer.mapsLink} target="_blank" rel="noreferrer">Abrir no mapa</a> : null}</span></article>
+            <article><MessageCircle aria-hidden="true" /><span><small>WhatsApp</small>{organizer.whatsapp ? <a href={getWhatsAppUrl(organizer.whatsapp)} target="_blank" rel="noreferrer"><strong>{organizer.whatsapp}</strong></a> : <strong>Não informado</strong>}</span></article>
+            <article><AtSign aria-hidden="true" /><span><small>Instagram</small>{organizer.instagramLink ? <a href={organizer.instagramLink} target="_blank" rel="noreferrer"><strong>{organizer.instagramHandle || "Abrir Instagram"}</strong></a> : <strong>{organizer.instagramHandle || "Não informado"}</strong>}</span></article>
+            <article><Users aria-hidden="true" /><span><small>Grupo da organização</small>{organizer.whatsappGroupLink ? <a href={organizer.whatsappGroupLink} target="_blank" rel="noreferrer"><strong>Entrar no grupo do WhatsApp</strong></a> : <strong>Link não informado</strong>}</span></article>
+            <article><CreditCard aria-hidden="true" /><span><small>Chave Pix pública</small><strong>{organizer.pixKey || "Não informada"}</strong></span></article>
+            <article><CreditCard aria-hidden="true" /><span><small>Pagamento com cartão</small>{organizer.cardPaymentLink ? <a href={organizer.cardPaymentLink} target="_blank" rel="noreferrer"><strong>Abrir link seguro de pagamento</strong></a> : <strong>Link não informado</strong>}</span></article>
           </div>
         </section>
+        ) : null}
 
-        {organizationGallery.length > 0 ? (
-          <section className="card publicOrganizationGallerySection">
+        {activeProfileTab === "fotos" ? (
+          <section className="publicOrganizationGallerySection profileSubtabPanel profilePhotosPanel">
             <header><div><h2>Fotos da organização</h2><p>Galeria institucional do perfil.</p></div><span>{organizationGallery.length}/6</span></header>
-            <div className="publicOrganizationGalleryGrid">
+            {organizationGallery.length > 0 ? <div className="publicOrganizationGalleryGrid">
               {organizationGallery.map((photoUrl, index) => (
                 <button
                   type="button"
@@ -376,10 +383,14 @@ export function PublicArenaPageView({
                   <span><ZoomIn aria-hidden="true" /></span>
                 </button>
               ))}
-            </div>
+            </div> : <div className="profileEmptyPost">Esta organização ainda não adicionou fotos à galeria.</div>}
           </section>
         ) : null}
 
+        {activeProfileTab === "publicacoes" ? <>
+        <div className="profilePublicationsHeader publicProfilePublicationsHeader">
+          <div><strong>Publicações</strong><span>Torneios e circuitos publicados pela organização</span></div>
+        </div>
         <nav className="publicArenaTabs" aria-label="Conteúdo público da organização">
           <button type="button" className={activeArenaTab === "tournaments" ? "active" : ""} onClick={() => onArenaTabChange("tournaments")}><Trophy aria-hidden="true" /> Torneios</button>
           <button type="button" className={activeArenaTab === "circuits" ? "active" : ""} onClick={() => onArenaTabChange("circuits")}><GitBranch aria-hidden="true" /> Circuitos</button>
@@ -446,6 +457,8 @@ export function PublicArenaPageView({
               {serverPagination?.loading ? "Carregando mais eventos..." : "Mostrar mais eventos"} <span>{remainingItems}</span>
             </button>
           ) : null}
+        </section>
+        </> : null}
         </section>
       </main>
       <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
@@ -682,6 +695,7 @@ export function PublicTournamentFeedView({
                     || details.coverImageUrl
                     || "";
                   const registrationOpen = isRegistrationOpen(getRegistrationDeadline(item));
+                  const registrationDeadline = getRegistrationDeadline(item);
                   const registrationUrl = registrationOpen
                     ? getWhatsAppUrl(organization.phone, `Olá! Quero me inscrever em ${eventName} pelo Torneio360.`)
                     : "";
@@ -715,14 +729,19 @@ export function PublicTournamentFeedView({
                         <h3>{eventName}</h3>
                         <p>
                           {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDate(details.eventDate)}</span> : null}
+                          {details.eventStartTime ? <span>Início {details.eventStartTime}</span> : null}
                           {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
                           {details.category ? <span>{details.category}</span> : null}
                         </p>
+                        <div className="publicTournamentPostStatusRow">
+                          <span className={registrationOpen ? "open" : "closed"}>{registrationOpen ? "Inscrições abertas" : "Inscrições encerradas"}</span>
+                          {registrationOpen && registrationDeadline ? <small>Até {formatDate(registrationDeadline)}</small> : null}
+                        </div>
                         <div className="publicTournamentPostActions">
                           <button type="button" onClick={() => onOpenTournament(item)}>Ver torneio</button>
                           {registrationOpen
                             ? <button type="button" className="publicTournamentRegisterButton" onClick={() => onRegister(registrationUrl, item)}><ClipboardCheck aria-hidden="true" /> Inscrever-se</button>
-                            : <span className="publicTournamentRegistrationClosed">Inscrições encerradas</span>}
+                            : null}
                         </div>
                       </div>
                     </article>
