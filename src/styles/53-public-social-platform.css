@@ -17,11 +17,18 @@
 .publicTournamentFeed {
   display: grid;
   gap: 20px;
-  width: min(100%, 620px);
+  width: min(100%, 980px);
   margin: 28px auto 0;
 }
 
 .publicTournamentPost {
+  display: grid;
+  grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "poster organization"
+    "poster content";
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border, #d7e2f0);
   border-radius: 16px;
@@ -30,7 +37,9 @@
 }
 
 .publicTournamentPost > header {
-  padding: 12px 14px;
+  grid-area: organization;
+  min-width: 0;
+  padding: 20px 22px 12px;
 }
 
 .publicTournamentPostOrganization {
@@ -87,29 +96,25 @@
 .publicTournamentPostImage {
   position: relative;
   display: grid;
+  grid-area: poster;
   width: 100%;
   min-height: 0;
-  height: clamp(360px, 60vh, 560px);
-  aspect-ratio: auto;
+  height: 100%;
+  aspect-ratio: 4 / 5;
   place-items: center;
   overflow: hidden;
   border: 0;
-  padding: 0;
+  border-right: 1px solid var(--border, #d7e2f0);
+  padding: 10px;
   background: #081629;
   cursor: zoom-in;
-}
-
-@media (max-width: 760px) {
-  .publicTournamentPostImage {
-    height: min(112vw, 430px);
-  }
 }
 
 .publicTournamentPostImage img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
 }
 
@@ -133,6 +138,7 @@
 
 .publicTournamentPostFallback {
   display: grid;
+  grid-area: poster;
   min-height: 280px;
   place-items: center;
   align-content: center;
@@ -148,8 +154,11 @@
 
 .publicTournamentPostBody {
   display: grid;
+  grid-area: content;
+  min-width: 0;
   gap: 8px;
-  padding: 14px 15px 16px;
+  align-content: start;
+  padding: 4px 22px 22px;
 }
 
 .publicTournamentPostBody > small {
@@ -189,6 +198,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
+  align-self: end;
+  margin-top: clamp(12px, 3vw, 28px);
   padding-top: 5px;
 }
 
@@ -256,13 +267,13 @@
 }
 
 .publicTournamentDiscovery .publicTournamentFeed {
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  width: 100%;
+  width: min(100%, 980px);
 }
 
 .publicTournamentDiscovery .publicTournamentPostImage {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4 / 5;
 }
 
 .publicTournamentDiscovery .publicTournamentPostFallback {
@@ -544,6 +555,7 @@
 
 .platformEntityHeader {
   display: flex;
+  box-sizing: border-box;
   width: min(100%, 1180px);
   align-items: center;
   justify-content: space-between;
@@ -554,6 +566,19 @@
   padding: 18px 20px;
   background: var(--ui-surface-raised, #112238);
   color: var(--ui-text, #eaf3ff);
+}
+
+.embeddedPublicTournament > .platformEntityHeader,
+.embeddedPublicTournament > .embeddedEntityContent {
+  box-sizing: border-box !important;
+  width: min(100%, 1180px) !important;
+  max-width: 1180px !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+}
+
+.embeddedPublicTournament > .platformEntityHeader {
+  margin-bottom: 18px !important;
 }
 
 .platformEntityHeader > div {
@@ -1114,11 +1139,27 @@
   }
 
   .publicTournamentPost {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "organization"
+      "poster"
+      "content";
     border-radius: 16px;
   }
 
   .publicTournamentPostImage {
-    min-height: 240px;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 4 / 5;
+    border-right: 0;
+    border-top: 1px solid var(--ui-border, #d7e2f0);
+    border-bottom: 1px solid var(--ui-border, #d7e2f0);
+    padding: 8px;
+  }
+
+  .publicTournamentPostFallback {
+    min-height: min(88vw, 360px);
   }
 
   .publicMemberDirectoryGrid {
@@ -1159,6 +1200,10 @@
   .publicTournamentPostBody,
   .publicTournamentPost > header {
     padding: 13px;
+  }
+
+  .publicTournamentPostBody {
+    padding-top: 14px;
   }
 
   .publicTournamentPostActions > * {

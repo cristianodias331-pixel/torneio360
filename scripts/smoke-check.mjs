@@ -5231,8 +5231,9 @@ assert.ok(
   "Início e Explorar voltaram a apresentar o mesmo feed sem uma experiência de descoberta."
 );
 assert.ok(
-  /\.publicTournamentPostImage\s*\{[^}]*height:\s*clamp\(360px,\s*60vh,\s*560px\)/s.test(styleSource)
-    && /\.publicTournamentPostImage\s+img\s*\{[^}]*object-fit:\s*cover/s.test(styleSource)
+  /\.publicTournamentPost\s*\{[^}]*grid-template-columns:\s*minmax\(260px,\s*32%\)/s.test(styleSource)
+    && /\.publicTournamentPostImage\s+img\s*\{[^}]*object-fit:\s*contain/s.test(styleSource)
+    && styleSource.includes('"poster organization"')
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament.publicPage")
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament .rankingTable td")
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament .partnerFinder"),

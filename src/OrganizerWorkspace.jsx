@@ -6614,7 +6614,9 @@ setNewPublicInfo({
                   onClick={openProfileSettings}
                   aria-current={activePanel === "ajustes" && profileIdentity === "organization" && profileSubtab !== "conta" ? "page" : undefined}
                 >
-                  <Building2 aria-hidden="true" />
+                  <span className={`profileDropdownAvatar${organizerProfile.photoUrl ? " hasPhoto" : ""}`} aria-hidden="true">
+                    {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="" /> : <Building2 />}
+                  </span>
                   <span><strong>Perfil da organização</strong><small>Torneios, circuitos e contatos</small></span>
                 </button>
                 <button
@@ -6624,7 +6626,9 @@ setNewPublicInfo({
                   onClick={openAthleteProfile}
                   aria-current={activePanel === "ajustes" && profileIdentity === "athlete" && profileSubtab !== "conta" ? "page" : undefined}
                 >
-                  <UserRound aria-hidden="true" />
+                  <span className={`profileDropdownAvatar${memberProfile.photoUrl ? " hasPhoto" : ""}`} aria-hidden="true">
+                    {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="" /> : <UserRound />}
+                  </span>
                   <span><strong>Meu perfil de atleta</strong><small>Dados pessoais e esportivos</small></span>
                 </button>
                 <div className="profileDropdownDivider" />
@@ -8727,7 +8731,9 @@ setNewPublicInfo({
         aria-selected={profileIdentity === "athlete"}
         onClick={() => openProfileSection("atividades", "athlete")}
       >
-        <span className="profileIdentitySwitcherIcon"><UserRound aria-hidden="true" /></span>
+        <span className={`profileIdentitySwitcherIcon${memberProfile.photoUrl ? " hasPhoto" : ""}`} aria-hidden="true">
+          {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="" /> : <UserRound />}
+        </span>
         <span><strong>Meu perfil de atleta</strong><small>Dados pessoais e esportivos</small></span>
       </button>
       <button
@@ -8737,7 +8743,9 @@ setNewPublicInfo({
         aria-selected={profileIdentity === "organization"}
         onClick={() => openProfileSection("publicacoes", "organization")}
       >
-        <span className="profileIdentitySwitcherIcon"><Building2 aria-hidden="true" /></span>
+        <span className={`profileIdentitySwitcherIcon${organizerProfile.photoUrl ? " hasPhoto" : ""}`} aria-hidden="true">
+          {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="" /> : <Building2 />}
+        </span>
         <span><strong>Perfil da organização</strong><small>Torneios, circuitos e contatos</small></span>
       </button>
     </nav>

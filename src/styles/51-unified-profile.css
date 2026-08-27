@@ -224,9 +224,27 @@ html body .proDashboard.playAppShell .profileIdentitySwitcher > button {
   width: 42px;
   height: 42px;
   place-items: center;
+  overflow: hidden;
   border-radius: 12px;
   color: #2563eb;
   background: color-mix(in srgb, #2563eb 11%, var(--ui-surface-raised, #fff));
+}
+
+.profileIdentitySwitcherIcon.hasPhoto {
+  border: 2px solid color-mix(in srgb, #2563eb 50%, var(--ui-border, #c8d4e6));
+  border-radius: 50%;
+  background: var(--ui-surface-raised, #fff);
+}
+
+.profileIdentitySwitcher .organization .profileIdentitySwitcherIcon.hasPhoto {
+  border-color: color-mix(in srgb, #10b981 54%, var(--ui-border, #c8d4e6));
+}
+
+.profileIdentitySwitcherIcon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profileIdentitySwitcher .organization .profileIdentitySwitcherIcon {
