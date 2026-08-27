@@ -78,16 +78,16 @@
 .publicContent .partnerFinder .partnerInvitationEmpty strong,
 .publicContent .partnerFinder .partnerSearchIdentity strong,
 .publicContent .partnerFinder .partnerFinderDialog h3,
-.publicContent .partnerFinder .partnerFinderFields label > span { color: #10233d; }
+.publicContent .partnerFinder .partnerFinderFields label > span { color: #10233d !important; }
 .publicContent .partnerFinder .partnerFinderHero p,
 .publicContent .partnerFinder .partnerFinderCount small,
 .publicContent .partnerFinder .partnerFinderEmpty small,
 .publicContent .partnerFinder .partnerInvitationEmpty small,
 .publicContent .partnerFinder .partnerSearchIdentity p,
-.publicContent .partnerFinder .partnerSearchIdentity blockquote { color: #52627a; }
+.publicContent .partnerFinder .partnerSearchIdentity blockquote { color: #52627a !important; }
 .publicContent .partnerFinder .partnerFinderStatus,
-.publicContent .partnerFinder .partnerFinderStatus span { color: #52627a; }
-.publicContent .partnerFinder .partnerFinderStatus strong { color: #155e46; }
+.publicContent .partnerFinder .partnerFinderStatus span { color: #52627a !important; }
+.publicContent .partnerFinder .partnerFinderStatus strong { color: #155e46 !important; }
 
 @media (max-width: 680px) {
   .partnerFinderHero { grid-template-columns: 44px minmax(0, 1fr); padding: 14px; }
