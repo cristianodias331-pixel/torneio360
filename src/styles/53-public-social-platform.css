@@ -153,11 +153,12 @@
 }
 
 .publicTournamentPostBody {
-  display: grid;
+  display: flex;
   grid-area: content;
   min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
-  align-content: start;
   padding: 4px 22px 22px;
 }
 
@@ -196,10 +197,11 @@
 
 .publicTournamentPostActions {
   display: flex;
+  width: 100%;
   flex-wrap: wrap;
   gap: 9px;
-  align-self: end;
-  margin-top: clamp(12px, 3vw, 28px);
+  align-self: stretch;
+  margin-top: auto;
   padding-top: 5px;
 }
 
@@ -1042,6 +1044,11 @@
   box-shadow: var(--ui-shadow-soft) !important;
 }
 
+html body .proDashboard.playAppShell .publicTournamentPostImage {
+  border-color: var(--ui-border) !important;
+  background: #081629 !important;
+}
+
 .proDashboard .embeddedTournamentFeed .publicTournamentPostBody h3 {
   color: var(--ui-text-strong) !important;
 }
@@ -1204,6 +1211,10 @@
 
   .publicTournamentPostBody {
     padding-top: 14px;
+  }
+
+  .publicTournamentPostActions {
+    margin-top: 12px;
   }
 
   .publicTournamentPostActions > * {

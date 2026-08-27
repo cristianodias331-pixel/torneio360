@@ -59,7 +59,7 @@ const registrantStyles = read("src/styles/58-organization-registrants.css");
 assert.ok(chrome.includes("navUnreadDot") && notificationHook.includes("!item.read_at"), "O sino perdeu o indicador de não visualizadas.");
 assert.ok(notifications.includes("automaticViewRef") && notifications.includes("broadcastUnreadNotificationCount(0)"), "Abrir a central deve registrar a visualização.");
 assert.ok(lightbox.includes("createPortal") && lightbox.includes("document.body"), "A imagem ampliada voltou a ficar sob a barra superior.");
-assert.ok(feedStyles.includes("grid-template-columns: minmax(260px, 32%)") && feedStyles.includes('"poster organization"') && feedStyles.includes("object-fit: contain"), "A publicação perdeu o cartão horizontal com o cartaz completo.");
+assert.ok(feedStyles.includes("grid-template-columns: minmax(260px, 32%)") && feedStyles.includes('"poster organization"') && feedStyles.includes("object-fit: contain") && feedStyles.includes("background: #081629 !important"), "A publicação perdeu o cartão horizontal com o cartaz completo.");
 assert.ok(feedStyles.includes(".embeddedPublicTournament > .platformEntityHeader") && feedStyles.includes("max-width: 1180px !important"), "O cabeçalho do torneio voltou a ficar desalinhado do conteúdo.");
 assert.ok(organizerWorkspace.includes('profileIdentitySwitcherIcon${memberProfile.photoUrl') && organizerWorkspace.includes('profileIdentitySwitcherIcon${organizerProfile.photoUrl'), "O seletor de perfis deixou de usar as fotos do atleta e da organização.");
 assert.ok(registrants.includes("Formar duplas com inscritos individuais") && registrants.includes("pairSelectedRegistrations"), "A organização perdeu a montagem de duplas.");
