@@ -43,6 +43,26 @@ function normalizeOption(value, fallback) {
   return String(value || "").trim() || fallback;
 }
 
+function getRegistrationTime(value) {
+  const timestamp = Date.parse(value || "");
+  return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER;
+}
+
+function formatRegistrationTimestamp(value) {
+  const timestamp = Date.parse(value || "");
+  if (!Number.isFinite(timestamp)) return "Horário não informado";
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(timestamp)).replace(",", " às");
+}
+
 export default function OrganizationRegistrantsPanel({ supabase, tournaments = [] }) {
   const [state, setState] = useState({ status: "loading", registrations: [], schemaAvailable: true, error: "" });
   const [search, setSearch] = useState("");
@@ -92,6 +112,24 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     partner: registrations.filter((item) => item.looking_for_partner).length,
   }), [registrations]);
 
+  const registrationOrder = useMemo(() => {
+    const byTournament = new Map();
+    registrations.forEach((registration) => {
+      const tournamentId = String(registration.tournament?.id || registration.tournament_id || "sem-torneio");
+      if (!byTournament.has(tournamentId)) byTournament.set(tournamentId, []);
+      byTournament.get(tournamentId).push(registration);
+    });
+
+    const order = new Map();
+    byTournament.forEach((items) => {
+      items
+        .sort((first, second) => getRegistrationTime(first.created_at) - getRegistrationTime(second.created_at)
+          || String(first.id).localeCompare(String(second.id)))
+        .forEach((registration, index) => order.set(String(registration.id), index + 1));
+    });
+    return order;
+  }, [registrations]);
+
   const options = useMemo(() => ({
     tournaments: [...new Map(registrations.map((item) => [String(item.tournament?.id), { value: String(item.tournament?.id), label: item.tournament?.name || "Torneio" }])).values()],
     categories: [...new Set(registrations.map((item) => item.categoryLabel))].sort((a, b) => a.localeCompare(b, "pt-BR")),
@@ -131,7 +169,14 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
       }
       group.divisions.get(divisionKey).registrations.push(registration);
     });
-    return [...grouped.values()].map((group) => ({ ...group, divisions: [...group.divisions.values()] }));
+    return [...grouped.values()].map((group) => ({
+      ...group,
+      divisions: [...group.divisions.values()].map((division) => ({
+        ...division,
+        registrations: division.registrations.sort((first, second) => getRegistrationTime(first.created_at) - getRegistrationTime(second.created_at)
+          || String(first.id).localeCompare(String(second.id))),
+      })),
+    }));
   }, [visibleRegistrations]);
 
   async function reviewRegistration(registration, decision) {
@@ -224,7 +269,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
             <div className="organizationRegistrantList">{division.registrations.map((registration) => (
               <div className="organizationRegistrantRow" key={registration.id}>
                 <button type="button" className="organizationRegistrantAvatar" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt="" /> : getInitials(registration.athlete_name)}</button>
-                <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small></div>
+                <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small><small className="organizationRegistrantChronology"><Clock3 aria-hidden="true" /> <strong>{registrationOrder.get(String(registration.id)) || "—"}º inscrito</strong> · {formatRegistrationTimestamp(registration.created_at)}</small></div>
                 <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
                 <div className="organizationRegistrantActions">
                   {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Comprovante</button> : null}

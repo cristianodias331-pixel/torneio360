@@ -61,6 +61,7 @@ export default function TournamentRegistrationPanel({
   const [state, setState] = useState({ status: viewer?.id ? "loading" : "guest", checkout: null, schemaAvailable: true, error: "" });
   const [form, setForm] = useState(() => ({
     athleteName: getViewerName(viewer),
+    athleteHandle: "",
     category: String(viewer?.user_metadata?.category || data?.category || "").trim(),
     dominantHand: String(viewer?.user_metadata?.dominant_hand || "Não informado").trim(),
     partnerHandle: "",
@@ -81,6 +82,7 @@ export default function TournamentRegistrationPanel({
       setForm((current) => ({
         ...current,
         athleteName: checkout?.athlete?.display_name || checkout?.registration?.athlete_name || current.athleteName,
+        athleteHandle: checkout?.athlete?.handle || checkout?.registration?.athlete_handle || current.athleteHandle,
         category: checkout?.registration?.category || checkout?.athlete?.sports_category || current.category,
         dominantHand: checkout?.athlete?.dominant_hand || current.dominantHand,
         partnerHandle: checkout?.registration?.partner_handle || current.partnerHandle,
@@ -107,7 +109,9 @@ export default function TournamentRegistrationPanel({
       try {
         const result = await findTournamentPartnerByHandle({ supabase, tournamentId: tournament.id, handle: form.partnerHandle });
         if (!active) return;
-        setPartnerLookup(result.partner
+        setPartnerLookup(result.partner?.is_self
+          ? { status: "self", partner: null, error: "Esse é o seu próprio perfil. Informe o @ de outro atleta para formar a dupla." }
+          : result.partner
           ? { status: "found", partner: result.partner, error: "" }
           : { status: "not-found", partner: null, error: "Nenhum atleta encontrado com esse endereço único." });
       } catch (error) {
@@ -119,6 +123,10 @@ export default function TournamentRegistrationPanel({
 
   async function submitPayment({ receipt, paymentMethod }) {
     if (busy) return;
+    if (!form.athleteHandle.trim()) {
+      setNotice("Cadastre primeiro o endereço único (@) no seu perfil de atleta.");
+      return;
+    }
     if (pairCompetition && form.partnerHandle.trim() && partnerLookup.status !== "found") {
       setNotice(partnerLookup.error || "Confirme o endereço único do atleta antes de finalizar a inscrição.");
       return;
@@ -193,10 +201,10 @@ export default function TournamentRegistrationPanel({
           <section className="registrationAthleteData">
             <header><UserRound aria-hidden="true" /><div><strong>Dados aproveitados do seu perfil</strong><small>Você pode ajustar apenas o necessário para este torneio.</small></div></header>
             <div className="registrationAthleteFields">
-              <label><span>Nome do atleta</span><input value={form.athleteName} onChange={(event) => setForm((current) => ({ ...current, athleteName: event.target.value }))} /></label>
+              <label className="registrationOwnIdentityField"><span>Atleta que está se inscrevendo</span><div className="registrationHandleInput"><b>@</b><input value={form.athleteHandle} readOnly placeholder="Cadastre seu endereço único" /></div><small>{form.athleteHandle ? `${form.athleteName} · perfil de atleta identificado` : "Abra Meu perfil de atleta e escolha seu endereço único antes de se inscrever."}</small></label>
               <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
               <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
-              {pairCompetition ? <label className="registrationPartnerHandleField"><span>Endereço único do atleta da dupla</span><div className="registrationHandleInput"><b>@</b><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="nome.unico" /></div><small>O atleta receberá uma notificação para aceitar ou recusar a dupla.</small></label> : null}
+              {pairCompetition ? <label className="registrationPartnerHandleField"><span>Endereço único do outro atleta da dupla</span><div className="registrationHandleInput"><b>@</b><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="outro.atleta" /></div><small>Não use o seu próprio @. O outro atleta receberá uma notificação para aceitar ou recusar.</small></label> : null}
             </div>
             {pairCompetition && form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
               {partnerLookup.status === "loading" ? <><RefreshCw className="spinning" aria-hidden="true" /><span>Verificando o perfil...</span></> : null}

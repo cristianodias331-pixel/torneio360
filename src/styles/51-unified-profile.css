@@ -32,7 +32,7 @@
   z-index: 1;
   margin-top: -52px;
   padding: 0 18px 8px;
-  align-items: end;
+  align-items: start;
 }
 
 .proDashboard .unifiedProfileHeader .instagramProfilePhoto {
@@ -230,8 +230,8 @@ html body .proDashboard.playAppShell .profileIdentitySwitcher > button {
 }
 
 .profileIdentitySwitcher .organization .profileIdentitySwitcherIcon {
-  color: #ea580c;
-  background: color-mix(in srgb, #f97316 12%, var(--ui-surface-raised, #fff));
+  color: #059669;
+  background: color-mix(in srgb, #10b981 12%, var(--ui-surface-raised, #fff));
 }
 
 .profileIdentitySwitcherIcon svg { width: 20px; height: 20px; }
@@ -248,8 +248,8 @@ html body .proDashboard.playAppShell .profileIdentitySwitcher > button.active {
 }
 
 html body .proDashboard.playAppShell .profileIdentitySwitcher > button.organization.active {
-  border-color: #f97316 !important;
-  box-shadow: inset 0 -3px 0 #f97316, 0 7px 18px rgba(124, 45, 18, .08) !important;
+  border-color: #10b981 !important;
+  box-shadow: inset 0 -3px 0 #10b981, 0 7px 18px rgba(5, 150, 105, .1) !important;
 }
 
 .organizationProfileCoverShortcut {

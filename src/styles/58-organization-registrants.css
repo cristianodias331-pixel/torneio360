@@ -340,6 +340,25 @@
 .organizationRegistrantIdentity strong { color: var(--ui-heading); }
 .organizationRegistrantIdentity small { color: var(--ui-muted); }
 
+.organizationRegistrantIdentity .organizationRegistrantChronology {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: color-mix(in srgb, var(--ui-muted) 86%, #0f67d8);
+  font-variant-numeric: tabular-nums;
+}
+
+.organizationRegistrantChronology svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+.organizationRegistrantIdentity .organizationRegistrantChronology strong {
+  color: var(--ui-heading);
+  font-size: inherit;
+}
+
 .organizationRegistrantBadges {
   display: flex;
   gap: 6px;
