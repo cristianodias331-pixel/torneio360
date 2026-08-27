@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Award,
   ArrowLeft,
@@ -7,30 +7,33 @@ import {
   ExternalLink,
   Grid3X3,
   Images,
-  MapPin,
   Share2,
   UserRound,
   X,
   ZoomIn,
 } from "lucide-react";
-import { loadPublicMemberProfile } from "../../services/memberProfileApi.mjs";
+import {
+  loadPublicMemberProfile,
+  loadPublicMemberPublications,
+} from "../../services/memberProfileApi.mjs";
 import { navigatePlatform } from "../../domain/platformNavigation.mjs";
+import {
+  MemberProfileIdentityCard,
+  MemberProfileTabs,
+} from "./MemberProfilePresentation.jsx";
 import "../../styles/52-public-member-profile.css";
-
-function getInitials(name) {
-  return String(name || "T3")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toLocaleUpperCase("pt-BR"))
-    .join("") || "T3";
-}
 
 export default function PublicMemberProfilePage({ supabase, identifier, embedded = false }) {
   const [state, setState] = useState({ status: "loading", profile: null, organization: null });
   const [lightboxPhoto, setLightboxPhoto] = useState("");
   const [shareFeedback, setShareFeedback] = useState("");
   const [activeTab, setActiveTab] = useState("publicacoes");
+  const [publications, setPublications] = useState({
+    status: "idle",
+    tournaments: [],
+    circuits: [],
+    error: "",
+  });
 
   useEffect(() => {
     let active = true;
@@ -56,6 +59,32 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
   }, [identifier, supabase]);
 
   useEffect(() => {
+    const organizationId = state.organization?.id;
+    if (!organizationId) {
+      setPublications({ status: "ready", tournaments: [], circuits: [], error: "" });
+      return undefined;
+    }
+
+    let active = true;
+    setPublications({ status: "loading", tournaments: [], circuits: [], error: "" });
+    loadPublicMemberPublications({ supabase, organizationId })
+      .then((result) => {
+        if (!active) return;
+        setPublications({
+          status: "ready",
+          tournaments: result.tournaments,
+          circuits: result.circuits,
+          error: result.error ? "Algumas publicações não puderam ser carregadas." : "",
+        });
+      })
+      .catch((error) => {
+        console.warn("Não foi possível carregar as publicações do perfil:", error);
+        if (active) setPublications({ status: "ready", tournaments: [], circuits: [], error: "Não foi possível carregar as publicações agora." });
+      });
+    return () => { active = false; };
+  }, [state.organization?.id, supabase]);
+
+  useEffect(() => {
     if (!lightboxPhoto) return undefined;
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
@@ -68,10 +97,6 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [lightboxPhoto]);
-
-  const location = useMemo(() => (
-    [state.profile?.city, state.profile?.state].filter(Boolean).join("/")
-  ), [state.profile?.city, state.profile?.state]);
 
   async function shareProfile() {
     const shareData = {
@@ -128,6 +153,14 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
 
   const { profile, organization } = state;
   const galleryPhotos = profile.galleryPhotos || [];
+  const summaryItems = [
+    { value: galleryPhotos.length, label: "Fotos" },
+    ...(organization ? [
+      { value: publications.tournaments.length, label: "Torneios" },
+      { value: publications.circuits.length, label: "Circuitos" },
+    ] : [{ value: "Atleta", label: "Perfil esportivo" }]),
+    { value: profile.followersCount || 0, label: "Seguidores" },
+  ];
 
   return (
     <div className={`publicMemberPage${embedded ? " embeddedPublicMemberProfile" : ""}`}>
@@ -147,53 +180,9 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
       </header> : null}
 
       <main className="publicMemberContent">
-        <article className="publicMemberIdentityCard">
-          <div className={`publicMemberCover${profile.coverUrl ? " hasImage" : ""}`}>
-            {profile.coverUrl ? <img src={profile.coverUrl} alt={`Capa do perfil de ${profile.displayName}`} /> : null}
-          </div>
+        <MemberProfileIdentityCard profile={profile} summaryItems={summaryItems} />
 
-          <div className="publicMemberIdentity">
-            <div className="publicMemberAvatar">
-              {profile.photoUrl
-                ? <img src={profile.photoUrl} alt={`Foto de ${profile.displayName}`} />
-                : <span>{getInitials(profile.displayName)}</span>}
-            </div>
-
-            <div className="publicMemberCopy">
-              <div className="publicMemberNameRow">
-                <div>
-                  <h1>{profile.displayName}</h1>
-                  <p>{profile.handle ? `@${profile.handle}` : "Perfil Torneio 360"}</p>
-                </div>
-              </div>
-            </div>
-
-            {profile.bio ? <p className="publicMemberBio">{profile.bio}</p> : null}
-            {location ? <p className="publicMemberLocation"><MapPin aria-hidden="true" /> {location}</p> : null}
-
-            <div className="publicMemberSummary">
-              <span><strong>{galleryPhotos.length}</strong><small>Fotos</small></span>
-              <span><strong>{profile.followersCount || 0}</strong><small>Seguidores</small></span>
-              <span><strong>Atleta</strong><small>Perfil esportivo</small></span>
-              {organization ? <span><strong>1</strong><small>Organização</small></span> : null}
-            </div>
-          </div>
-        </article>
-
-        <nav className="publicMemberProfileTabs" aria-label="Seções do perfil">
-          <button type="button" className={activeTab === "publicacoes" ? "active" : ""} onClick={() => setActiveTab("publicacoes")}>
-            <Grid3X3 aria-hidden="true" /> Publicações
-          </button>
-          <button type="button" className={activeTab === "fotos" ? "active" : ""} onClick={() => setActiveTab("fotos")}>
-            <Images aria-hidden="true" /> Fotos
-          </button>
-          <button type="button" className={activeTab === "contato" ? "active" : ""} onClick={() => setActiveTab("contato")}>
-            <AtSign aria-hidden="true" /> Informações de contato
-          </button>
-          <button type="button" className={activeTab === "conquistas" ? "active" : ""} onClick={() => setActiveTab("conquistas")}>
-            <Award aria-hidden="true" /> Conquistas
-          </button>
-        </nav>
+        <MemberProfileTabs activeTab={activeTab} onChange={setActiveTab} />
 
         {activeTab === "fotos" ? <section className="publicMemberSection publicMemberGallerySection">
           <header>
@@ -227,11 +216,50 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
         </section> : null}
 
         {activeTab === "publicacoes" && organization ? (
-          <section className="publicMemberSection publicMemberOrganization">
+          <section className="publicMemberSection publicMemberPublicationsSection">
             <header>
-              <div><Building2 aria-hidden="true" /><h2>Organização</h2></div>
+              <div><Grid3X3 aria-hidden="true" /><h2>Publicações</h2></div>
+              <span>{publications.tournaments.length} torneio(s) · {publications.circuits.length} circuito(s)</span>
             </header>
-            <div className="publicMemberOrganizationCard">
+
+            {publications.status === "loading" ? (
+              <div className="publicMemberPublicationsState" role="status">Carregando torneios e circuitos...</div>
+            ) : null}
+
+            {publications.status === "ready" && (publications.tournaments.length > 0 || publications.circuits.length > 0) ? (
+              <div className="publicMemberPublicationGrid">
+                {publications.tournaments.map((item) => {
+                  const details = item.data || {};
+                  const cover = details.coverImageThumbnailUrl || details.coverImageUrl || details.eventCoverImageThumbnailUrl || details.eventCoverImageUrl;
+                  return (
+                    <article className="publicMemberPublicationCard" key={`tournament-${item.id}`}>
+                      {cover ? <img src={cover} alt={`Foto de ${item.name}`} /> : <span><Grid3X3 aria-hidden="true" /></span>}
+                      <div><small>Torneio</small><strong>{item.name}</strong><p>{details.location || "Publicação da organização"}</p></div>
+                      <button type="button" onClick={() => navigatePlatform({ public: item.public_id })}>Abrir <ExternalLink aria-hidden="true" /></button>
+                    </article>
+                  );
+                })}
+                {publications.circuits.map((item) => {
+                  const settings = item.ranking_settings || item.rankingSettings || {};
+                  const cover = settings.coverImageThumbnailUrl || settings.coverImageUrl;
+                  return (
+                    <article className="publicMemberPublicationCard" key={`circuit-${item.id}`}>
+                      {cover ? <img src={cover} alt={`Foto de ${item.name}`} /> : <span><Award aria-hidden="true" /></span>}
+                      <div><small>Circuito</small><strong>{item.name}</strong><p>{(item.tournament_ids || item.tournamentIds || []).length} torneio(s)</p></div>
+                      <button type="button" onClick={() => navigatePlatform({ organizacao: organization.id })}>Abrir <ExternalLink aria-hidden="true" /></button>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {publications.status === "ready" && publications.tournaments.length === 0 && publications.circuits.length === 0 ? (
+              <div className="publicMemberEmptyProfileSection"><Grid3X3 aria-hidden="true" /><strong>Nenhuma publicação disponível</strong><span>Os torneios e circuitos publicados aparecerão aqui.</span></div>
+            ) : null}
+
+            {publications.error ? <p className="publicMemberPublicationsError">{publications.error}</p> : null}
+
+            <div className="publicMemberOrganizationCard publicMemberPublicationOrganization">
               <span className="publicMemberOrganizationLogo">
                 {organization.photo_url
                   ? <img src={organization.photo_url} alt={`Foto de ${organization.name}`} />
@@ -239,12 +267,10 @@ export default function PublicMemberProfilePage({ supabase, identifier, embedded
               </span>
               <div>
                 <strong>{organization.name}</strong>
-                {[organization.city, organization.state].filter(Boolean).length > 0
-                  ? <small>{[organization.city, organization.state].filter(Boolean).join("/")}</small>
-                  : <small>Torneios e circuitos publicados</small>}
+                <small>{[organization.city, organization.state].filter(Boolean).join("/") || "Organização vinculada"}</small>
               </div>
               <button type="button" onClick={() => navigatePlatform({ organizacao: organization.id })}>
-                Ver torneios e circuitos <ExternalLink aria-hidden="true" />
+                Ver organização <ExternalLink aria-hidden="true" />
               </button>
             </div>
           </section>

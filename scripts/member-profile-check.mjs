@@ -7,6 +7,7 @@ import {
   toMemberProfileRpcPayload,
   validateMemberProfile,
 } from "../src/domain/memberProfile.mjs";
+import { loadPublicMemberPublications } from "../src/services/memberProfileApi.mjs";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -60,4 +61,20 @@ const galleryOverflow = validateMemberProfile({
 });
 assert(!galleryOverflow.valid, "A sétima foto deve ser rejeitada.");
 
-console.log("Perfil unificado: perfil público, galeria e payload passaram.");
+const publicationCalls = [];
+const publicationResult = await loadPublicMemberPublications({
+  supabase: {
+    rpc: async (name, payload) => {
+      publicationCalls.push({ name, payload });
+      return { data: { items: [{ id: `${payload.p_kind}-1` }] }, error: null };
+    },
+  },
+  organizationId: "organization-1",
+});
+assert(publicationCalls.length === 2, "O perfil público deve consultar torneios e circuitos.");
+assert(publicationCalls.every((call) => call.name === "list_public_arena_events_page"), "As publicações devem usar a paginação pública existente.");
+assert(publicationCalls.every((call) => call.payload.p_organizer_id === "organization-1"), "As publicações devem permanecer limitadas à organização vinculada.");
+assert(publicationResult.tournaments.length === 1, "Os torneios públicos devem chegar à aba Publicações.");
+assert(publicationResult.circuits.length === 1, "Os circuitos públicos devem chegar à aba Publicações.");
+
+console.log("Perfil unificado: perfil público, galeria, publicações e payload passaram.");

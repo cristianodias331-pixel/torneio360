@@ -84,6 +84,33 @@ export async function loadPublicMemberProfile({ supabase, identifier }) {
   };
 }
 
+export async function loadPublicMemberPublications({ supabase, organizationId, limit = 6 }) {
+  if (!organizationId) {
+    return { tournaments: [], circuits: [], error: null };
+  }
+
+  const normalizedLimit = Math.max(1, Math.min(Number(limit) || 6, 12));
+  const loadKind = (kind) => supabase.rpc("list_public_arena_events_page", {
+    p_organizer_id: organizationId,
+    p_public_id: null,
+    p_kind: kind,
+    p_status: "active",
+    p_limit: normalizedLimit,
+    p_offset: 0,
+  });
+
+  const [tournamentsResult, circuitsResult] = await Promise.all([
+    loadKind("tournaments"),
+    loadKind("circuits"),
+  ]);
+
+  return {
+    tournaments: Array.isArray(tournamentsResult.data?.items) ? tournamentsResult.data.items : [],
+    circuits: Array.isArray(circuitsResult.data?.items) ? circuitsResult.data.items : [],
+    error: tournamentsResult.error || circuitsResult.error || null,
+  };
+}
+
 export async function fetchPublicMemberDirectory({
   supabase,
   search = "",

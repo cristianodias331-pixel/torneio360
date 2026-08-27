@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Award, AtSign, Grid3X3, ImagePlus, Images, MapPin } from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -12,11 +13,16 @@ import {
   uploadMemberProfilePhoto,
 } from "../../services/mediaStorage.mjs";
 import { loadMyMemberProfile, saveMyMemberProfile } from "../../services/memberProfileApi.mjs";
-import UnifiedMemberProfilePanel from "./UnifiedMemberProfilePanel.jsx";
+import MemberProfileDetailsModal from "./MemberProfileDetailsModal.jsx";
+import {
+  MemberProfileIdentityCard,
+  MemberProfileTabs,
+} from "./MemberProfilePresentation.jsx";
 import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 import { PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
+import "../../styles/52-public-member-profile.css";
 
 export default function MemberProfileWorkspace({ supabase, user, accessProfile, onLogout, publicPlatformHomeRuntime }) {
   const fallback = useMemo(() => createMemberProfileFallback({ user, accessProfile }), [accessProfile?.name, user?.email, user?.id]);
@@ -27,6 +33,8 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState(null);
   const [activePanel, setActivePanel] = useState("overview");
+  const [activeProfileTab, setActiveProfileTab] = useState("publicacoes");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
 
   useEffect(() => {
@@ -82,10 +90,13 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     });
   }
 
-  function applyImageEditor({ imageUrl }) {
-    updateProfile(imageEditor?.kind === "cover" ? "coverUrl" : "photoUrl", imageUrl);
-    closeImageEditor();
-    return true;
+  async function applyImageEditor({ imageUrl }) {
+    const field = imageEditor?.kind === "cover" ? "coverUrl" : "photoUrl";
+    const nextProfile = { ...profile, [field]: imageUrl };
+    setProfile(nextProfile);
+    const saved = await saveProfile(nextProfile);
+    if (saved) closeImageEditor();
+    return saved;
   }
 
   async function selectGalleryPhotos(files) {
@@ -121,21 +132,22 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   }
 
-  async function saveProfile() {
+  async function saveProfile(profileOverride = null) {
     if (!user?.id || saving) return;
-    const validation = validateMemberProfile(profile);
+    const requestedProfile = profileOverride?.userId ? profileOverride : profile;
+    const validation = validateMemberProfile(requestedProfile);
     setErrors(validation.errors);
     if (!validation.valid) {
       setNotice({ tone: "warning", message: "Corrija os campos indicados antes de salvar." });
-      return;
+      return false;
     }
     if (status === "unavailable") {
       setNotice({ tone: "warning", message: "A estrutura do perfil ainda não foi aplicada ao banco de teste." });
-      return;
+      return false;
     }
     if (JSON.stringify(validation.profile) === JSON.stringify(baseProfileRef.current)) {
       setNotice({ tone: "info", message: "Seu perfil já está atualizado." });
-      return;
+      return true;
     }
 
     setSaving(true);
@@ -167,12 +179,13 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
       if (!result.schemaAvailable) {
         setStatus("unavailable");
         setNotice({ tone: "warning", message: "A estrutura do perfil ainda não foi aplicada ao banco de teste." });
-        return;
+        return false;
       }
       baseProfileRef.current = result.profile;
       setProfile(result.profile);
       setStatus("ready");
       setNotice({ tone: "success", message: "Perfil esportivo atualizado com sucesso." });
+      return true;
     } catch (error) {
       console.error("Erro ao salvar o perfil esportivo:", error);
       const duplicateHandle = String(error?.code || "") === "23505"
@@ -182,9 +195,15 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         tone: "error",
         message: duplicateHandle ? "Escolha outro nome de usuário." : "Não foi possível salvar o perfil agora.",
       });
+      return false;
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveDetailsAndClose() {
+    const saved = await saveProfile();
+    if (saved) setDetailsOpen(false);
   }
 
   function navigate(panel) {
@@ -222,28 +241,123 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           onApply={applyImageEditor}
         />
       ) : null}
+      <MemberProfileDetailsModal
+        open={detailsOpen}
+        profile={profile}
+        errors={errors}
+        loading={status === "loading"}
+        saving={saving}
+        schemaAvailable={status !== "unavailable"}
+        onChange={updateProfile}
+        onClose={() => { if (!saving) setDetailsOpen(false); }}
+        onSave={saveDetailsAndClose}
+      />
       {activePanel === "overview" ? (
         publicPlatformHomeRuntime ? (
           <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded />
         ) : null
       ) : (
-        <UnifiedMemberProfilePanel
-          profile={profile}
-          organizationName=""
-          errors={errors}
-          loading={status === "loading"}
-          saving={saving}
-          schemaAvailable={status !== "unavailable"}
-          onChange={updateProfile}
-          onPhotoFile={(file) => openImageEditor(file, "photo")}
-          onRemovePhoto={() => updateProfile("photoUrl", "")}
-          onCoverFile={(file) => openImageEditor(file, "cover")}
-          onRemoveCover={() => updateProfile("coverUrl", "")}
-          onGalleryFiles={selectGalleryPhotos}
-          onRemoveGalleryPhoto={removeGalleryPhoto}
-          onOpenPublicProfile={openPublicProfile}
-          onSave={saveProfile}
-        />
+        <div className="memberProfileOwnExperience">
+          {!status || status === "loading" ? <div className="memberProfileOwnLoading" role="status">Carregando seu perfil...</div> : null}
+          {status === "unavailable" ? (
+            <div className="unifiedMemberSchemaNotice" role="status">
+              A nova estrutura do perfil ainda não foi aplicada ao banco de homologação. Seus dados atuais permanecem intactos.
+            </div>
+          ) : null}
+
+          <MemberProfileIdentityCard
+            profile={profile}
+            editable
+            busy={saving || status === "loading"}
+            summaryItems={[
+              { value: profile.galleryPhotos.length, label: "Fotos" },
+              { value: "Atleta", label: "Perfil esportivo" },
+              { value: profile.followersCount || 0, label: "Seguidores" },
+            ]}
+            onCoverFile={(file) => openImageEditor(file, "cover")}
+            onPhotoFile={(file) => openImageEditor(file, "photo")}
+            onEdit={() => setDetailsOpen(true)}
+            onView={openPublicProfile}
+          />
+
+          <MemberProfileTabs activeTab={activeProfileTab} onChange={setActiveProfileTab} />
+
+          {activeProfileTab === "publicacoes" ? (
+            <section className="publicMemberSection publicMemberEmptyProfileSection">
+              <Grid3X3 aria-hidden="true" />
+              <strong>Nenhuma publicação disponível</strong>
+              <span>Torneios e circuitos das organizações vinculadas aparecerão aqui.</span>
+            </section>
+          ) : null}
+
+          {activeProfileTab === "fotos" ? (
+            <section className="publicMemberSection unifiedMemberGalleryEditor" aria-labelledby="athlete-profile-gallery-title">
+              <header>
+                <div>
+                  <span><Images aria-hidden="true" /></span>
+                  <div>
+                    <h3 id="athlete-profile-gallery-title">Fotos do perfil</h3>
+                    <p>Até seis fotos. Elas aparecem no seu perfil sem curtidas nem comentários.</p>
+                  </div>
+                </div>
+                <strong>{profile.galleryPhotos.length}/{MAX_MEMBER_GALLERY_PHOTOS}</strong>
+              </header>
+
+              <div className="unifiedMemberGalleryGrid">
+                {profile.galleryPhotos.map((photoUrl, index) => (
+                  <figure key={`${photoUrl}-${index}`}>
+                    <img src={photoUrl} alt={`Foto ${index + 1} do perfil`} />
+                    <button type="button" onClick={() => removeGalleryPhoto(index)} disabled={saving}>Remover</button>
+                  </figure>
+                ))}
+                {profile.galleryPhotos.length < MAX_MEMBER_GALLERY_PHOTOS ? (
+                  <label className="unifiedMemberGalleryAdd">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={saving}
+                      onChange={(event) => {
+                        const files = Array.from(event.target.files || []);
+                        if (files.length) selectGalleryPhotos(files);
+                        event.target.value = "";
+                      }}
+                    />
+                    <ImagePlus aria-hidden="true" />
+                    <strong>Adicionar fotos</strong>
+                    <small>Restam {MAX_MEMBER_GALLERY_PHOTOS - profile.galleryPhotos.length}</small>
+                  </label>
+                ) : null}
+              </div>
+              {errors.galleryPhotos ? <small className="unifiedMemberFieldError">{errors.galleryPhotos}</small> : null}
+              <div className="profilePhotosActions">
+                <button type="button" className="saveProfileBtn actionConfirmBtn" onClick={() => saveProfile()} disabled={saving || status === "unavailable"}>
+                  {saving ? "Salvando..." : "Salvar fotos"}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {activeProfileTab === "contato" ? (
+            <section className="publicMemberSection memberProfileOwnContact">
+              <header><div><AtSign aria-hidden="true" /><h2>Informações de contato</h2></div></header>
+              <div>
+                <MapPin aria-hidden="true" />
+                <span><strong>Localização pública</strong><small>{[profile.city, profile.state].filter(Boolean).join("/") || "Não informada"}</small></span>
+              </div>
+              <p>Dados pessoais de contato não são publicados automaticamente.</p>
+              <button type="button" className="secondaryBtn" onClick={() => setDetailsOpen(true)}>Editar informações do perfil</button>
+            </section>
+          ) : null}
+
+          {activeProfileTab === "conquistas" ? (
+            <section className="publicMemberSection publicMemberEmptyProfileSection">
+              <Award aria-hidden="true" />
+              <strong>Conquistas</strong>
+              <span>Resultados e títulos reconhecidos pela plataforma aparecerão aqui.</span>
+            </section>
+          ) : null}
+        </div>
       )}
     </UnifiedPlatformFrame>
   );
