@@ -677,7 +677,7 @@
     padding-left: 84px !important;
   }
 
-  .unifiedPlatformShell .unifiedPlatformSidebar {
+  .unifiedPlatformShell.proDashboard .playSidebar.proSidebar.unifiedPlatformSidebar {
     top: 76px !important;
     right: auto !important;
     bottom: 0 !important;
@@ -690,12 +690,12 @@
     transition: width 180ms ease, box-shadow 180ms ease !important;
   }
 
-  .unifiedPlatformShell .unifiedPlatformSidebar.isExpanded {
+  .unifiedPlatformShell.proDashboard .playSidebar.proSidebar.unifiedPlatformSidebar.isExpanded {
     width: 232px !important;
     box-shadow: 18px 0 48px rgba(8, 26, 73, .30) !important;
   }
 
-  .unifiedPlatformSidebar .sidebarSectionLabel {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarSectionLabel {
     width: 154px !important;
     max-width: 0 !important;
     padding: 0 !important;
@@ -705,31 +705,31 @@
     transition: max-width 140ms ease, opacity 120ms ease, padding 140ms ease !important;
   }
 
-  .unifiedPlatformSidebar.isExpanded .sidebarSectionLabel {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar.isExpanded .sidebarSectionLabel {
     max-width: 154px !important;
     padding-left: 9px !important;
     opacity: 1 !important;
   }
 
-  .unifiedPlatformSidebar .sidebarNav {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarNav {
     width: 216px !important;
   }
 
-  .unifiedPlatformSidebar .playNavItem {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem {
     justify-content: center !important;
     width: 48px !important;
     padding: 0 !important;
     transition: width 160ms ease, padding 160ms ease, background-color 140ms ease !important;
   }
 
-  .unifiedPlatformSidebar.isExpanded .playNavItem {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar.isExpanded .playNavItem {
     justify-content: flex-start !important;
     width: 216px !important;
     padding: 0 13px !important;
   }
 
-  .unifiedPlatformSidebar .playNavItem small,
-  .unifiedPlatformSidebar .sidebarBrandAccent small {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem small,
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarBrandAccent small {
     max-width: 0 !important;
     overflow: hidden !important;
     opacity: 0 !important;
@@ -737,25 +737,25 @@
     transition: max-width 150ms ease, opacity 110ms ease, transform 140ms ease !important;
   }
 
-  .unifiedPlatformSidebar.isExpanded .playNavItem small,
-  .unifiedPlatformSidebar.isExpanded .sidebarBrandAccent small {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar.isExpanded .playNavItem small,
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar.isExpanded .sidebarBrandAccent small {
     max-width: 150px !important;
     opacity: 1 !important;
     transform: translateX(0) !important;
   }
 
-  .unifiedPlatformSidebar .sidebarBrandAccent {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .sidebarBrandAccent {
     width: 216px !important;
     padding-right: 13px !important;
     padding-left: 20px !important;
   }
 
-  .unifiedPlatformSidebar .playNavItem::after {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar .playNavItem::after {
     right: 4px !important;
     opacity: 0 !important;
   }
 
-  .unifiedPlatformSidebar.isExpanded .playNavItem:is(.active, [aria-current="page"])::after {
+  .unifiedPlatformShell.proDashboard .unifiedPlatformSidebar.isExpanded .playNavItem:is(.active, [aria-current="page"])::after {
     right: 12px !important;
     opacity: 1 !important;
   }

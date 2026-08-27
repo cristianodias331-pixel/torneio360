@@ -3940,7 +3940,7 @@ assert.ok(
     && styleSource.includes("@media (min-width: 1025px)")
     && styleSource.includes("button.sidebarMobileToggle")
     && styleSource.includes("padding-left: 84px !important")
-    && styleSource.includes(".unifiedPlatformShell .unifiedPlatformSidebar")
+    && styleSource.includes(".unifiedPlatformShell.proDashboard .playSidebar.proSidebar.unifiedPlatformSidebar")
     && styleSource.includes("translateX(-104%)")
     && styleSource.includes("@media (max-width: 1024px)")
     && styleSource.includes("button.sidebarBackdrop.visible"),
