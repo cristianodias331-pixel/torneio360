@@ -5209,7 +5209,7 @@ assert.ok(
   "A capa, o modal, os dados públicos ou a preparação segura do pagamento da organização regrediram."
 );
 assert.ok(
-  organizerWorkspaceSource.includes('const navItems = [\n      { panel: "inicio", label: "Início", Icon: LayoutDashboard },\n      { panel: "notificacoes", label: "Notificações", Icon: Bell },\n      { panel: "ajustes", label: "Perfis", Icon: UserRound },')
+  organizerWorkspaceSource.includes('const navItems = [\n      { panel: "inicio", label: "Início", Icon: LayoutDashboard },\n      { panel: "notificacoes", label: "Notificações", Icon: Bell, unreadCount: unreadNotificationCount },\n      { panel: "ajustes", label: "Perfis", Icon: UserRound },')
     && !unifiedPlatformFrameSource.includes('label: "Explorar"')
     && !unifiedPlatformFrameSource.includes('label: "Criar"')
     && organizerWorkspaceSource.includes("profileTournamentToolbar")
@@ -5229,7 +5229,8 @@ assert.ok(
   "Início e Explorar voltaram a apresentar o mesmo feed sem uma experiência de descoberta."
 );
 assert.ok(
-  /\.publicTournamentPostImage\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*5/s.test(styleSource)
+  /\.publicTournamentPostImage\s*\{[^}]*height:\s*clamp\(360px,\s*60vh,\s*560px\)/s.test(styleSource)
+    && /\.publicTournamentPostImage\s+img\s*\{[^}]*object-fit:\s*cover/s.test(styleSource)
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament.publicPage")
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament .rankingTable td")
     && styleSource.includes(".proDashboard.theme-dark .embeddedPublicTournament .partnerFinder"),

@@ -22,6 +22,7 @@ import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./AthleteProfileActivity.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 import NotificationCenter from "../notifications/NotificationCenter.jsx";
+import useUnreadNotificationCount from "../notifications/useUnreadNotificationCount.js";
 import { PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
@@ -50,6 +51,7 @@ function saveLocalAthleteDetails(userId, profile) {
 }
 
 export default function MemberProfileWorkspace({ supabase, user, accessProfile, onLogout, publicPlatformHomeRuntime }) {
+  const { unreadCount: unreadNotificationCount } = useUnreadNotificationCount({ supabase, enabled: Boolean(user?.id) });
   const fallback = useMemo(() => ({
     ...createMemberProfileFallback({ user, accessProfile }),
     ...readLocalAthleteDetails(user?.id),
@@ -284,6 +286,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           ? "Encontre torneios, organizações e outros atletas."
           : "Acompanhe as publicações de torneios das organizações."}
       accountLabel="Sair"
+      unreadNotificationCount={unreadNotificationCount}
       onAccountAction={onLogout}
       onNavigate={navigate}
     >

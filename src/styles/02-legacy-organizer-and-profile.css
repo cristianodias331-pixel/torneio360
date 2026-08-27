@@ -1466,7 +1466,7 @@ html[data-theme="dark"] .photoEditorActions,
 .publicImageLightbox {
   position: fixed;
   inset: 0;
-  z-index: 10050;
+  z-index: 130000;
   display: grid;
   padding: clamp(14px, 3vw, 34px);
   place-items: center;

@@ -1593,6 +1593,31 @@
   width: 100% !important;
 }
 
+.proDashboard .participantIdentityInput {
+  grid-column: 2 !important;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.proDashboard .participantIdentityInput > input {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.proDashboard .participantIdentityInput .athleteIdentityLink.avatarOnly {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.proDashboard .participantIdentityInput .athleteIdentityLink.avatarOnly > span {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, .12);
+}
+
 .proDashboard .numberedInput.participantAttendanceRow > span:first-child {
   grid-column: 1 !important;
 }

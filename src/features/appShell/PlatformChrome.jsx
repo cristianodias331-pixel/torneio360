@@ -34,7 +34,7 @@ export function PlatformSidebar({
       >
         <div className="sidebarHeader"><span className="sidebarSectionLabel">Menu</span></div>
         <nav className="sidebarNav">
-          {items.map(({ panel, label, Icon, locked = false }) => (
+          {items.map(({ panel, label, Icon, locked = false, unreadCount = 0 }) => (
             <button
               key={panel}
               className={`playNavItem ${activePanel === panel ? "active" : ""}`}
@@ -44,9 +44,10 @@ export function PlatformSidebar({
                 closeAfterNavigation();
               }}
               aria-current={activePanel === panel ? "page" : undefined}
-              title={label}
+              aria-label={unreadCount ? `${label}: ${unreadCount} não visualizada(s)` : label}
+              title={unreadCount ? `${label}: ${unreadCount} nova(s)` : label}
             >
-              <span className="navIcon" aria-hidden="true"><Icon /></span>
+              <span className="navIcon" aria-hidden="true"><Icon />{unreadCount ? <i className="navUnreadDot" /> : null}</span>
               <small>{label}</small>
               {locked ? <LockKeyhole className="unifiedPlatformNavLock" aria-label="Disponível com assinatura" /> : null}
             </button>

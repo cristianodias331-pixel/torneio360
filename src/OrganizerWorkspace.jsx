@@ -122,6 +122,8 @@ import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
 import OrganizationRegistrantsPanel from "./features/profile/OrganizationRegistrantsPanel.jsx";
 import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
+import useUnreadNotificationCount from "./features/notifications/useUnreadNotificationCount.js";
+import { createAthleteIdentityIndex, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -151,6 +153,8 @@ import {
   validateTournamentRegulationsPdf,
 } from "./services/tournamentRegulationsApi.mjs";
 import { excludeOrganizationCoverFromGallery } from "./features/media/organizationGalleryCover.mjs";
+import { loadPublicTournamentAthleteIdentities } from "./services/tournamentIdentityApi.mjs";
+import { applyApprovedRegistrationsToTournamentData } from "./domain/tournamentRegistrationParticipants.mjs";
 import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
@@ -494,6 +498,7 @@ function isFixedDoublesCompetition(type) {
 }
 
 function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile, publicPlatformHomeRuntime }) {
+  const { unreadCount: unreadNotificationCount } = useUnreadNotificationCount({ supabase, enabled: Boolean(user?.id) });
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
   const [trashCircuits, setTrashCircuits] = useState([]);
@@ -6481,7 +6486,7 @@ setNewPublicInfo({
   function renderAppSidebar() {
     const navItems = [
       { panel: "inicio", label: "Início", Icon: LayoutDashboard },
-      { panel: "notificacoes", label: "Notificações", Icon: Bell },
+      { panel: "notificacoes", label: "Notificações", Icon: Bell, unreadCount: unreadNotificationCount },
       { panel: "ajustes", label: "Perfis", Icon: UserRound },
     ];
     const sidebarActivePanel = ["criar", "circuitos", "modalidades"].includes(activePanel)
@@ -9554,6 +9559,12 @@ function TournamentScreen({
   );
 
   const [data, setDataState] = useState(() => initialTournamentState.data);
+  const [approvedAthleteIdentities, setApprovedAthleteIdentities] = useState([]);
+  const approvedAthleteIdentityIndex = useMemo(
+    () => createAthleteIdentityIndex(approvedAthleteIdentities),
+    [approvedAthleteIdentities]
+  );
+  const renderApprovedParticipant = (value) => renderAthleteNames(value, approvedAthleteIdentityIndex, true);
   const currentCourtCount = getTournamentCourtCount(config, data);
   const normalizedCentralCourtNumbers = Array.from(new Set(
     (centralCourtNumbers || []).map(normalizeCourtNumberValue).filter(Boolean)
@@ -9790,6 +9801,22 @@ function TournamentScreen({
       });
     }, 500);
   }
+
+  useEffect(() => {
+    let active = true;
+    loadPublicTournamentAthleteIdentities({ supabase, tournamentId: tournament.id })
+      .then((result) => {
+        if (!active) return;
+        setApprovedAthleteIdentities(result.identities);
+        const merged = applyApprovedRegistrationsToTournamentData(latestDataRef.current, config, result.identities);
+        if (merged.changed) setData(merged.data);
+      })
+      .catch((error) => {
+        console.warn("Não foi possível sincronizar os inscritos confirmados com as vagas:", error);
+        if (active) setApprovedAthleteIdentities([]);
+      });
+    return () => { active = false; };
+  }, [tournament.id]);
 
   useEffect(() => {
     const remainingMilliseconds = getNextMatchTimerExpiryDelay(data);
@@ -12103,6 +12130,7 @@ return (
             data={data}
             updatePlayer={updatePlayer}
             updateParticipantAttendance={updateParticipantAttendance}
+            participantIdentityIndex={approvedAthleteIdentityIndex}
           />
 
           {!isCupType(config) && (
@@ -12154,6 +12182,7 @@ return (
                 <CupGroupRankingView
                   groupRankings={cupGroupRankings}
                   rankingCriteria={data.rankingCriteria || defaultRankingCriteria}
+                  renderParticipant={renderApprovedParticipant}
                 />
               </div>
             )}
@@ -12195,6 +12224,7 @@ return (
   winningScore={getWinningScore(data)}
   courtNumbers={displayedCourtNumbers}
   onEditCourt={requestCourtAssignment}
+  renderParticipant={renderApprovedParticipant}
 />
 
               <div className="actions">
@@ -12463,6 +12493,7 @@ return (
               rankingCriteria={data.rankingCriteria || defaultRankingCriteria}
               shareContext={tournamentRankingShareContext}
               circuitAction={tournamentCircuitAction}
+              renderParticipant={renderApprovedParticipant}
             />
           </section>
         )}

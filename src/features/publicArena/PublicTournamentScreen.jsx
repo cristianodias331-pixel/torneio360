@@ -45,6 +45,7 @@ import {
 } from "../../domain/rankingCriteria.mjs";
 import { getWinningScore } from "../../domain/scoreRules.mjs";
 import { normalizeTournamentData } from "../../domain/tournamentDataNormalization.mjs";
+import { applyApprovedRegistrationsToTournamentData } from "../../domain/tournamentRegistrationParticipants.mjs";
 import {
   getTournamentClassificationLabels,
 } from "../../domain/tournamentGenderConfig.mjs";
@@ -122,7 +123,8 @@ export default function PublicTournamentScreenView({
   const migrationTournament = tournament.user_id || !liveOrganizer?.id
     ? tournament
     : { ...tournament, user_id: liveOrganizer.id };
-  const data = migratePlayRankingBracketForReferenceProfile(migrationTournament, normalizedData).data;
+  const storedData = migratePlayRankingBracketForReferenceProfile(migrationTournament, normalizedData).data;
+  const data = applyApprovedRegistrationsToTournamentData(storedData, config, athleteIdentities).data;
   const secondParallelVisible = isCearenseSecondParallelEnabled(data);
   const sunsetSecondParallelVisible = isSunsetData(data);
   const thirdParallelVisible = isCearenseThirdParallelEnabled(data);

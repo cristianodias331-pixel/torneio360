@@ -18,6 +18,7 @@ import {
   isIndividualCupType,
   isMixedType,
 } from "../../domain/modalityClassification.mjs";
+import AthleteIdentityLink from "../profile/AthleteIdentityLink.jsx";
 
 function isMixedParticipantConfig(config) {
   return isMixedType(config);
@@ -578,9 +579,18 @@ function ParticipantAttendanceButton({ confirmed, onChange }) {
   );
 }
 
-export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance, modalityConfig }) {
+export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance, modalityConfig, participantIdentityIndex = null }) {
   const config = modalityConfig[type];
   const attendance = normalizeParticipantAttendance(config, data.players, data.participantAttendance);
+
+  function renderParticipantField(name, onChange) {
+    return (
+      <div className="participantIdentityInput">
+        <AthleteIdentityLink name={name} identityIndex={participantIdentityIndex} compact avatarOnly />
+        <input value={name} onChange={onChange} />
+      </div>
+    );
+  }
 
   function isConfirmed(path) {
     if (path.kind === "normal") return attendance[path.index] === true;
@@ -607,10 +617,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
           {data.players.men.map((name, i) => (
             <div className="numberedInput participantAttendanceRow" key={i}>
               <span>{i + 1}</span>
-              <input
-                value={name}
-                onChange={(e) => updatePlayer({ kind: "men", index: i }, e.target.value)}
-              />
+              {renderParticipantField(name, (e) => updatePlayer({ kind: "men", index: i }, e.target.value))}
               {renderAttendance({ kind: "men", index: i })}
             </div>
           ))}
@@ -622,10 +629,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
           {data.players.women.map((name, i) => (
             <div className="numberedInput participantAttendanceRow" key={i}>
               <span>{config.men + i + 1}</span>
-              <input
-                value={name}
-                onChange={(e) => updatePlayer({ kind: "women", index: i }, e.target.value)}
-              />
+              {renderParticipantField(name, (e) => updatePlayer({ kind: "women", index: i }, e.target.value))}
               {renderAttendance({ kind: "women", index: i })}
             </div>
           ))}
@@ -640,10 +644,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
         {data.players.teams.map((participant, i) => (
           <div className="numberedInput participantAttendanceRow" key={i}>
             <span>{i + 1}</span>
-            <input
-              value={participant.a}
-              onChange={(e) => updatePlayer({ kind: "team", index: i, field: "a" }, e.target.value)}
-            />
+            {renderParticipantField(participant.a, (e) => updatePlayer({ kind: "team", index: i, field: "a" }, e.target.value))}
             {renderAttendance({ kind: "team", index: i, field: "a" })}
           </div>
         ))}
@@ -660,19 +661,13 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
 
             <div className="numberedInput participantAttendanceRow">
               <span>{i + 1}</span>
-              <input
-                value={team.a}
-                onChange={(e) => updatePlayer({ kind: "team", index: i, field: "a" }, e.target.value)}
-              />
+              {renderParticipantField(team.a, (e) => updatePlayer({ kind: "team", index: i, field: "a" }, e.target.value))}
               {renderAttendance({ kind: "team", index: i, field: "a" })}
             </div>
 
             <div className="numberedInput participantAttendanceRow teamSecondParticipantRow">
               <span aria-hidden="true" />
-              <input
-                value={team.b}
-                onChange={(e) => updatePlayer({ kind: "team", index: i, field: "b" }, e.target.value)}
-              />
+              {renderParticipantField(team.b, (e) => updatePlayer({ kind: "team", index: i, field: "b" }, e.target.value))}
               {renderAttendance({ kind: "team", index: i, field: "b" })}
             </div>
           </div>
@@ -686,10 +681,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
       {data.players.map((name, i) => (
         <div className="numberedInput participantAttendanceRow" key={i}>
           <span>{i + 1}</span>
-          <input
-            value={name}
-            onChange={(e) => updatePlayer({ kind: "normal", index: i }, e.target.value)}
-          />
+          {renderParticipantField(name, (e) => updatePlayer({ kind: "normal", index: i }, e.target.value))}
           {renderAttendance({ kind: "normal", index: i })}
         </div>
       ))}

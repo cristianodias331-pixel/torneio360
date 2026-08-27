@@ -16,6 +16,8 @@ import {
 import { formatDateBR } from "../../domain/dateTime.mjs";
 import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
+import { modalityConfig } from "../../domain/modalityConfig.mjs";
+import { isCupType, isFixedTeamType, isIndividualCupType } from "../../domain/modalityClassification.mjs";
 import {
   getTournamentGenderLabel,
   inferTournamentGenderMode,
@@ -23,6 +25,7 @@ import {
 import {
   loadOrganizationRegistrants,
   openOrganizationRegistrationReceipt,
+  pairApprovedOrganizationRegistrations,
   reviewOrganizationRegistration,
 } from "../../services/organizationRegistrantsApi.mjs";
 import "../../styles/58-organization-registrants.css";
@@ -63,6 +66,13 @@ function formatRegistrationTimestamp(value) {
   }).format(new Date(timestamp)).replace(",", " às");
 }
 
+function canOrganizerPairRegistration(registration) {
+  const config = modalityConfig[registration.tournament?.type];
+  const doublesCompetition = config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config));
+  const hasPartner = registration.partner?.user_id || registration.partner_user_id || registration.partner_handle || registration.partner_name;
+  return Boolean(doublesCompetition && registration.workflowStatus === "approved" && !hasPartner);
+}
+
 export default function OrganizationRegistrantsPanel({ supabase, tournaments = [] }) {
   const [state, setState] = useState({ status: "loading", registrations: [], schemaAvailable: true, error: "" });
   const [search, setSearch] = useState("");
@@ -73,6 +83,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
   const [modalityFilter, setModalityFilter] = useState("all");
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
+  const [pairSelection, setPairSelection] = useState([]);
 
   const loadRegistrants = useCallback(async () => {
     setState((current) => ({ ...current, status: "loading", error: "" }));
@@ -198,6 +209,41 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     }
   }
 
+  function togglePairSelection(registration) {
+    if (!canOrganizerPairRegistration(registration) || busyId) return;
+    setNotice("");
+    setPairSelection((current) => {
+      if (current.includes(registration.id)) return current.filter((id) => id !== registration.id);
+      const first = registrations.find((item) => item.id === current[0]);
+      const compatible = !first || (
+        String(first.tournament?.id) === String(registration.tournament?.id)
+        && first.categoryLabel === registration.categoryLabel
+      );
+      if (!compatible) {
+        setNotice("Para formar duplas, selecione atletas do mesmo torneio e da mesma categoria.");
+        return current;
+      }
+      return current.length >= 32 ? current : [...current, registration.id];
+    });
+  }
+
+  async function pairSelectedRegistrations() {
+    if (busyId || pairSelection.length < 2 || pairSelection.length % 2 !== 0) return;
+    setBusyId("pairing");
+    setNotice("");
+    try {
+      const result = await pairApprovedOrganizationRegistrations({ supabase, registrationIds: pairSelection });
+      const pairedCount = Number(result?.paired_count || pairSelection.length / 2);
+      setPairSelection([]);
+      setNotice(`${pairedCount} ${pairedCount === 1 ? "dupla foi formada" : "duplas foram formadas"}. Os atletas receberam uma notificação.`);
+      await loadRegistrants();
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível formar as duplas selecionadas.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   async function openReceipt(registration) {
     if (!registration.payment_proof_path || busyId) return;
     setBusyId(`receipt-${registration.id}`);
@@ -232,6 +278,12 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
 
       {!state.schemaAvailable ? <p className="organizationRegistrantsNotice"><Clock3 aria-hidden="true" /> Os inscritos atuais já aparecem, mas pagamento e procura de dupla serão sincronizados quando a migração do banco teste for aplicada.</p> : null}
       {notice ? <p className="organizationRegistrantsNotice isSuccess"><Check aria-hidden="true" /> {notice}</p> : null}
+
+      <div className={`organizationPairBuilder${pairSelection.length ? " active" : ""}`}>
+        <span><Users aria-hidden="true" /></span>
+        <div><strong>Formar duplas com inscritos individuais</strong><small>Selecione atletas aprovados, do mesmo torneio e categoria. A ordem da seleção define as duplas.</small></div>
+        <div><b>{pairSelection.length} selecionado(s)</b><button type="button" disabled={Boolean(busyId) || pairSelection.length < 2 || pairSelection.length % 2 !== 0} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione uma quantidade par"}</button></div>
+      </div>
 
       <div className="organizationRegistrantMetrics">
         <article><Users aria-hidden="true" /><span><strong>{metrics.total}</strong><small>Inscritos</small></span></article>
@@ -272,6 +324,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
                 <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small><small className="organizationRegistrantChronology"><Clock3 aria-hidden="true" /> <strong>{registrationOrder.get(String(registration.id)) || "—"}º inscrito</strong> · {formatRegistrationTimestamp(registration.created_at)}</small></div>
                 <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
                 <div className="organizationRegistrantActions">
+                  {canOrganizerPairRegistration(registration) ? <button type="button" className={`pair${pairSelection.includes(registration.id) ? " selected" : ""}`} disabled={Boolean(busyId)} onClick={() => togglePairSelection(registration)}>{pairSelection.includes(registration.id) ? "Selecionado para dupla" : "Selecionar para dupla"}</button> : null}
                   {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Comprovante</button> : null}
                   {registration.workflowStatus === "submitted" ? <><button type="button" className="approve" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "approved")}>Aprovar</button><button type="button" className="reject" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "rejected")}>Recusar</button></> : null}
                 </div>

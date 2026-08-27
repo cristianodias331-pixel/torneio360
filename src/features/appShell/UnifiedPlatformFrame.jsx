@@ -17,6 +17,7 @@ export default function UnifiedPlatformFrame({
   description,
   eyebrow,
   accountLabel,
+  unreadNotificationCount = 0,
   canCreate = false,
   onNavigate,
   onAccountAction,
@@ -46,6 +47,7 @@ export default function UnifiedPlatformFrame({
   const navItems = NAV_ITEMS.filter((item) => !item.requiresSession || hasSession).map((item) => ({
     ...item,
     locked: item.requiresCreationPermission && !canCreate,
+    unreadCount: item.panel === "notifications" ? unreadNotificationCount : 0,
   }));
 
   const topbarActions = (

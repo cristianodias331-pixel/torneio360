@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import {
   AtSign,
   CalendarDays,
@@ -34,7 +35,7 @@ export function PublicImageLightbox({ image, onClose }) {
 
   if (!image?.src) return null;
 
-  return (
+  return createPortal((
     <div
       className="publicImageLightbox"
       role="dialog"
@@ -52,7 +53,7 @@ export function PublicImageLightbox({ image, onClose }) {
         {image.title ? <strong>{image.title}</strong> : null}
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 function PublicImagePreviewButton({ src, previewSrc, alt, title, variant, onPreview }) {

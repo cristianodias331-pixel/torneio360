@@ -89,13 +89,20 @@
   display: grid;
   width: 100%;
   min-height: 0;
-  aspect-ratio: 4 / 5;
+  height: clamp(360px, 60vh, 560px);
+  aspect-ratio: auto;
   place-items: center;
   overflow: hidden;
   border: 0;
   padding: 0;
   background: #081629;
   cursor: zoom-in;
+}
+
+@media (max-width: 760px) {
+  .publicTournamentPostImage {
+    height: min(112vw, 430px);
+  }
 }
 
 .publicTournamentPostImage img {

@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:homologation": "vite build --mode homologation",
     "preview": "vite preview",
-    "test": "node scripts/smoke-check.mjs && node scripts/member-profile-check.mjs && node scripts/organization-registrants-check.mjs && node scripts/tournament-registration-workflow-check.mjs && node scripts/organization-payment-check.mjs && node scripts/content-moderation-check.mjs && node scripts/auth-compliance-check.mjs && node scripts/registration-identity-notifications-check.mjs",
+    "test": "node scripts/smoke-check.mjs && node scripts/member-profile-check.mjs && node scripts/organization-registrants-check.mjs && node scripts/tournament-registration-workflow-check.mjs && node scripts/organization-payment-check.mjs && node scripts/content-moderation-check.mjs && node scripts/auth-compliance-check.mjs && node scripts/registration-identity-notifications-check.mjs && node scripts/confirmed-participants-notifications-check.mjs",
     "test:load:public": "node scripts/public-load-check.mjs",
     "test:pagination:circuit": "node scripts/public-circuit-pagination-check.mjs",
     "test:browser:public": "node scripts/browser-performance-check.mjs",

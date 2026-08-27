@@ -15,14 +15,14 @@ export function createAthleteIdentityIndex(identities = []) {
   return index;
 }
 
-export default function AthleteIdentityLink({ name, identityIndex, compact = false }) {
+export default function AthleteIdentityLink({ name, identityIndex, compact = false, avatarOnly = false }) {
   const cleanName = String(name || "").replace(/^\s*\d+\.\s*/, "").trim();
   const identity = identityIndex?.get(normalizeAthleteIdentityName(cleanName));
-  if (!identity) return <span className="athleteIdentityText">{cleanName}</span>;
+  if (!identity) return avatarOnly ? null : <span className="athleteIdentityText">{cleanName}</span>;
   return (
-    <button type="button" className={`athleteIdentityLink${compact ? " compact" : ""}`} onClick={() => navigatePlatform({ perfil: identity.handle || identity.user_id })} title={`Abrir perfil de ${identity.display_name}`}>
+    <button type="button" className={`athleteIdentityLink${compact ? " compact" : ""}${avatarOnly ? " avatarOnly" : ""}`} onClick={() => navigatePlatform({ perfil: identity.handle || identity.user_id })} title={`Abrir perfil de ${identity.display_name}`} aria-label={`Abrir perfil de ${identity.display_name}`}>
       <span>{identity.photo_url ? <img src={identity.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
-      <em><strong>{identity.display_name}</strong>{identity.handle ? <small>@{identity.handle}</small> : null}</em>
+      {!avatarOnly ? <em><strong>{identity.display_name}</strong>{identity.handle ? <small>@{identity.handle}</small> : null}</em> : null}
     </button>
   );
 }

@@ -48,6 +48,18 @@ export async function reviewOrganizationRegistration({ supabase, registrationId,
   return data;
 }
 
+export async function pairApprovedOrganizationRegistrations({ supabase, registrationIds }) {
+  const ids = Array.from(new Set((registrationIds || []).map(String).filter(Boolean)));
+  if (ids.length < 2 || ids.length % 2 !== 0) {
+    throw new Error("Selecione uma quantidade par de atletas para formar as duplas.");
+  }
+  const { data, error } = await supabase.rpc("pair_approved_tournament_registrations", {
+    p_registration_ids: ids,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function openOrganizationRegistrationReceipt({ supabase, path }) {
   if (!path) throw new Error("Esta inscrição ainda não possui comprovante.");
   const { data, error } = await supabase.storage.from("registration-receipts").createSignedUrl(path, 300);

@@ -83,6 +83,52 @@
   gap: 10px;
 }
 
+.organizationPairBuilder {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface-muted);
+}
+
+.organizationPairBuilder.active {
+  border-color: #22c55e;
+  box-shadow: inset 3px 0 #22c55e;
+}
+
+.organizationPairBuilder > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(34, 197, 94, .12);
+  color: #16a34a;
+}
+
+.organizationPairBuilder > span svg { width: 21px; }
+.organizationPairBuilder > div { display: grid; gap: 3px; }
+.organizationPairBuilder > div > strong { color: var(--ui-heading); }
+.organizationPairBuilder > div > small { color: var(--ui-muted); }
+.organizationPairBuilder > div:last-child { justify-items: end; }
+.organizationPairBuilder > div:last-child b { color: #16a34a; font-size: 12px; }
+.organizationPairBuilder button {
+  min-height: 38px;
+  border: 1px solid #16a34a;
+  border-radius: 11px;
+  padding: 0 13px;
+  background: #16a34a;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+}
+.organizationPairBuilder button:disabled { cursor: not-allowed; opacity: .5; }
+
 .organizationRegistrantMetrics article {
   gap: 11px;
   min-height: 76px;
@@ -418,6 +464,8 @@
 .organizationRegistrantActions button svg { width: 14px; height: 14px; }
 .organizationRegistrantActions button.approve { border-color: #16a36a; color: #087a50; }
 .organizationRegistrantActions button.reject { border-color: #d85d5d; color: #b53838; background: color-mix(in srgb, #d85d5d 8%, var(--ui-surface)); }
+.organizationRegistrantActions button.pair { border-color: #16a34a; color: #168044; }
+.organizationRegistrantActions button.pair.selected { background: #16a34a; color: #fff; }
 
 .organizationRegistrantActions button:disabled {
   opacity: 0.5;
@@ -461,6 +509,9 @@
 }
 
 @media (max-width: 900px) {
+  .organizationPairBuilder { grid-template-columns: auto 1fr; }
+  .organizationPairBuilder > div:last-child { grid-column: 1 / -1; justify-items: stretch; }
+  .organizationPairBuilder > div:last-child b { text-align: center; }
   .organizationRegistrantMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .organizationRegistrantToolbar { grid-template-columns: 1fr; }
   .organizationRegistrantToolbar nav { overflow-x: auto; }

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, Bell, Check, Clock3, RefreshCw, Trophy, UserRoundCheck, X } from "lucide-react";
 import { loadMyNotifications, markMyNotificationsRead, respondToPartnerInvitation } from "../../services/notificationApi.mjs";
 import { navigatePlatform } from "../../domain/platformNavigation.mjs";
+import { broadcastUnreadNotificationCount } from "./useUnreadNotificationCount.js";
 import "../../styles/61-notifications-and-athlete-identity.css";
 
 function formatNotificationDate(value) {
@@ -21,12 +22,15 @@ export default function NotificationCenter({ supabase, onOpenTournament = null }
   const [state, setState] = useState({ status: "loading", notifications: [], schemaAvailable: true, error: "" });
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
+  const automaticViewRef = useRef(false);
 
   const load = useCallback(async () => {
     setState((current) => ({ ...current, status: "loading", error: "" }));
     try {
       const result = await loadMyNotifications({ supabase });
+      const nextUnreadCount = result.notifications.filter((item) => !item.read_at).length;
       setState({ status: "ready", notifications: result.notifications, schemaAvailable: result.schemaAvailable, error: "" });
+      broadcastUnreadNotificationCount(nextUnreadCount);
     } catch (error) {
       console.error("Erro ao carregar notificações:", error);
       setState({ status: "error", notifications: [], schemaAvailable: true, error: "Não foi possível carregar as notificações agora." });
@@ -36,12 +40,30 @@ export default function NotificationCenter({ supabase, onOpenTournament = null }
   useEffect(() => { void load(); }, [load]);
   const unreadCount = useMemo(() => state.notifications.filter((item) => !item.read_at).length, [state.notifications]);
 
+  useEffect(() => {
+    if (state.status !== "ready" || !unreadCount || automaticViewRef.current) return undefined;
+    automaticViewRef.current = true;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        await markMyNotificationsRead({ supabase });
+        const viewedAt = new Date().toISOString();
+        setState((current) => ({ ...current, notifications: current.notifications.map((item) => ({ ...item, read_at: item.read_at || viewedAt })) }));
+        broadcastUnreadNotificationCount(0);
+      } catch (error) {
+        automaticViewRef.current = false;
+        setNotice(error?.message || "Não foi possível registrar a visualização das notificações.");
+      }
+    }, 900);
+    return () => window.clearTimeout(timeoutId);
+  }, [state.status, supabase, unreadCount]);
+
   async function markAllRead() {
     if (busyId || !unreadCount) return;
     setBusyId("all");
     try {
       await markMyNotificationsRead({ supabase });
       setState((current) => ({ ...current, notifications: current.notifications.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })) }));
+      broadcastUnreadNotificationCount(0);
     } catch (error) { setNotice(error?.message || "Não foi possível marcar as notificações."); }
     finally { setBusyId(""); }
   }
