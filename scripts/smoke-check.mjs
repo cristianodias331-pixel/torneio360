@@ -472,6 +472,18 @@ const memberProfileWorkspaceSource = readFileSync(
   new URL("src/features/profile/MemberProfileWorkspace.jsx", root),
   "utf8"
 );
+const athleteProfileActivitySource = readFileSync(
+  new URL("src/features/profile/AthleteProfileActivity.jsx", root),
+  "utf8"
+);
+const athleteActivityApiSource = readFileSync(
+  new URL("src/services/athleteActivityApi.mjs", root),
+  "utf8"
+);
+const athleteProfileActivityMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608270001_athlete_profile_activity.sql", root),
+  "utf8"
+);
 const cupRankingDefaultsSource = readFileSync(
   new URL("src/domain/cupRankingDefaults.mjs", root),
   "utf8"
@@ -5084,6 +5096,26 @@ assert.ok(
     && organizerWorkspaceSource.includes("organizerProfile.photoUrl")
     && organizerWorkspaceSource.includes("organizationGallery[0]"),
   "A barra superior voltou a duplicar a identidade ou ocultou o acesso ao perfil da organização."
+);
+assert.ok(
+  organizerWorkspaceSource.includes("Torneios/Circuitos")
+    && organizerWorkspaceSource.includes("Procurando dupla")
+    && organizerWorkspaceSource.includes("Desafios")
+    && !organizerWorkspaceSource.includes("Publicações do atleta")
+    && athleteProfileActivitySource.includes("Quem pratica mais?")
+    && athleteProfileActivitySource.includes("Disputar uma partida")
+    && athleteProfileActivitySource.includes("Avisar que procuro dupla")
+    && !athleteProfileActivitySource.includes("textarea")
+    && athleteActivityApiSource.includes("get_my_athlete_activity")
+    && athleteActivityApiSource.includes("send_athlete_challenge")
+    && athleteProfileActivityMigrationSource.includes("create table if not exists public.athlete_partner_searches")
+    && athleteProfileActivityMigrationSource.includes("create table if not exists public.athlete_challenges")
+    && athleteProfileActivityMigrationSource.includes("'whatsapp', ''")
+    && athleteProfileActivityMigrationSource.includes("'organization', null")
+    && athleteProfileActivityMigrationSource.includes("where member.is_public = true")
+    && athleteProfileActivityMigrationSource.includes("candidate_registration.partner_name")
+    && athleteProfileActivityMigrationSource.includes("revoke all on public.athlete_challenges"),
+  "O perfil do atleta perdeu a jornada esportiva, voltou a aceitar mensagens livres ou expôs contatos protegidos."
 );
 assert.ok(
   publicPlatformHomeControllerSource.includes('variant="discovery"')

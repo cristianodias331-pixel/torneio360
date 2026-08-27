@@ -7,6 +7,9 @@ const maximumLengths = {
   city: 80,
   state: 80,
   sportsCategory: 40,
+  whatsapp: 20,
+  telegram: 64,
+  instagram: 64,
 };
 
 const dominantHandOptions = new Set(["Destro", "Canhoto", "Ambidestro", "Não informado"]);
@@ -16,6 +19,15 @@ export const MAX_MEMBER_GALLERY_PHOTOS = 6;
 
 function cleanText(value, maximumLength) {
   return String(value || "").trim().slice(0, maximumLength);
+}
+
+function normalizeSocialHandle(value, provider) {
+  const source = String(value || "").trim();
+  const withoutUrl = source
+    .replace(/^https?:\/\/(?:www\.)?/i, "")
+    .replace(provider === "telegram" ? /^(?:t\.me|telegram\.me)\//i : /^(?:instagram\.com)\//i, "")
+    .replace(/[/?#].*$/, "");
+  return withoutUrl.replace(/^@+/, "");
 }
 
 export function normalizeMemberHandle(value) {
@@ -50,6 +62,10 @@ export function createMemberProfileFallback({ user, accessProfile } = {}) {
     sportsCategory: cleanText(user?.user_metadata?.sports_category || "", maximumLengths.sportsCategory),
     dominantHand: dominantHandOptions.has(user?.user_metadata?.dominant_hand) ? user.user_metadata.dominant_hand : "Não informado",
     shirtSize: shirtSizeOptions.has(user?.user_metadata?.shirt_size) ? user.user_metadata.shirt_size : "Não informado",
+    whatsapp: "",
+    telegram: "",
+    instagram: "",
+    showContacts: false,
     galleryPhotos: [],
     followersCount: 0,
     isPublic: true,
@@ -73,6 +89,10 @@ export function normalizeMemberProfile(row, fallback = {}) {
     shirtSize: shirtSizeOptions.has(row?.shirt_size ?? row?.shirtSize)
       ? (row?.shirt_size ?? row?.shirtSize)
       : shirtSizeOptions.has(fallback.shirtSize) ? fallback.shirtSize : "Não informado",
+    whatsapp: String(row?.whatsapp ?? fallback.whatsapp ?? "").replace(/[^0-9+]/g, "").slice(0, maximumLengths.whatsapp),
+    telegram: normalizeSocialHandle(row?.telegram ?? fallback.telegram, "telegram").slice(0, maximumLengths.telegram),
+    instagram: normalizeSocialHandle(row?.instagram ?? fallback.instagram, "instagram").slice(0, maximumLengths.instagram),
+    showContacts: Boolean(row?.show_contacts ?? row?.showContacts ?? fallback.showContacts),
     galleryPhotos: normalizeMemberGalleryPhotos(
       row?.gallery_photos ?? row?.galleryPhotos ?? fallback.galleryPhotos
     ),
@@ -119,6 +139,16 @@ export function validateMemberProfile(profile) {
     errors.sportsCategory = "A categoria contém conteúdo não permitido.";
   }
 
+  if (normalized.whatsapp && !/^\+?[0-9]{10,15}$/.test(normalized.whatsapp)) {
+    errors.whatsapp = "Informe o WhatsApp com DDD e apenas números.";
+  }
+  if (normalized.telegram && !/^[a-zA-Z0-9_]{5,64}$/.test(normalized.telegram)) {
+    errors.telegram = "Informe apenas o nome de usuário do Telegram.";
+  }
+  if (normalized.instagram && !/^[a-zA-Z0-9._]{1,64}$/.test(normalized.instagram)) {
+    errors.instagram = "Informe apenas o nome de usuário do Instagram.";
+  }
+
   return { valid: Object.keys(errors).length === 0, errors, profile: normalized };
 }
 
@@ -132,6 +162,12 @@ export function toMemberProfileRpcPayload(profile) {
     p_bio: normalized.bio,
     p_city: normalized.city,
     p_state: normalized.state,
-    p_is_public: true,
+    p_sports_category: normalized.sportsCategory,
+    p_dominant_hand: normalized.dominantHand,
+    p_shirt_size: normalized.shirtSize,
+    p_whatsapp: normalized.whatsapp,
+    p_telegram: normalized.telegram,
+    p_instagram: normalized.instagram,
+    p_show_contacts: normalized.showContacts,
   };
 }

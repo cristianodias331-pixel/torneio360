@@ -4,7 +4,7 @@
 }
 
 .proDashboard .profileSubtabs {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)) !important;
 }
 
 .unifiedProfilePublicCover {

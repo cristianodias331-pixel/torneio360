@@ -4,20 +4,29 @@ import {
   AtSign,
   Camera,
   Eye,
-  Grid3X3,
   Images,
   MapPin,
   Settings,
   Share2,
+  Swords,
+  Trophy,
   UserRound,
+  Users,
 } from "lucide-react";
 import { getMemberProfileInitials } from "../../domain/memberProfile.mjs";
 
 export const MEMBER_PROFILE_TABS = [
-  { id: "publicacoes", label: "Publicações", Icon: Grid3X3 },
+  { id: "atividades", label: "Torneios/Circuitos", Icon: Trophy },
+  { id: "desafios", label: "Desafios", Icon: Swords },
   { id: "fotos", label: "Fotos", Icon: Images },
   { id: "contato", label: "Sobre", Icon: AtSign },
   { id: "conquistas", label: "Conquistas", Icon: Award },
+];
+
+export const OWNER_MEMBER_PROFILE_TABS = [
+  MEMBER_PROFILE_TABS[0],
+  { id: "duplas", label: "Procurando dupla", Icon: Users },
+  ...MEMBER_PROFILE_TABS.slice(1),
 ];
 
 function MediaInput({ disabled, onFile }) {
@@ -111,8 +120,8 @@ export function MemberProfileIdentityCard({
         <div className="publicMemberSummary" aria-label="Resumo do perfil">
           {summaryItems.map((item) => (
             <span key={item.label}>
+              <small>{item.label}:</small>
               <strong>{item.value}</strong>
-              <small>{item.label}</small>
             </span>
           ))}
         </div>
@@ -121,10 +130,11 @@ export function MemberProfileIdentityCard({
   );
 }
 
-export function MemberProfileTabs({ activeTab, onChange }) {
+export function MemberProfileTabs({ activeTab, onChange, owner = false }) {
+  const tabs = owner ? OWNER_MEMBER_PROFILE_TABS : MEMBER_PROFILE_TABS;
   return (
     <nav className="publicMemberProfileTabs" aria-label="Seções do perfil" role="tablist">
-      {MEMBER_PROFILE_TABS.map(({ id, label, Icon }) => (
+      {tabs.map(({ id, label, Icon }) => (
         <button
           type="button"
           role="tab"

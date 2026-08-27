@@ -7,7 +7,10 @@ import {
   toMemberProfileRpcPayload,
   validateMemberProfile,
 } from "../src/domain/memberProfile.mjs";
-import { loadPublicMemberPublications } from "../src/services/memberProfileApi.mjs";
+import {
+  loadMyAthleteActivity,
+  loadPublicAthleteActivity,
+} from "../src/services/athleteActivityApi.mjs";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -29,6 +32,12 @@ const validation = validateMemberProfile({
   ...fallback,
   handle: "pessoa.teste",
   coverUrl: "https://example.test/capa.webp",
+  sportsCategory: "Iniciante",
+  dominantHand: "Destro",
+  whatsapp: "85999999999",
+  telegram: "pessoa_teste",
+  instagram: "pessoa.teste",
+  showContacts: true,
   galleryPhotos: ["https://example.test/foto-1.webp", "https://example.test/foto-2.webp"],
   isPublic: false,
 });
@@ -39,7 +48,10 @@ const rpcPayload = toMemberProfileRpcPayload(validation.profile);
 assert(rpcPayload.p_display_name === "Pessoa Teste", "O nome deve chegar ao RPC.");
 assert(rpcPayload.p_handle === "pessoa.teste", "O identificador deve chegar ao RPC.");
 assert(rpcPayload.p_cover_url.endsWith("capa.webp"), "A capa deve chegar ao RPC.");
-assert(rpcPayload.p_is_public === true, "O RPC nunca deve tornar o perfil esportivo privado.");
+assert(rpcPayload.p_sports_category === "Iniciante", "A categoria deve chegar ao RPC.");
+assert(rpcPayload.p_dominant_hand === "Destro", "A mão dominante deve chegar ao RPC.");
+assert(rpcPayload.p_whatsapp === "85999999999", "O contato autorizado deve chegar ao RPC privado.");
+assert(rpcPayload.p_show_contacts === true, "A autorização de contato deve chegar ao RPC.");
 
 const databaseProfile = normalizeMemberProfile({
   user_id: "member-1",
@@ -48,12 +60,17 @@ const databaseProfile = normalizeMemberProfile({
   cover_url: "capa.webp",
   gallery_photos: ["foto-1.webp", "foto-2.webp"],
   followers_count: 32,
+  sports_category: "Iniciante",
+  dominant_hand: "Destro",
+  show_contacts: true,
   is_public: false,
 }, fallback);
 assert(databaseProfile.displayName === "Nome no banco", "O retorno do banco deve ser normalizado.");
 assert(databaseProfile.isPublic === true, "O perfil armazenado deve ser tratado como público.");
 assert(databaseProfile.galleryPhotos.length === 2, "As fotos públicas devem ser normalizadas.");
 assert(databaseProfile.followersCount === 32, "A contagem de seguidores deve ser normalizada.");
+assert(databaseProfile.sportsCategory === "Iniciante", "A categoria armazenada deve ser normalizada.");
+assert(databaseProfile.dominantHand === "Destro", "A mão dominante armazenada deve ser normalizada.");
 
 const galleryOverflow = validateMemberProfile({
   ...fallback,
@@ -61,20 +78,31 @@ const galleryOverflow = validateMemberProfile({
 });
 assert(!galleryOverflow.valid, "A sétima foto deve ser rejeitada.");
 
-const publicationCalls = [];
-const publicationResult = await loadPublicMemberPublications({
-  supabase: {
-    rpc: async (name, payload) => {
-      publicationCalls.push({ name, payload });
-      return { data: { items: [{ id: `${payload.p_kind}-1` }] }, error: null };
-    },
+const activityCalls = [];
+const activitySupabase = {
+  rpc: async (name, payload) => {
+    activityCalls.push({ name, payload });
+    return { data: { registrations: [{ id: "registration-1" }], circuits: [], partner_matches: [], challenges: [] }, error: null };
   },
-  organizationId: "organization-1",
+};
+const ownActivityResult = await loadMyAthleteActivity({
+  supabase: activitySupabase,
 });
-assert(publicationCalls.length === 2, "O perfil público deve consultar torneios e circuitos.");
-assert(publicationCalls.every((call) => call.name === "list_public_arena_events_page"), "As publicações devem usar a paginação pública existente.");
-assert(publicationCalls.every((call) => call.payload.p_organizer_id === "organization-1"), "As publicações devem permanecer limitadas à organização vinculada.");
-assert(publicationResult.tournaments.length === 1, "Os torneios públicos devem chegar à aba Publicações.");
-assert(publicationResult.circuits.length === 1, "Os circuitos públicos devem chegar à aba Publicações.");
+const publicActivityResult = await loadPublicAthleteActivity({
+  supabase: activitySupabase,
+  userId: "member-1",
+});
+assert(activityCalls[0].name === "get_my_athlete_activity", "O próprio perfil deve carregar inscrições, duplas e desafios.");
+assert(activityCalls[1].name === "get_public_athlete_activity", "O visitante deve carregar somente participações públicas.");
+assert(activityCalls[1].payload.p_user_id === "member-1", "A atividade pública deve permanecer vinculada ao atleta visitado.");
+assert(ownActivityResult.activity.registrations.length === 1, "As inscrições do atleta devem chegar à aba Torneios/Circuitos.");
+assert(publicActivityResult.activity.registrations.length === 1, "As participações confirmadas devem chegar ao perfil público.");
 
-console.log("Perfil unificado: perfil público, galeria, publicações e payload passaram.");
+const unavailableActivity = await loadMyAthleteActivity({
+  supabase: {
+    rpc: async () => ({ data: null, error: { code: "PGRST202", message: "get_my_athlete_activity" } }),
+  },
+});
+assert(unavailableActivity.schemaAvailable === false, "A interface deve preservar os dados quando a migração ainda não estiver aplicada.");
+
+console.log("Perfil unificado: dados esportivos, contatos protegidos, atividades, duplas e desafios passaram.");

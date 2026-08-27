@@ -1,0 +1,282 @@
+.athleteActivityPanel,
+.athletePartnerHub,
+.athleteChallengeCall,
+.athleteChallengeInbox,
+.athleteActivityState {
+  color: var(--ui-text, #253247);
+  background: var(--ui-surface-raised, #fff);
+}
+
+.athleteActivityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.athleteActivityHeader > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+}
+
+.athleteActivityHeader > div > svg {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  padding: 9px;
+  color: #2563eb;
+  background: color-mix(in srgb, #2563eb 11%, var(--ui-surface-muted, #eef3fa));
+}
+
+.athleteActivityHeader span { display: grid; gap: 3px; }
+.athleteActivityHeader h2 { margin: 0; color: var(--ui-text-strong, #102038); font-size: 1.08rem; }
+.athleteActivityHeader small { color: var(--ui-muted, #637189); }
+.athleteActivityHeader > strong {
+  display: grid;
+  min-width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: #f97316;
+}
+
+.athleteActivityFilters {
+  display: flex;
+  gap: 6px;
+  max-width: 100%;
+  margin-bottom: 17px;
+  overflow-x: auto;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  padding: 5px;
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
+.athleteActivityFilters button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--ui-muted, #637189);
+  background: transparent;
+  font-size: .72rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.athleteActivityFilters button span {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ui-border, #c8d4e6) 62%, transparent);
+  font-size: .66rem;
+}
+
+.athleteActivityFilters button.active {
+  border-color: #3b82f6;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-raised, #fff);
+  box-shadow: inset 0 -3px 0 #3b82f6;
+}
+
+html body .proDashboard.playAppShell .athleteActivityFilters button {
+  color: var(--ui-muted) !important;
+  -webkit-text-fill-color: var(--ui-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body .proDashboard.playAppShell .athleteActivityFilters button.active {
+  color: var(--ui-text-strong) !important;
+  -webkit-text-fill-color: var(--ui-text-strong) !important;
+  background: var(--ui-surface-raised) !important;
+  box-shadow: inset 0 -3px 0 #3b82f6 !important;
+}
+
+.athleteTournamentList,
+.athleteCircuitList,
+.athleteChallengeList {
+  display: grid;
+  gap: 10px;
+}
+
+.athleteTournamentList article {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 15px;
+  padding: 9px 11px 9px 9px;
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
+.athleteTournamentList article > img,
+.athleteTournamentFallback {
+  width: 84px;
+  height: 74px;
+  border-radius: 11px;
+  object-fit: cover;
+}
+
+.athleteTournamentFallback { display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #114c94, #1d83bd); }
+.athleteTournamentFallback svg { width: 28px; }
+.athleteTournamentList article > div { display: grid; min-width: 0; gap: 3px; }
+.athleteTournamentList article > div > small { color: #2563eb; font-size: .65rem; font-weight: 900; text-transform: uppercase; }
+.athleteTournamentList article strong { overflow: hidden; color: var(--ui-text-strong, #102038); text-overflow: ellipsis; white-space: nowrap; }
+.athleteTournamentList article p { margin: 0; color: var(--ui-muted, #637189); font-size: .73rem; }
+.athleteTournamentList article > div > span { display: inline-flex; align-items: center; gap: 5px; color: var(--ui-muted, #637189); font-size: .68rem; }
+.athleteTournamentList article > div > span svg { width: 13px; }
+
+.athleteTournamentList article > button,
+.athletePartnerSearches article > button,
+.athleteChallengeActions button,
+.athleteChallengeCancel,
+.athleteActivityState button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-raised, #fff);
+  font-size: .7rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.athleteTournamentList article > button svg { width: 14px; }
+.athleteCircuitList { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 10px; }
+.athleteCircuitList article { display: flex; align-items: center; gap: 12px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 14px; padding: 14px; background: var(--ui-surface-muted, #eef3fa); }
+.athleteCircuitList article > svg { width: 34px; height: 34px; border-radius: 10px; padding: 8px; color: #7c3aed; background: color-mix(in srgb, #7c3aed 11%, var(--ui-surface-raised, #fff)); }
+.athleteCircuitList article span { display: grid; min-width: 0; gap: 3px; }
+.athleteCircuitList small { color: #7c3aed; font-size: .63rem; font-weight: 900; text-transform: uppercase; }
+.athleteCircuitList strong { overflow: hidden; color: var(--ui-text-strong, #102038); text-overflow: ellipsis; white-space: nowrap; }
+.athleteCircuitList p { margin: 0; color: var(--ui-muted, #637189); font-size: .7rem; }
+
+.athleteActivityEmpty,
+.athleteActivityState {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  border: 1px dashed var(--ui-border, #c8d4e6);
+  border-radius: 15px;
+  padding: 34px 18px;
+  color: var(--ui-muted, #637189);
+  text-align: center;
+}
+
+.athleteActivityEmpty.compact { padding: 24px 16px; }
+.athleteActivityEmpty > svg,
+.athleteActivityState > svg { width: 31px; height: 31px; color: #3b82f6; }
+.athleteActivityEmpty strong,
+.athleteActivityState strong { color: var(--ui-text-strong, #102038); }
+.athleteActivityEmpty span,
+.athleteActivityState span { max-width: 620px; font-size: .75rem; line-height: 1.5; }
+.athleteActivityState.hasError > svg { color: #dc2626; }
+
+.athleteActivityNotice {
+  margin: 0 0 13px;
+  border: 1px solid color-mix(in srgb, #2563eb 35%, var(--ui-border, #c8d4e6));
+  border-radius: 11px;
+  padding: 10px 12px;
+  color: var(--ui-text, #253247);
+  background: color-mix(in srgb, #2563eb 7%, var(--ui-surface-raised, #fff));
+  font-size: .74rem;
+}
+
+.athletePartnerSearches,
+.athletePartnerMatches { display: grid; gap: 9px; }
+.athletePartnerMatches { margin-top: 20px; }
+.athletePartnerSearches h3,
+.athletePartnerMatches h3 { margin: 0 0 2px; color: var(--ui-text-strong, #102038); font-size: .86rem; }
+.athletePartnerSearches article { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 10px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 13px; padding: 10px; background: var(--ui-surface-muted, #eef3fa); }
+.athletePartnerSearches article > span:first-child { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 11px; color: #f97316; background: color-mix(in srgb, #f97316 12%, var(--ui-surface-raised, #fff)); }
+.athletePartnerSearches article > span svg { width: 20px; }
+.athletePartnerSearches article > div { display: grid; min-width: 0; gap: 3px; }
+.athletePartnerSearches article strong { overflow: hidden; color: var(--ui-text-strong, #102038); text-overflow: ellipsis; white-space: nowrap; }
+.athletePartnerSearches article small { color: var(--ui-muted, #637189); }
+.athletePartnerSearches article > button.active { border-color: #16a36a; color: #08784c; background: color-mix(in srgb, #16a36a 10%, var(--ui-surface-raised, #fff)); }
+.athletePartnerSearches article > button svg { width: 15px; }
+
+.athletePartnerMatches > article,
+.athleteChallengeList > article {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
+.athleteActivityAvatar { display: grid; width: 52px; height: 52px; place-items: center; overflow: hidden; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #114c94, #1d83bd); font-weight: 900; }
+.athleteActivityAvatar img { width: 100%; height: 100%; object-fit: cover; }
+.athletePartnerMatches article > div,
+.athleteChallengeList article > div:nth-child(2) { display: grid; min-width: 0; gap: 3px; }
+.athletePartnerMatches strong,
+.athleteChallengeList strong { color: var(--ui-text-strong, #102038); }
+.athletePartnerMatches small,
+.athleteChallengeList small { color: #2563eb; font-size: .66rem; font-weight: 850; }
+.athletePartnerMatches p,
+.athleteChallengeList p { margin: 0; color: var(--ui-muted, #637189); font-size: .72rem; }
+
+.athleteActivityContacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.athleteActivityContacts a { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 8px; padding: 5px 7px; color: #2563eb; background: var(--ui-surface-raised, #fff); font-size: .66rem; font-weight: 850; text-decoration: none; }
+.athleteActivityContacts svg { width: 12px; }
+.athleteContactUnavailable { color: var(--ui-muted, #637189) !important; font-weight: 600 !important; }
+
+.athleteChallengeOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.athleteChallengeOptions > button { display: grid; grid-template-columns: 42px minmax(0, 1fr) 24px; min-height: 80px; align-items: center; gap: 11px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 15px; padding: 12px; color: var(--ui-text, #253247); background: var(--ui-surface-muted, #eef3fa); text-align: left; cursor: pointer; }
+.athleteChallengeOptions > button > svg:first-child { width: 42px; height: 42px; border-radius: 12px; padding: 10px; color: #f97316; background: color-mix(in srgb, #f97316 12%, var(--ui-surface-raised, #fff)); }
+.athleteChallengeOptions > button > svg:last-child { width: 19px; color: #ef4444; }
+.athleteChallengeOptions span { display: grid; gap: 4px; }
+.athleteChallengeOptions strong { color: var(--ui-text-strong, #102038); }
+.athleteChallengeOptions small { color: var(--ui-muted, #637189); line-height: 1.4; }
+.athleteChallengePrivacy { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; color: var(--ui-muted, #637189); font-size: .72rem; }
+.athleteChallengePrivacy svg { width: 17px; flex: 0 0 auto; color: #16a36a; }
+
+.athleteChallengeActions { display: flex; gap: 6px; }
+.athleteChallengeActions button:first-child { border-color: #16a36a; color: #08784c; }
+.athleteChallengeActions button:last-child,
+.athleteChallengeCancel { color: #b42318; }
+.athleteChallengeActions svg { width: 14px; }
+
+.memberContactVisibility { display: grid; grid-template-columns: auto 24px minmax(0, 1fr); align-items: center; gap: 10px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 13px; padding: 12px; color: var(--ui-text, #253247); background: var(--ui-surface-muted, #eef3fa); cursor: pointer; }
+.memberContactVisibility input { width: 18px; height: 18px; }
+.memberContactVisibility > svg { width: 19px; color: #2563eb; }
+.memberContactVisibility span { display: grid; gap: 3px; }
+.memberContactVisibility strong { color: var(--ui-text-strong, #102038); font-size: .78rem; }
+.memberContactVisibility small { color: var(--ui-muted, #637189); font-size: .68rem; }
+
+@media (max-width: 760px) {
+  .athleteCircuitList,
+  .athleteChallengeOptions { grid-template-columns: 1fr; }
+  .athleteTournamentList article { grid-template-columns: 64px minmax(0, 1fr); }
+  .athleteTournamentList article > img,
+  .athleteTournamentFallback { width: 64px; height: 62px; }
+  .athleteTournamentList article > button { grid-column: 1 / -1; width: 100%; }
+  .athletePartnerSearches article { grid-template-columns: 42px minmax(0, 1fr); }
+  .athletePartnerSearches article > button { grid-column: 1 / -1; width: 100%; }
+  .athletePartnerMatches > article,
+  .athleteChallengeList > article { grid-template-columns: 46px minmax(0, 1fr); }
+  .athleteActivityAvatar { width: 46px; height: 46px; }
+  .athleteChallengeActions,
+  .athleteChallengeCancel { grid-column: 1 / -1; width: 100%; }
+}

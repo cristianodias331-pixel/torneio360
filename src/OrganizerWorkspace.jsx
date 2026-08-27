@@ -43,6 +43,7 @@ import {
   Settings,
   Shapes,
   Share2,
+  Swords,
   Sun,
   Tag,
   Target,
@@ -115,6 +116,7 @@ import { PlatformSidebar, PlatformTopbar } from "./features/appShell/PlatformChr
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
 import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsModal.jsx";
 import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
+import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -408,7 +410,7 @@ const HomologationLoadLab = HOMOLOGATION_LOAD_LAB_ENABLED
 
 function normalizeProfileSubtab(value) {
   const requested = String(value || "").trim();
-  if (["publicacoes", "fotos", "contato", "conquistas", "conta"].includes(requested)) return requested;
+  if (["publicacoes", "atividades", "duplas", "desafios", "fotos", "contato", "conquistas", "conta"].includes(requested)) return requested;
   if (requested === "editar") return "contato";
   return "publicacoes";
 }
@@ -556,6 +558,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [notice, setNotice] = useState(null);
   const [profileSubtab, setProfileSubtab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("identidade") === "atleta" && !params.get("perfil")) return "atividades";
     return normalizeProfileSubtab(params.get("perfil"));
   });
   const [profilePublicationFilter, setProfilePublicationFilter] = useState("all");
@@ -902,8 +905,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function openProfileSection(nextSubtab = "publicacoes", nextIdentity = profileIdentity) {
     if (!await guardSelectedTournamentBeforeLeaving()) return false;
-    const normalizedSubtab = normalizeProfileSubtab(nextSubtab);
     const normalizedIdentity = nextIdentity === "athlete" ? "athlete" : "organization";
+    let normalizedSubtab = normalizeProfileSubtab(nextSubtab);
+    if (normalizedIdentity === "athlete" && normalizedSubtab === "publicacoes") normalizedSubtab = "atividades";
+    if (normalizedIdentity === "organization" && ["atividades", "duplas", "desafios"].includes(normalizedSubtab)) normalizedSubtab = "publicacoes";
     setSidebarExpanded(false);
     setProfileMenuOpen(false);
     setSelected(null);
@@ -925,7 +930,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   function openAthleteProfile() {
-    void openProfileSection("publicacoes", "athlete");
+    void openProfileSection("atividades", "athlete");
   }
 
   async function openOrganizationProfileEditor() {
@@ -8514,7 +8519,7 @@ setNewPublicInfo({
         role="tab"
         className={profileIdentity === "athlete" ? "active athlete" : "athlete"}
         aria-selected={profileIdentity === "athlete"}
-        onClick={() => openProfileSection("publicacoes", "athlete")}
+        onClick={() => openProfileSection("atividades", "athlete")}
       >
         <span className="profileIdentitySwitcherIcon"><UserRound aria-hidden="true" /></span>
         <span><strong>Meu perfil de atleta</strong><small>Dados pessoais e esportivos</small></span>
@@ -8605,10 +8610,10 @@ setNewPublicInfo({
         ) : null}
         <div className="unifiedProfileStats" aria-label="Resumo do perfil">
           {profileIdentity === "athlete" ? <>
-            <span><strong>{memberProfile.sportsCategory || "A definir"}</strong><small>Categoria</small></span>
-            <span><strong>{memberProfile.galleryPhotos.length}</strong><small>Fotos</small></span>
-            <span><strong>{memberProfile.dominantHand || "Não informado"}</strong><small>Mão dominante</small></span>
-            <span><strong>{memberProfile.followersCount || 0}</strong><small>Seguidores</small></span>
+            <span><small>Categoria:</small><strong>{memberProfile.sportsCategory || "A definir"}</strong></span>
+            <span><small>Fotos:</small><strong>{memberProfile.galleryPhotos.length}</strong></span>
+            <span><small>Mão dominante:</small><strong>{memberProfile.dominantHand || "Não informado"}</strong></span>
+            <span><small>Seguidores:</small><strong>{memberProfile.followersCount || 0}</strong></span>
           </> : <>
             <span><strong>{organizationGallery.length}</strong><small>Fotos</small></span>
             <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
@@ -8623,13 +8628,35 @@ setNewPublicInfo({
       <button
         type="button"
         role="tab"
-        className={profileSubtab === "publicacoes" ? "active" : ""}
-        onClick={() => openProfileSection("publicacoes")}
-        aria-selected={profileSubtab === "publicacoes"}
+        className={profileSubtab === (profileIdentity === "athlete" ? "atividades" : "publicacoes") ? "active" : ""}
+        onClick={() => openProfileSection(profileIdentity === "athlete" ? "atividades" : "publicacoes")}
+        aria-selected={profileSubtab === (profileIdentity === "athlete" ? "atividades" : "publicacoes")}
       >
-        <Grid3X3 aria-hidden="true" />
-        Publicações
+        {profileIdentity === "athlete" ? <Trophy aria-hidden="true" /> : <Grid3X3 aria-hidden="true" />}
+        {profileIdentity === "athlete" ? "Torneios/Circuitos" : "Publicações"}
       </button>
+      {profileIdentity === "athlete" ? <>
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "duplas" ? "active" : ""}
+        onClick={() => openProfileSection("duplas", "athlete")}
+        aria-selected={profileSubtab === "duplas"}
+      >
+        <Users aria-hidden="true" />
+        Procurando dupla
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={profileSubtab === "desafios" ? "active" : ""}
+        onClick={() => openProfileSection("desafios", "athlete")}
+        aria-selected={profileSubtab === "desafios"}
+      >
+        <Swords aria-hidden="true" />
+        Desafios
+      </button>
+      </> : null}
       <button
         type="button"
         role="tab"
@@ -8662,15 +8689,8 @@ setNewPublicInfo({
       </button>
     </div>
 
-    {profileSubtab === "publicacoes" ? (
+    {profileSubtab === "publicacoes" && profileIdentity === "organization" ? (
       <div className="profileSubtabPanel">
-    {profileIdentity === "athlete" ? (
-      <div className="athleteProfilePublicationsEmpty">
-        <UserRound aria-hidden="true" />
-        <strong>Publicações do atleta</strong>
-        <span>Inscrições, resultados e conquistas reconhecidas pela plataforma aparecerão aqui. Torneios e circuitos criados pertencem somente ao perfil da organização.</span>
-      </div>
-    ) : <>
     <div className="profilePublicationsHeader">
       <div><strong>Publicações</strong><span>{tournaments.length} campeonato(s) criado(s)</span></div>
       <div className="profilePublicationCreateActions">
@@ -8744,9 +8764,17 @@ setNewPublicInfo({
     </div>
     </> : null}
 
-    </>}
-
       </div>
+    ) : null}
+
+    {profileIdentity === "athlete" && ["atividades", "duplas", "desafios"].includes(profileSubtab) ? (
+      <AthleteProfileActivity
+        supabase={supabase}
+        profile={memberProfile}
+        activeTab={profileSubtab}
+        owner
+        onOpenTournament={openPublishedTournamentFromFeed}
+      />
     ) : null}
 
     {profileSubtab === "fotos" ? (

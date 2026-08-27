@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Award, AtSign, Grid3X3, ImagePlus, Images, MapPin } from "lucide-react";
+import { Award, AtSign, ImagePlus, Images, MapPin } from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -19,6 +19,7 @@ import {
   MemberProfileTabs,
 } from "./MemberProfilePresentation.jsx";
 import ProfileImageEditor from "./ProfileImageEditor.jsx";
+import AthleteProfileActivity from "./AthleteProfileActivity.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 import { PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
@@ -62,7 +63,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     const panel = new URLSearchParams(window.location.search).get("aba");
     return panel === "explorar" ? "explore" : panel === "ajustes" ? "profile" : "overview";
   });
-  const [activeProfileTab, setActiveProfileTab] = useState("publicacoes");
+  const [activeProfileTab, setActiveProfileTab] = useState("atividades");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
   const [browsingTournament, setBrowsingTournament] = useState(null);
@@ -349,14 +350,16 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
             onView={openPublicProfile}
           />
 
-          <MemberProfileTabs activeTab={activeProfileTab} onChange={setActiveProfileTab} />
+          <MemberProfileTabs activeTab={activeProfileTab} onChange={setActiveProfileTab} owner />
 
-          {activeProfileTab === "publicacoes" ? (
-            <section className="publicMemberSection publicMemberEmptyProfileSection">
-              <Grid3X3 aria-hidden="true" />
-              <strong>Nenhuma publicação disponível</strong>
-              <span>Torneios e circuitos das organizações vinculadas aparecerão aqui.</span>
-            </section>
+          {["atividades", "duplas", "desafios"].includes(activeProfileTab) ? (
+            <AthleteProfileActivity
+              supabase={supabase}
+              profile={profile}
+              activeTab={activeProfileTab}
+              owner
+              onOpenTournament={openPublishedTournament}
+            />
           ) : null}
 
           {activeProfileTab === "fotos" ? (
@@ -426,7 +429,9 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
                 <span aria-hidden="true">👕</span>
                 <span><strong>Tamanho da camiseta</strong><small>{profile.shirtSize || "Não informado"}</small></span>
               </div>
-              <p>Dados pessoais de contato não são publicados automaticamente.</p>
+              <p>{profile.showContacts
+                ? "Seus contatos continuam privados e só aparecem após uma combinação de dupla ou um desafio aceito."
+                : "Seus contatos permanecem privados até você autorizar o uso em combinações esportivas."}</p>
               <button type="button" className="secondaryBtn" onClick={() => setDetailsOpen(true)}>Editar informações do perfil</button>
             </section>
           ) : null}

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { AtSign, MapPin, Save, X } from "lucide-react";
+import { AtSign, Eye, MapPin, MessageCircle, Save, Send, X } from "lucide-react";
 
 export default function MemberProfileDetailsModal({
   open,
@@ -159,6 +159,64 @@ export default function MemberProfileDetailsModal({
               <option>Não informado</option><option>PP</option><option>P</option><option>M</option><option>G</option><option>GG</option><option>XGG</option>
             </select>
           </div>
+
+          <div className="profileFormSectionHeader fullField">
+            <span><MessageCircle aria-hidden="true" /></span>
+            <div><strong>Contato para dupla e desafios</strong><small>Você escolhe se esses meios poderão aparecer após uma combinação esportiva.</small></div>
+          </div>
+
+          <div className="formField">
+            <label htmlFor="member-modal-whatsapp"><MessageCircle aria-hidden="true" /> WhatsApp</label>
+            <input
+              id="member-modal-whatsapp"
+              value={profile.whatsapp || ""}
+              maxLength={20}
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="Ex.: 85999999999"
+              onChange={(event) => onChange("whatsapp", event.target.value)}
+              aria-invalid={Boolean(errors.whatsapp)}
+            />
+            {errors.whatsapp ? <small className="unifiedMemberFieldError">{errors.whatsapp}</small> : null}
+          </div>
+
+          <div className="formField">
+            <label htmlFor="member-modal-telegram"><Send aria-hidden="true" /> Telegram</label>
+            <input
+              id="member-modal-telegram"
+              value={profile.telegram || ""}
+              maxLength={64}
+              autoCapitalize="none"
+              placeholder="seuusuario"
+              onChange={(event) => onChange("telegram", event.target.value)}
+              aria-invalid={Boolean(errors.telegram)}
+            />
+            {errors.telegram ? <small className="unifiedMemberFieldError">{errors.telegram}</small> : null}
+          </div>
+
+          <div className="formField">
+            <label htmlFor="member-modal-instagram"><AtSign aria-hidden="true" /> Instagram</label>
+            <input
+              id="member-modal-instagram"
+              value={profile.instagram || ""}
+              maxLength={64}
+              autoCapitalize="none"
+              placeholder="seuusuario"
+              onChange={(event) => onChange("instagram", event.target.value)}
+              aria-invalid={Boolean(errors.instagram)}
+            />
+            {errors.instagram ? <small className="unifiedMemberFieldError">{errors.instagram}</small> : null}
+          </div>
+
+          <label className="memberContactVisibility fullField">
+            <input
+              type="checkbox"
+              checked={Boolean(profile.showContacts)}
+              onChange={(event) => onChange("showContacts", event.target.checked)}
+            />
+            <Eye aria-hidden="true" />
+            <span><strong>Permitir contato após uma combinação</strong><small>WhatsApp, Telegram ou Instagram serão mostrados somente quando você habilitar esta opção.</small></span>
+          </label>
           </> : null}
         </div>
 
