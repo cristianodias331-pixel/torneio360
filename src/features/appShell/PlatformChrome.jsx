@@ -5,6 +5,7 @@ import "../../styles/40-organizer-data-and-navigation.css";
 
 export function PlatformSidebar({
   activePanel,
+  className = "",
   expanded = false,
   items = [],
   onNavigate,
@@ -24,7 +25,7 @@ export function PlatformSidebar({
       />
       <aside
         id="torneio360-main-sidebar"
-        className={`playSidebar proSidebar ${expanded ? "isExpanded" : ""}`}
+        className={`playSidebar proSidebar ${className} ${expanded ? "isExpanded" : ""}`.trim()}
         aria-label="Navegação principal"
         onMouseLeave={() => {
           if (window.matchMedia?.("(min-width: 1025px)").matches) onExpandedChange?.(false);

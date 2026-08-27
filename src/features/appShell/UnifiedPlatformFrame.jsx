@@ -77,6 +77,7 @@ export default function UnifiedPlatformFrame({
     <div className={`playAppShell proDashboard theme-${colorMode} publicOverviewShell unifiedPlatformShell`}>
       <PlatformSidebar
         activePanel={activePanel}
+        className="unifiedPlatformSidebar"
         expanded={sidebarExpanded}
         items={navItems}
         onNavigate={onNavigate}
