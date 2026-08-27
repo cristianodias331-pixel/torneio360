@@ -3851,9 +3851,9 @@ const requiredApplicationMarkers = [
   '.eq("is_public", true)',
   '?public=${publicId}',
   'panel: "inicio"',
+  'panel: "explorar"',
   'panel: "criar"',
-  'panel: "circuitos"',
-  'panel: "modalidades"',
+  'panel: "ajustes"',
 ];
 
 for (const marker of requiredApplicationMarkers) {
@@ -3996,12 +3996,14 @@ assert.ok(
 );
 assert.ok(
   publicPlatformHomeControllerSource.includes("PublicTournamentFeedSection")
+    && publicPlatformHomeControllerSource.includes("PublicExploreSection")
     && publicPlatformHomeControllerSource.includes("fetchPublicTournamentFeed")
+    && publicPlatformHomeControllerSource.includes("fetchPublicArenaDirectory")
+    && publicPlatformHomeControllerSource.includes("fetchPublicMemberDirectory")
     && publicPlatformHomeControllerSource.includes("embedded")
-    && !publicPlatformHomeControllerSource.includes("PublicArenaDirectorySection")
-    && !publicPlatformHomeControllerSource.includes("PublicMemberDirectorySection")
     && publicArenaPresentationSource.includes("UnifiedPlatformFrame")
-    && publicArenaPresentationSource.includes('activePanel="overview"')
+    && publicArenaPresentationSource.includes("activePanel={activePanel}")
+    && publicArenaPresentationSource.includes("exploring ? <Explore /> : <TournamentFeed />")
     && !publicArenaPresentationSource.includes('<a href="#perfis">Atletas</a>')
     && !publicArenaPresentationSource.includes('<a href="#organizacoes">Organizações</a>'),
   "A visão geral pública voltou a usar uma página paralela ou diretórios fora do fluxo principal."
@@ -5053,11 +5055,11 @@ assert.ok(
 );
 assert.ok(
   unifiedPlatformFrameSource.includes('panel: "overview"')
-    && unifiedPlatformFrameSource.includes('panel: "tournaments"')
-    && unifiedPlatformFrameSource.includes('panel: "circuits"')
+    && unifiedPlatformFrameSource.includes('panel: "explore"')
+    && unifiedPlatformFrameSource.includes('panel: "create"')
     && unifiedPlatformFrameSource.includes('panel: "profile"')
     && memberProfileWorkspaceSource.includes("PublicTournamentFeedSection")
-    && memberProfileWorkspaceSource.includes("Torneios e circuitos são recursos para assinantes"),
+    && memberProfileWorkspaceSource.includes("A criação de torneios e circuitos pertence a uma identidade de organização"),
   "A conta gratuita voltou a usar uma área separada ou perdeu o bloqueio de assinatura."
 );
 assert.ok(

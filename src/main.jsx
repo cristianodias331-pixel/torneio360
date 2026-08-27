@@ -73,6 +73,9 @@ import {
   createPublicArenaApi,
 } from "./services/publicArenaApi.mjs";
 import {
+  fetchPublicMemberDirectory,
+} from "./services/memberProfileApi.mjs";
+import {
   fetchPublicTournamentFeed,
   loadPublicOrganizationGallery,
 } from "./services/publicSocialApi.mjs";
@@ -111,6 +114,7 @@ if (import.meta.env.DEV) globalThis.__torneio360Supabase = supabase;
 
 const {
   fetchPublicArenaBundle,
+  fetchPublicArenaDirectory,
   fetchPublicArenaEventsPage,
   fetchPublicArenaInitialView,
   fetchPublicArenaPhoto,
@@ -128,13 +132,15 @@ function navigateFromPublicProfile(panel, hasSession) {
     navigatePlatform();
     return;
   }
+  if (panel === "explore") {
+    navigatePlatform(hasSession ? { aba: "explorar" } : { explorar: "1" });
+    return;
+  }
   if (!hasSession) {
     navigatePlatform(panel === "profile" ? { cadastro: "conta" } : { entrar: "1" });
     return;
   }
-  navigatePlatform(panel === "profile"
-    ? { aba: "ajustes" }
-    : { aba: panel === "tournaments" ? "criar" : "circuitos" });
+  navigatePlatform({ aba: panel === "profile" ? "ajustes" : "criar" });
 }
 
 const {
@@ -164,6 +170,8 @@ const {
 
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
 const publicPlatformHomeRuntime = Object.freeze({
+  fetchPublicArenaDirectory,
+  fetchPublicMemberDirectory: (options) => fetchPublicMemberDirectory({ supabase, ...options }),
   fetchPublicTournamentFeed: (options) => fetchPublicTournamentFeed({ supabase, ...options }),
   fetchPublicTournamentDetail,
   renderPublicTournament: (props) => <PublicTournamentScreen {...props} />,
@@ -172,6 +180,7 @@ const publicPlatformHomeRuntime = Object.freeze({
   getRegistrationDeadline: getTournamentRegistrationDeadline,
   isRegistrationOpen: isRegistrationDeadlineOpen,
   getWhatsAppUrl: getBrazilianWhatsAppUrl,
+  ArenaPhoto: LazyArenaPhoto,
   tagline: TORNEIO360_TAGLINE,
 });
 

@@ -20,7 +20,7 @@ import {
 } from "./MemberProfilePresentation.jsx";
 import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
-import { PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
+import { PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
 
@@ -58,7 +58,10 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState(null);
-  const [activePanel, setActivePanel] = useState("overview");
+  const [activePanel, setActivePanel] = useState(() => {
+    const panel = new URLSearchParams(window.location.search).get("aba");
+    return panel === "explorar" ? "explore" : panel === "ajustes" ? "profile" : "overview";
+  });
   const [activeProfileTab, setActiveProfileTab] = useState("publicacoes");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
@@ -236,7 +239,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   }
 
   function navigate(panel) {
-    if (panel === "overview" || panel === "profile") {
+    if (panel === "overview" || panel === "explore" || panel === "profile") {
       setNotice(null);
       setBrowsingTournament(null);
       setActivePanel(panel);
@@ -244,7 +247,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     }
     setNotice({
       tone: "info",
-      message: "Torneios e circuitos são recursos para assinantes. A apresentação dos planos será adicionada aqui.",
+      message: "A criação de torneios e circuitos pertence a uma identidade de organização. Seu perfil de atleta continua no mesmo ambiente, apenas sem permissão de gestão.",
     });
   }
 
@@ -269,11 +272,19 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     <UnifiedPlatformFrame
       activePanel={activePanel}
       hasSession
-      title={activePanel === "profile" ? "Meu perfil" : "Visão geral"}
-      eyebrow={activePanel === "profile" ? "Perfil" : "Publicações"}
+      title={activePanel === "profile" ? "Meu perfil" : activePanel === "explore" ? "Explorar" : "Início"}
+      eyebrow={activePanel === "profile" ? "Perfil de atleta" : activePanel === "explore" ? "Descobrir" : "Publicações"}
       description={activePanel === "profile"
-        ? "Seu perfil pessoal dentro da mesma plataforma."
-        : "Acompanhe as publicações de torneios das organizações."}
+        ? "Seu perfil pessoal como ele aparece para a comunidade. Somente você pode editar."
+        : activePanel === "explore"
+          ? "Encontre torneios, organizações e outros atletas."
+          : "Acompanhe as publicações de torneios das organizações."}
+      identity={{
+        kind: "athlete",
+        label: profile.displayName || "Perfil de atleta",
+        subtitle: "Atleta • perfil pessoal",
+        photoUrl: profile.photoUrl || "",
+      }}
       accountLabel="Sair"
       onAccountAction={onLogout}
       onNavigate={navigate}
@@ -299,8 +310,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         onClose={() => { if (!saving) setDetailsOpen(false); }}
         onSave={saveDetailsAndClose}
       />
-      {activePanel === "overview" ? (
-        browsingTournament
+      {activePanel !== "profile" && browsingTournament
           ? publicPlatformHomeRuntime.renderPublicTournament({
             tournament: browsingTournament,
             embedded: true,
@@ -314,12 +324,13 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
               },
               onBackToArena: () => setBrowsingTournament(null),
             })
-          : browsingTournamentLoading
+          : activePanel !== "profile" && browsingTournamentLoading
             ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
-            : publicPlatformHomeRuntime
+            : activePanel === "overview" && publicPlatformHomeRuntime
               ? <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} />
-              : null
-      ) : (
+              : activePanel === "explore" && publicPlatformHomeRuntime
+                ? <PublicExploreSection runtime={publicPlatformHomeRuntime} hasSession onOpenTournament={openPublishedTournament} />
+                : activePanel === "profile" ? (
         <div className="memberProfileOwnExperience">
           {!status || status === "loading" ? <div className="memberProfileOwnLoading" role="status">Carregando seu perfil...</div> : null}
           {status === "unavailable" ? (
@@ -404,7 +415,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
 
           {activeProfileTab === "contato" ? (
             <section className="publicMemberSection memberProfileOwnContact">
-              <header><div><AtSign aria-hidden="true" /><h2>Informações de contato</h2></div></header>
+              <header><div><AtSign aria-hidden="true" /><h2>Sobre</h2></div></header>
               <div>
                 <MapPin aria-hidden="true" />
                 <span><strong>Localização pública</strong><small>{[profile.city, profile.state].filter(Boolean).join("/") || "Não informada"}</small></span>
@@ -434,7 +445,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
             </section>
           ) : null}
         </div>
-      )}
+      ) : null}
     </UnifiedPlatformFrame>
   );
 }

@@ -19,6 +19,7 @@ import {
   CircleHelp,
   CloudCheck,
   CloudOff,
+  Compass,
   Clock3,
   Copy,
   Dices,
@@ -80,6 +81,7 @@ import {
   PublicCircuitScreenView,
   PublicCupBracketView,
   PublicPlatformHomeController,
+  PublicExploreSection,
   PublicScheduleView,
   PublicTournamentPageController,
   PublicTournamentScreenView,
@@ -556,6 +558,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const params = new URLSearchParams(window.location.search);
     return normalizeProfileSubtab(params.get("perfil"));
   });
+  const [profilePublicationFilter, setProfilePublicationFilter] = useState("all");
   const [memberProfileEditorOpen, setMemberProfileEditorOpen] = useState(false);
   const [memberProfileImageEditor, setMemberProfileImageEditor] = useState(null);
   const [activePanel, setActivePanel] = useState(() => {
@@ -894,6 +897,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setProfileMenuOpen(false);
     setSelected(null);
     setProfileSubtab(normalizedSubtab);
+    if (normalizedSubtab !== "contato") setProfileEditing(false);
     setActivePanel("ajustes");
     updateAppUrl({ activePanel: "ajustes", selectedTournamentId: null, profileSubtab: normalizedSubtab });
   }
@@ -1289,28 +1293,32 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const profileInitials = getMemberProfileInitials(memberProfile);
   const panelMeta = {
     inicio: {
-      title: "Visão geral",
-      description: "Veja os torneios publicados pelas organizações.",
+      title: "Início",
+      description: "Acompanhe as publicações mais recentes da comunidade.",
+    },
+    explorar: {
+      title: "Explorar",
+      description: "Encontre torneios, organizações e atletas no mesmo ambiente.",
     },
     criar: {
-      title: "Torneios",
-      description: "Crie um novo torneio ou continue gerenciando os já cadastrados.",
+      title: "Criar e gerenciar",
+      description: "Crie conteúdo pela organização e acompanhe tudo o que já foi publicado.",
     },
     circuitos: {
-      title: "Circuitos",
-      description: "Organize temporadas e acompanhe a classificação entre torneios.",
+      title: "Criar e gerenciar",
+      description: "Crie conteúdo pela organização e acompanhe tudo o que já foi publicado.",
     },
     modalidades: {
-      title: "Modalidades",
-      description: "Consulte os formatos disponíveis para o seu plano.",
+      title: "Criar e gerenciar",
+      description: "Crie conteúdo pela organização e acompanhe tudo o que já foi publicado.",
     },
     lixeira: {
       title: "Lixeira",
       description: "Recupere torneios excluídos nos últimos 30 dias.",
     },
     ajustes: {
-      title: "Perfil e preferências",
-      description: "Atualize sua imagem, dados públicos e informações da arena.",
+      title: "Perfil da organização",
+      description: "Veja o perfil como o público e edite somente quando necessário.",
     },
   };
   const currentPanelMeta = panelMeta[activePanel] || panelMeta.inicio;
@@ -6240,20 +6248,40 @@ setNewPublicInfo({
 
   function renderAppSidebar() {
     const navItems = [
-      { panel: "inicio", label: "Visão geral", Icon: LayoutDashboard },
-      { panel: "criar", label: "Torneios", Icon: Trophy },
-      { panel: "circuitos", label: "Circuitos", Icon: GitBranch },
-      { panel: "modalidades", label: "Modalidades", Icon: Shapes },
+      { panel: "inicio", label: "Início", Icon: LayoutDashboard },
+      { panel: "explorar", label: "Explorar", Icon: Compass },
+      { panel: "criar", label: "Criar", Icon: PlusCircle },
+      { panel: "ajustes", label: "Perfil", Icon: UserRound },
     ];
+    const sidebarActivePanel = ["criar", "circuitos", "modalidades"].includes(activePanel)
+      ? "criar"
+      : activePanel;
 
     return (
       <PlatformSidebar
-        activePanel={activePanel}
+        activePanel={sidebarActivePanel}
         expanded={sidebarExpanded}
         items={navItems}
         onNavigate={goToPanel}
         onExpandedChange={setSidebarExpanded}
       />
+    );
+  }
+
+  function renderCreationNavigation() {
+    if (!["criar", "circuitos", "modalidades"].includes(activePanel)) return null;
+    return (
+      <nav className="creationContextNavigation" aria-label="Conteúdo da organização">
+        <div>
+          <span>Identidade de organização</span>
+          <strong>O que você quer administrar?</strong>
+        </div>
+        <div role="tablist" aria-label="Tipos de conteúdo">
+          <button type="button" role="tab" aria-selected={activePanel === "criar"} className={activePanel === "criar" ? "active" : ""} onClick={() => goToPanel("criar")}><Trophy aria-hidden="true" /> Torneios</button>
+          <button type="button" role="tab" aria-selected={activePanel === "circuitos"} className={activePanel === "circuitos" ? "active" : ""} onClick={() => goToPanel("circuitos")}><GitBranch aria-hidden="true" /> Circuitos</button>
+          <button type="button" role="tab" aria-selected={activePanel === "modalidades"} className={activePanel === "modalidades" ? "active" : ""} onClick={() => goToPanel("modalidades")}><Shapes aria-hidden="true" /> Modalidades</button>
+        </div>
+      </nav>
     );
   }
 
@@ -6326,8 +6354,8 @@ setNewPublicInfo({
                   {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="" /> : <span>{profileInitials}</span>}
                 </span>
                 <span className="profileTriggerCopy">
-                  <strong>{profileDisplayName}</strong>
-                  <small>Configurações do perfil</small>
+                  <strong>{organizerProfile.arenaName || profileDisplayName}</strong>
+                  <small>Perfil da organização</small>
                 </span>
               </button>
               <button
@@ -6351,7 +6379,7 @@ setNewPublicInfo({
                   aria-current={activePanel === "ajustes" && profileSubtab !== "conta" ? "page" : undefined}
                 >
                   <Settings aria-hidden="true" />
-                  <span><strong>Meu perfil</strong><small>Identidade pessoal</small></span>
+                  <span><strong>Perfil da organização</strong><small>Identidade pública e publicações</small></span>
                 </button>
                 <button
                   type="button"
@@ -6389,6 +6417,12 @@ setNewPublicInfo({
         sidebarExpanded={sidebarExpanded}
         onSidebarExpandedChange={setSidebarExpanded}
         tagline={TORNEIO360_TAGLINE}
+        identity={{
+          kind: "organization",
+          label: organizerProfile.arenaName || profileDisplayName,
+          subtitle: "Organização • gerencia eventos",
+          photoUrl: organizerProfile.photoUrl || memberProfile.photoUrl || "",
+        }}
         actions={actions}
       />
     );
@@ -7107,8 +7141,9 @@ setNewPublicInfo({
           </section> : null}
 
           {freeTrialDetails && activePanel !== "ajustes" ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
+          {renderCreationNavigation()}
 
-          {activePanel === "inicio" && (
+          {["inicio", "explorar"].includes(activePanel) && (
             <React.Suspense fallback={<section className="card"><p>Carregando publicações...</p></section>}>
               {browsingPublicTournament
                 ? publicPlatformHomeRuntime.renderPublicTournament({
@@ -7122,7 +7157,13 @@ setNewPublicInfo({
                   })
                 : browsingPublicTournamentLoading
                   ? <section className="card"><p>Carregando o torneio no mesmo ambiente...</p></section>
-                  : (
+                  : activePanel === "explorar" ? (
+                    <PublicExploreSection
+                      runtime={publicPlatformHomeRuntime}
+                      hasSession
+                      onOpenTournament={openPublishedTournamentFromFeed}
+                    />
+                  ) : (
                     <PublicPlatformHomeController
                       session={{ user }}
                       runtime={publicPlatformHomeRuntime}
@@ -8452,7 +8493,10 @@ setNewPublicInfo({
       </label>
       <div className="instagramProfileInfo">
         <div className="instagramProfileTopline">
-          <h2>{profileDisplayName}</h2>
+          <div className="organizationProfileName">
+            <h2>{organizerProfile.arenaName || profileDisplayName}</h2>
+            <span>Organização</span>
+          </div>
           <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => setMemberProfileEditorOpen(true)}>
             <Settings aria-hidden="true" />
             Editar perfil
@@ -8501,7 +8545,7 @@ setNewPublicInfo({
         aria-selected={profileSubtab === "contato"}
       >
         <AtSign aria-hidden="true" />
-        Informações de contato
+        Sobre
       </button>
       <button
         type="button"
@@ -8525,7 +8569,13 @@ setNewPublicInfo({
       </div>
     </div>
 
-    <div className="profileTournamentGrid">
+    <nav className="profilePublicationFilters" aria-label="Filtrar publicações" role="tablist">
+      <button type="button" role="tab" aria-selected={profilePublicationFilter === "all"} className={profilePublicationFilter === "all" ? "active" : ""} onClick={() => setProfilePublicationFilter("all")}>Tudo <span>{tournaments.length + circuits.length}</span></button>
+      <button type="button" role="tab" aria-selected={profilePublicationFilter === "tournaments"} className={profilePublicationFilter === "tournaments" ? "active" : ""} onClick={() => setProfilePublicationFilter("tournaments")}>Torneios <span>{tournaments.length}</span></button>
+      <button type="button" role="tab" aria-selected={profilePublicationFilter === "circuits"} className={profilePublicationFilter === "circuits" ? "active" : ""} onClick={() => setProfilePublicationFilter("circuits")}>Circuitos <span>{circuits.length}</span></button>
+    </nav>
+
+    {profilePublicationFilter !== "circuits" ? <div className="profileTournamentGrid">
       {tournaments.length === 0 ? (
         <div className="profileEmptyPost">Nenhum campeonato criado ainda.</div>
       ) : tournaments.map((t) => {
@@ -8558,8 +8608,9 @@ setNewPublicInfo({
           </article>
         );
       })}
-    </div>
+    </div> : null}
 
+    {profilePublicationFilter !== "tournaments" ? <>
     <div className="profilePublicationsHeader profileCircuitsHeading">
       <strong>Circuitos</strong>
       <span>{circuits.length} circuito(s) publicado(s)</span>
@@ -8581,6 +8632,7 @@ setNewPublicInfo({
         </article>
       ))}
     </div>
+    </> : null}
 
       </div>
     ) : null}
@@ -8644,12 +8696,35 @@ setNewPublicInfo({
     ) : null}
   </section>
 
-  {profileSubtab === "contato" ? (
+  {profileSubtab === "contato" && !profileEditing ? (
+  <section className="card organizationAboutOverview">
+    <header>
+      <div>
+        <span>Sobre a organização</span>
+        <h2>{organizerProfile.arenaName || "Minha organização"}</h2>
+        <p>{memberProfile.bio || "Adicione uma apresentação para atletas e visitantes conhecerem sua organização."}</p>
+      </div>
+      <button type="button" className="secondaryBtn" onClick={() => setProfileEditing(true)}><Settings aria-hidden="true" /> Editar informações</button>
+    </header>
+    <div className="organizationAboutGrid">
+      <article><UserRound aria-hidden="true" /><span><small>Responsável</small><strong>{organizerProfile.organizerName || "Não informado"}</strong></span></article>
+      <article><MapPin aria-hidden="true" /><span><small>Localização</small><strong>{[organizerProfile.city, organizerProfile.state].filter(Boolean).join("/") || "Não informada"}</strong><em>{organizerProfile.address || "Endereço não informado"}</em></span></article>
+      <article><MessageCircle aria-hidden="true" /><span><small>Contato público</small><strong>{organizerProfile.whatsapp || "WhatsApp não informado"}</strong></span></article>
+      <article><AtSign aria-hidden="true" /><span><small>Instagram</small><strong>{organizerProfile.instagramHandle || "Não informado"}</strong></span></article>
+    </div>
+    <aside className="organizationPrivateDataNotice">
+      <LockKeyhole aria-hidden="true" />
+      <span><strong>Dados privados continuam separados</strong><small>Chave Pix, assinatura e informações da conta nunca aparecem para visitantes.</small></span>
+    </aside>
+  </section>
+  ) : null}
+
+  {profileSubtab === "contato" && profileEditing ? (
   <section className="card organizerProfileCard profileEditSubtab profileContactSubtab">
     <div className="profileEditSubtabHeader">
       <div>
         <span>Dados públicos</span>
-        <h2>Informações de contato</h2>
+        <h2>Editar informações da organização</h2>
       </div>
     </div>
     <p className="profileSectionHint">Mantenha atualizados os canais que atletas e outras organizações podem usar para falar com você.</p>
@@ -8873,7 +8948,10 @@ setNewPublicInfo({
 
     </div>
 
-    <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving} aria-busy={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+    <div className="organizationProfileEditActions">
+      <button className="secondaryBtn" type="button" onClick={() => setProfileEditing(false)} disabled={profileSaving}>Cancelar</button>
+      <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving} aria-busy={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+    </div>
     {profileSaveSuccess ? (
       <div className="profileSaveMiniNotice" role="status" aria-live="polite">
         ✅ Alterado com sucesso

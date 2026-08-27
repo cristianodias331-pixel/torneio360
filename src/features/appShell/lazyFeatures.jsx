@@ -28,6 +28,10 @@ export const PublicTournamentScreenView = React.lazy(
 export const PublicPlatformHomeController = React.lazy(
   () => import("../publicArena/PublicPlatformHomeController.jsx")
 );
+export const PublicExploreSection = lazyNamed(
+  () => import("../publicArena/PublicPlatformHomeController.jsx"),
+  "PublicExploreSection"
+);
 export const PublicMemberProfilePageView = React.lazy(
   () => import("../profile/PublicMemberProfilePage.jsx")
 );

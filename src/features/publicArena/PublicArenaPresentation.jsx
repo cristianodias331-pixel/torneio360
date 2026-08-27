@@ -700,26 +700,31 @@ export function PublicTournamentFeedView({
 }
 
 export function PublicPlatformHomeView({
+  activePanel = "overview",
   hasSession,
   onAccountAction,
   onAthleteSignup,
   onNavigate,
   TournamentFeed,
+  Explore,
   tagline,
 }) {
+  const exploring = activePanel === "explore";
   return (
     <UnifiedPlatformFrame
-      activePanel="overview"
+      activePanel={activePanel}
       hasSession={hasSession}
       tagline={tagline}
       eyebrow="Conteúdo público"
-      title="Visão geral"
-      description="Veja os torneios publicados. Para se inscrever ou criar um perfil, entre na plataforma."
+      title={exploring ? "Explorar" : "Início"}
+      description={exploring
+        ? "Descubra torneios, organizações e atletas dentro da mesma plataforma."
+        : "Veja as publicações mais recentes. Para se inscrever ou criar um perfil, entre na plataforma."}
       onNavigate={onNavigate}
       onSignup={onAthleteSignup}
       onAccountAction={onAccountAction}
     >
-      <TournamentFeed />
+      {exploring ? <Explore /> : <TournamentFeed />}
     </UnifiedPlatformFrame>
   );
 }

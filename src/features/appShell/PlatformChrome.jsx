@@ -1,7 +1,27 @@
 import React from "react";
-import { LockKeyhole, Menu } from "lucide-react";
+import { Building2, LockKeyhole, Menu, UserRound } from "lucide-react";
 import { BeachLogo } from "./EntryPresentation.jsx";
 import "../../styles/40-organizer-data-and-navigation.css";
+import "../../styles/56-unified-navigation.css";
+
+export function PlatformIdentityContext({ identity }) {
+  if (!identity) return null;
+  const isOrganization = identity.kind === "organization";
+  const IdentityIcon = isOrganization ? Building2 : UserRound;
+
+  return (
+    <div className="platformIdentityContext" aria-label={`Identidade ativa: ${identity.label}`}>
+      <span className="platformIdentityAvatar" aria-hidden="true">
+        {identity.photoUrl ? <img src={identity.photoUrl} alt="" /> : <IdentityIcon />}
+      </span>
+      <span className="platformIdentityCopy">
+        <small>Usando como</small>
+        <strong>{identity.label}</strong>
+        <em>{identity.subtitle || (isOrganization ? "Organização" : "Atleta")}</em>
+      </span>
+    </div>
+  );
+}
 
 export function PlatformSidebar({
   activePanel,
@@ -61,6 +81,7 @@ export function PlatformTopbar({
   sidebarExpanded = false,
   onSidebarExpandedChange,
   tagline = "Gestão inteligente de torneios",
+  identity = null,
   actions = null,
 }) {
   return (
@@ -80,7 +101,10 @@ export function PlatformTopbar({
         <BeachLogo />
         <div className="brandTaglineOnly"><span>{tagline}</span></div>
       </div>
-      <div className="playUserBox proTopActions">{actions}</div>
+      <div className="playUserBox proTopActions">
+        <PlatformIdentityContext identity={identity} />
+        {actions}
+      </div>
     </header>
   );
 }

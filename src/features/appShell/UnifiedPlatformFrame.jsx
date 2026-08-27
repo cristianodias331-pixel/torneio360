@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { GitBranch, LayoutDashboard, LogIn, Moon, Sun, Trophy, UserRound } from "lucide-react";
+import { Compass, Home, LogIn, Moon, PlusCircle, Sun, UserRound } from "lucide-react";
 import { PlatformSidebar, PlatformTopbar } from "./PlatformChrome.jsx";
 import "../../styles/53-public-social-platform.css";
 
 const NAV_ITEMS = [
-  { panel: "overview", label: "Visão geral", Icon: LayoutDashboard },
-  { panel: "tournaments", label: "Torneios", Icon: Trophy, protected: true },
-  { panel: "circuits", label: "Circuitos", Icon: GitBranch, protected: true },
+  { panel: "overview", label: "Início", Icon: Home },
+  { panel: "explore", label: "Explorar", Icon: Compass },
+  { panel: "create", label: "Criar", Icon: PlusCircle, requiresCreationPermission: true },
   { panel: "profile", label: "Perfil", Icon: UserRound },
 ];
 
@@ -18,6 +18,8 @@ export default function UnifiedPlatformFrame({
   description,
   eyebrow,
   accountLabel,
+  canCreate = false,
+  identity = null,
   onNavigate,
   onAccountAction,
   onSignup,
@@ -45,7 +47,7 @@ export default function UnifiedPlatformFrame({
 
   const navItems = NAV_ITEMS.map((item) => ({
     ...item,
-    locked: item.protected && !hasSession,
+    locked: item.requiresCreationPermission && !canCreate,
   }));
 
   const topbarActions = (
@@ -88,6 +90,7 @@ export default function UnifiedPlatformFrame({
           sidebarExpanded={sidebarExpanded}
           onSidebarExpandedChange={setSidebarExpanded}
           tagline={tagline}
+          identity={identity}
           actions={topbarActions}
         />
 

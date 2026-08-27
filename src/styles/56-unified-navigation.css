@@ -1,0 +1,400 @@
+/* Navegação única, identidade ativa e ações contextuais. */
+.platformIdentityContext {
+  display: flex;
+  min-width: 188px;
+  height: 46px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(141, 180, 226, .34);
+  border-radius: 13px;
+  padding: 5px 11px 5px 6px;
+  color: #f5f9ff;
+  background: rgba(255, 255, 255, .07);
+}
+
+.platformIdentityAvatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-radius: 10px;
+  color: #b9d5ff;
+  background: rgba(8, 31, 61, .76);
+}
+
+.platformIdentityAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.platformIdentityAvatar svg { width: 17px; height: 17px; }
+
+.platformIdentityCopy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.05;
+}
+
+.platformIdentityCopy small {
+  color: #9fb4cc;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.platformIdentityCopy strong {
+  max-width: 145px;
+  overflow: hidden;
+  color: #f8fbff;
+  font-size: .74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platformIdentityCopy em {
+  margin-top: 3px;
+  color: #9fbee1;
+  font-size: .57rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.creationContextNavigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  padding: 14px;
+  color: var(--ui-text);
+  background: var(--ui-surface-raised);
+  box-shadow: var(--ui-shadow-soft);
+}
+
+.creationContextNavigation > div:first-child {
+  display: grid;
+  gap: 3px;
+  padding-left: 4px;
+}
+
+.creationContextNavigation > div:first-child span {
+  color: var(--ui-active-accent);
+  font-size: .63rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.creationContextNavigation > div:first-child strong {
+  color: var(--ui-text-strong);
+  font-size: .9rem;
+}
+
+.creationContextNavigation > div:last-child,
+.platformExploreTabs,
+.profilePublicationFilters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  padding: 5px;
+  background: var(--ui-surface-muted);
+}
+
+.creationContextNavigation button,
+.platformExploreTabs button,
+.profilePublicationFilters button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: .76rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+html body .proDashboard.playAppShell .creationContextNavigation button,
+html body .proDashboard.playAppShell .platformExploreTabs button,
+html body .proDashboard.playAppShell .profilePublicationFilters button {
+  border-color: transparent !important;
+  color: var(--ui-muted) !important;
+  -webkit-text-fill-color: var(--ui-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.creationContextNavigation button svg,
+.platformExploreTabs button svg { width: 16px; height: 16px; }
+
+.creationContextNavigation button:hover,
+.platformExploreTabs button:hover,
+.profilePublicationFilters button:hover {
+  color: var(--ui-text-strong);
+  background: color-mix(in srgb, var(--ui-active-accent) 7%, var(--ui-surface-raised));
+}
+
+html body .proDashboard.playAppShell .creationContextNavigation button:hover,
+html body .proDashboard.playAppShell .platformExploreTabs button:hover,
+html body .proDashboard.playAppShell .profilePublicationFilters button:hover {
+  color: var(--ui-text-strong) !important;
+  -webkit-text-fill-color: var(--ui-text-strong) !important;
+  background: color-mix(in srgb, var(--ui-active-accent) 7%, var(--ui-surface-raised)) !important;
+}
+
+.creationContextNavigation button.active,
+.platformExploreTabs button.active,
+.profilePublicationFilters button.active {
+  border-color: color-mix(in srgb, var(--ui-active-accent) 46%, var(--ui-border));
+  color: var(--ui-text-strong);
+  background: var(--ui-surface-raised);
+  box-shadow: inset 0 -3px 0 var(--ui-active-accent), 0 4px 14px rgba(4, 18, 40, .08);
+}
+
+html body .proDashboard.playAppShell .creationContextNavigation button.active,
+html body .proDashboard.playAppShell .platformExploreTabs button.active,
+html body .proDashboard.playAppShell .profilePublicationFilters button.active {
+  border-color: color-mix(in srgb, var(--ui-active-accent) 52%, var(--ui-border)) !important;
+  color: var(--ui-text-strong) !important;
+  -webkit-text-fill-color: var(--ui-text-strong) !important;
+  background: var(--ui-active-bg) !important;
+  box-shadow: inset 0 -3px 0 var(--ui-active-accent) !important;
+}
+
+.platformExploreHub {
+  display: grid;
+  width: min(100%, 1180px);
+  gap: 18px;
+  margin: 0 auto;
+}
+
+.platformExploreHeader {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  padding: 20px 22px;
+  color: var(--ui-text);
+  background: var(--ui-surface-raised);
+  box-shadow: var(--ui-shadow-soft);
+}
+
+.platformExploreHeader > span {
+  color: var(--ui-active-accent);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.platformExploreHeader h2,
+.platformExploreHeader p { margin: 0; }
+.platformExploreHeader h2 { color: var(--ui-text-strong); font-size: clamp(1.35rem, 3vw, 2rem); }
+.platformExploreHeader p { color: var(--ui-muted); line-height: 1.5; }
+
+.platformExploreTabs {
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.platformExploreTabs button { min-width: 120px; white-space: nowrap; }
+
+.platformExploreHub .publicTournamentFeedSection,
+.platformExploreHub .publicMemberDirectorySection,
+.platformExploreHub .publicArenaDirectorySection {
+  width: 100%;
+  margin-top: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  padding: clamp(18px, 3vw, 28px);
+  color: var(--ui-text);
+  background: var(--ui-surface-raised);
+  box-shadow: var(--ui-shadow-soft);
+}
+
+.platformExploreHub .publicDirectoryHeading h2 { color: var(--ui-text-strong); }
+.platformExploreHub .publicDirectoryHeading p { color: var(--ui-muted); }
+
+.platformExploreHub .publicArenaDirectoryCard {
+  border-color: var(--ui-border);
+  background: var(--ui-surface-muted);
+}
+
+.platformExploreHub .publicArenaDirectoryInfo h3,
+.platformExploreHub .publicArenaDirectoryInfo .publicArenaDirectoryOrganizer { color: var(--ui-text-strong); }
+.platformExploreHub .publicArenaDirectoryInfo p { color: var(--ui-muted); }
+
+.platformExploreHub .publicArenaSearch input {
+  border-color: var(--ui-border);
+  color: var(--ui-text-strong);
+  -webkit-text-fill-color: var(--ui-text-strong);
+  background: var(--ui-input);
+}
+
+.platformExploreHub .publicArenaSearch input::placeholder { color: var(--ui-muted); opacity: 1; }
+.platformExploreHub .publicDirectoryState { border-color: var(--ui-border); color: var(--ui-muted); }
+.platformExploreHub .publicDirectoryError { color: var(--danger-text); }
+
+.profilePublicationFilters {
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px 0 18px;
+  overflow-x: auto;
+}
+
+.profilePublicationFilters button { min-width: 104px; white-space: nowrap; }
+.profilePublicationFilters button span {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--ui-text-strong);
+  background: color-mix(in srgb, var(--ui-active-accent) 12%, var(--ui-surface-raised));
+  font-size: .66rem;
+}
+
+.organizationProfileName {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.organizationProfileName > span {
+  border: 1px solid color-mix(in srgb, #2563eb 38%, var(--ui-border));
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: color-mix(in srgb, #2563eb 72%, var(--ui-text-strong));
+  background: color-mix(in srgb, #2563eb 10%, var(--ui-surface-raised));
+  font-size: .63rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.organizationAboutOverview {
+  display: grid;
+  gap: 18px;
+}
+
+.organizationAboutOverview > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.organizationAboutOverview > header > div { display: grid; gap: 5px; }
+.organizationAboutOverview > header span {
+  color: var(--ui-active-accent);
+  font-size: .67rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.organizationAboutOverview h2,
+.organizationAboutOverview p { margin: 0; }
+.organizationAboutOverview h2 { color: var(--ui-text-strong); }
+.organizationAboutOverview p { max-width: 720px; color: var(--ui-muted); line-height: 1.55; }
+.organizationAboutOverview > header button { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+.organizationAboutOverview > header button svg { width: 16px; height: 16px; }
+
+.organizationAboutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.organizationAboutGrid article {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--ui-text);
+  background: var(--ui-surface-muted);
+}
+
+.organizationAboutGrid article > svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  color: var(--ui-active-accent);
+}
+
+.organizationAboutGrid article > span { display: grid; min-width: 0; gap: 3px; }
+.organizationAboutGrid small,
+.organizationAboutGrid em { color: var(--ui-muted); font-size: .7rem; font-style: normal; }
+.organizationAboutGrid strong { overflow-wrap: anywhere; color: var(--ui-text-strong); font-size: .86rem; }
+
+.organizationPrivateDataNotice {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid color-mix(in srgb, #2563eb 32%, var(--ui-border));
+  border-radius: 14px;
+  padding: 13px 14px;
+  color: var(--ui-text);
+  background: color-mix(in srgb, #2563eb 7%, var(--ui-surface-raised));
+}
+
+.organizationPrivateDataNotice > svg { width: 19px; height: 19px; flex: 0 0 auto; color: #3b82f6; }
+.organizationPrivateDataNotice > span { display: grid; gap: 2px; }
+.organizationPrivateDataNotice strong { color: var(--ui-text-strong); font-size: .8rem; }
+.organizationPrivateDataNotice small { color: var(--ui-muted); font-size: .7rem; }
+
+.organizationProfileEditActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.organizationProfileEditActions .saveProfileBtn { margin: 0 !important; }
+
+.proDashboard.theme-dark .organizationProfileName > span {
+  border-color: #416a9f;
+  color: #bfdbfe;
+  background: #132a46;
+}
+
+@media (max-width: 1180px) {
+  .platformIdentityContext { min-width: 46px; width: 46px; padding-right: 5px; }
+  .platformIdentityCopy { display: none; }
+}
+
+@media (max-width: 760px) {
+  .creationContextNavigation,
+  .organizationAboutOverview > header { align-items: stretch; flex-direction: column; }
+  .creationContextNavigation > div:last-child { width: 100%; overflow-x: auto; }
+  .creationContextNavigation button { flex: 1 0 116px; }
+  .organizationAboutGrid { grid-template-columns: 1fr; }
+  .organizationAboutOverview > header button { justify-content: center; }
+}
+
+@media (max-width: 560px) {
+  .platformIdentityContext { display: none; }
+  .platformExploreHeader { padding: 17px; }
+  .platformExploreTabs { width: 100%; }
+  .platformExploreTabs button { min-width: 108px; }
+  .profilePublicationFilters { width: 100%; }
+  .profilePublicationFilters button { min-width: 92px; }
+  .organizationProfileEditActions { display: grid; grid-template-columns: 1fr; }
+  .organizationProfileEditActions button { width: 100%; }
+}

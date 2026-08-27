@@ -16,7 +16,7 @@ import { getMemberProfileInitials } from "../../domain/memberProfile.mjs";
 export const MEMBER_PROFILE_TABS = [
   { id: "publicacoes", label: "Publicações", Icon: Grid3X3 },
   { id: "fotos", label: "Fotos", Icon: Images },
-  { id: "contato", label: "Informações de contato", Icon: AtSign },
+  { id: "contato", label: "Sobre", Icon: AtSign },
   { id: "conquistas", label: "Conquistas", Icon: Award },
 ];
 
