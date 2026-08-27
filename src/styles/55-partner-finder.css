@@ -87,6 +87,16 @@
 .tournamentRegulationsConfig input { width: 100%; border: 1px solid var(--border, #d9e1ea); border-radius: 11px; padding: 11px 12px; color: var(--text, #10233d); background: var(--surface, #fff); }
 .tournamentRegulationsConfig textarea { resize: vertical; }
 .tournamentRegulationsConfig label > small { justify-self: end; color: var(--muted, #66758a); }
+.tournamentRegulationsConfig .regulationsPdfPicker { position: relative; display: flex; min-height: 86px; align-items: center; gap: 12px; border: 1px dashed #1f75d6; border-radius: 12px; padding: 14px; background: color-mix(in srgb, #1f75d6 4%, var(--surface, #fff)); cursor: pointer; }
+.tournamentRegulationsConfig .regulationsPdfPicker.hasFile { border-style: solid; border-color: #16a36a; background: color-mix(in srgb, #16a36a 5%, var(--surface, #fff)); }
+.tournamentRegulationsConfig .regulationsPdfPicker input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.tournamentRegulationsConfig .regulationsPdfPicker > svg { width: 26px; height: 26px; flex: 0 0 auto; color: #1f75d6; }
+.tournamentRegulationsConfig .regulationsPdfPicker.hasFile > svg { color: #16a36a; }
+.tournamentRegulationsConfig .regulationsPdfPicker > span { display: grid; gap: 3px; }
+.tournamentRegulationsConfig .regulationsPdfPicker > span strong { overflow-wrap: anywhere; }
+.tournamentRegulationsConfig .regulationsPdfPicker > span small { color: var(--muted, #66758a); }
+.tournamentRegulationsConfig .regulationsPdfError { grid-column: 2; color: #dc2626; font-weight: 750; }
+.tournamentRegulationsConfig .removeRegulationsPdf { grid-column: 2; justify-self: start; border: 1px solid #ef4444; border-radius: 9px; padding: 7px 10px; color: #dc2626; background: transparent; font-weight: 800; }
 .publicTournamentRegulationsCard h2 { display: flex; gap: 8px; align-items: center; }
 .publicTournamentRegulationsCard h2 svg { width: 21px; color: #ff6b2c; }
 .publicTournamentRegulationsCard p { margin: 10px 0 0; white-space: pre-wrap; line-height: 1.55; }
@@ -129,4 +139,6 @@
   .partnerFinderConfigDeadline { grid-column: auto; grid-template-columns: 1fr; }
   .tournamentRegulationsConfig { grid-template-columns: 1fr; }
   .tournamentRegulationsConfig > header { grid-column: auto; }
+  .tournamentRegulationsConfig .regulationsPdfError,
+  .tournamentRegulationsConfig .removeRegulationsPdf { grid-column: auto; }
 }

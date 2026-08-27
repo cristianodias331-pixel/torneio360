@@ -62,6 +62,20 @@
 .tournamentPaymentMethods article.selected { border-color: #16a36a; box-shadow: 0 0 0 1px color-mix(in srgb, #16a36a 35%, transparent); }
 .tournamentPaymentChoice { display: inline-flex; width: 100%; align-items: center; gap: 6px; color: var(--ui-text, #263850); font-size: .68rem; font-weight: 800; cursor: pointer; }
 .tournamentPaymentChoice input { accent-color: #16a36a; }
+.tournamentPaymentMethods article > .tournamentPaymentChoice { border: 0; background: transparent; box-shadow: none; color: inherit; cursor: pointer; font: inherit; font-size: .68rem; font-weight: 850; padding: 4px 0; text-align: left; }
+.tournamentPaymentMethods article > .tournamentPaymentChoice[aria-pressed="true"] { color: #059669; }
+.registrationHandleInput { display: flex; align-items: center; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 12px; overflow: hidden; background: var(--ui-surface-raised, #fff); }
+.registrationHandleInput b { padding-left: 13px; color: #2563eb; font-size: 16px; }
+.registrationHandleInput input { border: 0 !important; box-shadow: none !important; padding-left: 4px !important; min-width: 0; flex: 1; }
+.registrationPartnerHandleField > small { color: var(--ui-muted, #64748b); line-height: 1.35; }
+.registrationPartnerLookup { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 14px; color: var(--ui-muted, #64748b); }
+.registrationPartnerLookup.found { border-color: #10b981; background: rgba(16,185,129,.08); color: inherit; }
+.registrationPartnerLookup.not-found,.registrationPartnerLookup.error { border-color: #ef4444; background: rgba(239,68,68,.07); color: #dc2626; }
+.registrationPartnerLookup > span:first-of-type { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: rgba(37,99,235,.12); flex: 0 0 auto; }
+.registrationPartnerLookup img { width: 100%; height: 100%; object-fit: cover; }
+.registrationPartnerLookup > div { display: grid; flex: 1; }
+.registrationPartnerLookup > div small { color: var(--ui-muted, #64748b); }
+.registrationPartnerLookup > svg:last-child { color: #10b981; }
 
 .proDashboard.theme-dark .registrationTournamentSummary,
 .proDashboard.theme-dark .registrationAthleteData { border-color: #33485e; background: #172536; }

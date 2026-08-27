@@ -52,6 +52,7 @@ export async function submitTournamentRegistrationWorkflow({
   paymentMethod,
   receipt,
   lookingForPartner = false,
+  partnerHandle = "",
 }) {
   const receiptError = validateRegistrationReceipt(receipt);
   if (receiptError) throw new Error(receiptError);
@@ -59,7 +60,7 @@ export async function submitTournamentRegistrationWorkflow({
   const { data: prepared, error: prepareError } = await supabase.rpc("prepare_my_tournament_registration", {
     p_tournament_id: tournamentId,
     p_athlete_name: athleteName,
-    p_partner_name: partnerName,
+    p_partner_name: "",
     p_category: category,
   });
   if (prepareError) throw prepareError;
@@ -78,7 +79,7 @@ export async function submitTournamentRegistrationWorkflow({
   });
   if (upload.error) throw upload.error;
 
-  const { data, error } = await supabase.rpc("submit_my_tournament_registration_proof", {
+  const { data, error } = await supabase.rpc("submit_my_tournament_registration_proof_v2", {
     p_registration_id: registration.id,
     p_payment_method: paymentMethod,
     p_payment_proof_path: objectPath,
@@ -86,9 +87,24 @@ export async function submitTournamentRegistrationWorkflow({
     p_payment_proof_mime: receipt.type,
     p_payment_proof_size: receipt.size,
     p_looking_for_partner: Boolean(lookingForPartner),
+    p_partner_handle: String(partnerHandle || "").replace(/^@/, "").trim(),
   });
   if (error) throw error;
   return data;
+}
+
+export async function findTournamentPartnerByHandle({ supabase, tournamentId, handle }) {
+  const normalizedHandle = String(handle || "").replace(/^@/, "").trim();
+  if (!normalizedHandle) return { partner: null, schemaAvailable: true };
+  const { data, error } = await supabase.rpc("find_tournament_partner_by_handle", {
+    p_tournament_id: tournamentId,
+    p_handle: normalizedHandle,
+  });
+  if (error) {
+    if (isUnavailableWorkflowError(error)) return { partner: null, schemaAvailable: false };
+    throw error;
+  }
+  return { partner: data || null, schemaAvailable: true };
 }
 
 export async function reviewTournamentRegistration({ supabase, registrationId, decision, reason = "" }) {

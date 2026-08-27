@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { formatDateBR } from "../../domain/dateTime.mjs";
+import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
 import {
   getTournamentGenderLabel,
@@ -166,6 +167,11 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     }
   }
 
+  function openAthleteProfile(registration) {
+    const athleteAddress = registration.athlete?.handle || registration.athlete_user_id;
+    if (athleteAddress) navigatePlatform({ perfil: athleteAddress });
+  }
+
   if (state.status === "loading") {
     return <section className="organizationRegistrantsState"><RefreshCw className="spinning" aria-hidden="true" /><strong>Organizando os inscritos...</strong></section>;
   }
@@ -217,8 +223,8 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
             <div className="organizationRegistrantClassification"><span>{division.categoryLabel}</span><span>{division.genderLabel}</span><span>{division.modalityLabel}</span><strong>{division.registrations.length}</strong></div>
             <div className="organizationRegistrantList">{division.registrations.map((registration) => (
               <div className="organizationRegistrantRow" key={registration.id}>
-                <span className="organizationRegistrantAvatar">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt="" /> : getInitials(registration.athlete_name)}</span>
-                <div className="organizationRegistrantIdentity"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong><small>{registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small></div>
+                <button type="button" className="organizationRegistrantAvatar" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt="" /> : getInitials(registration.athlete_name)}</button>
+                <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small></div>
                 <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
                 <div className="organizationRegistrantActions">
                   {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Comprovante</button> : null}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AtSign,
   CalendarDays,
@@ -53,6 +53,8 @@ import {
   migratePlayRankingBracketForReferenceProfile,
 } from "../../domain/playRankingBracketMigration.mjs";
 import TournamentRegistrationPanel from "../registration/TournamentRegistrationPanel.jsx";
+import AthleteIdentityLink, { createAthleteIdentityIndex, normalizeAthleteIdentityName, renderAthleteNames } from "../profile/AthleteIdentityLink.jsx";
+import { loadPublicTournamentAthleteIdentities } from "../../services/tournamentIdentityApi.mjs";
 
 function getSafePublicDocumentUrl(value) {
   try {
@@ -93,6 +95,7 @@ export default function PublicTournamentScreenView({
   const [activePublicTab, setActivePublicTabState] = useState(() => initialTab || readPublicViewStorage(publicTabStorageKey, "participantes"));
   const [activePublicMatchesTab, setActivePublicMatchesTabState] = useState(() => readPublicViewStorage(publicMatchesTabStorageKey, "grupos"));
   const [previewImage, setPreviewImage] = useState(null);
+  const [athleteIdentities, setAthleteIdentities] = useState([]);
 
   function setActivePublicTab(tab) {
     savePublicViewStorage(publicTabStorageKey, tab);
@@ -107,6 +110,13 @@ export default function PublicTournamentScreenView({
   useEffect(() => {
     if (initialTab === "inscricao") setActivePublicTab("inscricao");
   }, [initialTab, tournament.id]);
+  useEffect(() => {
+    let active = true;
+    loadPublicTournamentAthleteIdentities({ supabase, tournamentId: tournament.id })
+      .then((result) => { if (active) setAthleteIdentities(result.identities); })
+      .catch((error) => { console.warn("Identidades públicas dos atletas indisponíveis:", error); if (active) setAthleteIdentities([]); });
+    return () => { active = false; };
+  }, [supabase, tournament.id]);
   const config = modalityConfig[tournament.type];
   const normalizedData = normalizeTournamentData(tournament.type, tournament.data);
   const migrationTournament = tournament.user_id || !liveOrganizer?.id
@@ -175,7 +185,16 @@ export default function PublicTournamentScreenView({
     tournamentDurationSeconds: publicTournamentTimingSummary.complete ? publicTournamentTimingSummary.durationSeconds : 0,
   };
 
-  const publicAthletes = getRegisteredAthletesForPublic(data, config);
+  const basePublicAthletes = getRegisteredAthletesForPublic(data, config);
+  const athleteIdentityIndex = useMemo(() => createAthleteIdentityIndex(athleteIdentities), [athleteIdentities]);
+  const listedAthleteText = basePublicAthletes.flatMap((group) => group.names).join(" ");
+  const confirmedIdentityNames = athleteIdentities
+    .filter((identity) => !normalizeAthleteIdentityName(listedAthleteText).includes(normalizeAthleteIdentityName(identity.display_name)))
+    .map((identity) => identity.display_name);
+  const publicAthletes = confirmedIdentityNames.length
+    ? [...basePublicAthletes, { title: "Inscritos confirmados", names: confirmedIdentityNames }]
+    : basePublicAthletes;
+  const renderParticipant = (value) => renderAthleteNames(value, athleteIdentityIndex, true);
   const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
   const regulationsText = String(data.regulations?.text || "").trim();
   const regulationsPdfUrl = getSafePublicDocumentUrl(data.regulations?.pdfUrl);
@@ -327,7 +346,7 @@ export default function PublicTournamentScreenView({
                 ) : (
                   <div className="publicAthleteList">
                     {group.names.map((name, index) => (
-                      <span key={`${group.title}-${index}`}>{name}</span>
+                      <span key={`${group.title}-${index}`}>{String(name).includes(" + ") ? renderParticipant(name) : <AthleteIdentityLink name={name} identityIndex={athleteIdentityIndex} />}</span>
                     ))}
                   </div>
                 )}
@@ -357,6 +376,7 @@ export default function PublicTournamentScreenView({
                   className="publicGroupRankings"
                   groupRankings={cupGroupRankings}
                   rankingCriteria={data.rankingCriteria || defaultRankingCriteria}
+                  renderParticipant={renderParticipant}
                 />
               </div>
             ) : (
@@ -387,7 +407,7 @@ export default function PublicTournamentScreenView({
             {!data.schedule || data.schedule.length === 0 ? (
               <p>A tabela ainda não foi gerada pelo organizador.</p>
             ) : (
-              <ScheduleView schedule={data.schedule} showGroupName={isCup} winningScore={getWinningScore(data)} courtNumbers={data.courtNumbers || []} readOnly />
+              <ScheduleView schedule={data.schedule} showGroupName={isCup} winningScore={getWinningScore(data)} courtNumbers={data.courtNumbers || []} readOnly renderParticipant={renderParticipant} />
             )}
           </div>
 
@@ -398,6 +418,7 @@ export default function PublicTournamentScreenView({
                   groupedBrackets={{ main: currentBrackets.main, repechage: [] }}
                   mainTitle={data.cupConfig?.mainBracketName || "Chave principal"}
                   courtNumbers={data.courtNumbers || []}
+                  renderParticipant={renderParticipant}
                 />
               )}
             </div>
@@ -413,6 +434,7 @@ export default function PublicTournamentScreenView({
                       groupedBrackets={{ main: [], repechage: currentBrackets.repechage }}
                       repechageTitle={firstParallelDisplayName}
                       courtNumbers={data.courtNumbers || []}
+                      renderParticipant={renderParticipant}
                     />
                   )
                   : <p>{isPlayRankingData(data)
@@ -431,6 +453,7 @@ export default function PublicTournamentScreenView({
                       groupedBrackets={{ main: [], repechage: [], secondParallel: currentBrackets.secondParallel }}
                       secondParallelTitle={sunsetSecondParallelDisplayName}
                       courtNumbers={data.courtNumbers || []}
+                      renderParticipant={renderParticipant}
                     />
                   )
                   : <p>Sem eliminadas suficientes nas oitavas, a vice-campeã da Principal ocupará automaticamente esta vaga.</p>}
@@ -447,6 +470,7 @@ export default function PublicTournamentScreenView({
                       groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }}
                       thirdRepechageTitle={laterParallelDisplayName}
                       courtNumbers={data.courtNumbers || []}
+                      renderParticipant={renderParticipant}
                     />
                   )
                   : <p>Nesta quantidade de grupos não há duplas elegíveis para a {laterParallelOrdinal} disputa paralela.</p>}
@@ -463,6 +487,7 @@ export default function PublicTournamentScreenView({
                       groupedBrackets={{ main: [], repechage: [], sunsetFinal: currentBrackets.sunsetFinal }}
                       sunsetFinalTitle={sunsetFinalDisplayName}
                       courtNumbers={data.courtNumbers || []}
+                      renderParticipant={renderParticipant}
                     />
                   )
                   : <p>A etapa Sunset aparecerá quando houver ao menos duas chaves capazes de produzir campeãs.</p>}
@@ -500,7 +525,7 @@ export default function PublicTournamentScreenView({
             <div className="cupRankingSplit">
               <div className="cupRankingPanel">
                 <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
-                {mainCupPodium.length > 0 ? <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={publicRankingShareContext} /> : <p>Finalize a chave principal para ver o ranking.</p>}
+                {mainCupPodium.length > 0 ? <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={publicRankingShareContext} renderParticipant={renderParticipant} /> : <p>Finalize a chave principal para ver o ranking.</p>}
               </div>
               {secondParallelVisible ? <div className="cupRankingPanel">
                 <h3>{firstParallelDisplayName}</h3>
@@ -508,7 +533,7 @@ export default function PublicTournamentScreenView({
                   ? (data.cupConfig?.teamCount === 6
                     ? <p>Com 2 grupos, não há consolação neste formato.</p>
                     : consolationCupPodium.length > 0
-                    ? <CupPodiumView podium={consolationCupPodium} title={data.cupConfig?.repechageName || "Consolação"} variant="parallel" shareContext={publicRankingShareContext} />
+                    ? <CupPodiumView podium={consolationCupPodium} title={data.cupConfig?.repechageName || "Consolação"} variant="parallel" shareContext={publicRankingShareContext} renderParticipant={renderParticipant} />
                     : <p>A consolação ainda não foi finalizada.</p>)
                   : (parallelRanking.length > 0
                     ? <CupPodiumView
@@ -520,6 +545,7 @@ export default function PublicTournamentScreenView({
                         title={firstParallelDisplayName}
                         variant="parallel"
                         shareContext={publicRankingShareContext}
+                        renderParticipant={renderParticipant}
                       />
                     : <p>A disputa paralela ainda não tem ranking.</p>)}
               </div> : null}
@@ -527,7 +553,7 @@ export default function PublicTournamentScreenView({
                 <div className="cupRankingPanel">
                   <h3>{sunsetSecondParallelDisplayName}</h3>
                   {secondParallelPodium.length > 0
-                    ? <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={publicRankingShareContext} />
+                    ? <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={publicRankingShareContext} renderParticipant={renderParticipant} />
                     : <p>A 2ª disputa paralela ainda não foi finalizada.</p>}
                 </div>
               ) : null}
@@ -535,7 +561,7 @@ export default function PublicTournamentScreenView({
                 <div className="cupRankingPanel">
                   <h3>{laterParallelDisplayName}</h3>
                   {thirdParallelPodium.length > 0
-                    ? <CupPodiumView podium={thirdParallelPodium} title={laterParallelDisplayName} variant="parallel" shareContext={publicRankingShareContext} />
+                    ? <CupPodiumView podium={thirdParallelPodium} title={laterParallelDisplayName} variant="parallel" shareContext={publicRankingShareContext} renderParticipant={renderParticipant} />
                     : <p>A {laterParallelOrdinal} disputa paralela ainda não foi finalizada.</p>}
                 </div>
               ) : null}
@@ -543,13 +569,13 @@ export default function PublicTournamentScreenView({
                 <div className="cupRankingPanel">
                   <h3>{sunsetFinalDisplayName}</h3>
                   {sunsetPodium.length > 0
-                    ? <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={publicRankingShareContext} />
+                    ? <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={publicRankingShareContext} renderParticipant={renderParticipant} />
                     : <p>A etapa Sunset ainda não foi finalizada.</p>}
                 </div>
               ) : null}
             </div>
           ) : (
-            <RankingView ranking={ranking} type={tournament.type} rankingCriteria={data.rankingCriteria || defaultRankingCriteria} shareContext={publicRankingShareContext} />
+            <RankingView ranking={ranking} type={tournament.type} rankingCriteria={data.rankingCriteria || defaultRankingCriteria} shareContext={publicRankingShareContext} renderParticipant={renderParticipant} />
           )}
         </section>
 

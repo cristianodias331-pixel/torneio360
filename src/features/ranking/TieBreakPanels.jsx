@@ -140,7 +140,7 @@ export function CopinhaTieBreakPanel({
   );
 }
 
-export function CupGroupRankingView({ groupRankings, rankingCriteria, className = "" }) {
+export function CupGroupRankingView({ groupRankings, rankingCriteria, className = "", renderParticipant = null }) {
   const isOfficialCearense = groupRankings?.[0]?.rankingMode === "cearense-official";
   const isPlayRanking = groupRankings?.[0]?.rankingMode === "playranking";
   const hasDefinedGroupOrder = isOfficialCearense && groupRankings.every((group) => group.groupRank);
@@ -168,6 +168,7 @@ export function CupGroupRankingView({ groupRankings, rankingCriteria, className 
           rankingCriteria={effectiveCriteria}
           columns={columns}
           showPodium={false}
+          renderParticipant={renderParticipant}
         />
       ))}
     </div>

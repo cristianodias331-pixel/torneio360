@@ -101,6 +101,7 @@ export function UniversalMatchCard({
   onCallGame = null,
   onStatusToggle = null,
   attendanceData = null,
+  renderParticipant = null,
 }) {
   const firstScoreInputRef = useRef(null);
   const secondScoreInputRef = useRef(null);
@@ -153,13 +154,13 @@ export function UniversalMatchCard({
   const team2AttendanceParticipants = getGameSideAttendanceParticipants(attendanceData, game, "team2");
 
   const renderTeamName = (team, participants) => {
-    if (!participants.length) return teamName(team);
+    if (!participants.length) return renderParticipant ? renderParticipant(team) : teamName(team);
 
     return participants.map((participant, index) => (
       <React.Fragment key={`${participant.name}-${index}`}>
         {index > 0 ? <span className="matchTeamSeparator" aria-hidden="true"> + </span> : null}
         <span className="matchTeamParticipant">
-          {participant.name}
+          {renderParticipant ? renderParticipant(participant.name) : participant.name}
           {participant.pending ? (
             <span
               className="matchAttendancePending"
@@ -306,6 +307,7 @@ export default function ScheduleView({
   speakGame,
   speakRound,
   stopSpeech,
+  renderParticipant = null,
 }) {
   const [scheduleSearchValue, setScheduleSearchValue] = useState("");
   const [scheduleStatusFilter, setScheduleStatusFilter] = useState("all");
@@ -418,6 +420,7 @@ export default function ScheduleView({
         courtNumbers,
       }) : null}
       attendanceData={!readOnly ? statusData : null}
+      renderParticipant={renderParticipant}
     />
   );
 

@@ -295,6 +295,9 @@
 .organizationRegistrantRow:last-child { border-bottom: 0; }
 
 .organizationRegistrantAvatar {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
   display: grid;
   width: 42px;
   height: 42px;
@@ -317,6 +320,22 @@
   display: grid;
   gap: 3px;
 }
+
+.organizationRegistrantIdentity > button {
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.organizationRegistrantIdentity > button:hover strong { text-decoration: underline; }
+.organizationRegistrantIdentity > button em { color: var(--ui-muted); font-size: 11px; font-style: normal; }
 
 .organizationRegistrantIdentity strong { color: var(--ui-heading); }
 .organizationRegistrantIdentity small { color: var(--ui-muted); }

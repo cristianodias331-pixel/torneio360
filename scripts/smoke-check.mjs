@@ -5209,7 +5209,7 @@ assert.ok(
   "A capa, o modal, os dados públicos ou a preparação segura do pagamento da organização regrediram."
 );
 assert.ok(
-  organizerWorkspaceSource.includes('const navItems = [\n      { panel: "inicio", label: "Início", Icon: LayoutDashboard },\n      { panel: "ajustes", label: "Perfis", Icon: UserRound },')
+  organizerWorkspaceSource.includes('const navItems = [\n      { panel: "inicio", label: "Início", Icon: LayoutDashboard },\n      { panel: "notificacoes", label: "Notificações", Icon: Bell },\n      { panel: "ajustes", label: "Perfis", Icon: UserRound },')
     && !unifiedPlatformFrameSource.includes('label: "Explorar"')
     && !unifiedPlatformFrameSource.includes('label: "Criar"')
     && organizerWorkspaceSource.includes("profileTournamentToolbar")

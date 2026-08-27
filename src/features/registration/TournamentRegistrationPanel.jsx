@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { formatDateBR } from "../../domain/dateTime.mjs";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
+import { isCupType, isFixedTeamType, isIndividualCupType } from "../../domain/modalityClassification.mjs";
 import {
   loadMyTournamentRegistrationCheckout,
+  findTournamentPartnerByHandle,
   submitTournamentRegistrationWorkflow,
 } from "../../services/tournamentRegistrationApi.mjs";
 import TournamentPaymentPanel from "./TournamentPaymentPanel.jsx";
@@ -22,8 +24,7 @@ import "../../styles/60-tournament-registration.css";
 
 function isPairCompetition(type) {
   const config = modalityConfig[type];
-  if (!config || config.individualCup) return false;
-  return Boolean(config.teams || config.defaultTeams || config.cupMode);
+  return Boolean(config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config)));
 }
 
 function getViewerName(viewer) {
@@ -62,11 +63,12 @@ export default function TournamentRegistrationPanel({
     athleteName: getViewerName(viewer),
     category: String(viewer?.user_metadata?.category || data?.category || "").trim(),
     dominantHand: String(viewer?.user_metadata?.dominant_hand || "Não informado").trim(),
-    partnerName: "",
+    partnerHandle: "",
     lookingForPartner: false,
   }));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [partnerLookup, setPartnerLookup] = useState({ status: "idle", partner: null, error: "" });
   const pairCompetition = isPairCompetition(tournament?.type);
 
   async function loadCheckout() {
@@ -81,7 +83,7 @@ export default function TournamentRegistrationPanel({
         athleteName: checkout?.athlete?.display_name || checkout?.registration?.athlete_name || current.athleteName,
         category: checkout?.registration?.category || checkout?.athlete?.sports_category || current.category,
         dominantHand: checkout?.athlete?.dominant_hand || current.dominantHand,
-        partnerName: checkout?.registration?.partner_name || current.partnerName,
+        partnerHandle: checkout?.registration?.partner_handle || current.partnerHandle,
       }));
     } catch (error) {
       setState({ status: "error", checkout: null, schemaAvailable: true, error: error?.message || "Não foi possível abrir a inscrição." });
@@ -94,8 +96,33 @@ export default function TournamentRegistrationPanel({
   const workflowCopy = useMemo(() => getWorkflowCopy(registration), [registration]);
   const locked = ["submitted", "approved"].includes(registration?.workflow_status);
 
+  useEffect(() => {
+    if (!pairCompetition || !form.partnerHandle.trim() || locked) {
+      setPartnerLookup({ status: "idle", partner: null, error: "" });
+      return undefined;
+    }
+    let active = true;
+    setPartnerLookup({ status: "loading", partner: null, error: "" });
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await findTournamentPartnerByHandle({ supabase, tournamentId: tournament.id, handle: form.partnerHandle });
+        if (!active) return;
+        setPartnerLookup(result.partner
+          ? { status: "found", partner: result.partner, error: "" }
+          : { status: "not-found", partner: null, error: "Nenhum atleta encontrado com esse endereço único." });
+      } catch (error) {
+        if (active) setPartnerLookup({ status: "error", partner: null, error: error?.message || "Não foi possível verificar este atleta." });
+      }
+    }, 380);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [form.partnerHandle, locked, pairCompetition, supabase, tournament.id]);
+
   async function submitPayment({ receipt, paymentMethod }) {
     if (busy) return;
+    if (pairCompetition && form.partnerHandle.trim() && partnerLookup.status !== "found") {
+      setNotice(partnerLookup.error || "Confirme o endereço único do atleta antes de finalizar a inscrição.");
+      return;
+    }
     setBusy(true);
     setNotice("");
     try {
@@ -103,13 +130,14 @@ export default function TournamentRegistrationPanel({
         supabase,
         tournamentId: tournament.id,
         athleteName: form.athleteName,
-        partnerName: pairCompetition ? form.partnerName : "",
+        partnerName: "",
+        partnerHandle: pairCompetition ? form.partnerHandle : "",
         category: form.category,
         paymentMethod,
         receipt,
-        lookingForPartner: pairCompetition && !form.partnerName && form.lookingForPartner,
+        lookingForPartner: pairCompetition && !form.partnerHandle && form.lookingForPartner,
       });
-      setNotice("Inscrição enviada para conferência da organização.");
+      setNotice("Inscrição finalizada. A organização recebeu o comprovante para validação.");
       await loadCheckout();
     } catch (error) {
       setNotice(error?.message || "Não foi possível enviar a inscrição.");
@@ -168,9 +196,14 @@ export default function TournamentRegistrationPanel({
               <label><span>Nome do atleta</span><input value={form.athleteName} onChange={(event) => setForm((current) => ({ ...current, athleteName: event.target.value }))} /></label>
               <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
               <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
-              {pairCompetition ? <label><span>Nome da dupla, se já tiver</span><input value={form.partnerName} onChange={(event) => setForm((current) => ({ ...current, partnerName: event.target.value, lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Deixe vazio para se inscrever individualmente" /></label> : null}
+              {pairCompetition ? <label className="registrationPartnerHandleField"><span>Endereço único do atleta da dupla</span><div className="registrationHandleInput"><b>@</b><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="nome.unico" /></div><small>O atleta receberá uma notificação para aceitar ou recusar a dupla.</small></label> : null}
             </div>
-            {pairCompetition && !form.partnerName ? (
+            {pairCompetition && form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
+              {partnerLookup.status === "loading" ? <><RefreshCw className="spinning" aria-hidden="true" /><span>Verificando o perfil...</span></> : null}
+              {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · perfil identificado</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}
+              {partnerLookup.error ? <><CircleAlert aria-hidden="true" /><span>{partnerLookup.error}</span></> : null}
+            </div> : null}
+            {pairCompetition && !form.partnerHandle ? (
               <label className={`registrationPartnerChoice${form.lookingForPartner ? " selected" : ""}`}>
                 <input type="checkbox" checked={form.lookingForPartner} onChange={(event) => setForm((current) => ({ ...current, lookingForPartner: event.target.checked }))} />
                 <Users aria-hidden="true" />
@@ -188,6 +221,7 @@ export default function TournamentRegistrationPanel({
             onRequireLogin={onRequireLogin}
             onSubmit={submitPayment}
             busy={busy}
+            submissionNotice={notice}
           />
         </>
       ) : null}

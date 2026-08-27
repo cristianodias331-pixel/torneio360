@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Home, LogIn, Moon, Sun, UserRound } from "lucide-react";
+import { Bell, Home, LogIn, Moon, Sun, UserRound } from "lucide-react";
 import { PlatformSidebar, PlatformTopbar } from "./PlatformChrome.jsx";
 import "../../styles/53-public-social-platform.css";
 
 const NAV_ITEMS = [
   { panel: "overview", label: "Início", Icon: Home },
+  { panel: "notifications", label: "Notificações", Icon: Bell, requiresSession: true },
   { panel: "profile", label: "Perfil", Icon: UserRound },
 ];
 
@@ -42,7 +43,7 @@ export default function UnifiedPlatformFrame({
     document.documentElement.dataset.theme = colorMode;
   }, [colorMode]);
 
-  const navItems = NAV_ITEMS.map((item) => ({
+  const navItems = NAV_ITEMS.filter((item) => !item.requiresSession || hasSession).map((item) => ({
     ...item,
     locked: item.requiresCreationPermission && !canCreate,
   }));

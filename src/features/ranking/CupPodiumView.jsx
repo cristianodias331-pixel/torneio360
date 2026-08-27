@@ -4,7 +4,7 @@ import { getPodiumInitials } from "../media/canvasTools.mjs";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { TournamentCircuitButton } from "../circuitManagement/TournamentCircuitManager.jsx";
 
-export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null }) {
+export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null, renderParticipant = null }) {
   if (!podium || podium.length === 0) return null;
 
   const podiumLimit = variant === "parallel" ? 1 : 3;
@@ -43,7 +43,7 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
             <span className="cupPodiumCrown" aria-hidden="true">{item.place === 1 ? "♛" : ""}</span>
             <span className="cupPodiumAvatar">{getPodiumInitials(item.name)}</span>
             <strong>{item.position}</strong>
-            <span className="cupPodiumName">{item.name}</span>
+            <span className="cupPodiumName">{renderParticipant ? renderParticipant(item.name) : item.name}</span>
             {Number(item.playTimeSeconds || 0) > 0 ? (
               <span className="cupPodiumTime">Tempo em jogo: {formatMatchTotalDuration(item.playTimeSeconds)}</span>
             ) : null}

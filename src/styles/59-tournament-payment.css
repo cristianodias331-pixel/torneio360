@@ -67,3 +67,10 @@
   .tournamentReceiptLogin { width: 100%; justify-self: stretch; }
 }
 
+.tournamentReceiptSubmitRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.tournamentReceiptInlineNotice { margin: 0; color: #0f766e; font-weight: 750; }
+.proDashboard.theme-dark .tournamentReceiptInlineNotice { color: #5eead4; }
+@media (max-width: 720px) {
+  .tournamentReceiptSubmitRow { grid-template-columns: 1fr; }
+  .tournamentReceiptSubmitRow .tournamentReceiptSubmit { width: 100%; }
+}

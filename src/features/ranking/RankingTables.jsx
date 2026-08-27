@@ -14,7 +14,7 @@ function podium(i) {
   return i + 1;
 }
 
-export default function RankingView({ ranking, type, rankingCriteria, shareContext = null, circuitAction = null, modalityConfig, CircuitButton }) {
+export default function RankingView({ ranking, type, rankingCriteria, shareContext = null, circuitAction = null, modalityConfig, CircuitButton, renderParticipant = null }) {
   const config = modalityConfig[type];
 
   if (isMixedType(config)) {
@@ -31,11 +31,13 @@ export default function RankingView({ ranking, type, rankingCriteria, shareConte
           shareConfig={shareContext ? { ...shareContext, groups: [{ title: "Ranking Masculino", rows: men }] } : null}
           circuitAction={circuitAction}
           CircuitButton={CircuitButton}
+          renderParticipant={renderParticipant}
         />
         <RankingTable
           title="Ranking Feminino"
           rows={women}
           rankingCriteria={rankingCriteria}
+          renderParticipant={renderParticipant}
           shareConfig={shareContext ? { ...shareContext, groups: [{ title: "Ranking Feminino", rows: women }] } : null}
         />
       </div>
@@ -50,6 +52,7 @@ export default function RankingView({ ranking, type, rankingCriteria, shareConte
       shareConfig={shareContext ? { ...shareContext, groups: [{ title: "Ranking do dia", rows: ranking }] } : null}
       circuitAction={circuitAction}
       CircuitButton={CircuitButton}
+      renderParticipant={renderParticipant}
     />
   );
 }
@@ -68,6 +71,7 @@ export function RankingTable({
   initialRowCount = 30,
   searchPlaceholder = "Pesquisar atleta ou dupla",
   remotePagination = null,
+  renderParticipant = null,
 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const pageSize = Math.max(10, Number(initialRowCount) || 30);
@@ -186,7 +190,7 @@ export function RankingTable({
               return (
               <tr key={p.id || `${p.name}-${displayIndex}`}>
                 <td className="rankingRankCell">{showPodium ? podium(displayIndex) : displayIndex + 1}</td>
-                <td className="rankingNameCell">{p.name}</td>
+                <td className="rankingNameCell">{renderParticipant ? renderParticipant(p.name) : p.name}</td>
                 {visibleColumns.map(({ key }) => (
                   <td className="rankingStatCell" key={key}>{formatRankingMetricValue(key, p[key])}</td>
                 ))}

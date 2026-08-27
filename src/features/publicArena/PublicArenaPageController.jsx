@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { excludeOrganizationCoverFromGallery } from "../media/organizationGalleryCover.mjs";
 import "../../styles/41-responsive-public-covers.css";
 import { BeachLogo } from "../appShell/EntryPresentation.jsx";
 import { PublicArenaPageView } from "./PublicArenaPresentation.jsx";
@@ -451,7 +452,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       return undefined;
     }
     let active = true;
-    loadPublicOrganizationGallery(organizationId).then((result) => {
+    loadPublicOrganizationGallery(organizationId).then(async (result) => {
       if (!active) return;
       if (result?.error) {
         setOrganizationGallery([]);
@@ -459,9 +460,10 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       }
       const photos = (result?.photos || []).slice(0, 6);
       const separateCoverUrl = String(bundle?.profile?.cover_url || "").trim();
-      setOrganizationGallery(separateCoverUrl
-        ? photos.filter((photoUrl) => photoUrl !== separateCoverUrl)
-        : photos.slice(1));
+      const visiblePhotos = separateCoverUrl
+        ? await excludeOrganizationCoverFromGallery(photos, separateCoverUrl)
+        : photos.slice(1);
+      if (active) setOrganizationGallery(visiblePhotos);
     });
     return () => { active = false; };
   }, [bundle?.profile?.id, bundle?.profile?.cover_url, loadPublicOrganizationGallery]);

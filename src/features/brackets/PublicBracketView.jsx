@@ -1,7 +1,7 @@
 import React from "react";
 import { UniversalMatchCard } from "../matchOperations/MatchSchedule.jsx";
 
-export function PublicScheduleView({ schedule, showGroupName = false, courtNumbers = [] }) {
+export function PublicScheduleView({ schedule, showGroupName = false, courtNumbers = [], renderParticipant = null }) {
   return (
     <div className="schedule readOnlySchedule publicSchedule">
       {schedule.map((round, roundIndex) => (
@@ -15,6 +15,7 @@ export function PublicScheduleView({ schedule, showGroupName = false, courtNumbe
               phaseLabel={showGroupName && game.groupName ? `${game.groupName} · Rodada ${roundIndex + 1}` : `Rodada ${roundIndex + 1}`}
               courtNumbers={courtNumbers}
               readOnly
+              renderParticipant={renderParticipant}
             />
           ))}
         </div>
@@ -31,6 +32,7 @@ export function PublicCupBracketView({
   thirdRepechageTitle = "3ª Disputa Paralela",
   sunsetFinalTitle = "Etapa Sunset",
   courtNumbers = [],
+  renderParticipant = null,
 }) {
   const mainRounds = Array.isArray(groupedBrackets?.main) ? groupedBrackets.main : [];
   const repechageRounds = Array.isArray(groupedBrackets?.repechage) ? groupedBrackets.repechage : [];
@@ -48,6 +50,7 @@ export function PublicCupBracketView({
           title={mainRounds[0]?.bracketTitle || mainTitle}
           variant="main"
           courtNumbers={courtNumbers}
+          renderParticipant={renderParticipant}
         />
       ) : null}
       {repechageRounds.length > 0 ? (
@@ -56,6 +59,7 @@ export function PublicCupBracketView({
           title={repechageRounds[0]?.bracketTitle || repechageTitle}
           variant="repechage"
           courtNumbers={courtNumbers}
+          renderParticipant={renderParticipant}
         />
       ) : null}
       {secondParallelRounds.length > 0 ? (
@@ -64,6 +68,7 @@ export function PublicCupBracketView({
           title={secondParallelRounds[0]?.bracketTitle || secondParallelTitle}
           variant="repechage"
           courtNumbers={courtNumbers}
+          renderParticipant={renderParticipant}
         />
       ) : null}
       {thirdParallelRounds.length > 0 ? (
@@ -72,6 +77,7 @@ export function PublicCupBracketView({
           title={thirdParallelRounds[0]?.bracketTitle || thirdRepechageTitle}
           variant="repechage"
           courtNumbers={courtNumbers}
+          renderParticipant={renderParticipant}
         />
       ) : null}
       {sunsetFinalRounds.length > 0 ? (
@@ -80,13 +86,14 @@ export function PublicCupBracketView({
           title={sunsetFinalRounds[0]?.bracketTitle || sunsetFinalTitle}
           variant="main"
           courtNumbers={courtNumbers}
+          renderParticipant={renderParticipant}
         />
       ) : null}
     </div>
   );
 }
 
-export function PublicBracketColumn({ rounds = [], title, variant, courtNumbers = [] }) {
+export function PublicBracketColumn({ rounds = [], title, variant, courtNumbers = [], renderParticipant = null }) {
   if (rounds.length === 0) return null;
 
   const isPlacementRound = (round) => {
@@ -106,6 +113,7 @@ export function PublicBracketColumn({ rounds = [], title, variant, courtNumbers 
       courtNumbers={courtNumbers}
       readOnly
       isBye={Boolean(game.isBye)}
+      renderParticipant={renderParticipant}
     />
   );
 

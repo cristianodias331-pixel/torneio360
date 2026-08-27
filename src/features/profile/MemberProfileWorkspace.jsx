@@ -21,6 +21,7 @@ import {
 import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./AthleteProfileActivity.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
+import NotificationCenter from "../notifications/NotificationCenter.jsx";
 import { PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
@@ -61,7 +62,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [notice, setNotice] = useState(null);
   const [activePanel, setActivePanel] = useState(() => {
     const panel = new URLSearchParams(window.location.search).get("aba");
-    return panel === "explorar" ? "explore" : panel === "ajustes" ? "profile" : "overview";
+    return panel === "notificacoes" ? "notifications" : panel === "explorar" ? "explore" : panel === "ajustes" ? "profile" : "overview";
   });
   const [activeProfileTab, setActiveProfileTab] = useState("atividades");
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -240,7 +241,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   }
 
   function navigate(panel) {
-    if (panel === "overview" || panel === "explore" || panel === "profile") {
+    if (panel === "overview" || panel === "explore" || panel === "profile" || panel === "notifications") {
       setNotice(null);
       setBrowsingTournament(null);
       setActivePanel(panel);
@@ -273,10 +274,12 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     <UnifiedPlatformFrame
       activePanel={activePanel}
       hasSession
-      title={activePanel === "profile" ? "Meu perfil" : activePanel === "explore" ? "Explorar" : "Início"}
-      eyebrow={activePanel === "profile" ? "Perfil de atleta" : activePanel === "explore" ? "Descobrir" : "Publicações"}
+      title={activePanel === "profile" ? "Meu perfil" : activePanel === "notifications" ? "Notificações" : activePanel === "explore" ? "Explorar" : "Início"}
+      eyebrow={activePanel === "profile" ? "Perfil de atleta" : activePanel === "notifications" ? "Central da plataforma" : activePanel === "explore" ? "Descobrir" : "Publicações"}
       description={activePanel === "profile"
         ? "Seu perfil pessoal como ele aparece para a comunidade. Somente você pode editar."
+        : activePanel === "notifications"
+          ? "Acompanhe convites de dupla, inscrições e decisões importantes."
         : activePanel === "explore"
           ? "Encontre torneios, organizações e outros atletas."
           : "Acompanhe as publicações de torneios das organizações."}
@@ -305,7 +308,8 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         onClose={() => { if (!saving) setDetailsOpen(false); }}
         onSave={saveDetailsAndClose}
       />
-      {activePanel !== "profile" && browsingTournament
+      {activePanel === "notifications" ? <NotificationCenter supabase={supabase} onOpenTournament={(item) => openPublishedTournament(item)} /> : null}
+      {activePanel !== "profile" && activePanel !== "notifications" && browsingTournament
           ? publicPlatformHomeRuntime.renderPublicTournament({
             tournament: browsingTournament,
             embedded: true,
@@ -320,7 +324,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
               },
               onBackToArena: () => setBrowsingTournament(null),
             })
-          : activePanel !== "profile" && browsingTournamentLoading
+          : activePanel !== "profile" && activePanel !== "notifications" && browsingTournamentLoading
             ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
             : activePanel === "overview" && publicPlatformHomeRuntime
               ? <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} onRegister={(_, item) => openPublishedTournament(item, "inscricao")} />

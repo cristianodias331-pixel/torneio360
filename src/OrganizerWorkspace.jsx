@@ -10,6 +10,7 @@ import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   Award,
   AtSign,
+  Bell,
   Building2,
   Camera,
   CalendarDays,
@@ -25,6 +26,8 @@ import {
   CreditCard,
   Dices,
   Flame,
+  FileCheck2,
+  FileUp,
   GitBranch,
   Grid3X3,
   Images,
@@ -118,6 +121,7 @@ import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsMo
 import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
 import OrganizationRegistrantsPanel from "./features/profile/OrganizationRegistrantsPanel.jsx";
+import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -142,6 +146,11 @@ import {
   loadMyOrganizationCover,
   saveMyOrganizationCover,
 } from "./services/organizationCoverApi.mjs";
+import {
+  uploadTournamentRegulationsPdf,
+  validateTournamentRegulationsPdf,
+} from "./services/tournamentRegulationsApi.mjs";
+import { excludeOrganizationCoverFromGallery } from "./features/media/organizationGalleryCover.mjs";
 import {
   getCompatibleTournamentType,
   getEditableTournamentGenderFields,
@@ -479,6 +488,11 @@ export function createOrganizerWorkspace(runtime) {
     window.location.replace("/");
   }
 
+function isFixedDoublesCompetition(type) {
+  const config = modalityConfig[type];
+  return Boolean(config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config)));
+}
+
 function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile, publicPlatformHomeRuntime }) {
   const [tournaments, setTournaments] = useState([]);
   const [trashTournaments, setTrashTournaments] = useState([]);
@@ -521,6 +535,8 @@ const [newPartnerFinderEnabled, setNewPartnerFinderEnabled] = useState(true);
 const [newPartnerFinderDeadline, setNewPartnerFinderDeadline] = useState("");
 const [newRegulationsText, setNewRegulationsText] = useState("");
 const [newRegulationsPdfUrl, setNewRegulationsPdfUrl] = useState("");
+const [newRegulationsPdfFile, setNewRegulationsPdfFile] = useState(null);
+const [newRegulationsPdfError, setNewRegulationsPdfError] = useState("");
 const [newEventStartTime, setNewEventStartTime] = useState("");
 const [newDailyStartTimes, setNewDailyStartTimes] = useState({});
 const [newDay, setNewDay] = useState("");
@@ -1343,6 +1359,19 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       } catch (error) {
         console.warn("Não foi possível migrar a capa antiga para o armazenamento local.", error);
       }
+
+      if (resolvedCover && visibleGallery.length) {
+        void excludeOrganizationCoverFromGallery(visibleGallery, resolvedCover).then((galleryWithoutCover) => {
+          if (!active || JSON.stringify(galleryWithoutCover) === JSON.stringify(visibleGallery)) return;
+          organizationGalleryBaseRef.current = galleryWithoutCover;
+          setOrganizationGallery(galleryWithoutCover);
+          try {
+            localStorage.setItem(`organizationGallery:${user.id}`, JSON.stringify(galleryWithoutCover));
+          } catch (error) {
+            console.warn("Não foi possível atualizar a cópia local da galeria sem a capa.", error);
+          }
+        });
+      }
     };
 
     loadMyOrganizationCover({ supabase, fallback: legacyCover })
@@ -1427,6 +1456,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     explorar: {
       title: "Explorar",
       description: "Encontre torneios, organizações e atletas no mesmo ambiente.",
+    },
+    notificacoes: {
+      title: "Notificações",
+      description: "Acompanhe inscrições, pagamentos, convites de dupla e decisões da plataforma.",
     },
     criar: {
       title: "Criar e gerenciar",
@@ -4972,8 +5005,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
-    if (newRegulationsPdfUrl.trim() && !/^https?:\/\/\S+$/i.test(newRegulationsPdfUrl.trim())) {
-      showNotice("warning", "Link do regulamento inválido", "Informe um link público iniciado por http:// ou https://.");
+    const regulationsPdfValidation = newRegulationsPdfFile
+      ? validateTournamentRegulationsPdf(newRegulationsPdfFile)
+      : "";
+    if (regulationsPdfValidation) {
+      setNewRegulationsPdfError(regulationsPdfValidation);
+      showNotice("warning", "PDF do regulamento inválido", regulationsPdfValidation);
       return;
     }
 
@@ -5049,6 +5086,25 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     setSaving(true);
+    let uploadedRegulationsPdfUrl = newRegulationsPdfUrl.trim();
+    let uploadedRegulationsPdfName = newRegulationsPdfFile?.name || "";
+    if (newRegulationsPdfFile) {
+      try {
+        const uploaded = await uploadTournamentRegulationsPdf({
+          supabase,
+          userId: user.id,
+          file: newRegulationsPdfFile,
+        });
+        uploadedRegulationsPdfUrl = uploaded.url;
+        uploadedRegulationsPdfName = uploaded.name;
+      } catch (error) {
+        setSaving(false);
+        const message = error?.message || "Não foi possível salvar o PDF do regulamento.";
+        setNewRegulationsPdfError(message);
+        showNotice("error", "Regulamento não salvo", message);
+        return;
+      }
+    }
 
     const eventGroupKey = isMultiCategory ? generatePublicId() : null;
     const config = modalityConfig[newType];
@@ -5072,14 +5128,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       eventPeriodLabel: eventEndDate && eventEndDate !== eventStartDate ? `${formatDateBR(eventStartDate)} até ${formatDateBR(eventEndDate)}` : formatDateBR(eventStartDate),
       registrationDeadline: isMultiCategory ? "" : newRegistrationDeadline,
       partnerFinder: {
-        enabled: newPartnerFinderEnabled,
+        enabled: !isMultiCategory && isFixedDoublesCompetition(newType) && newPartnerFinderEnabled,
         deadline: newPartnerFinderDeadline || newRegistrationDeadline || "",
         paymentAfterPair: true,
         organizerCanSuggest: true,
       },
       regulations: {
         text: newRegulationsText.trim(),
-        pdfUrl: newRegulationsPdfUrl.trim(),
+        pdfUrl: uploadedRegulationsPdfUrl,
+        pdfName: uploadedRegulationsPdfName,
       },
       location: isMultiCategory ? "" : newLocation.trim(),
       publicInfo: buildTournamentPublicInfo(),
@@ -5114,6 +5171,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             registrationDeadline: item.registrationDeadline,
             partnerFinder: {
               ...baseData.partnerFinder,
+              enabled: isFixedDoublesCompetition(categoryType) && newPartnerFinderEnabled,
               deadline: newPartnerFinderDeadline || item.registrationDeadline || "",
             },
             eventDay: getWeekdayBR(item.date),
@@ -5226,6 +5284,8 @@ setNewPartnerFinderEnabled(true);
 setNewPartnerFinderDeadline("");
 setNewRegulationsText("");
 setNewRegulationsPdfUrl("");
+setNewRegulationsPdfFile(null);
+setNewRegulationsPdfError("");
 setNewEventStartTime("");
 setNewDailyStartTimes({});
 setNewDay("");
@@ -5690,6 +5750,9 @@ setNewPublicInfo({
       partnerFinderDeadline: details.partnerFinder?.deadline || details.registrationDeadline || "",
       regulationsText: details.regulations?.text || "",
       regulationsPdfUrl: details.regulations?.pdfUrl || "",
+      regulationsPdfName: details.regulations?.pdfName || (details.regulations?.pdfUrl ? "regulamento.pdf" : ""),
+      regulationsPdfFile: null,
+      regulationsPdfError: "",
       eventStartTime: details.eventStartTime || "",
       location: details.location || "",
       coverImageUrl: details.coverImageUrl || "",
@@ -5730,8 +5793,12 @@ setNewPublicInfo({
       return;
     }
 
-    if (editForm.regulationsPdfUrl?.trim() && !/^https?:\/\/\S+$/i.test(editForm.regulationsPdfUrl.trim())) {
-      showNotice("warning", "Link do regulamento inválido", "Informe um link público iniciado por http:// ou https://.");
+    const editRegulationsValidation = editForm.regulationsPdfFile
+      ? validateTournamentRegulationsPdf(editForm.regulationsPdfFile)
+      : "";
+    if (editRegulationsValidation) {
+      setEditForm((current) => ({ ...current, regulationsPdfError: editRegulationsValidation }));
+      showNotice("warning", "PDF do regulamento inválido", editRegulationsValidation);
       return;
     }
 
@@ -5764,6 +5831,27 @@ setNewPublicInfo({
     if (effectiveEditGenderMode === tournamentGenderModes.other && !editForm.genderOther.trim()) {
       showNotice("warning", "Informe o gênero", "Escreva o gênero escolhido na opção Outro.");
       return;
+    }
+
+    setEditTournamentSaving(true);
+    let editRegulationsPdfUrl = String(editForm.regulationsPdfUrl || "").trim();
+    let editRegulationsPdfName = String(editForm.regulationsPdfName || "").trim();
+    if (editForm.regulationsPdfFile) {
+      try {
+        const uploaded = await uploadTournamentRegulationsPdf({
+          supabase,
+          userId: user.id,
+          file: editForm.regulationsPdfFile,
+        });
+        editRegulationsPdfUrl = uploaded.url;
+        editRegulationsPdfName = uploaded.name;
+      } catch (error) {
+        setEditTournamentSaving(false);
+        const message = error?.message || "Não foi possível salvar o PDF do regulamento.";
+        setEditForm((current) => ({ ...current, regulationsPdfError: message }));
+        showNotice("error", "Regulamento não salvo", message);
+        return;
+      }
     }
 
     const isGroupedCategory = Boolean(editTarget.data?.multiCategoryEvent);
@@ -5803,14 +5891,15 @@ setNewPublicInfo({
       registrationDeadline: editForm.registrationDeadline,
       partnerFinder: {
         ...(structuralData.partnerFinder || {}),
-        enabled: editForm.partnerFinderEnabled !== false,
+        enabled: isFixedDoublesCompetition(editForm.type) && editForm.partnerFinderEnabled !== false,
         deadline: editForm.partnerFinderDeadline || editForm.registrationDeadline || "",
         paymentAfterPair: true,
         organizerCanSuggest: true,
       },
       regulations: {
         text: String(editForm.regulationsText || "").trim(),
-        pdfUrl: String(editForm.regulationsPdfUrl || "").trim(),
+        pdfUrl: editRegulationsPdfUrl,
+        pdfName: editRegulationsPdfName,
       },
       eventStartTime: editForm.eventStartTime,
       location: editForm.location.trim(),
@@ -6392,6 +6481,7 @@ setNewPublicInfo({
   function renderAppSidebar() {
     const navItems = [
       { panel: "inicio", label: "Início", Icon: LayoutDashboard },
+      { panel: "notificacoes", label: "Notificações", Icon: Bell },
       { panel: "ajustes", label: "Perfis", Icon: UserRound },
     ];
     const sidebarActivePanel = ["criar", "circuitos", "modalidades"].includes(activePanel)
@@ -6892,7 +6982,7 @@ setNewPublicInfo({
                 <input className="clickableDateInput" type="date" value={editForm.registrationDeadline} onClick={openDatePicker} onFocus={openDatePicker} onChange={(e) => updateEditForm("registrationDeadline", e.target.value)} />
               </div>
 
-              <section className="partnerFinderConfig fullField">
+              {isFixedDoublesCompetition(editForm.type) ? <section className="partnerFinderConfig fullField">
                 <div>
                   <span><Users aria-hidden="true" /></span>
                   <div><strong>Encontre sua dupla</strong><small>Aceitar atletas sem parceiro e destacar quem está procurando dupla.</small></div>
@@ -6907,18 +6997,21 @@ setNewPublicInfo({
                     <input className="clickableDateInput" type="date" value={editForm.partnerFinderDeadline || ""} max={editForm.eventDate || undefined} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => updateEditForm("partnerFinderDeadline", event.target.value)} />
                   </label>
                 ) : null}
-              </section>
+              </section> : null}
 
               <section className="tournamentRegulationsConfig fullField">
-                <header><ClipboardPaste aria-hidden="true" /><div><strong>Regulamento do torneio</strong><small>Escreva as regras e/ou informe um link público para o PDF.</small></div></header>
+                <header><ClipboardPaste aria-hidden="true" /><div><strong>Regulamento do torneio</strong><small>Escreva as regras e/ou envie o arquivo oficial em PDF.</small></div></header>
                 <label>
                   <span>Texto do regulamento</span>
                   <textarea rows={5} maxLength={5000} value={editForm.regulationsText || ""} onChange={(event) => updateEditForm("regulationsText", event.target.value)} placeholder="Categorias, formato, critérios, conduta, premiação e demais regras." />
                 </label>
-                <label>
-                  <span>Link público do PDF</span>
-                  <input type="url" value={editForm.regulationsPdfUrl || ""} onChange={(event) => updateEditForm("regulationsPdfUrl", event.target.value)} placeholder="https://.../regulamento.pdf" />
+                <label className={`regulationsPdfPicker${editForm.regulationsPdfUrl || editForm.regulationsPdfFile ? " hasFile" : ""}`}>
+                  <input type="file" accept="application/pdf" onChange={(event) => { const file = event.target.files?.[0] || null; const error = file ? validateTournamentRegulationsPdf(file) : ""; setEditForm((current) => ({ ...current, regulationsPdfFile: error ? null : file, regulationsPdfName: error ? current.regulationsPdfName : file?.name || current.regulationsPdfName, regulationsPdfError: error })); event.target.value = ""; }} />
+                  {editForm.regulationsPdfUrl || editForm.regulationsPdfFile ? <FileCheck2 aria-hidden="true" /> : <FileUp aria-hidden="true" />}
+                  <span><strong>{editForm.regulationsPdfFile?.name || editForm.regulationsPdfName || "Escolher PDF do regulamento"}</strong><small>{editForm.regulationsPdfUrl && !editForm.regulationsPdfFile ? "PDF já salvo · clique para substituir" : "Somente PDF · máximo de 10 MB"}</small></span>
                 </label>
+                {editForm.regulationsPdfError ? <small className="regulationsPdfError">{editForm.regulationsPdfError}</small> : null}
+                {editForm.regulationsPdfUrl ? <button type="button" className="removeRegulationsPdf" onClick={() => setEditForm((current) => ({ ...current, regulationsPdfUrl: "", regulationsPdfName: "", regulationsPdfFile: null, regulationsPdfError: "" }))}>Remover PDF salvo</button> : null}
               </section>
 
               <div className="formField">
@@ -7321,6 +7414,15 @@ setNewPublicInfo({
             </React.Suspense>
           )}
 
+          {activePanel === "notificacoes" ? (
+            <NotificationCenter
+              supabase={supabase}
+              onOpenTournament={(item) => {
+                if (item?.public_id) void openPublishedTournamentFromFeed(item);
+              }}
+            />
+          ) : null}
+
     {activePanel === "criar" && (
     <>
     <section className="card eventManagerToolbar">
@@ -7578,7 +7680,7 @@ setNewPublicInfo({
   </div>
   )}
 
-  <section className="partnerFinderConfig fullField">
+  {newMultiCategoryEvent === "nao" && isFixedDoublesCompetition(newType) ? <section className="partnerFinderConfig fullField">
     <div>
       <span><Users aria-hidden="true" /></span>
       <div>
@@ -7597,19 +7699,22 @@ setNewPublicInfo({
         <small>Se ficar vazio, será usado o encerramento das inscrições.</small>
       </label>
     ) : null}
-  </section>
+  </section> : null}
 
   <section className="tournamentRegulationsConfig fullField">
-    <header><ClipboardPaste aria-hidden="true" /><div><strong>Regulamento do torneio</strong><small>Escreva as regras e/ou informe um link público para o PDF.</small></div></header>
+    <header><ClipboardPaste aria-hidden="true" /><div><strong>Regulamento do torneio</strong><small>Escreva as regras e/ou envie o arquivo oficial em PDF.</small></div></header>
     <label>
       <span>Texto do regulamento</span>
       <textarea rows={5} maxLength={5000} value={newRegulationsText} onChange={(event) => setNewRegulationsText(event.target.value)} placeholder="Categorias, formato, critérios, conduta, premiação e demais regras." />
       <small>{newRegulationsText.length}/5000</small>
     </label>
-    <label>
-      <span>Link público do PDF</span>
-      <input type="url" value={newRegulationsPdfUrl} onChange={(event) => setNewRegulationsPdfUrl(event.target.value)} placeholder="https://.../regulamento.pdf" />
+    <label className={`regulationsPdfPicker${newRegulationsPdfFile ? " hasFile" : ""}`}>
+      <input type="file" accept="application/pdf" onChange={(event) => { const file = event.target.files?.[0] || null; const error = file ? validateTournamentRegulationsPdf(file) : ""; setNewRegulationsPdfFile(error ? null : file); setNewRegulationsPdfError(error); event.target.value = ""; }} />
+      {newRegulationsPdfFile ? <FileCheck2 aria-hidden="true" /> : <FileUp aria-hidden="true" />}
+      <span><strong>{newRegulationsPdfFile?.name || "Escolher PDF do regulamento"}</strong><small>Somente PDF · máximo de 10 MB</small></span>
     </label>
+    {newRegulationsPdfError ? <small className="regulationsPdfError">{newRegulationsPdfError}</small> : null}
+    {newRegulationsPdfFile ? <button type="button" className="removeRegulationsPdf" onClick={() => { setNewRegulationsPdfFile(null); setNewRegulationsPdfError(""); }}>Remover PDF</button> : null}
   </section>
 
   <div className="formField fullField tournamentCoverField">

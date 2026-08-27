@@ -16,6 +16,7 @@ export default function TournamentPaymentPanel({
   onRequireLogin,
   onSubmit = null,
   busy = false,
+  submissionNotice = "",
 }) {
   const organizationId = organizer.id || tournament?.user_id || null;
   const [settings, setSettings] = useState(() => ({
@@ -97,7 +98,7 @@ export default function TournamentPaymentPanel({
               <QrCode aria-hidden="true" />
               <span><small>Pix</small><strong>{settings.pixKey}</strong></span>
               <button type="button" onClick={copyPix}><Copy aria-hidden="true" /> {copied ? "Copiado" : "Copiar"}</button>
-              <label className="tournamentPaymentChoice"><input type="radio" name="payment-method" value="pix" checked={paymentMethod === "pix"} onChange={() => setPaymentMethod("pix")} /> Usar Pix</label>
+              <button type="button" className="tournamentPaymentChoice" aria-pressed={paymentMethod === "pix"} onClick={() => setPaymentMethod("pix")}>{paymentMethod === "pix" ? "Pix selecionado" : "Usar Pix"}</button>
             </article>
           ) : null}
           {cardLink ? (
@@ -105,7 +106,7 @@ export default function TournamentPaymentPanel({
               <CreditCard aria-hidden="true" />
               <span><small>Cartão de crédito</small><strong>Checkout da organização</strong></span>
               <a href={cardLink} target="_blank" rel="noreferrer">Abrir pagamento</a>
-              <label className="tournamentPaymentChoice"><input type="radio" name="payment-method" value="card" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} /> Usar cartão</label>
+              <button type="button" className="tournamentPaymentChoice" aria-pressed={paymentMethod === "card"} onClick={() => setPaymentMethod("card")}>{paymentMethod === "card" ? "Cartão selecionado" : "Usar cartão"}</button>
             </article>
           ) : null}
         </div>
@@ -128,7 +129,10 @@ export default function TournamentPaymentPanel({
               <span>{receipt ? <><strong>{receipt.name}</strong><small>Arquivo selecionado com segurança neste dispositivo</small></> : <><strong>Selecionar comprovante</strong><small>Foto ou PDF</small></>}</span>
             </label>
             {receiptError ? <p className="tournamentReceiptError" role="alert">{receiptError}</p> : null}
-            <button type="button" className="tournamentReceiptSubmit" disabled={registrationClosed || busy || !receipt || !paymentMethod || !onSubmit} onClick={submitReceipt}>{busy ? "Enviando com segurança..." : "Enviar para conferência"}</button>
+            <div className="tournamentReceiptSubmitRow">
+              {submissionNotice ? <p className="tournamentReceiptInlineNotice" role="status">{submissionNotice}</p> : <span />}
+              <button type="button" className="tournamentReceiptSubmit" disabled={registrationClosed || busy || !receipt || !paymentMethod || !onSubmit} onClick={submitReceipt}>{busy ? "Finalizando com segurança..." : "Finalizar inscrição"}</button>
+            </div>
           </>
         )}
         <p className="tournamentReceiptPrivacy"><ShieldCheck aria-hidden="true" /> O comprovante fica em armazenamento privado. Somente você e a organização responsável por este torneio podem acessá-lo.</p>

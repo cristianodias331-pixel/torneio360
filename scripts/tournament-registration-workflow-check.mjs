@@ -18,7 +18,7 @@ const supabase = {
     if (name === "prepare_my_tournament_registration") {
       return { data: { registration: { id: "registration-1" } }, error: null };
     }
-    if (name === "submit_my_tournament_registration_proof") {
+    if (name === "submit_my_tournament_registration_proof_v2") {
       return { data: { id: "registration-1", workflow_status: "submitted" }, error: null };
     }
     return { data: null, error: { message: `RPC inesperado: ${name}` } };
@@ -56,7 +56,7 @@ const uploadCall = calls.find((call) => call.type === "upload");
 assert(uploadCall.bucket === "registration-receipts", "O comprovante deve usar o bucket privado dedicado.");
 assert(uploadCall.path === "athlete-1/registration-1/comprovante.pdf", "O caminho deve vincular atleta e inscrição.");
 assert(uploadCall.options.upsert === true && uploadCall.options.contentType === "application/pdf", "O envio deve preservar o tipo e permitir reenvio controlado.");
-const submitCall = calls.find((call) => call.name === "submit_my_tournament_registration_proof");
+const submitCall = calls.find((call) => call.name === "submit_my_tournament_registration_proof_v2");
 assert(submitCall.payload.p_looking_for_partner === true, "A procura de dupla deve ser conectada à mesma inscrição.");
 assert(submitCall.payload.p_payment_proof_path === uploadCall.path, "O banco deve receber somente o caminho privado do arquivo.");
 
