@@ -24,7 +24,8 @@ import {
   sortTournamentsForDisplay,
 } from "../../domain/tournamentLifecycle.mjs";
 
-const PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000;
+const PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 1500;
+const EMBEDDED_ARENA_LOADING_MIN_DURATION_MS = 650;
 
 function createPublicArenaEventPages(counts = {}) {
   const createStatus = (kind, status) => ({
@@ -93,6 +94,25 @@ function PublicArenaLoadingScreen() {
       />
       <div className="publicArenaLoadingCaption">Carregando perfil da organização...</div>
     </div>
+  );
+}
+
+function EmbeddedArenaLoadingState() {
+  return (
+    <section className="embeddedArenaLoadingState" role="status" aria-live="polite" aria-label="Carregando perfil da organização">
+      <header>
+        <span className="embeddedArenaLoadingMark" aria-hidden="true"><i /><i /><i /></span>
+        <div>
+          <strong>Abrindo perfil da organização</strong>
+          <small>Preparando torneios, fotos e informações públicas</small>
+        </div>
+      </header>
+      <div className="embeddedArenaLoadingSkeleton" aria-hidden="true">
+        <span className="embeddedArenaLoadingAvatar" />
+        <div><i /><i /><i /></div>
+        <span className="embeddedArenaLoadingAction" />
+      </div>
+    </section>
   );
 }
 
@@ -417,7 +437,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
     eventPageRequestsRef.current.clear();
     const minimumLoadingTimer = window.setTimeout(
       () => setMinimumLoadingElapsed(true),
-      PUBLIC_ARENA_LOADING_MIN_DURATION_MS
+      embedded ? EMBEDDED_ARENA_LOADING_MIN_DURATION_MS : PUBLIC_ARENA_LOADING_MIN_DURATION_MS
     );
     const cachedBundle = readPublicArenaBundleCache({ arenaId, publicId });
     if (cachedBundle?.profile) {
@@ -443,7 +463,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [arenaId, publicId]);
+  }, [arenaId, publicId, embedded]);
 
   useEffect(() => {
     const organizationId = bundle?.profile?.id;
@@ -556,7 +576,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   }
 
   if (loading || !minimumLoadingElapsed) {
-    return embedded ? <div className="publicDirectoryState">Carregando perfil da organização...</div> : <PublicArenaLoadingScreen />;
+    return embedded ? <EmbeddedArenaLoadingState /> : <PublicArenaLoadingScreen />;
   }
 
   if (error || !bundle?.profile) {

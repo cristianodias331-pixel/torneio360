@@ -295,12 +295,12 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
       <div className="organizationRegistrantToolbar">
         <label className="organizationRegistrantSearch"><Search aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar atleta, dupla ou torneio" /></label>
         <nav aria-label="Filtrar situação dos inscritos">
-          {statusFilters.map((item) => <button type="button" key={item.id} className={statusFilter === item.id ? "active" : ""} onClick={() => setStatusFilter(item.id)}>{item.label}<span>{metrics[item.id] ?? metrics.total}</span></button>)}
+          {statusFilters.map((item) => <button type="button" key={item.id} aria-pressed={statusFilter === item.id} className={statusFilter === item.id ? "active" : ""} onClick={() => setStatusFilter(item.id)}><span>{item.label}</span><b>{metrics[item.id] ?? metrics.total}</b></button>)}
         </nav>
       </div>
 
       <div className="organizationRegistrantFilters">
-        <span><Filter aria-hidden="true" /> Dividir por</span>
+        <header><span><Filter aria-hidden="true" /></span><div><strong>Organizar inscritos</strong><small>Refine a lista por torneio e divisão esportiva.</small></div></header>
         <label><small>Torneio</small><select value={tournamentFilter} onChange={(event) => setTournamentFilter(event.target.value)}><option value="all">Todos</option>{options.tournaments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
         <label><small>Categoria</small><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">Todas</option>{options.categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label><small>Gênero</small><select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)}><option value="all">Todos</option>{options.genders.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
@@ -317,16 +317,18 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
               <strong>{registrationCount} inscrito(s)</strong>
             </header>
             {group.divisions.map((division) => <section className="organizationRegistrantDivision" key={[division.categoryLabel, division.genderLabel, division.modalityLabel].join("|")}>
-            <div className="organizationRegistrantClassification"><span>{division.categoryLabel}</span><span>{division.genderLabel}</span><span>{division.modalityLabel}</span><strong>{division.registrations.length}</strong></div>
+            <div className="organizationRegistrantClassification"><span>{division.categoryLabel}</span><span>{division.genderLabel}</span><span>{division.modalityLabel}</span><strong>{division.registrations.length} {division.registrations.length === 1 ? "inscrito" : "inscritos"}</strong></div>
             <div className="organizationRegistrantList">{division.registrations.map((registration) => (
-              <div className="organizationRegistrantRow" key={registration.id}>
-                <button type="button" className="organizationRegistrantAvatar" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt="" /> : getInitials(registration.athlete_name)}</button>
+              <div className={`organizationRegistrantRow${pairSelection.includes(registration.id) ? " selectedForPair" : ""}`} key={registration.id}>
+                <button type="button" className="organizationRegistrantAvatar" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt={`Foto de ${registration.athlete?.display_name || registration.athlete_name}`} /> : getInitials(registration.athlete_name)}</button>
                 <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small><small className="organizationRegistrantChronology"><Clock3 aria-hidden="true" /> <strong>{registrationOrder.get(String(registration.id)) || "—"}º inscrito</strong> · {formatRegistrationTimestamp(registration.created_at)}</small></div>
-                <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
-                <div className="organizationRegistrantActions">
-                  {canOrganizerPairRegistration(registration) ? <button type="button" className={`pair${pairSelection.includes(registration.id) ? " selected" : ""}`} disabled={Boolean(busyId)} onClick={() => togglePairSelection(registration)}>{pairSelection.includes(registration.id) ? "Selecionado para dupla" : "Selecionar para dupla"}</button> : null}
-                  {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Comprovante</button> : null}
+                <div className="organizationRegistrantControls">
+                  <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
+                  <div className="organizationRegistrantActions">
+                  {canOrganizerPairRegistration(registration) ? <button type="button" aria-pressed={pairSelection.includes(registration.id)} className={`pair${pairSelection.includes(registration.id) ? " selected" : ""}`} disabled={Boolean(busyId)} onClick={() => togglePairSelection(registration)}>{pairSelection.includes(registration.id) ? <Check aria-hidden="true" /> : <Users aria-hidden="true" />}{pairSelection.includes(registration.id) ? "Remover da seleção" : "Selecionar para dupla"}</button> : null}
+                  {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Ver comprovante</button> : null}
                   {registration.workflowStatus === "submitted" ? <><button type="button" className="approve" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "approved")}>Aprovar</button><button type="button" className="reject" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "rejected")}>Recusar</button></> : null}
+                  </div>
                 </div>
               </div>
             ))}</div>

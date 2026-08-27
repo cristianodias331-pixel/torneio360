@@ -125,6 +125,122 @@
   text-align: center;
 }
 
+/* Carregamento incorporado do perfil público: curto, informativo e estável. */
+.embeddedArenaLoadingState {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  min-height: 210px;
+  padding: clamp(20px, 3vw, 30px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #2788d8 28%, var(--ui-border, #ccd9e8));
+  border-radius: 22px;
+  color: var(--ui-text, #17304f);
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, #22c55e 10%, transparent), transparent 34%),
+    linear-gradient(145deg, var(--ui-surface-raised, #fff), color-mix(in srgb, var(--ui-page, #eef4fb) 74%, #fff));
+  box-shadow: 0 16px 42px rgba(19, 54, 88, 0.08);
+}
+
+.embeddedArenaLoadingState::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-110%);
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.48) 50%, transparent 70%);
+  animation: embeddedArenaLoadingSweep 1.55s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.embeddedArenaLoadingState > header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.embeddedArenaLoadingState > header > div { display: grid; gap: 3px; }
+.embeddedArenaLoadingState > header strong { color: var(--ui-heading, #0b1d35); font-size: 1rem; }
+.embeddedArenaLoadingState > header small { color: var(--ui-muted, #60738b); }
+
+.embeddedArenaLoadingMark {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding-bottom: 12px;
+  flex: 0 0 auto;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(145deg, #1168cd, #0e9f72);
+  box-shadow: 0 10px 24px rgba(17, 104, 205, 0.2);
+}
+
+.embeddedArenaLoadingMark i {
+  width: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: embeddedArenaLoadingPulse 0.9s ease-in-out infinite alternate;
+}
+.embeddedArenaLoadingMark i:nth-child(1) { height: 10px; }
+.embeddedArenaLoadingMark i:nth-child(2) { height: 19px; animation-delay: 0.14s; }
+.embeddedArenaLoadingMark i:nth-child(3) { height: 14px; animation-delay: 0.28s; }
+
+.embeddedArenaLoadingSkeleton {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 15px;
+  padding: 16px;
+  border: 1px solid var(--ui-border, #d6e1ed);
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--ui-surface, #fff) 90%, transparent);
+}
+
+.embeddedArenaLoadingAvatar,
+.embeddedArenaLoadingAction,
+.embeddedArenaLoadingSkeleton i {
+  display: block;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-muted, #6a7b8e) 16%, var(--ui-surface, #fff));
+}
+.embeddedArenaLoadingAvatar { width: 52px; height: 52px; border-radius: 15px; }
+.embeddedArenaLoadingAction { width: 112px; height: 38px; border-radius: 11px; }
+.embeddedArenaLoadingSkeleton > div { display: grid; gap: 8px; }
+.embeddedArenaLoadingSkeleton i { width: min(100%, 420px); height: 10px; }
+.embeddedArenaLoadingSkeleton i:nth-child(2) { width: min(72%, 300px); }
+.embeddedArenaLoadingSkeleton i:nth-child(3) { width: min(48%, 190px); }
+
+.theme-dark .embeddedArenaLoadingState,
+html[data-theme="dark"] .embeddedArenaLoadingState {
+  border-color: color-mix(in srgb, #39a7ed 25%, var(--ui-border));
+  background:
+    radial-gradient(circle at 92% 0%, rgba(34, 197, 94, 0.08), transparent 34%),
+    linear-gradient(145deg, var(--ui-surface-raised), color-mix(in srgb, var(--ui-surface) 82%, #07111e));
+  box-shadow: none;
+}
+
+.theme-dark .embeddedArenaLoadingState::after,
+html[data-theme="dark"] .embeddedArenaLoadingState::after {
+  background: linear-gradient(100deg, transparent 30%, rgba(98, 181, 255, 0.08) 50%, transparent 70%);
+}
+
+@keyframes embeddedArenaLoadingSweep { to { transform: translateX(110%); } }
+@keyframes embeddedArenaLoadingPulse { to { transform: scaleY(0.55); opacity: 0.64; } }
+
+@media (max-width: 640px) {
+  .embeddedArenaLoadingState { min-height: 188px; padding: 18px; border-radius: 18px; }
+  .embeddedArenaLoadingSkeleton { grid-template-columns: auto minmax(0, 1fr); }
+  .embeddedArenaLoadingAction { display: none; }
+  .embeddedArenaLoadingState > header small { font-size: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .embeddedArenaLoadingState::after,
+  .embeddedArenaLoadingMark i { animation: none; }
+}
+
 @media (max-width: 640px) {
   .publicArenaLoadingVideo {
     width: min(92vw, 430px, 62dvh);

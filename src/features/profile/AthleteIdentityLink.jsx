@@ -15,10 +15,15 @@ export function createAthleteIdentityIndex(identities = []) {
   return index;
 }
 
-export default function AthleteIdentityLink({ name, identityIndex, compact = false, avatarOnly = false }) {
+export default function AthleteIdentityLink({ name, identityIndex, compact = false, avatarOnly = false, showPlaceholderAvatar = false }) {
   const cleanName = String(name || "").replace(/^\s*\d+\.\s*/, "").trim();
   const identity = identityIndex?.get(normalizeAthleteIdentityName(cleanName));
-  if (!identity) return avatarOnly ? null : <span className="athleteIdentityText">{cleanName}</span>;
+  if (!identity) return avatarOnly ? null : showPlaceholderAvatar ? (
+    <span className={`athleteIdentityText hasAvatar${compact ? " compact" : ""}`}>
+      <span><UserRound aria-hidden="true" /></span>
+      <em><strong>{cleanName}</strong><small>Vaga do torneio</small></em>
+    </span>
+  ) : <span className="athleteIdentityText">{cleanName}</span>;
   return (
     <button type="button" className={`athleteIdentityLink${compact ? " compact" : ""}${avatarOnly ? " avatarOnly" : ""}`} onClick={() => navigatePlatform({ perfil: identity.handle || identity.user_id })} title={`Abrir perfil de ${identity.display_name}`} aria-label={`Abrir perfil de ${identity.display_name}`}>
       <span>{identity.photo_url ? <img src={identity.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
@@ -27,9 +32,9 @@ export default function AthleteIdentityLink({ name, identityIndex, compact = fal
   );
 }
 
-export function renderAthleteNames(value, identityIndex, compact = true) {
+export function renderAthleteNames(value, identityIndex, compact = true, showPlaceholderAvatar = false) {
   const source = Array.isArray(value) ? value : String(value || "").split(/\s+\+\s+/);
   const names = source.map((name) => String(name || "").trim()).filter(Boolean);
   if (!names.length) return <span>Aguardando</span>;
-  return names.map((name, index) => <React.Fragment key={`${name}-${index}`}>{index ? <span className="athleteIdentitySeparator"> + </span> : null}<AthleteIdentityLink name={name} identityIndex={identityIndex} compact={compact} /></React.Fragment>);
+  return names.map((name, index) => <React.Fragment key={`${name}-${index}`}>{index ? <span className="athleteIdentitySeparator"> + </span> : null}<AthleteIdentityLink name={name} identityIndex={identityIndex} compact={compact} showPlaceholderAvatar={showPlaceholderAvatar} /></React.Fragment>);
 }

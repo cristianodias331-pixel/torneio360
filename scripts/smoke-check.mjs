@@ -4070,13 +4070,15 @@ assert.ok(
   "A proteção de tráfego perdeu índices, paginação por cursor ou atualização pública condicional."
 );
 assert.ok(
-  publicArenaPageControllerSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 5000")
+  publicArenaPageControllerSource.includes("PUBLIC_ARENA_LOADING_MIN_DURATION_MS = 1500")
+    && publicArenaPageControllerSource.includes("EMBEDDED_ARENA_LOADING_MIN_DURATION_MS = 650")
+    && publicArenaPageControllerSource.includes("EmbeddedArenaLoadingState")
     && publicArenaApiSource.includes("fetchPublicArenaBundle")
     && publicArenaApiSource.includes("PUBLIC_ARENA_REQUEST_TIMEOUT_MS")
     && publicArenaCacheSource.includes("publicArenaBundleMemoryCache")
     && publicArenaPageControllerSource.includes("readPublicArenaBundleCache")
     && publicArenaPageControllerSource.includes("onPlaying"),
-  "O perfil público perdeu os cinco segundos da propaganda ou a recuperação contra falhas temporárias."
+  "O perfil público perdeu o carregamento profissional ou a recuperação contra falhas temporárias."
 );
 assert.ok(
   publicArenaPresentationSource.includes("initialVisibleItems = 8")

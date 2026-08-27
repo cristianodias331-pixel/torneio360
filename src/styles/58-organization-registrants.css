@@ -161,7 +161,7 @@
 
 .organizationRegistrantToolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(270px, 0.8fr) minmax(500px, 1.2fr);
   gap: 12px;
 }
 
@@ -190,7 +190,9 @@
 }
 
 .organizationRegistrantToolbar nav {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(92px, 1fr));
+  gap: 4px;
   padding: 4px;
   border: 1px solid var(--ui-border);
   border-radius: 12px;
@@ -198,8 +200,9 @@
 }
 
 .organizationRegistrantToolbar nav button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
   min-height: 36px;
   padding: 0 10px;
@@ -212,34 +215,61 @@
 
 .organizationRegistrantToolbar nav button.active {
   color: #fff;
-  background: #167a54;
+  background: linear-gradient(135deg, #16845a, #0d7053);
+  box-shadow: 0 7px 16px rgba(22, 122, 84, 0.18);
 }
 
-.organizationRegistrantToolbar nav button span {
-  font-size: 0.68rem;
+.organizationRegistrantToolbar nav button span { white-space: nowrap; }
+
+.organizationRegistrantToolbar nav button b {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  place-items: center;
+  border-radius: 999px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: 0.66rem;
+}
+
+.organizationRegistrantToolbar nav button.active b {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .organizationRegistrantFilters {
   display: grid;
-  grid-template-columns: auto repeat(4, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 12px;
   align-items: end;
-  padding: 12px;
+  padding: 15px;
   border: 1px solid var(--ui-border);
   border-radius: 14px;
   background: color-mix(in srgb, var(--ui-surface) 92%, var(--ui-page));
 }
 
-.organizationRegistrantFilters > span {
+.organizationRegistrantFilters > header {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 7px;
-  min-height: 42px;
-  color: var(--ui-muted);
-  font-weight: 900;
+  gap: 11px;
 }
 
-.organizationRegistrantFilters > span svg { width: 17px; }
+.organizationRegistrantFilters > header > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  color: #167a54;
+  background: color-mix(in srgb, #16a36a 11%, var(--ui-surface));
+}
+
+.organizationRegistrantFilters > header svg { width: 17px; }
+.organizationRegistrantFilters > header > div { display: grid; gap: 1px; }
+.organizationRegistrantFilters > header strong { color: var(--ui-heading); font-size: 0.84rem; }
+.organizationRegistrantFilters > header small { color: var(--ui-muted); font-weight: 500; }
 
 .organizationRegistrantFilters label {
   display: grid;
@@ -271,6 +301,7 @@
   border: 1px solid var(--ui-border);
   border-radius: 17px;
   background: var(--ui-surface);
+  box-shadow: 0 13px 34px rgba(19, 48, 78, 0.07);
 }
 
 .organizationRegistrantTournament > header {
@@ -278,8 +309,10 @@
   justify-content: space-between;
   gap: 16px;
   align-items: center;
-  padding: 16px;
+  padding: 17px 18px;
   border-bottom: 1px solid var(--ui-border);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, #16a36a 8%, var(--ui-surface)), var(--ui-surface) 58%);
 }
 
 .organizationRegistrantTournament > header > strong {
@@ -301,7 +334,7 @@
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
-  padding: 10px 16px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--ui-border);
 }
 
@@ -311,7 +344,10 @@
 
 .organizationRegistrantClassification > strong {
   margin-left: auto;
-  color: var(--ui-muted);
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #0b7550;
+  background: color-mix(in srgb, #16a36a 10%, var(--ui-surface));
   font-size: 0.72rem;
 }
 
@@ -328,25 +364,36 @@
 
 .organizationRegistrantList {
   display: grid;
+  gap: 9px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--ui-page) 54%, var(--ui-surface));
 }
 
 .organizationRegistrantRow {
   display: grid;
-  grid-template-columns: auto minmax(170px, 1fr) minmax(220px, auto) auto;
-  gap: 12px;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--ui-border);
+  grid-template-columns: auto minmax(210px, 1fr) minmax(380px, auto);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.organizationRegistrantRow:last-child { border-bottom: 0; }
+.organizationRegistrantRow:last-child { border-bottom: 1px solid var(--ui-border); }
+.organizationRegistrantRow:hover { border-color: color-mix(in srgb, #16845a 36%, var(--ui-border)); }
+.organizationRegistrantRow.selectedForPair {
+  border-color: #16a36a;
+  box-shadow: inset 4px 0 #16a36a, 0 8px 22px rgba(22, 163, 106, 0.1);
+}
 
 .organizationRegistrantAvatar {
   border: 0;
   padding: 0;
   cursor: pointer;
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 52px;
+  height: 52px;
   place-items: center;
   overflow: hidden;
   border: 2px solid color-mix(in srgb, #167a54 45%, var(--ui-border));
@@ -368,9 +415,10 @@
 }
 
 .organizationRegistrantIdentity > button {
-  display: grid;
-  justify-items: start;
-  gap: 1px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
   width: fit-content;
   padding: 0;
   border: 0;
@@ -410,6 +458,14 @@
   gap: 6px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.organizationRegistrantControls {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 9px;
+  min-width: 0;
 }
 
 .organizationRegistrantBadges span.paid,
@@ -465,7 +521,13 @@
 .organizationRegistrantActions button.approve { border-color: #16a36a; color: #087a50; }
 .organizationRegistrantActions button.reject { border-color: #d85d5d; color: #b53838; background: color-mix(in srgb, #d85d5d 8%, var(--ui-surface)); }
 .organizationRegistrantActions button.pair { border-color: #16a34a; color: #168044; }
-.organizationRegistrantActions button.pair.selected { background: #16a34a; color: #fff; }
+.organizationRegistrantActions button.pair.selected,
+.organizationRegistrantActions button.pair[aria-pressed="true"] {
+  border-color: #16a34a !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #16a34a, #12805c) !important;
+  box-shadow: 0 7px 17px rgba(22, 163, 74, 0.2) !important;
+}
 
 .organizationRegistrantActions button:disabled {
   opacity: 0.5;
@@ -516,19 +578,23 @@
   .organizationRegistrantToolbar { grid-template-columns: 1fr; }
   .organizationRegistrantToolbar nav { overflow-x: auto; }
   .organizationRegistrantFilters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .organizationRegistrantFilters > span { grid-column: 1 / -1; }
+  .organizationRegistrantFilters > header { grid-column: 1 / -1; }
   .organizationRegistrantRow { grid-template-columns: auto 1fr; }
+  .organizationRegistrantControls { grid-column: 1 / -1; justify-items: start; padding-left: 66px; }
   .organizationRegistrantBadges,
-  .organizationRegistrantActions { grid-column: 2; justify-self: start; }
+  .organizationRegistrantActions { grid-column: auto; justify-self: start; }
 }
 
 @media (max-width: 560px) {
   .organizationRegistrantMetrics { grid-template-columns: 1fr 1fr; }
   .organizationRegistrantFilters { grid-template-columns: 1fr; }
-  .organizationRegistrantFilters > span { grid-column: auto; }
+  .organizationRegistrantFilters > header { grid-column: auto; }
+  .organizationRegistrantToolbar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+  .organizationRegistrantToolbar nav button:last-child { grid-column: 1 / -1; }
   .organizationRegistrantTournament > header { align-items: flex-start; }
   .organizationRegistrantRow { padding: 12px; }
-  .organizationRegistrantBadges { grid-column: 1 / -1; }
-  .organizationRegistrantActions { grid-column: 1 / -1; width: 100%; justify-content: stretch; }
+  .organizationRegistrantControls { grid-column: 1 / -1; padding-left: 0; }
+  .organizationRegistrantBadges { grid-column: auto; }
+  .organizationRegistrantActions { grid-column: auto; width: 100%; justify-content: stretch; }
   .organizationRegistrantActions button { flex: 1; justify-content: center; }
 }

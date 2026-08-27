@@ -196,7 +196,7 @@ export default function PublicTournamentScreenView({
   const publicAthletes = confirmedIdentityNames.length
     ? [...basePublicAthletes, { title: "Inscritos confirmados", names: confirmedIdentityNames }]
     : basePublicAthletes;
-  const renderParticipant = (value) => renderAthleteNames(value, athleteIdentityIndex, true);
+  const renderParticipant = (value, showPlaceholderAvatar = false) => renderAthleteNames(value, athleteIdentityIndex, true, showPlaceholderAvatar);
   const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
   const regulationsText = String(data.regulations?.text || "").trim();
   const regulationsPdfUrl = getSafePublicDocumentUrl(data.regulations?.pdfUrl);
@@ -342,13 +342,16 @@ export default function PublicTournamentScreenView({
           <div className="publicAthletesGrid organizerLikeParticipants">
             {publicAthletes.map((group) => (
               <div className="publicAthleteGroup" key={group.title}>
-                <h3>{group.title}</h3>
+                <header className="publicAthleteGroupHeader">
+                  <h3>{group.title}</h3>
+                  <span>{group.names.length} {group.title.toLocaleLowerCase("pt-BR").includes("dupla") ? (group.names.length === 1 ? "dupla" : "duplas") : (group.names.length === 1 ? "atleta" : "atletas")}</span>
+                </header>
                 {group.names.length === 0 ? (
                   <p>Nenhum atleta cadastrado ainda.</p>
                 ) : (
-                  <div className="publicAthleteList">
+                  <div className="publicAthleteList" role="list">
                     {group.names.map((name, index) => (
-                      <span key={`${group.title}-${index}`}>{String(name).includes(" + ") ? renderParticipant(name) : <AthleteIdentityLink name={name} identityIndex={athleteIdentityIndex} />}</span>
+                      <div className="publicAthleteEntry" role="listitem" key={`${group.title}-${index}`}><b>{index + 1}</b>{String(name).includes(" + ") ? renderParticipant(name, true) : <AthleteIdentityLink name={name} identityIndex={athleteIdentityIndex} showPlaceholderAvatar />}</div>
                     ))}
                   </div>
                 )}
