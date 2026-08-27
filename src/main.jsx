@@ -165,6 +165,8 @@ const {
 const TORNEIO360_TAGLINE = "Gestão inteligente de torneios";
 const publicPlatformHomeRuntime = Object.freeze({
   fetchPublicTournamentFeed: (options) => fetchPublicTournamentFeed({ supabase, ...options }),
+  fetchPublicTournamentDetail,
+  renderPublicTournament: (props) => <PublicTournamentScreen {...props} />,
   formatDate: formatDateBR,
   getModalityName: getModalityDisplayName,
   getRegistrationDeadline: getTournamentRegistrationDeadline,

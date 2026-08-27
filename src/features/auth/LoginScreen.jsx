@@ -18,6 +18,7 @@ import {
   normalizeEmail,
 } from "../../domain/authValidation.mjs";
 import { getAuthRedirectUrl } from "../../domain/authNavigation.mjs";
+import { validatePublicTextFields } from "../../domain/contentModeration.mjs";
 
 async function resendEmailConfirmation(supabase, email) {
   return supabase.auth.resend({
@@ -275,6 +276,12 @@ export default function LoginScreen({
 
         if (!lastName.trim()) {
           showNotice("warning", "Sobrenome obrigatório", "Informe seu sobrenome para criar a conta.");
+          return;
+        }
+
+        const nameModeration = validatePublicTextFields({ firstName, lastName });
+        if (!nameModeration.allowed) {
+          showNotice("warning", "Nome não permitido", nameModeration.message);
           return;
         }
 

@@ -98,7 +98,9 @@ export default function MemberProfileDetailsModal({
               rows={4}
               placeholder="Conte um pouco sobre você e sua atuação no esporte."
               onChange={(event) => onChange("bio", event.target.value)}
+              aria-invalid={Boolean(errors.bio)}
             />
+            {errors.bio ? <small className="unifiedMemberFieldError">{errors.bio}</small> : null}
             <small className="unifiedMemberCharacterCount">{profile.bio.length}/240</small>
           </div>
 

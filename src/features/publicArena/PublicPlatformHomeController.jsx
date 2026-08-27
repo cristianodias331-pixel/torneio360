@@ -17,7 +17,14 @@ function openSignup() {
   navigatePlatform({ cadastro: "conta" });
 }
 
-export function PublicTournamentFeedSection({ runtime, hasSession = false, embedded = false }) {
+export function PublicTournamentFeedSection({
+  runtime,
+  hasSession = false,
+  embedded = false,
+  onOpenTournament = null,
+  onOpenOrganization = null,
+  onRegister = null,
+}) {
   const {
     fetchPublicTournamentFeed,
     formatDate,
@@ -76,12 +83,20 @@ export function PublicTournamentFeedSection({ runtime, hasSession = false, embed
       isRegistrationOpen={isRegistrationOpen}
       getWhatsAppUrl={getWhatsAppUrl}
       onLoadMore={loadMore}
-      onOpenTournament={(item) => navigatePlatform({ public: item.public_id })}
+      onOpenTournament={(item) => {
+        if (onOpenTournament) onOpenTournament(item);
+        else navigatePlatform({ public: item.public_id });
+      }}
       onOpenOrganization={(organization) => {
         if (!organization?.id) return;
-        navigatePlatform({ organizacao: organization.id });
+        if (onOpenOrganization) onOpenOrganization(organization);
+        else navigatePlatform({ organizacao: organization.id });
       }}
       onRegister={(registrationUrl, item) => {
+        if (onRegister) {
+          onRegister(registrationUrl, item);
+          return;
+        }
         if (!hasSession) {
           openSignup();
           return;
@@ -93,13 +108,23 @@ export function PublicTournamentFeedSection({ runtime, hasSession = false, embed
   );
 }
 
-export default function PublicPlatformHomeController({ session = null, runtime, embedded = false }) {
+export default function PublicPlatformHomeController({
+  session = null,
+  runtime,
+  embedded = false,
+  onOpenTournament = null,
+  onOpenOrganization = null,
+  onRegister = null,
+}) {
   if (embedded) {
     return (
       <PublicTournamentFeedSection
         runtime={runtime}
         hasSession={Boolean(session)}
         embedded
+        onOpenTournament={onOpenTournament}
+        onOpenOrganization={onOpenOrganization}
+        onRegister={onRegister}
       />
     );
   }

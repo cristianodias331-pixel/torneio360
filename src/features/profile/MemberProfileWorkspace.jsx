@@ -36,6 +36,8 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [activeProfileTab, setActiveProfileTab] = useState("publicacoes");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
+  const [browsingTournament, setBrowsingTournament] = useState(null);
+  const [browsingTournamentLoading, setBrowsingTournamentLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -209,6 +211,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   function navigate(panel) {
     if (panel === "overview" || panel === "profile") {
       setNotice(null);
+      setBrowsingTournament(null);
       setActivePanel(panel);
       return;
     }
@@ -216,6 +219,23 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
       tone: "info",
       message: "Torneios e circuitos são recursos para assinantes. A apresentação dos planos será adicionada aqui.",
     });
+  }
+
+  async function openPublishedTournament(item) {
+    const publicId = String(item?.public_id || "").trim();
+    if (!publicId || browsingTournamentLoading) return;
+    setBrowsingTournamentLoading(true);
+    try {
+      const result = await publicPlatformHomeRuntime.fetchPublicTournamentDetail(publicId);
+      if (result?.error || !result?.data) {
+        setNotice({ tone: "error", message: "Não foi possível abrir este torneio agora." });
+        return;
+      }
+      setBrowsingTournament(result.data);
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } finally {
+      setBrowsingTournamentLoading(false);
+    }
   }
 
   return (
@@ -253,9 +273,18 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         onSave={saveDetailsAndClose}
       />
       {activePanel === "overview" ? (
-        publicPlatformHomeRuntime ? (
-          <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded />
-        ) : null
+        browsingTournament
+          ? publicPlatformHomeRuntime.renderPublicTournament({
+              tournament: browsingTournament,
+              embedded: true,
+              viewer: user,
+              onBackToArena: () => setBrowsingTournament(null),
+            })
+          : browsingTournamentLoading
+            ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
+            : publicPlatformHomeRuntime
+              ? <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} />
+              : null
       ) : (
         <div className="memberProfileOwnExperience">
           {!status || status === "loading" ? <div className="memberProfileOwnLoading" role="status">Carregando seu perfil...</div> : null}

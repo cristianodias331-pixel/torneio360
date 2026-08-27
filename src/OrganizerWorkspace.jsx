@@ -5,6 +5,7 @@ import "./styles/40-organizer-data-and-navigation.css";
 import "./styles/41-responsive-public-covers.css";
 import "./styles/42-workspace-density-and-courts.css";
 import "./styles/51-unified-profile.css";
+import "./styles/55-partner-finder.css";
 import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   Award,
@@ -118,6 +119,7 @@ import {
   normalizeMemberHandle,
   validateMemberProfile,
 } from "./domain/memberProfile.mjs";
+import { validatePublicTextFields } from "./domain/contentModeration.mjs";
 import {
   loadMyMemberProfile,
   saveMyMemberProfile,
@@ -501,6 +503,8 @@ const [newCategorySchedules, setNewCategorySchedules] = useState([{
 const [newDate, setNewDate] = useState("");
 const [newEndDate, setNewEndDate] = useState("");
 const [newRegistrationDeadline, setNewRegistrationDeadline] = useState("");
+const [newPartnerFinderEnabled, setNewPartnerFinderEnabled] = useState(true);
+const [newPartnerFinderDeadline, setNewPartnerFinderDeadline] = useState("");
 const [newEventStartTime, setNewEventStartTime] = useState("");
 const [newDailyStartTimes, setNewDailyStartTimes] = useState({});
 const [newDay, setNewDay] = useState("");
@@ -556,6 +560,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const params = new URLSearchParams(window.location.search);
     return params.get("aba") || "inicio";
   });
+  const [browsingPublicTournament, setBrowsingPublicTournament] = useState(null);
+  const [browsingPublicTournamentLoading, setBrowsingPublicTournamentLoading] = useState(false);
   const [colorMode, setColorMode] = useState(() => {
     try {
       const savedMode = localStorage.getItem(`torneio360:color-mode:${user.id}`);
@@ -839,9 +845,27 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setSelected(null);
     setExpandedCircuitId(null);
     setExpandedCircuitToolsId(null);
+    setBrowsingPublicTournament(null);
     setActivePanel(panel);
     updateAppUrl({ activePanel: panel, selectedTournamentId: null, circuitId: null });
     return true;
+  }
+
+  async function openPublishedTournamentFromFeed(item) {
+    const publicId = String(item?.public_id || "").trim();
+    if (!publicId || browsingPublicTournamentLoading) return;
+    setBrowsingPublicTournamentLoading(true);
+    try {
+      const result = await publicPlatformHomeRuntime.fetchPublicTournamentDetail(publicId);
+      if (result?.error || !result?.data) {
+        showNotice("error", "Torneio indisponível", "Não foi possível abrir esta publicação agora.");
+        return;
+      }
+      setBrowsingPublicTournament(result.data);
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } finally {
+      setBrowsingPublicTournamentLoading(false);
+    }
   }
 
   function openOrganizerCircuit(circuit) {
@@ -1980,6 +2004,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       showNotice("warning", "Nome obrigatório", "Digite um nome para o circuito.");
       return;
     }
+    const circuitModeration = validatePublicTextFields({ name: form.name });
+    if (!circuitModeration.allowed) {
+      showNotice("warning", "Conteúdo não permitido", circuitModeration.message);
+      return;
+    }
 
     if (!form.startDate || !form.endDate) {
       showNotice("warning", "Datas obrigatórias", "Informe a data inicial e a data final do circuito.");
@@ -3022,6 +3051,15 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   async function saveOrganizerProfile() {
     if (!user?.id || profileSaving) return;
     if (!ensureCloudConnection("salvar o perfil")) return;
+    const profileModeration = validatePublicTextFields({
+      organization: organizerProfile.arenaName,
+      organizer: organizerProfile.organizerName,
+      instagram: organizerProfile.instagramHandle,
+    });
+    if (!profileModeration.allowed) {
+      showNotice("warning", "Conteúdo não permitido", profileModeration.message);
+      return;
+    }
     setProfileSaveSuccess(false);
     if (profileSaveSuccessTimerRef.current) clearTimeout(profileSaveSuccessTimerRef.current);
     setProfileSaving(true);
@@ -4768,6 +4806,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return;
     }
 
+    const tournamentModeration = validatePublicTextFields({
+      name: newName,
+      category: newCategory,
+      categoryNames: newCategorySchedules.map((item) => item.category).join(" "),
+      location: newLocation,
+    });
+    if (!tournamentModeration.allowed) {
+      showNotice("warning", "Conteúdo não permitido", tournamentModeration.message);
+      return;
+    }
+
     if (!isMultiCategory && !newType) {
   showNotice("warning", "Modalidade obrigatória", "Escolha a modalidade do torneio.");
   return;
@@ -4862,6 +4911,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       eventGroupEndDate: isMultiCategory ? eventEndDate : "",
       eventPeriodLabel: eventEndDate && eventEndDate !== eventStartDate ? `${formatDateBR(eventStartDate)} até ${formatDateBR(eventEndDate)}` : formatDateBR(eventStartDate),
       registrationDeadline: isMultiCategory ? "" : newRegistrationDeadline,
+      partnerFinder: {
+        enabled: newPartnerFinderEnabled,
+        deadline: newPartnerFinderDeadline || newRegistrationDeadline || "",
+        paymentAfterPair: true,
+        organizerCanSuggest: true,
+      },
       location: isMultiCategory ? "" : newLocation.trim(),
       publicInfo: buildTournamentPublicInfo(),
       coverImageUrl: newCoverImageUrl,
@@ -4893,6 +4948,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
             eventStartDate: item.date,
             eventEndDate: item.endDate || item.date,
             registrationDeadline: item.registrationDeadline,
+            partnerFinder: {
+              ...baseData.partnerFinder,
+              deadline: newPartnerFinderDeadline || item.registrationDeadline || "",
+            },
             eventDay: getWeekdayBR(item.date),
             eventStartTime: item.time,
             location: item.location.trim(),
@@ -4999,6 +5058,8 @@ setNewCategorySchedules([{
 setNewDate("");
 setNewEndDate("");
 setNewRegistrationDeadline("");
+setNewPartnerFinderEnabled(true);
+setNewPartnerFinderDeadline("");
 setNewEventStartTime("");
 setNewDailyStartTimes({});
 setNewDay("");
@@ -5459,6 +5520,8 @@ setNewPublicInfo({
       eventDate: details.eventDate || "",
       eventEndDate: details.eventEndDate || details.eventDate || "",
       registrationDeadline: details.registrationDeadline || "",
+      partnerFinderEnabled: details.partnerFinder?.enabled !== false,
+      partnerFinderDeadline: details.partnerFinder?.deadline || details.registrationDeadline || "",
       eventStartTime: details.eventStartTime || "",
       location: details.location || "",
       coverImageUrl: details.coverImageUrl || "",
@@ -5484,6 +5547,17 @@ setNewPublicInfo({
 
     if (!editForm.name.trim()) {
       showNotice("warning", "Nome obrigatório", "Digite um nome para este torneio.");
+      return;
+    }
+
+    const tournamentModeration = validatePublicTextFields({
+      name: editForm.name,
+      eventName: editForm.eventName,
+      category: editForm.category,
+      location: editForm.location,
+    });
+    if (!tournamentModeration.allowed) {
+      showNotice("warning", "Conteúdo não permitido", tournamentModeration.message);
       return;
     }
 
@@ -5553,6 +5627,13 @@ setNewPublicInfo({
           ? `${getWeekdayBR(editForm.eventDate)} até ${getWeekdayBR(editForm.eventEndDate)}`
           : getWeekdayBR(editForm.eventDate),
       registrationDeadline: editForm.registrationDeadline,
+      partnerFinder: {
+        ...(structuralData.partnerFinder || {}),
+        enabled: editForm.partnerFinderEnabled !== false,
+        deadline: editForm.partnerFinderDeadline || editForm.registrationDeadline || "",
+        paymentAfterPair: true,
+        organizerCanSuggest: true,
+      },
       eventStartTime: editForm.eventStartTime,
       location: editForm.location.trim(),
       coverImageUrl: editForm.coverImageUrl || "",
@@ -6593,6 +6674,23 @@ setNewPublicInfo({
                 <input className="clickableDateInput" type="date" value={editForm.registrationDeadline} onClick={openDatePicker} onFocus={openDatePicker} onChange={(e) => updateEditForm("registrationDeadline", e.target.value)} />
               </div>
 
+              <section className="partnerFinderConfig fullField">
+                <div>
+                  <span><Users aria-hidden="true" /></span>
+                  <div><strong>Encontre sua dupla</strong><small>Aceitar atletas sem parceiro e destacar quem está procurando dupla.</small></div>
+                </div>
+                <label className="partnerFinderConfigToggle">
+                  <input type="checkbox" checked={editForm.partnerFinderEnabled !== false} onChange={(event) => updateEditForm("partnerFinderEnabled", event.target.checked)} />
+                  <span>{editForm.partnerFinderEnabled !== false ? "Ativado" : "Desativado"}</span>
+                </label>
+                {editForm.partnerFinderEnabled !== false ? (
+                  <label className="partnerFinderConfigDeadline">
+                    <span>Prazo para formar a dupla</span>
+                    <input className="clickableDateInput" type="date" value={editForm.partnerFinderDeadline || ""} max={editForm.eventDate || undefined} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => updateEditForm("partnerFinderDeadline", event.target.value)} />
+                  </label>
+                ) : null}
+              </section>
+
               <div className="formField">
                 <label>Horário de início</label>
                 <input type="time" value={editForm.eventStartTime} onChange={(e) => updateEditForm("eventStartTime", e.target.value)} />
@@ -6972,11 +7070,26 @@ setNewPublicInfo({
 
           {activePanel === "inicio" && (
             <React.Suspense fallback={<section className="card"><p>Carregando publicações...</p></section>}>
-              <PublicPlatformHomeController
-                session={{ user }}
-                runtime={publicPlatformHomeRuntime}
-                embedded
-              />
+              {browsingPublicTournament
+                ? publicPlatformHomeRuntime.renderPublicTournament({
+                    tournament: browsingPublicTournament,
+                    embedded: true,
+                    viewer: user,
+                    onBackToArena: () => {
+                      setBrowsingPublicTournament(null);
+                      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                    },
+                  })
+                : browsingPublicTournamentLoading
+                  ? <section className="card"><p>Carregando o torneio no mesmo ambiente...</p></section>
+                  : (
+                    <PublicPlatformHomeController
+                      session={{ user }}
+                      runtime={publicPlatformHomeRuntime}
+                      embedded
+                      onOpenTournament={openPublishedTournamentFromFeed}
+                    />
+                  )}
             </React.Suspense>
           )}
 
@@ -7236,6 +7349,27 @@ setNewPublicInfo({
     )}
   </div>
   )}
+
+  <section className="partnerFinderConfig fullField">
+    <div>
+      <span><Users aria-hidden="true" /></span>
+      <div>
+        <strong>Encontre sua dupla</strong>
+        <small>Permite que um atleta entre sozinho e procure outro participante compatível dentro deste torneio.</small>
+      </div>
+    </div>
+    <label className="partnerFinderConfigToggle">
+      <input type="checkbox" checked={newPartnerFinderEnabled} onChange={(event) => setNewPartnerFinderEnabled(event.target.checked)} />
+      <span>{newPartnerFinderEnabled ? "Ativado" : "Desativado"}</span>
+    </label>
+    {newPartnerFinderEnabled ? (
+      <label className="partnerFinderConfigDeadline">
+        <span>Prazo para formar a dupla</span>
+        <input className="clickableDateInput" type="date" value={newPartnerFinderDeadline} max={newDate || undefined} onClick={openDatePicker} onFocus={openDatePicker} onChange={(event) => setNewPartnerFinderDeadline(event.target.value)} />
+        <small>Se ficar vazio, será usado o encerramento das inscrições.</small>
+      </label>
+    ) : null}
+  </section>
 
   <div className="formField fullField tournamentCoverField">
     <div className="tournamentCoverIntro">

@@ -597,6 +597,12 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         organizer={organizer}
         onBackToArena={() => setSelectedTournament(null)}
         embedded={embedded}
+        viewer={session?.user || null}
+        onRequireLogin={() => {
+          const url = new URL(window.location.origin);
+          url.searchParams.set("cadastro", "conta");
+          window.location.assign(url.toString());
+        }}
       />
     );
   }

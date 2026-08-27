@@ -50,12 +50,15 @@ import { getTournamentCompletionState } from "../../domain/tournamentLifecycle.m
 import {
   migratePlayRankingBracketForReferenceProfile,
 } from "../../domain/playRankingBracketMigration.mjs";
+import TournamentPartnerFinder from "../registration/TournamentPartnerFinder.jsx";
 
 export default function PublicTournamentScreenView({
   tournament,
   organizer: liveOrganizer = null,
   onBackToArena = null,
   embedded = false,
+  viewer = null,
+  onRequireLogin = null,
   runtime,
 }) {
   const {
@@ -191,9 +194,9 @@ export default function PublicTournamentScreenView({
           <div>
             <span>TORNEIO</span>
             <h1>{tournament.name}</h1>
-            <p>{getModalityDisplayName(tournament.type)} · Somente visualização</p>
+            <p>{getModalityDisplayName(tournament.type)} · Você continua no mesmo ambiente da plataforma</p>
           </div>
-          {onBackToArena ? <button type="button" onClick={onBackToArena}>Voltar à organização</button> : null}
+          {onBackToArena ? <button type="button" onClick={onBackToArena}>← Voltar às publicações</button> : null}
         </section>
       )}
 
@@ -266,6 +269,13 @@ export default function PublicTournamentScreenView({
             <h2>Participantes</h2>
             <span className="readOnlyBadge">Somente visualização</span>
           </div>
+          <TournamentPartnerFinder
+            tournament={tournament}
+            data={data}
+            viewer={viewer}
+            registrationClosed={registrationClosed}
+            onRequireLogin={onRequireLogin}
+          />
           {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" || config.type === "sunset" ? (
             <div className="formatInfoPublicPlacement">
               <TournamentFormatInfoButton data={data} config={config} publicView />

@@ -1,3 +1,5 @@
+import { moderatePublicText } from "./contentModeration.mjs";
+
 const maximumLengths = {
   displayName: 80,
   handle: 30,
@@ -83,6 +85,8 @@ export function validateMemberProfile(profile) {
 
   if (normalized.displayName.length < 2) {
     errors.displayName = "Informe um nome com pelo menos 2 caracteres.";
+  } else if (!moderatePublicText(normalized.displayName).allowed) {
+    errors.displayName = "Este nome contém conteúdo não permitido.";
   }
 
   if (normalized.handle && !/^[a-z0-9._]{3,30}$/.test(normalized.handle)) {
@@ -91,6 +95,10 @@ export function validateMemberProfile(profile) {
 
   if (requestedGalleryPhotos.length > MAX_MEMBER_GALLERY_PHOTOS) {
     errors.galleryPhotos = `Escolha no máximo ${MAX_MEMBER_GALLERY_PHOTOS} fotos.`;
+  }
+
+  if (!moderatePublicText(normalized.bio).allowed) {
+    errors.bio = "A apresentação contém conteúdo não permitido.";
   }
 
   return { valid: Object.keys(errors).length === 0, errors, profile: normalized };
