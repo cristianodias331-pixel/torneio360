@@ -165,6 +165,14 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 .platformExploreHub .publicDirectoryHeading h2 { color: var(--ui-text-strong); }
 .platformExploreHub .publicDirectoryHeading p { color: var(--ui-muted); }
 
+.publicOverviewContent .publicDirectoryHeading h2 { color: var(--ui-text-strong); }
+.publicOverviewContent .publicDirectoryHeading p { color: var(--ui-muted); }
+.publicOverviewContent .publicDirectoryState {
+  border-color: var(--ui-border);
+  color: var(--ui-muted);
+}
+.publicOverviewContent .publicDirectoryError { color: var(--danger-text); }
+
 .platformExploreHub .publicArenaDirectoryCard {
   border-color: var(--ui-border);
   background: var(--ui-surface-muted);

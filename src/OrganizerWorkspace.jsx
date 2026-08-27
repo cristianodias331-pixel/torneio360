@@ -10,6 +10,7 @@ import { normalizeCircuitParticipantKey } from "./circuitNameIdentity.mjs";
 import {
   Award,
   AtSign,
+  Building2,
   Camera,
   CalendarDays,
   ChevronLeft,
@@ -117,7 +118,6 @@ import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
-  getMemberProfileInitials,
   normalizeMemberHandle,
   validateMemberProfile,
 } from "./domain/memberProfile.mjs";
@@ -559,6 +559,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     return normalizeProfileSubtab(params.get("perfil"));
   });
   const [profilePublicationFilter, setProfilePublicationFilter] = useState("all");
+  const [profileIdentity, setProfileIdentity] = useState(() => {
+    const identity = new URLSearchParams(window.location.search).get("identidade");
+    return identity === "atleta" ? "athlete" : "organization";
+  });
   const [memberProfileEditorOpen, setMemberProfileEditorOpen] = useState(false);
   const [memberProfileImageEditor, setMemberProfileImageEditor] = useState(null);
   const [activePanel, setActivePanel] = useState(() => {
@@ -799,6 +803,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       else params.delete("perfil");
     }
 
+    if (Object.prototype.hasOwnProperty.call(next, "profileIdentity")) {
+      if (next.profileIdentity === "athlete") params.set("identidade", "atleta");
+      else if (next.profileIdentity === "organization") params.set("identidade", "organizacao");
+      else params.delete("identidade");
+    }
+
     if (Object.prototype.hasOwnProperty.call(next, "tournamentTab")) {
       if (next.tournamentTab) params.set("tab", next.tournamentTab);
       else params.delete("tab");
@@ -890,20 +900,36 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function openProfileSection(nextSubtab = "publicacoes") {
-    if (!await guardSelectedTournamentBeforeLeaving()) return;
+  async function openProfileSection(nextSubtab = "publicacoes", nextIdentity = profileIdentity) {
+    if (!await guardSelectedTournamentBeforeLeaving()) return false;
     const normalizedSubtab = normalizeProfileSubtab(nextSubtab);
+    const normalizedIdentity = nextIdentity === "athlete" ? "athlete" : "organization";
     setSidebarExpanded(false);
     setProfileMenuOpen(false);
     setSelected(null);
+    setProfileIdentity(normalizedIdentity);
     setProfileSubtab(normalizedSubtab);
     if (normalizedSubtab !== "contato") setProfileEditing(false);
     setActivePanel("ajustes");
-    updateAppUrl({ activePanel: "ajustes", selectedTournamentId: null, profileSubtab: normalizedSubtab });
+    updateAppUrl({
+      activePanel: "ajustes",
+      selectedTournamentId: null,
+      profileSubtab: normalizedSubtab,
+      profileIdentity: normalizedIdentity,
+    });
+    return true;
   }
 
   function openProfileSettings() {
-    void openProfileSection("publicacoes");
+    void openProfileSection("publicacoes", "organization");
+  }
+
+  function openAthleteProfile() {
+    void openProfileSection("publicacoes", "athlete");
+  }
+
+  async function openOrganizationProfileEditor() {
+    if (await openProfileSection("contato", "organization")) setProfileEditing(true);
   }
 
   function toggleColorMode() {
@@ -1290,7 +1316,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const allowedTypes = allowedByPlan[profile.plan] || [];
   const freeTrialDetails = getFreeTrialDetails(profile, user);
   const profileDisplayName = memberProfile.displayName || memberProfileFallback.displayName;
-  const profileInitials = getMemberProfileInitials(memberProfile);
   const panelMeta = {
     inicio: {
       title: "Início",
@@ -1317,8 +1342,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       description: "Recupere torneios excluídos nos últimos 30 dias.",
     },
     ajustes: {
-      title: "Perfil da organização",
-      description: "Veja o perfil como o público e edite somente quando necessário.",
+      title: profileSubtab === "conta"
+        ? "Conta e segurança"
+        : profileIdentity === "athlete" ? "Meu perfil de atleta" : "Perfil da organização",
+      description: profileSubtab === "conta"
+        ? "Gerencie acesso, assinatura, privacidade e suporte da sua conta única."
+        : profileIdentity === "athlete"
+          ? "Edite seus dados pessoais e esportivos sem alterar a organização."
+          : "Edite a identidade pública da organização sem alterar seu perfil de atleta.",
     },
   };
   const currentPanelMeta = panelMeta[activePanel] || panelMeta.inicio;
@@ -3671,6 +3702,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   function removeOrganizationGalleryPhoto(index) {
     if (organizationGallerySaving) return;
     setOrganizationGallery((current) => current.filter((_, photoIndex) => photoIndex !== index));
+  }
+
+  function setOrganizationGalleryCover(index) {
+    if (organizationGallerySaving || index <= 0) return;
+    setOrganizationGallery((current) => {
+      const selectedPhoto = current[index];
+      if (!selectedPhoto) return current;
+      return [selectedPhoto, ...current.filter((_, photoIndex) => photoIndex !== index)];
+    });
+    showNotice("info", "Nova capa selecionada", "Salve as fotos para atualizar a capa pública da organização.");
   }
 
   async function saveOrganizationGallery() {
@@ -6251,7 +6292,7 @@ setNewPublicInfo({
       { panel: "inicio", label: "Início", Icon: LayoutDashboard },
       { panel: "explorar", label: "Explorar", Icon: Compass },
       { panel: "criar", label: "Criar", Icon: PlusCircle },
-      { panel: "ajustes", label: "Perfil da organização", Icon: UserRound },
+      { panel: "ajustes", label: "Perfis", Icon: UserRound },
     ];
     const sidebarActivePanel = ["criar", "circuitos", "modalidades"].includes(activePanel)
       ? "criar"
@@ -6351,11 +6392,11 @@ setNewPublicInfo({
             <div className={`profileControl ${activePanel === "ajustes" || activePanel === "lixeira" ? "accountAreaActive" : ""}`}>
               <button type="button" className="profileTrigger" onClick={openProfileSettings} title="Abrir perfil da organização">
                 <span className="profileAvatar" aria-hidden="true">
-                  {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="" /> : <span>{profileInitials}</span>}
+                  {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="" /> : <span>{String(organizerProfile.arenaName || "T3").slice(0, 2).toLocaleUpperCase("pt-BR")}</span>}
                 </span>
                 <span className="profileTriggerCopy">
                   <strong>{organizerProfile.arenaName || profileDisplayName}</strong>
-                  <small>Abrir perfil da organização</small>
+                  <small>Perfil da organização</small>
                 </span>
               </button>
               <button
@@ -6374,22 +6415,33 @@ setNewPublicInfo({
                 <button
                   type="button"
                   role="menuitem"
-                  className={`profileDropdownItem ${activePanel === "ajustes" && profileSubtab !== "conta" ? "profileDropdownCurrent" : ""}`}
+                  className={`profileDropdownItem ${activePanel === "ajustes" && profileIdentity === "organization" && profileSubtab !== "conta" ? "profileDropdownCurrent" : ""}`}
                   onClick={openProfileSettings}
-                  aria-current={activePanel === "ajustes" && profileSubtab !== "conta" ? "page" : undefined}
+                  aria-current={activePanel === "ajustes" && profileIdentity === "organization" && profileSubtab !== "conta" ? "page" : undefined}
                 >
-                  <Settings aria-hidden="true" />
-                  <span><strong>Perfil da organização</strong><small>Identidade pública e publicações</small></span>
+                  <Building2 aria-hidden="true" />
+                  <span><strong>Perfil da organização</strong><small>Torneios, circuitos e contatos</small></span>
                 </button>
                 <button
                   type="button"
                   role="menuitem"
+                  className={`profileDropdownItem ${activePanel === "ajustes" && profileIdentity === "athlete" && profileSubtab !== "conta" ? "profileDropdownCurrent" : ""}`}
+                  onClick={openAthleteProfile}
+                  aria-current={activePanel === "ajustes" && profileIdentity === "athlete" && profileSubtab !== "conta" ? "page" : undefined}
+                >
+                  <UserRound aria-hidden="true" />
+                  <span><strong>Meu perfil de atleta</strong><small>Dados pessoais e esportivos</small></span>
+                </button>
+                <div className="profileDropdownDivider" />
+                <button
+                  type="button"
+                  role="menuitem"
                   className={`profileDropdownItem ${activePanel === "ajustes" && profileSubtab === "conta" ? "profileDropdownCurrent" : ""}`}
-                  onClick={() => openProfileSection("conta")}
+                  onClick={() => openProfileSection("conta", profileIdentity)}
                   aria-current={activePanel === "ajustes" && profileSubtab === "conta" ? "page" : undefined}
                 >
-                  <LifeBuoy aria-hidden="true" />
-                  <span><strong>Ajuda e suporte</strong><small>WhatsApp, Instagram e e-mail</small></span>
+                  <LockKeyhole aria-hidden="true" />
+                  <span><strong>Conta e segurança</strong><small>Acesso, assinatura e privacidade</small></span>
                 </button>
                 <button
                   type="button"
@@ -6596,7 +6648,7 @@ setNewPublicInfo({
         loading={memberProfileStatus === "loading"}
         saving={memberProfileSaving}
         schemaAvailable={memberProfileStatus !== "unavailable"}
-        profileKind="organization"
+        profileKind="athlete"
         onChange={updateMemberProfile}
         onClose={() => { if (!memberProfileSaving) setMemberProfileEditorOpen(false); }}
         onSave={saveMemberProfileAndClose}
@@ -8455,57 +8507,114 @@ setNewPublicInfo({
 
 {activePanel === "ajustes" && (
 <>
+  {profileSubtab !== "conta" ? (
+    <nav className="profileIdentitySwitcher" aria-label="Escolher perfil" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        className={profileIdentity === "athlete" ? "active athlete" : "athlete"}
+        aria-selected={profileIdentity === "athlete"}
+        onClick={() => openProfileSection("publicacoes", "athlete")}
+      >
+        <span className="profileIdentitySwitcherIcon"><UserRound aria-hidden="true" /></span>
+        <span><strong>Meu perfil de atleta</strong><small>Dados pessoais e esportivos</small></span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={profileIdentity === "organization" ? "active organization" : "organization"}
+        aria-selected={profileIdentity === "organization"}
+        onClick={() => openProfileSection("publicacoes", "organization")}
+      >
+        <span className="profileIdentitySwitcherIcon"><Building2 aria-hidden="true" /></span>
+        <span><strong>Perfil da organização</strong><small>Torneios, circuitos e contatos</small></span>
+      </button>
+    </nav>
+  ) : null}
+
+  {profileSubtab !== "conta" ? (
   <section className="card instagramProfileCard socialOwnProfileCard">
-    <label className={`unifiedProfilePublicCover editableProfileCover${memberProfile.coverUrl ? " hasCover" : ""}`} title="Alterar foto de capa">
-      <input
-        type="file"
-        accept="image/*"
-        disabled={memberProfileSaving}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) openMemberProfileImageEditor(file, "cover");
-          event.target.value = "";
-        }}
-      />
-      {memberProfile.coverUrl ? <img src={memberProfile.coverUrl} alt="" /> : null}
-      <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> Alterar capa</span>
-    </label>
-    <div className="instagramProfileHeader unifiedProfileHeader">
-      <label className="instagramProfilePhoto editableProfileAvatar" title="Alterar foto do perfil">
+    {profileIdentity === "athlete" ? (
+      <label className={`unifiedProfilePublicCover editableProfileCover${memberProfile.coverUrl ? " hasCover" : ""}`} title="Alterar capa do perfil de atleta">
         <input
           type="file"
           accept="image/*"
           disabled={memberProfileSaving}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) openMemberProfileImageEditor(file, "photo");
+            if (file) openMemberProfileImageEditor(file, "cover");
             event.target.value = "";
           }}
         />
-        {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil pessoal" /> : <span><UserRound aria-hidden="true" /></span>}
-        <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
+        {memberProfile.coverUrl ? <img src={memberProfile.coverUrl} alt="Capa do perfil de atleta" /> : null}
+        <span className="profileMediaEditBadge"><Camera aria-hidden="true" /> Alterar capa do atleta</span>
       </label>
+    ) : (
+      <button
+        type="button"
+        className={`unifiedProfilePublicCover editableProfileCover organizationProfileCoverShortcut${organizationGallery[0] ? " hasCover" : ""}`}
+        title="Escolher a capa da organização"
+        onClick={() => openProfileSection("fotos", "organization")}
+      >
+        {organizationGallery[0] ? <img src={organizationGallery[0]} alt="Capa da organização" /> : null}
+        <span className="profileMediaEditBadge"><Images aria-hidden="true" /> Escolher capa da organização</span>
+      </button>
+    )}
+    <div className="instagramProfileHeader unifiedProfileHeader">
+      {profileIdentity === "athlete" ? (
+        <label className="instagramProfilePhoto editableProfileAvatar" title="Alterar foto do perfil de atleta">
+          <input
+            type="file"
+            accept="image/*"
+            disabled={memberProfileSaving}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) openMemberProfileImageEditor(file, "photo");
+              event.target.value = "";
+            }}
+          />
+          {memberProfile.photoUrl ? <img src={memberProfile.photoUrl} alt="Foto do perfil de atleta" /> : <span><UserRound aria-hidden="true" /></span>}
+          <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
+        </label>
+      ) : (
+        <button type="button" className="instagramProfilePhoto editableProfileAvatar organizationProfileAvatarShortcut" title="Editar foto da organização" onClick={openOrganizationProfileEditor}>
+          {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="Foto da organização" /> : <span><Building2 aria-hidden="true" /></span>}
+          <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
+        </button>
+      )}
       <div className="instagramProfileInfo">
         <div className="instagramProfileTopline">
           <div className="organizationProfileName">
-            <h2>{organizerProfile.arenaName || profileDisplayName}</h2>
-            <span>Organização</span>
+            <h2>{profileIdentity === "athlete" ? profileDisplayName : organizerProfile.arenaName || "Minha organização"}</h2>
+            <span>{profileIdentity === "athlete" ? "Atleta" : "Organização"}</span>
           </div>
-          <button type="button" className="secondaryBtn profileEditShortcut" onClick={() => setMemberProfileEditorOpen(true)}>
+          <button type="button" className="secondaryBtn profileEditShortcut" onClick={profileIdentity === "athlete" ? () => setMemberProfileEditorOpen(true) : openOrganizationProfileEditor}>
             <Settings aria-hidden="true" />
-            Editar perfil
+            Editar {profileIdentity === "athlete" ? "atleta" : "organização"}
           </button>
         </div>
-        <p className="unifiedProfileHandle">{memberProfile.handle ? `@${memberProfile.handle}` : "Escolha seu nome de usuário"}</p>
-        {memberProfile.bio ? <p className="unifiedProfileBio">{memberProfile.bio}</p> : null}
-        {memberProfile.city || memberProfile.state ? (
-          <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {[memberProfile.city, memberProfile.state].filter(Boolean).join("/")}</p>
+        <p className="unifiedProfileHandle">{profileIdentity === "athlete"
+          ? memberProfile.handle ? `@${memberProfile.handle}` : "Escolha seu nome de usuário"
+          : organizerProfile.instagramHandle || "Perfil oficial da organização"}</p>
+        {profileIdentity === "athlete" && memberProfile.bio ? <p className="unifiedProfileBio">{memberProfile.bio}</p> : null}
+        {profileIdentity === "organization" && organizerProfile.organizerName ? <p className="unifiedProfileBio">Responsável: {organizerProfile.organizerName}</p> : null}
+        {(profileIdentity === "athlete" ? memberProfile.city || memberProfile.state : organizerProfile.city || organizerProfile.state) ? (
+          <p className="unifiedProfileLocation"><MapPin aria-hidden="true" /> {(profileIdentity === "athlete"
+            ? [memberProfile.city, memberProfile.state]
+            : [organizerProfile.city, organizerProfile.state]).filter(Boolean).join("/")}</p>
         ) : null}
         <div className="unifiedProfileStats" aria-label="Resumo do perfil">
-          <span><strong>{memberProfile.galleryPhotos.length}</strong><small>Fotos</small></span>
-          <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
-          <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
-          <span><strong>{memberProfile.followersCount || 0}</strong><small>Seguidores</small></span>
+          {profileIdentity === "athlete" ? <>
+            <span><strong>{memberProfile.sportsCategory || "A definir"}</strong><small>Categoria</small></span>
+            <span><strong>{memberProfile.galleryPhotos.length}</strong><small>Fotos</small></span>
+            <span><strong>{memberProfile.dominantHand || "Não informado"}</strong><small>Mão dominante</small></span>
+            <span><strong>{memberProfile.followersCount || 0}</strong><small>Seguidores</small></span>
+          </> : <>
+            <span><strong>{organizationGallery.length}</strong><small>Fotos</small></span>
+            <span><strong>{tournaments.length}</strong><small>Torneios</small></span>
+            <span><strong>{circuits.length}</strong><small>Circuitos</small></span>
+            <span><strong>0</strong><small>Seguidores</small></span>
+          </>}
         </div>
       </div>
     </div>
@@ -8555,6 +8664,13 @@ setNewPublicInfo({
 
     {profileSubtab === "publicacoes" ? (
       <div className="profileSubtabPanel">
+    {profileIdentity === "athlete" ? (
+      <div className="athleteProfilePublicationsEmpty">
+        <UserRound aria-hidden="true" />
+        <strong>Publicações do atleta</strong>
+        <span>Inscrições, resultados e conquistas reconhecidas pela plataforma aparecerão aqui. Torneios e circuitos criados pertencem somente ao perfil da organização.</span>
+      </div>
+    ) : <>
     <div className="profilePublicationsHeader">
       <div><strong>Publicações</strong><span>{tournaments.length} campeonato(s) criado(s)</span></div>
       <div className="profilePublicationCreateActions">
@@ -8628,11 +8744,14 @@ setNewPublicInfo({
     </div>
     </> : null}
 
+    </>}
+
       </div>
     ) : null}
 
     {profileSubtab === "fotos" ? (
       <div className="profileSubtabPanel profilePhotosPanel">
+        {profileIdentity === "athlete" ? (
         <section className="unifiedMemberGalleryEditor" aria-labelledby="member-gallery-profile-title">
           <header>
             <div>
@@ -8678,25 +8797,106 @@ setNewPublicInfo({
             </button>
           </div>
         </section>
+        ) : (
+        <section className="unifiedMemberGalleryEditor organizationGalleryEditor organizationProfilePhotos" aria-labelledby="organization-gallery-profile-title">
+          <header>
+            <div>
+              <span><Building2 aria-hidden="true" /></span>
+              <div>
+                <h3 id="organization-gallery-profile-title">Fotos da organização</h3>
+                <p>Até seis fotos institucionais. A primeira foto é usada como capa do perfil.</p>
+              </div>
+            </div>
+            <strong>{organizationGallery.length}/6</strong>
+          </header>
+
+          <div className="unifiedMemberGalleryGrid">
+            {organizationGallery.map((photoUrl, index) => (
+              <figure className={index === 0 ? "organizationCoverPhoto" : ""} key={`${photoUrl}-${index}`}>
+                <img src={photoUrl} alt={index === 0 ? "Capa da organização" : `Foto ${index + 1} da organização`} />
+                {index === 0 ? <span className="organizationCoverBadge">Capa atual</span> : (
+                  <button type="button" className="useAsOrganizationCover" onClick={() => setOrganizationGalleryCover(index)} disabled={organizationGallerySaving}>Usar como capa</button>
+                )}
+                <button type="button" className="removeOrganizationGalleryPhoto" onClick={() => removeOrganizationGalleryPhoto(index)} disabled={organizationGallerySaving}>Remover</button>
+              </figure>
+            ))}
+            {organizationGallery.length < 6 ? (
+              <label className="unifiedMemberGalleryAdd">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files || []);
+                    if (files.length) handleOrganizationGalleryFiles(files);
+                    event.target.value = "";
+                  }}
+                />
+                <PlusCircle aria-hidden="true" />
+                <strong>Adicionar fotos</strong>
+                <small>Restam {6 - organizationGallery.length}</small>
+              </label>
+            ) : null}
+          </div>
+          <div className="profilePhotosActions">
+            <button
+              type="button"
+              className="saveProfileBtn actionConfirmBtn"
+              onClick={saveOrganizationGallery}
+              disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
+              aria-busy={organizationGallerySaving}
+            >
+              {organizationGallerySaving ? "Salvando fotos..." : "Salvar fotos da organização"}
+            </button>
+          </div>
+        </section>
+        )}
       </div>
     ) : null}
 
     {profileSubtab === "conquistas" ? (
       <div className="profileSubtabPanel profileAchievementsPanel">
         <Award aria-hidden="true" />
-        <strong>Conquistas</strong>
-        <span>Os resultados e títulos reconhecidos pela plataforma aparecerão aqui.</span>
+        <strong>{profileIdentity === "athlete" ? "Conquistas do atleta" : "Conquistas da organização"}</strong>
+        <span>{profileIdentity === "athlete"
+          ? "Pódios, títulos e resultados reconhecidos pela plataforma aparecerão aqui."
+          : "Marcos, torneios realizados e reconhecimentos da organização aparecerão aqui."}</span>
       </div>
     ) : null}
   </section>
+  ) : null}
 
-  {profileSubtab === "contato" && !profileEditing ? (
+  {profileSubtab === "contato" && profileIdentity === "athlete" ? (
+  <section className="card organizationAboutOverview athleteAboutOverview">
+    <header>
+      <div>
+        <span>Sobre o atleta</span>
+        <h2>{profileDisplayName}</h2>
+        <p>{memberProfile.bio || "Adicione uma apresentação para outros atletas e organizações conhecerem você."}</p>
+      </div>
+      <button type="button" className="secondaryBtn" onClick={() => setMemberProfileEditorOpen(true)}><Settings aria-hidden="true" /> Editar dados do atleta</button>
+    </header>
+    <div className="organizationAboutGrid">
+      <article><Trophy aria-hidden="true" /><span><small>Categoria</small><strong>{memberProfile.sportsCategory || "Não informada"}</strong></span></article>
+      <article><UserRound aria-hidden="true" /><span><small>Mão dominante</small><strong>{memberProfile.dominantHand || "Não informada"}</strong></span></article>
+      <article><Tag aria-hidden="true" /><span><small>Tamanho da camiseta</small><strong>{memberProfile.shirtSize || "Não informado"}</strong></span></article>
+      <article><MapPin aria-hidden="true" /><span><small>Localização</small><strong>{[memberProfile.city, memberProfile.state].filter(Boolean).join("/") || "Não informada"}</strong></span></article>
+    </div>
+    <aside className="organizationPrivateDataNotice">
+      <LockKeyhole aria-hidden="true" />
+      <span><strong>Dados pessoais protegidos</strong><small>CPF, e-mail, telefone e demais dados privados não aparecem no perfil público.</small></span>
+    </aside>
+  </section>
+  ) : null}
+
+  {profileSubtab === "contato" && profileIdentity === "organization" && !profileEditing ? (
   <section className="card organizationAboutOverview">
     <header>
       <div>
         <span>Sobre a organização</span>
         <h2>{organizerProfile.arenaName || "Minha organização"}</h2>
-        <p>{memberProfile.bio || "Adicione uma apresentação para atletas e visitantes conhecerem sua organização."}</p>
+        <p>Dados públicos usados por atletas e visitantes para conhecer e contatar a organização.</p>
       </div>
       <button type="button" className="secondaryBtn" onClick={() => setProfileEditing(true)}><Settings aria-hidden="true" /> Editar informações</button>
     </header>
@@ -8713,7 +8913,7 @@ setNewPublicInfo({
   </section>
   ) : null}
 
-  {profileSubtab === "contato" && profileEditing ? (
+  {profileSubtab === "contato" && profileIdentity === "organization" && profileEditing ? (
   <section className="card organizerProfileCard profileEditSubtab profileContactSubtab">
     <div className="profileEditSubtabHeader">
       <div>
@@ -8746,54 +8946,6 @@ setNewPublicInfo({
       </label>
       {organizerProfile.photoUrl ? <button className="removePhotoBtn" type="button" onClick={removeOrganizerPhoto}>Remover foto</button> : null}
     </div>
-
-    <section className="unifiedMemberGalleryEditor organizationGalleryEditor" aria-labelledby="organization-gallery-title">
-      <header>
-        <div>
-          <span><Grid3X3 aria-hidden="true" /></span>
-          <div>
-            <h3 id="organization-gallery-title">Galeria da organização</h3>
-            <p>Até seis fotos institucionais. Elas aparecem somente dentro deste perfil, nunca na Visão geral.</p>
-          </div>
-        </div>
-        <strong>{organizationGallery.length}/6</strong>
-      </header>
-      <div className="unifiedMemberGalleryGrid">
-        {organizationGallery.map((photoUrl, index) => (
-          <figure key={`${photoUrl}-${index}`}>
-            <img src={photoUrl} alt={`Foto ${index + 1} da organização`} />
-            <button type="button" onClick={() => removeOrganizationGalleryPhoto(index)} disabled={organizationGallerySaving}>Remover</button>
-          </figure>
-        ))}
-        {organizationGallery.length < 6 ? (
-          <label className="unifiedMemberGalleryAdd">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
-              onChange={(event) => {
-                const files = Array.from(event.target.files || []);
-                if (files.length) handleOrganizationGalleryFiles(files);
-                event.target.value = "";
-              }}
-            />
-            <PlusCircle aria-hidden="true" />
-            <strong>Adicionar fotos</strong>
-            <small>Restam {6 - organizationGallery.length}</small>
-          </label>
-        ) : null}
-      </div>
-      <button
-        type="button"
-        className="saveProfileBtn actionConfirmBtn organizationGallerySaveBtn"
-        onClick={saveOrganizationGallery}
-        disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
-        aria-busy={organizationGallerySaving}
-      >
-        {organizationGallerySaving ? "Salvando galeria..." : "Salvar galeria da organização"}
-      </button>
-    </section>
 
     <div className="organizerProfileGrid">
       <div className="formField">

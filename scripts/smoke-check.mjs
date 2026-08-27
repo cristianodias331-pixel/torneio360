@@ -5077,7 +5077,12 @@ assert.ok(
   !platformChromeSource.includes("Usando como")
     && !platformChromeSource.includes("PlatformIdentityContext")
     && organizerWorkspaceSource.includes("Abrir perfil da organização")
-    && organizerWorkspaceSource.includes('label: "Perfil da organização"'),
+    && organizerWorkspaceSource.includes('label: "Perfis"')
+    && organizerWorkspaceSource.includes("Meu perfil de atleta")
+    && organizerWorkspaceSource.includes("Conta e segurança")
+    && organizerWorkspaceSource.includes('profileIdentity === "athlete"')
+    && organizerWorkspaceSource.includes("organizerProfile.photoUrl")
+    && organizerWorkspaceSource.includes("organizationGallery[0]"),
   "A barra superior voltou a duplicar a identidade ou ocultou o acesso ao perfil da organização."
 );
 assert.ok(
