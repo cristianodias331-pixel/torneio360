@@ -1,0 +1,420 @@
+.organizationRegistrantsPanel {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 4px 0 0;
+  color: var(--ui-text);
+}
+
+.organizationRegistrantsHeader > div,
+.organizationRegistrantMetrics article,
+.organizationRegistrantRow,
+.organizationRegistrantsState {
+  display: flex;
+  align-items: center;
+}
+
+.organizationRegistrantsHeader > div {
+  gap: 14px;
+}
+
+.organizationRegistrantsHeader > div > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #16a36a 48%, var(--ui-border));
+  border-radius: 15px;
+  color: #16a36a;
+  background: color-mix(in srgb, #16a36a 12%, var(--ui-surface));
+}
+
+.organizationRegistrantsHeader svg,
+.organizationRegistrantMetrics svg {
+  width: 21px;
+  height: 21px;
+}
+
+.organizationRegistrantsHeader small {
+  color: #16a36a;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.organizationRegistrantsHeader h2,
+.organizationRegistrantTournament h3 {
+  margin: 2px 0;
+  color: var(--ui-heading);
+}
+
+.organizationRegistrantsHeader p,
+.organizationRegistrantTournament p {
+  margin: 0;
+  color: var(--ui-muted);
+}
+
+.organizationRegistrantsNotice {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, #ef9b29 40%, var(--ui-border));
+  border-radius: 12px;
+  color: var(--ui-text);
+  background: color-mix(in srgb, #ef9b29 10%, var(--ui-surface));
+}
+
+.organizationRegistrantsNotice.isSuccess {
+  border-color: color-mix(in srgb, #16a36a 42%, var(--ui-border));
+  background: color-mix(in srgb, #16a36a 10%, var(--ui-surface));
+}
+
+.organizationRegistrantsNotice svg {
+  flex: 0 0 auto;
+  width: 18px;
+}
+
+.organizationRegistrantMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.organizationRegistrantMetrics article {
+  gap: 11px;
+  min-height: 76px;
+  padding: 13px;
+  border: 1px solid var(--ui-border);
+  border-radius: 15px;
+  background: var(--ui-surface);
+}
+
+.organizationRegistrantMetrics article > svg {
+  color: #4d7cdf;
+}
+
+.organizationRegistrantMetrics article.paid > svg { color: #16a36a; }
+.organizationRegistrantMetrics article.pending > svg { color: #ef9b29; }
+.organizationRegistrantMetrics article.partner > svg { color: #9b67e9; }
+
+.organizationRegistrantMetrics span {
+  display: grid;
+}
+
+.organizationRegistrantMetrics strong {
+  color: var(--ui-heading);
+  font-size: 1.35rem;
+}
+
+.organizationRegistrantMetrics small {
+  color: var(--ui-muted);
+}
+
+.organizationRegistrantToolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  gap: 12px;
+}
+
+.organizationRegistrantSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+}
+
+.organizationRegistrantSearch svg {
+  width: 18px;
+  color: var(--ui-muted);
+}
+
+.organizationRegistrantSearch input {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  outline: 0;
+  color: var(--ui-text);
+  background: transparent;
+}
+
+.organizationRegistrantToolbar nav {
+  display: flex;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+}
+
+.organizationRegistrantToolbar nav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-weight: 800;
+}
+
+.organizationRegistrantToolbar nav button.active {
+  color: #fff;
+  background: #167a54;
+}
+
+.organizationRegistrantToolbar nav button span {
+  font-size: 0.68rem;
+}
+
+.organizationRegistrantFilters {
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ui-surface) 92%, var(--ui-page));
+}
+
+.organizationRegistrantFilters > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  color: var(--ui-muted);
+  font-weight: 900;
+}
+
+.organizationRegistrantFilters > span svg { width: 17px; }
+
+.organizationRegistrantFilters label {
+  display: grid;
+  gap: 4px;
+}
+
+.organizationRegistrantFilters small {
+  color: var(--ui-muted);
+  font-weight: 800;
+}
+
+.organizationRegistrantFilters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+}
+
+.organizationRegistrantGroups {
+  display: grid;
+  gap: 14px;
+}
+
+.organizationRegistrantTournament {
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 17px;
+  background: var(--ui-surface);
+}
+
+.organizationRegistrantTournament > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.organizationRegistrantTournament > header > strong {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #0b6f4b;
+  background: color-mix(in srgb, #16a36a 13%, var(--ui-surface));
+}
+
+.organizationRegistrantTournament p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.organizationRegistrantTournament p svg { width: 15px; }
+
+.organizationRegistrantClassification {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.organizationRegistrantDivision + .organizationRegistrantDivision {
+  border-top: 7px solid var(--ui-page);
+}
+
+.organizationRegistrantClassification > strong {
+  margin-left: auto;
+  color: var(--ui-muted);
+  font-size: 0.72rem;
+}
+
+.organizationRegistrantClassification span,
+.organizationRegistrantBadges span {
+  padding: 5px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  background: var(--ui-page);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.organizationRegistrantList {
+  display: grid;
+}
+
+.organizationRegistrantRow {
+  display: grid;
+  grid-template-columns: auto minmax(170px, 1fr) minmax(220px, auto) auto;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.organizationRegistrantRow:last-child { border-bottom: 0; }
+
+.organizationRegistrantAvatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, #167a54 45%, var(--ui-border));
+  border-radius: 50%;
+  color: var(--ui-heading);
+  background: var(--ui-page);
+  font-weight: 900;
+}
+
+.organizationRegistrantAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.organizationRegistrantIdentity {
+  display: grid;
+  gap: 3px;
+}
+
+.organizationRegistrantIdentity strong { color: var(--ui-heading); }
+.organizationRegistrantIdentity small { color: var(--ui-muted); }
+
+.organizationRegistrantBadges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.organizationRegistrantBadges span.paid {
+  border-color: color-mix(in srgb, #16a36a 48%, var(--ui-border));
+  color: #0c8354;
+  background: color-mix(in srgb, #16a36a 12%, var(--ui-surface));
+}
+
+.organizationRegistrantBadges span.pending {
+  border-color: color-mix(in srgb, #ef9b29 48%, var(--ui-border));
+  color: #bf6d08;
+  background: color-mix(in srgb, #ef9b29 12%, var(--ui-surface));
+}
+
+.organizationRegistrantBadges span.partner {
+  border-color: color-mix(in srgb, #9b67e9 48%, var(--ui-border));
+  color: #8651d7;
+  background: color-mix(in srgb, #9b67e9 12%, var(--ui-surface));
+}
+
+.organizationRegistrantRow > button,
+.organizationRegistrantsState button {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, #16a36a 44%, var(--ui-border));
+  border-radius: 10px;
+  color: #0b7550;
+  background: color-mix(in srgb, #16a36a 9%, var(--ui-surface));
+  font-weight: 900;
+}
+
+.organizationRegistrantRow > button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.organizationRegistrantsEmpty,
+.organizationRegistrantsState {
+  justify-content: center;
+  min-height: 190px;
+  gap: 10px;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px dashed var(--ui-border);
+  border-radius: 15px;
+  color: var(--ui-muted);
+  background: var(--ui-surface);
+  text-align: center;
+}
+
+.organizationRegistrantsEmpty svg,
+.organizationRegistrantsState > svg {
+  width: 32px;
+  height: 32px;
+  color: #16a36a;
+}
+
+.organizationRegistrantsEmpty strong,
+.organizationRegistrantsState strong { color: var(--ui-heading); }
+
+.theme-dark .organizationRegistrantToolbar nav button.active {
+  background: #15966a;
+}
+
+.theme-dark .organizationRegistrantMetrics article,
+.theme-dark .organizationRegistrantTournament,
+.theme-dark .organizationRegistrantSearch,
+.theme-dark .organizationRegistrantToolbar nav,
+.theme-dark .organizationRegistrantFilters {
+  box-shadow: none;
+}
+
+@media (max-width: 900px) {
+  .organizationRegistrantMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .organizationRegistrantToolbar { grid-template-columns: 1fr; }
+  .organizationRegistrantToolbar nav { overflow-x: auto; }
+  .organizationRegistrantFilters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .organizationRegistrantFilters > span { grid-column: 1 / -1; }
+  .organizationRegistrantRow { grid-template-columns: auto 1fr; }
+  .organizationRegistrantBadges,
+  .organizationRegistrantRow > button { grid-column: 2; justify-self: start; }
+}
+
+@media (max-width: 560px) {
+  .organizationRegistrantMetrics { grid-template-columns: 1fr 1fr; }
+  .organizationRegistrantFilters { grid-template-columns: 1fr; }
+  .organizationRegistrantFilters > span { grid-column: auto; }
+  .organizationRegistrantTournament > header { align-items: flex-start; }
+  .organizationRegistrantRow { padding: 12px; }
+  .organizationRegistrantBadges { grid-column: 1 / -1; }
+  .organizationRegistrantRow > button { grid-column: 1 / -1; width: 100%; }
+}

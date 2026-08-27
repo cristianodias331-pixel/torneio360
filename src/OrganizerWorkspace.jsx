@@ -117,6 +117,7 @@ import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentEr
 import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsModal.jsx";
 import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
+import OrganizationRegistrantsPanel from "./features/profile/OrganizationRegistrantsPanel.jsx";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -410,7 +411,7 @@ const HomologationLoadLab = HOMOLOGATION_LOAD_LAB_ENABLED
 
 function normalizeProfileSubtab(value) {
   const requested = String(value || "").trim();
-  if (["publicacoes", "atividades", "duplas", "desafios", "fotos", "contato", "conquistas", "conta"].includes(requested)) return requested;
+  if (["publicacoes", "atividades", "duplas", "desafios", "inscritos", "fotos", "contato", "conquistas", "conta"].includes(requested)) return requested;
   if (requested === "editar") return "contato";
   return "publicacoes";
 }
@@ -558,16 +559,25 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [notice, setNotice] = useState(null);
   const [profileSubtab, setProfileSubtab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("identidade") === "atleta" && !params.get("perfil")) return "atividades";
-    return normalizeProfileSubtab(params.get("perfil"));
+    const athleteIdentity = params.get("identidade") === "atleta";
+    if (athleteIdentity && !params.get("perfil")) return "atividades";
+    const initialSubtab = normalizeProfileSubtab(params.get("perfil"));
+    if (athleteIdentity && initialSubtab === "inscritos") return "atividades";
+    if (!athleteIdentity && initialSubtab === "conquistas") return "inscritos";
+    return initialSubtab;
   });
   const [profilePublicationFilter, setProfilePublicationFilter] = useState("all");
   const [profileIdentity, setProfileIdentity] = useState(() => {
     const identity = new URLSearchParams(window.location.search).get("identidade");
     return identity === "atleta" ? "athlete" : "organization";
   });
+  useEffect(() => {
+    if (profileIdentity === "organization" && profileSubtab === "conquistas") setProfileSubtab("inscritos");
+    if (profileIdentity === "athlete" && profileSubtab === "inscritos") setProfileSubtab("atividades");
+  }, [profileIdentity, profileSubtab]);
   const [memberProfileEditorOpen, setMemberProfileEditorOpen] = useState(false);
   const [memberProfileImageEditor, setMemberProfileImageEditor] = useState(null);
+  const [organizationProfileImageEditor, setOrganizationProfileImageEditor] = useState(null);
   const [activePanel, setActivePanel] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("aba") || "inicio";
@@ -908,7 +918,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const normalizedIdentity = nextIdentity === "athlete" ? "athlete" : "organization";
     let normalizedSubtab = normalizeProfileSubtab(nextSubtab);
     if (normalizedIdentity === "athlete" && normalizedSubtab === "publicacoes") normalizedSubtab = "atividades";
+    if (normalizedIdentity === "athlete" && normalizedSubtab === "inscritos") normalizedSubtab = "atividades";
     if (normalizedIdentity === "organization" && ["atividades", "duplas", "desafios"].includes(normalizedSubtab)) normalizedSubtab = "publicacoes";
+    if (normalizedIdentity === "organization" && normalizedSubtab === "conquistas") normalizedSubtab = "inscritos";
     setSidebarExpanded(false);
     setProfileMenuOpen(false);
     setSelected(null);
@@ -934,7 +946,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function openOrganizationProfileEditor() {
-    if (await openProfileSection("contato", "organization")) setProfileEditing(true);
+    if (!await guardSelectedTournamentBeforeLeaving()) return;
+    setProfileMenuOpen(false);
+    setProfileEditing(true);
   }
 
   function toggleColorMode() {
@@ -1217,14 +1231,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     if (appStateSaveTimerRef.current) clearTimeout(appStateSaveTimerRef.current);
     appStateSaveTimerRef.current = setTimeout(() => saveUserAppState(extra), 1500);
   }
-  const [photoEditor, setPhotoEditor] = useState(null);
   const [profileEditing, setProfileEditing] = useState(false);
-
-  const photoPointersRef = useRef(new Map());
-  const photoPreviewRef = useRef(null);
-  const photoCanvasRef = useRef(null);
-  const lastPhotoDragRef = useRef(null);
-  const lastPhotoPinchRef = useRef(null);
   const [organizerProfile, setOrganizerProfile] = useState(() => {
     const saved = localStorage.getItem(`organizerProfile:${user.id}`);
     if (saved) {
@@ -3065,40 +3072,40 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
   }
 
-  function buildOrganizerProfilePayload() {
+  function buildOrganizerProfilePayload(sourceProfile = organizerProfile) {
     return {
-      name: organizerProfile.organizerName || profile.name || user.email || "Organizador",
-      arena_name: organizerProfile.arenaName || profile.arena_name || profile.name || "Minha arena",
-      phone: organizerProfile.whatsapp || "",
-      address: organizerProfile.address || "",
-      maps_link: organizerProfile.mapsLink || "",
-      city: organizerProfile.city || "",
-      state: organizerProfile.state || "",
-      photo_url: organizerProfile.photoUrl || "",
-      instagram_handle: organizerProfile.instagramHandle || "",
-      instagram_link: organizerProfile.instagramLink || "",
-      whatsapp_group_link: organizerProfile.whatsappGroupLink || "",
+      name: sourceProfile.organizerName || profile.name || user.email || "Organizador",
+      arena_name: sourceProfile.arenaName || profile.arena_name || profile.name || "Minha arena",
+      phone: sourceProfile.whatsapp || "",
+      address: sourceProfile.address || "",
+      maps_link: sourceProfile.mapsLink || "",
+      city: sourceProfile.city || "",
+      state: sourceProfile.state || "",
+      photo_url: sourceProfile.photoUrl || "",
+      instagram_handle: sourceProfile.instagramHandle || "",
+      instagram_link: sourceProfile.instagramLink || "",
+      whatsapp_group_link: sourceProfile.whatsappGroupLink || "",
       is_public: true,
     };
   }
 
-  async function saveOrganizerProfile() {
-    if (!user?.id || profileSaving) return;
-    if (!ensureCloudConnection("salvar o perfil")) return;
+  async function saveOrganizerProfile(profileToSave = organizerProfile) {
+    if (!user?.id || profileSaving) return false;
+    if (!ensureCloudConnection("salvar o perfil")) return false;
     const profileModeration = validatePublicTextFields({
-      organization: organizerProfile.arenaName,
-      organizer: organizerProfile.organizerName,
-      instagram: organizerProfile.instagramHandle,
+      organization: profileToSave.arenaName,
+      organizer: profileToSave.organizerName,
+      instagram: profileToSave.instagramHandle,
     });
     if (!profileModeration.allowed) {
       showNotice("warning", "Conteúdo não permitido", profileModeration.message);
-      return;
+      return false;
     }
     setProfileSaveSuccess(false);
     if (profileSaveSuccessTimerRef.current) clearTimeout(profileSaveSuccessTimerRef.current);
     setProfileSaving(true);
 
-    let publicProfileData = buildOrganizerProfilePayload();
+    let publicProfileData = buildOrganizerProfilePayload(profileToSave);
     if (/^data:image\//i.test(publicProfileData.photo_url)) {
       try {
         const { uploadProfilePhoto } = await import("./services/mediaStorage.mjs");
@@ -3112,7 +3119,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         console.error("Erro ao enviar a foto do perfil:", error);
         setProfileSaving(false);
         showNotice("error", "Foto não enviada", "Não foi possível enviar a foto agora. Confira a conexão e tente novamente.");
-        return;
+        return false;
       }
     }
     const baseProfile = organizerProfileBaseRef.current;
@@ -3133,17 +3140,18 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const changedProfileData = Object.fromEntries(
       Object.entries(publicProfileData).filter(([key, value]) => value !== basePublicProfileData[key])
     );
-    const privateProfileChanged = String(organizerProfile.pixKey || "") !== String(baseProfile.pixKey || "");
+    const privateProfileChanged = String(profileToSave.pixKey || "") !== String(baseProfile.pixKey || "");
 
     if (Object.keys(changedProfileData).length === 0 && !privateProfileChanged) {
       setProfileSaving(false);
       showNotice("info", "Perfil já está atualizado", "Não há novas alterações para enviar.");
-      return;
+      setProfileEditing(false);
+      return true;
     }
 
     try {
       localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify({
-        ...organizerProfile,
+        ...profileToSave,
         organizerName: publicProfileData.name,
         arenaName: publicProfileData.arena_name,
         isPublic: publicProfileData.is_public,
@@ -3153,15 +3161,17 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     }
 
     if (Object.keys(changedProfileData).length === 0 && privateProfileChanged) {
-      organizerProfileBaseRef.current = { ...organizerProfile };
+      organizerProfileBaseRef.current = { ...profileToSave };
+      setOrganizerProfile(profileToSave);
       setProfileSaving(false);
       setProfileSaveSuccess(true);
+      setProfileEditing(false);
       showNotice("success", "Dado privado salvo", "A chave Pix foi mantida somente neste dispositivo de homologação.");
       profileSaveSuccessTimerRef.current = setTimeout(() => {
         setProfileSaveSuccess(false);
         profileSaveSuccessTimerRef.current = null;
       }, 2600);
-      return;
+      return true;
     }
 
     try {
@@ -3196,13 +3206,14 @@ const [newPublicInfo, setNewPublicInfo] = useState({
           "Perfil não salvo",
           "Não foi possível concluir o cadastro agora. Atualize a página e tente novamente."
         );
-        return;
+        return false;
       }
 
       onProfileChange?.((prev) => ({ ...prev, ...data }));
-      const savedOrganizerProfile = organizerProfileFromRow(data, organizerProfile);
+      const savedOrganizerProfile = organizerProfileFromRow(data, profileToSave);
       organizerProfileBaseRef.current = savedOrganizerProfile;
       setOrganizerProfile(savedOrganizerProfile);
+      setProfileEditing(false);
       try {
         localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(savedOrganizerProfile));
       } catch (storageError) {
@@ -3220,6 +3231,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         setProfileSaveSuccess(false);
         profileSaveSuccessTimerRef.current = null;
       }, 2600);
+      return true;
     } catch (error) {
       console.error("Erro inesperado ao salvar o perfil:", error);
       showNotice(
@@ -3227,6 +3239,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         "Perfil não salvo",
         "Não foi possível salvar as alterações agora. Tente novamente em alguns instantes."
       );
+      return false;
     } finally {
       setProfileSaving(false);
     }
@@ -3274,6 +3287,37 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     setMemberProfile(nextProfile);
     const saved = await saveMemberProfile(nextProfile);
     if (saved) closeMemberProfileImageEditor();
+    return saved;
+  }
+
+  function closeOrganizationProfileImageEditor() {
+    setOrganizationProfileImageEditor((current) => {
+      if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
+      return null;
+    });
+  }
+
+  function openOrganizationProfileImageEditor(file) {
+    if (!file || profileSaving) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      showNotice("warning", "Imagem não reconhecida", "Escolha uma foto em JPG, PNG ou WebP.");
+      return;
+    }
+    setOrganizationProfileImageEditor((current) => {
+      if (current?.sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(current.sourceUrl);
+      return {
+        kind: "photo",
+        sourceUrl: URL.createObjectURL(file),
+        fileName: file.name || "foto-da-organizacao",
+      };
+    });
+  }
+
+  async function applyOrganizationProfileImage({ imageUrl }) {
+    const nextProfile = { ...organizerProfile, photoUrl: imageUrl };
+    setOrganizerProfile(nextProfile);
+    const saved = await saveOrganizerProfile(nextProfile);
+    if (saved) closeOrganizationProfileImageEditor();
     return saved;
   }
 
@@ -3518,162 +3562,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       setTournaments(reconciledTournaments);
     }
     return updatedTournaments;
-  }
-
-
-  function handleOrganizerPhotoFile(file) {
-    if (!file) return;
-    if (!file.type?.startsWith("image/")) {
-      showNotice("warning", "Arquivo inválido", "Escolha uma imagem para usar como foto de perfil.");
-      return;
-    }
-    const maxSize = 3 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showNotice("warning", "Imagem muito grande", "Escolha uma imagem com até 3 MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoEditor({ imageUrl: String(reader.result || ""), zoom: 1, x: 0, y: 0 });
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function clampPhotoZoom(value) {
-    return Math.min(4, Math.max(1, Number(value) || 1));
-  }
-
-  function clampPhotoOffset(value) {
-    return Math.min(160, Math.max(-160, Number(value) || 0));
-  }
-
-  function handlePhotoPointerDown(e) {
-    e.preventDefault();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    photoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (photoPointersRef.current.size === 1) {
-      lastPhotoDragRef.current = { x: e.clientX, y: e.clientY };
-      lastPhotoPinchRef.current = null;
-    }
-
-    if (photoPointersRef.current.size === 2) {
-      const points = Array.from(photoPointersRef.current.values());
-      lastPhotoPinchRef.current = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
-      lastPhotoDragRef.current = null;
-    }
-  }
-
-  function handlePhotoPointerMove(e) {
-    if (!photoPointersRef.current.has(e.pointerId)) return;
-    e.preventDefault();
-    photoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (photoPointersRef.current.size === 1 && lastPhotoDragRef.current) {
-      const dx = e.clientX - lastPhotoDragRef.current.x;
-      const dy = e.clientY - lastPhotoDragRef.current.y;
-      lastPhotoDragRef.current = { x: e.clientX, y: e.clientY };
-
-      setPhotoEditor((prev) => prev ? {
-        ...prev,
-        x: clampPhotoOffset((prev.x || 0) + dx),
-        y: clampPhotoOffset((prev.y || 0) + dy),
-      } : prev);
-    }
-
-    if (photoPointersRef.current.size === 2 && lastPhotoPinchRef.current) {
-      const points = Array.from(photoPointersRef.current.values());
-      const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
-      const ratio = distance / lastPhotoPinchRef.current;
-      lastPhotoPinchRef.current = distance;
-
-      setPhotoEditor((prev) => prev ? {
-        ...prev,
-        zoom: clampPhotoZoom((prev.zoom || 1) * ratio),
-      } : prev);
-    }
-  }
-
-  function handlePhotoPointerEnd(e) {
-    photoPointersRef.current.delete(e.pointerId);
-    lastPhotoDragRef.current = null;
-    lastPhotoPinchRef.current = null;
-
-    if (photoPointersRef.current.size === 1) {
-      const point = Array.from(photoPointersRef.current.values())[0];
-      lastPhotoDragRef.current = { x: point.x, y: point.y };
-    }
-  }
-
-  function handlePhotoWheel(e) {
-    e.preventDefault();
-    const direction = e.deltaY > 0 ? -0.08 : 0.08;
-    setPhotoEditor((prev) => prev ? {
-      ...prev,
-      zoom: clampPhotoZoom((prev.zoom || 1) + direction),
-    } : prev);
-  }
-
-  function drawPhotoEditorCanvas(canvas, outputSize, onDone) {
-    if (!canvas || !photoEditor?.imageUrl) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const image = new Image();
-    image.onload = () => {
-      canvas.width = outputSize;
-      canvas.height = outputSize;
-
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
-      ctx.clip();
-
-      const baseScale = Math.max(outputSize / image.width, outputSize / image.height);
-      const scale = baseScale * Number(photoEditor.zoom || 1);
-      const drawWidth = image.width * scale;
-      const drawHeight = image.height * scale;
-      const previewSize = photoPreviewRef.current?.getBoundingClientRect()?.width || outputSize;
-      const offsetScale = outputSize / previewSize;
-      const offsetX = Number(photoEditor.x || 0) * offsetScale;
-      const offsetY = Number(photoEditor.y || 0) * offsetScale;
-
-      ctx.drawImage(
-        image,
-        (outputSize - drawWidth) / 2 + offsetX,
-        (outputSize - drawHeight) / 2 + offsetY,
-        drawWidth,
-        drawHeight
-      );
-      ctx.restore();
-
-      onDone?.(canvas);
-    };
-    image.src = photoEditor.imageUrl;
-  }
-
-  useEffect(() => {
-    if (!photoEditor?.imageUrl || !photoCanvasRef.current || !photoPreviewRef.current) return;
-    const previewSize = Math.round(photoPreviewRef.current.getBoundingClientRect().width || 220);
-    drawPhotoEditorCanvas(photoCanvasRef.current, previewSize);
-  }, [photoEditor]);
-
-  function applyEditedOrganizerPhoto() {
-    if (!photoEditor?.imageUrl) return;
-
-    const canvas = document.createElement("canvas");
-    drawPhotoEditorCanvas(canvas, 360, (finalCanvas) => {
-      const photoUrl = finalCanvas.toDataURL("image/png", 0.92);
-      setOrganizerProfile((prev) => {
-        const next = { ...prev, photoUrl };
-        localStorage.setItem(`organizerProfile:${user.id}`, JSON.stringify(next));
-        return next;
-      });
-      setPhotoEditor(null);
-      showNotice("info", "Foto preparada", "Ajuste concluído. Clique em “Salvar alterações” para enviar a foto à nuvem.");
-    });
   }
 
   function removeOrganizerPhoto() {
@@ -6669,6 +6557,16 @@ setNewPublicInfo({
         />
       ) : null}
 
+      {organizationProfileImageEditor ? (
+        <ProfileImageEditor
+          kind="photo"
+          sourceUrl={organizationProfileImageEditor.sourceUrl}
+          fileName={organizationProfileImageEditor.fileName}
+          onCancel={closeOrganizationProfileImageEditor}
+          onApply={applyOrganizationProfileImage}
+        />
+      ) : null}
+
       <ConfirmModal
         target={deleteTarget}
         onCancel={() => setDeleteTarget(null)}
@@ -7148,31 +7046,6 @@ setNewPublicInfo({
           />,
           document.body
         )
-      ) : null}
-
-      {photoEditor ? (
-        <div className="photoEditorOverlay" role="dialog" aria-modal="true">
-          <div className="photoEditorModal">
-            <h2>Ajustar foto de perfil</h2>
-            <p>Arraste a imagem para alinhar. Use o movimento de pinça no celular ou a roda do mouse para aproximar.</p>
-            <div
-              ref={photoPreviewRef}
-              className="photoEditorPreview"
-              onPointerDown={handlePhotoPointerDown}
-              onPointerMove={handlePhotoPointerMove}
-              onPointerUp={handlePhotoPointerEnd}
-              onPointerCancel={handlePhotoPointerEnd}
-              onWheel={handlePhotoWheel}
-            >
-              <canvas ref={photoCanvasRef} aria-label="Prévia da foto ajustada" />
-            </div>
-            <div className="photoEditorHint">Toque e arraste para mover • Pinça ou roda do mouse para zoom</div>
-            <div className="photoEditorActions">
-              <button type="button" className="cancelBtn" onClick={() => setPhotoEditor(null)}>Cancelar</button>
-              <button type="button" onClick={applyEditedOrganizerPhoto}>Aplicar foto</button>
-            </div>
-          </div>
-        </div>
       ) : null}
 
       {renderAppSidebar()}
@@ -8582,16 +8455,26 @@ setNewPublicInfo({
           <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
         </label>
       ) : (
-        <button type="button" className="instagramProfilePhoto editableProfileAvatar organizationProfileAvatarShortcut" title="Editar foto da organização" onClick={openOrganizationProfileEditor}>
+        <label className="instagramProfilePhoto editableProfileAvatar organizationProfileAvatarShortcut" title="Alterar foto da organização">
+          <input
+            type="file"
+            accept="image/*"
+            disabled={profileSaving}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) openOrganizationProfileImageEditor(file);
+              event.target.value = "";
+            }}
+          />
           {organizerProfile.photoUrl ? <img src={organizerProfile.photoUrl} alt="Foto da organização" /> : <span><Building2 aria-hidden="true" /></span>}
           <i className="profileAvatarEditBadge"><Camera aria-hidden="true" /></i>
-        </button>
+        </label>
       )}
       <div className="instagramProfileInfo">
         <div className="instagramProfileTopline">
           <div className="organizationProfileName">
             <h2>{profileIdentity === "athlete" ? profileDisplayName : organizerProfile.arenaName || "Minha organização"}</h2>
-            <span>{profileIdentity === "athlete" ? "Atleta" : "Organização"}</span>
+            <span className={profileIdentity === "athlete" ? "athleteIdentityBadge" : "organizationIdentityBadge"}>{profileIdentity === "athlete" ? "Atleta" : "Organização"}</span>
           </div>
           <button type="button" className="secondaryBtn profileEditShortcut" onClick={profileIdentity === "athlete" ? () => setMemberProfileEditorOpen(true) : openOrganizationProfileEditor}>
             <Settings aria-hidden="true" />
@@ -8677,16 +8560,29 @@ setNewPublicInfo({
         <AtSign aria-hidden="true" />
         Sobre
       </button>
-      <button
-        type="button"
-        role="tab"
-        className={profileSubtab === "conquistas" ? "active" : ""}
-        onClick={() => openProfileSection("conquistas")}
-        aria-selected={profileSubtab === "conquistas"}
-      >
-        <Award aria-hidden="true" />
-        Conquistas
-      </button>
+      {profileIdentity === "athlete" ? (
+        <button
+          type="button"
+          role="tab"
+          className={profileSubtab === "conquistas" ? "active" : ""}
+          onClick={() => openProfileSection("conquistas", "athlete")}
+          aria-selected={profileSubtab === "conquistas"}
+        >
+          <Award aria-hidden="true" />
+          Conquistas
+        </button>
+      ) : (
+        <button
+          type="button"
+          role="tab"
+          className={profileSubtab === "inscritos" ? "active" : ""}
+          onClick={() => openProfileSection("inscritos", "organization")}
+          aria-selected={profileSubtab === "inscritos"}
+        >
+          <Users aria-hidden="true" />
+          Inscritos
+        </button>
+      )}
     </div>
 
     {profileSubtab === "publicacoes" && profileIdentity === "organization" ? (
@@ -8775,6 +8671,10 @@ setNewPublicInfo({
         owner
         onOpenTournament={openPublishedTournamentFromFeed}
       />
+    ) : null}
+
+    {profileIdentity === "organization" && profileSubtab === "inscritos" ? (
+      <OrganizationRegistrantsPanel supabase={supabase} tournaments={tournaments} />
     ) : null}
 
     {profileSubtab === "fotos" ? (
@@ -8883,13 +8783,11 @@ setNewPublicInfo({
       </div>
     ) : null}
 
-    {profileSubtab === "conquistas" ? (
+    {profileSubtab === "conquistas" && profileIdentity === "athlete" ? (
       <div className="profileSubtabPanel profileAchievementsPanel">
         <Award aria-hidden="true" />
-        <strong>{profileIdentity === "athlete" ? "Conquistas do atleta" : "Conquistas da organização"}</strong>
-        <span>{profileIdentity === "athlete"
-          ? "Pódios, títulos e resultados reconhecidos pela plataforma aparecerão aqui."
-          : "Marcos, torneios realizados e reconhecimentos da organização aparecerão aqui."}</span>
+        <strong>Conquistas do atleta</strong>
+        <span>Pódios, títulos e resultados reconhecidos pela plataforma aparecerão aqui.</span>
       </div>
     ) : null}
   </section>
@@ -8918,7 +8816,7 @@ setNewPublicInfo({
   </section>
   ) : null}
 
-  {profileSubtab === "contato" && profileIdentity === "organization" && !profileEditing ? (
+  {profileSubtab === "contato" && profileIdentity === "organization" ? (
   <section className="card organizationAboutOverview">
     <header>
       <div>
@@ -8941,13 +8839,15 @@ setNewPublicInfo({
   </section>
   ) : null}
 
-  {profileSubtab === "contato" && profileIdentity === "organization" && profileEditing ? (
-  <section className="card organizerProfileCard profileEditSubtab profileContactSubtab">
+  {profileIdentity === "organization" && profileEditing ? (
+  <div className="organizerProfileModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !profileSaving) setProfileEditing(false); }}>
+  <section className="card organizerProfileCard profileEditSubtab profileContactSubtab organizerProfileModal" role="dialog" aria-modal="true" aria-labelledby="organizer-profile-editor-title">
     <div className="profileEditSubtabHeader">
       <div>
         <span>Dados públicos</span>
-        <h2>Editar informações da organização</h2>
+        <h2 id="organizer-profile-editor-title">Editar informações da organização</h2>
       </div>
+      <button type="button" className="organizerProfileModalClose" aria-label="Fechar edição" onClick={() => setProfileEditing(false)} disabled={profileSaving}><X aria-hidden="true" /></button>
     </div>
     <p className="profileSectionHint">Mantenha atualizados os canais que atletas e outras organizações podem usar para falar com você.</p>
 
@@ -8960,8 +8860,8 @@ setNewPublicInfo({
     </div>
 
     <div className="organizerPhotoArea">
-      <label className="organizerPhotoDropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); handleOrganizerPhotoFile(e.dataTransfer.files?.[0]); }}>
-        <input type="file" accept="image/*" onChange={(e) => handleOrganizerPhotoFile(e.target.files?.[0])} />
+      <label className="organizerPhotoDropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); openOrganizationProfileImageEditor(e.dataTransfer.files?.[0]); }}>
+        <input type="file" accept="image/*" disabled={profileSaving} onChange={(e) => { openOrganizationProfileImageEditor(e.target.files?.[0]); e.target.value = ""; }} />
         <div className="organizerPhotoPreview">
           {organizerProfile.photoUrl ? (
             <img src={organizerProfile.photoUrl} alt="Foto de perfil" />
@@ -9124,7 +9024,7 @@ setNewPublicInfo({
 
     <div className="organizationProfileEditActions">
       <button className="secondaryBtn" type="button" onClick={() => setProfileEditing(false)} disabled={profileSaving}>Cancelar</button>
-      <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={saveOrganizerProfile} disabled={profileSaving} aria-busy={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+      <button className="saveProfileBtn actionConfirmBtn" type="button" onClick={() => saveOrganizerProfile()} disabled={profileSaving} aria-busy={profileSaving}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
     </div>
     {profileSaveSuccess ? (
       <div className="profileSaveMiniNotice" role="status" aria-live="polite">
@@ -9132,6 +9032,7 @@ setNewPublicInfo({
       </div>
     ) : null}
   </section>
+  </div>
   ) : null}
 
   {profileSubtab === "conta" ? (

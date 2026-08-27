@@ -214,9 +214,9 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 
 .organizationProfileName {
   display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
 }
 
 .organizationProfileName > span {
@@ -228,6 +228,18 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
   font-size: .63rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.organizationProfileName > span.athleteIdentityBadge {
+  border-color: color-mix(in srgb, #2563eb 48%, var(--ui-border));
+  color: color-mix(in srgb, #2563eb 78%, var(--ui-text-strong));
+  background: color-mix(in srgb, #2563eb 12%, var(--ui-surface-raised));
+}
+
+.organizationProfileName > span.organizationIdentityBadge {
+  border-color: color-mix(in srgb, #16a36a 52%, var(--ui-border));
+  color: color-mix(in srgb, #087f50 84%, var(--ui-text-strong));
+  background: color-mix(in srgb, #16a36a 13%, var(--ui-surface-raised));
 }
 
 .organizationAboutOverview {
@@ -312,10 +324,77 @@ html body .proDashboard.playAppShell .profilePublicationFilters button.active {
 
 .organizationProfileEditActions .saveProfileBtn { margin: 0 !important; }
 
-.proDashboard.theme-dark .organizationProfileName > span {
+.proDashboard.theme-dark .organizationProfileName > span.athleteIdentityBadge {
   border-color: #416a9f;
   color: #bfdbfe;
   background: #132a46;
+}
+
+.proDashboard.theme-dark .organizationProfileName > span.organizationIdentityBadge {
+  border-color: #287a5c;
+  color: #9aefca;
+  background: #113629;
+}
+
+.organizerProfileModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 10, 24, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.proDashboard.playAppShell .organizerProfileModal {
+  width: min(920px, 100%);
+  max-height: min(90vh, 900px);
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--ui-border) !important;
+  border-top: 4px solid #16a36a !important;
+  background: var(--ui-surface-raised) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42) !important;
+}
+
+.organizerProfileModal .profileEditSubtabHeader {
+  flex-direction: row;
+}
+
+.organizerProfileModalClose,
+.proDashboard.playAppShell button.organizerProfileModalClose {
+  display: grid;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 50% !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-surface) !important;
+}
+
+.organizerProfileModalClose svg {
+  width: 18px;
+  height: 18px;
+}
+
+.organizerProfileModal .organizerPhotoDropzone:hover {
+  background: color-mix(in srgb, #16a36a 8%, var(--ui-surface));
+}
+
+html body .proDashboard.playAppShell label.organizationProfileAvatarShortcut {
+  display: block !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  padding: 0 !important;
+  color: inherit !important;
+  background: var(--ui-surface-raised, #fff) !important;
+  box-shadow: none !important;
+  cursor: pointer;
 }
 
 /* Publicações: uma única coluna social no Início e cartões compactos no Explorar. */
@@ -522,4 +601,15 @@ html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publi
   .profilePublicationFilters button { min-width: 92px; }
   .organizationProfileEditActions { display: grid; grid-template-columns: 1fr; }
   .organizationProfileEditActions button { width: 100%; }
+  .organizerProfileModalBackdrop { align-items: end; padding: 0; }
+  .proDashboard.playAppShell .organizerProfileModal {
+    width: 100%;
+    max-height: 94vh;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+  .organizerProfileModal .profileEditSubtabHeader { flex-direction: row; }
+  .organizerProfileModal .profileEditSubtabHeader button { width: 38px; }
 }

@@ -154,6 +154,27 @@
   line-height: 1.08;
 }
 
+.publicMemberAthleteIdentityBadge {
+  display: inline-flex;
+  margin: 5px 0 2px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, #2563eb 48%, #d1dbea);
+  border-radius: 999px;
+  color: #1d58b8;
+  background: color-mix(in srgb, #2563eb 10%, #fff);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.theme-dark .publicMemberAthleteIdentityBadge,
+html[data-theme="dark"] .publicMemberAthleteIdentityBadge {
+  border-color: #416a9f;
+  color: #bfdbfe;
+  background: #132a46;
+}
+
 .publicMemberNameRow p {
   margin-top: 4px;
   color: #5f6f88;

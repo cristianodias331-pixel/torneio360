@@ -92,6 +92,7 @@ export function MemberProfileIdentityCard({
           <div className="publicMemberNameRow">
             <div>
               <h1>{profile?.displayName || "Perfil Torneio 360"}</h1>
+              <span className="publicMemberAthleteIdentityBadge">Atleta</span>
               <p>{profile?.handle ? `@${profile.handle}` : "Perfil Torneio 360"}</p>
             </div>
             <div className="memberProfileIdentityActions">

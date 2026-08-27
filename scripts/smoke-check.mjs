@@ -484,6 +484,18 @@ const athleteProfileActivityMigrationSource = readFileSync(
   new URL("supabase/migrations/202608270001_athlete_profile_activity.sql", root),
   "utf8"
 );
+const organizationRegistrantsPanelSource = readFileSync(
+  new URL("src/features/profile/OrganizationRegistrantsPanel.jsx", root),
+  "utf8"
+);
+const organizationRegistrantsApiSource = readFileSync(
+  new URL("src/services/organizationRegistrantsApi.mjs", root),
+  "utf8"
+);
+const organizationRegistrantsMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608270002_organization_registrants.sql", root),
+  "utf8"
+);
 const cupRankingDefaultsSource = readFileSync(
   new URL("src/domain/cupRankingDefaults.mjs", root),
   "utf8"
@@ -5118,6 +5130,27 @@ assert.ok(
   "O perfil do atleta perdeu a jornada esportiva, voltou a aceitar mensagens livres ou expôs contatos protegidos."
 );
 assert.ok(
+  organizerWorkspaceSource.includes("<OrganizationRegistrantsPanel")
+    && organizerWorkspaceSource.includes("Inscritos")
+    && organizerWorkspaceSource.includes("organizationIdentityBadge")
+    && organizerWorkspaceSource.includes("athleteIdentityBadge")
+    && organizerWorkspaceSource.includes("openOrganizationProfileImageEditor")
+    && organizerWorkspaceSource.includes("organizationProfileImageEditor")
+    && !organizerWorkspaceSource.includes("Conquistas da organização")
+    && organizationRegistrantsPanelSource.includes("Pagos")
+    && organizationRegistrantsPanelSource.includes("Pendentes")
+    && organizationRegistrantsPanelSource.includes("Procuram dupla")
+    && organizationRegistrantsPanelSource.includes("Categoria")
+    && organizationRegistrantsPanelSource.includes("Gênero")
+    && organizationRegistrantsPanelSource.includes("Modalidade")
+    && organizationRegistrantsApiSource.includes("get_my_organization_registrations")
+    && organizationRegistrantsApiSource.includes("set_organization_registration_payment_status")
+    && organizationRegistrantsMigrationSource.includes("tournament.user_id = auth.uid()")
+    && organizationRegistrantsMigrationSource.includes("payment_status in ('pending', 'paid')")
+    && organizationRegistrantsMigrationSource.includes("revoke all on function public.get_my_organization_registrations"),
+  "A organização perdeu o painel protegido de inscritos, os estados financeiros ou a edição unificada do perfil."
+);
+assert.ok(
   publicPlatformHomeControllerSource.includes('variant="discovery"')
     && publicArenaPresentationSource.includes("publicTournamentDiscoverySearch")
     && publicArenaPresentationSource.includes("Encontre um torneio"),
@@ -5452,11 +5485,11 @@ assert.ok(
     && mainSource.includes('await supabase.auth.refreshSession()')
     && mainSource.includes('.maybeSingle()')
     && mainSource.slice(
-      mainSource.indexOf("async function saveOrganizerProfile()"),
+      mainSource.indexOf("async function saveOrganizerProfile("),
       mainSource.indexOf("function toggleNewPublicInfo")
     ).includes('"Perfil não salvo"')
     && !mainSource.slice(
-      mainSource.indexOf("async function saveOrganizerProfile()"),
+      mainSource.indexOf("async function saveOrganizerProfile("),
       mainSource.indexOf("function toggleNewPublicInfo")
     ).match(/\.select\("\*"\)\s*\.single\(\)/),
   "O salvamento do perfil deve reconciliar a conta dentro do Dashboard e sempre informar falhas ao organizador."
