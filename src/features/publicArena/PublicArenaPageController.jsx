@@ -607,6 +607,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         organizer={organizer}
         onBackToArena={() => setSelectedTournament(null)}
         embedded={embedded}
+        initialTab={new URLSearchParams(window.location.search).get("inscricao") === "1" ? "inscricao" : ""}
         viewer={session?.user || null}
         onRequireLogin={() => {
           const url = new URL(window.location.origin);

@@ -23,6 +23,9 @@ function mapFallbackRegistration(registration, tournament) {
     category: registration.category || tournament?.data?.category || "Sem categoria",
     registration_status: registration.status || "pending",
     payment_status: "pending",
+    workflow_status: "draft",
+    payment_proof_path: "",
+    payment_proof_name: "",
     looking_for_partner: false,
     created_at: registration.created_at || "",
     athlete: null,
@@ -33,6 +36,24 @@ function mapFallbackRegistration(registration, tournament) {
       data: tournament.data || {},
     } : null,
   };
+}
+
+export async function reviewOrganizationRegistration({ supabase, registrationId, decision, reason = "" }) {
+  const { data, error } = await supabase.rpc("review_tournament_registration_workflow", {
+    p_registration_id: registrationId,
+    p_decision: decision,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function openOrganizationRegistrationReceipt({ supabase, path }) {
+  if (!path) throw new Error("Esta inscrição ainda não possui comprovante.");
+  const { data, error } = await supabase.storage.from("registration-receipts").createSignedUrl(path, 300);
+  if (error) throw error;
+  if (!data?.signedUrl) throw new Error("Não foi possível abrir o comprovante.");
+  return data.signedUrl;
 }
 
 export async function loadOrganizationRegistrants({ supabase, tournaments = [] }) {

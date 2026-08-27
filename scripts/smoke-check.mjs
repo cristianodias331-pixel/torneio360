@@ -496,6 +496,10 @@ const organizationRegistrantsMigrationSource = readFileSync(
   new URL("supabase/migrations/202608270002_organization_registrants.sql", root),
   "utf8"
 );
+const registrationWorkflowMigrationSource = readFileSync(
+  new URL("supabase/migrations/202608270005_tournament_registration_workflow.sql", root),
+  "utf8"
+);
 const organizationPaymentApiSource = readFileSync(
   new URL("src/services/organizationPaymentApi.mjs", root),
   "utf8"
@@ -5160,17 +5164,21 @@ assert.ok(
     && organizerWorkspaceSource.includes("openOrganizationProfileImageEditor")
     && organizerWorkspaceSource.includes("organizationProfileImageEditor")
     && !organizerWorkspaceSource.includes("Conquistas da organização")
-    && organizationRegistrantsPanelSource.includes("Pagos")
-    && organizationRegistrantsPanelSource.includes("Pendentes")
+    && organizationRegistrantsPanelSource.includes("Aprovados")
+    && organizationRegistrantsPanelSource.includes("Em análise")
     && organizationRegistrantsPanelSource.includes("Procuram dupla")
     && organizationRegistrantsPanelSource.includes("Categoria")
     && organizationRegistrantsPanelSource.includes("Gênero")
     && organizationRegistrantsPanelSource.includes("Modalidade")
     && organizationRegistrantsApiSource.includes("get_my_organization_registrations")
-    && organizationRegistrantsApiSource.includes("set_organization_registration_payment_status")
+    && organizationRegistrantsApiSource.includes("review_tournament_registration_workflow")
+    && organizationRegistrantsApiSource.includes("registration-receipts")
     && organizationRegistrantsMigrationSource.includes("tournament.user_id = auth.uid()")
     && organizationRegistrantsMigrationSource.includes("payment_status in ('pending', 'paid')")
-    && organizationRegistrantsMigrationSource.includes("revoke all on function public.get_my_organization_registrations"),
+    && organizationRegistrantsMigrationSource.includes("revoke all on function public.get_my_organization_registrations")
+    && registrationWorkflowMigrationSource.includes("public = false")
+    && registrationWorkflowMigrationSource.includes("workflow_status in ('draft', 'submitted', 'approved', 'rejected')")
+    && registrationWorkflowMigrationSource.includes("review_tournament_registration_workflow"),
   "A organização perdeu o painel protegido de inscritos, os estados financeiros ou a edição unificada do perfil."
 );
 assert.ok(
@@ -5196,7 +5204,8 @@ assert.ok(
     && organizationPublicPaymentsMigrationSource.includes("card_payment_link text not null default ''")
     && organizationPublicPaymentsMigrationSource.includes("public.build_public_arena_profile_uncached")
     && tournamentPaymentPanelSource.includes("Selecionar comprovante")
-    && tournamentPaymentPanelSource.includes("permanece somente neste dispositivo"),
+    && tournamentPaymentPanelSource.includes("armazenamento privado")
+    && tournamentPaymentPanelSource.includes("Somente você e a organização responsável"),
   "A capa, o modal, os dados públicos ou a preparação segura do pagamento da organização regrediram."
 );
 assert.ok(

@@ -1,0 +1,196 @@
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  BadgeCheck,
+  CalendarDays,
+  CircleAlert,
+  Clock3,
+  Hand,
+  MapPin,
+  RefreshCw,
+  ShieldCheck,
+  UserRound,
+  Users,
+} from "lucide-react";
+import { formatDateBR } from "../../domain/dateTime.mjs";
+import { modalityConfig } from "../../domain/modalityConfig.mjs";
+import {
+  loadMyTournamentRegistrationCheckout,
+  submitTournamentRegistrationWorkflow,
+} from "../../services/tournamentRegistrationApi.mjs";
+import TournamentPaymentPanel from "./TournamentPaymentPanel.jsx";
+import "../../styles/60-tournament-registration.css";
+
+function isPairCompetition(type) {
+  const config = modalityConfig[type];
+  if (!config || config.individualCup) return false;
+  return Boolean(config.teams || config.defaultTeams || config.cupMode);
+}
+
+function getViewerName(viewer) {
+  return String(
+    viewer?.user_metadata?.full_name
+      || viewer?.user_metadata?.name
+      || viewer?.email?.split("@")[0]
+      || ""
+  ).trim();
+}
+
+function getWorkflowCopy(registration) {
+  if (registration?.workflow_status === "approved") {
+    return { tone: "approved", title: "Inscrição aprovada", text: "A organização validou seu comprovante e confirmou sua participação." };
+  }
+  if (registration?.workflow_status === "submitted") {
+    return { tone: "submitted", title: "Comprovante em análise", text: "Sua inscrição chegou à organização. Você será atualizado no perfil do atleta." };
+  }
+  if (registration?.workflow_status === "rejected") {
+    return { tone: "rejected", title: "Reenvio necessário", text: registration.payment_rejection_reason || "A organização recusou o comprovante. Confira o pagamento e envie outro arquivo." };
+  }
+  return null;
+}
+
+export default function TournamentRegistrationPanel({
+  tournament,
+  data,
+  organizer,
+  viewer,
+  supabase,
+  registrationClosed = false,
+  onRequireLogin,
+}) {
+  const [state, setState] = useState({ status: viewer?.id ? "loading" : "guest", checkout: null, schemaAvailable: true, error: "" });
+  const [form, setForm] = useState(() => ({
+    athleteName: getViewerName(viewer),
+    category: String(viewer?.user_metadata?.category || data?.category || "").trim(),
+    dominantHand: String(viewer?.user_metadata?.dominant_hand || "Não informado").trim(),
+    partnerName: "",
+    lookingForPartner: false,
+  }));
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const pairCompetition = isPairCompetition(tournament?.type);
+
+  async function loadCheckout() {
+    if (!viewer?.id || !tournament?.id) return;
+    setState((current) => ({ ...current, status: "loading", error: "" }));
+    try {
+      const result = await loadMyTournamentRegistrationCheckout({ supabase, tournamentId: tournament.id });
+      const checkout = result.checkout || null;
+      setState({ status: "ready", checkout, schemaAvailable: result.schemaAvailable, error: "" });
+      setForm((current) => ({
+        ...current,
+        athleteName: checkout?.athlete?.display_name || checkout?.registration?.athlete_name || current.athleteName,
+        category: checkout?.registration?.category || checkout?.athlete?.sports_category || current.category,
+        dominantHand: checkout?.athlete?.dominant_hand || current.dominantHand,
+        partnerName: checkout?.registration?.partner_name || current.partnerName,
+      }));
+    } catch (error) {
+      setState({ status: "error", checkout: null, schemaAvailable: true, error: error?.message || "Não foi possível abrir a inscrição." });
+    }
+  }
+
+  useEffect(() => { void loadCheckout(); }, [tournament?.id, viewer?.id]);
+
+  const registration = state.checkout?.registration || null;
+  const workflowCopy = useMemo(() => getWorkflowCopy(registration), [registration]);
+  const locked = ["submitted", "approved"].includes(registration?.workflow_status);
+
+  async function submitPayment({ receipt, paymentMethod }) {
+    if (busy) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      await submitTournamentRegistrationWorkflow({
+        supabase,
+        tournamentId: tournament.id,
+        athleteName: form.athleteName,
+        partnerName: pairCompetition ? form.partnerName : "",
+        category: form.category,
+        paymentMethod,
+        receipt,
+        lookingForPartner: pairCompetition && !form.partnerName && form.lookingForPartner,
+      });
+      setNotice("Inscrição enviada para conferência da organização.");
+      await loadCheckout();
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível enviar a inscrição.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!viewer?.id) {
+    return (
+      <section className="registrationJourney registrationJourneyGuest">
+        <ShieldCheck aria-hidden="true" />
+        <div><small>INSCRIÇÃO PROTEGIDA</small><h2>Entre como atleta para continuar</h2><p>O cadastro reaproveita seus dados esportivos e não expõe CPF, telefone ou comprovante ao público.</p></div>
+        <button type="button" onClick={onRequireLogin} disabled={registrationClosed}>{registrationClosed ? "Inscrições encerradas" : "Entrar ou criar conta"}</button>
+      </section>
+    );
+  }
+
+  if (state.status === "loading") {
+    return <section className="registrationJourneyState"><RefreshCw className="spinning" aria-hidden="true" /><strong>Preparando sua inscrição...</strong></section>;
+  }
+  if (state.status === "error") {
+    return <section className="registrationJourneyState hasError"><CircleAlert aria-hidden="true" /><strong>{state.error}</strong><button type="button" onClick={loadCheckout}>Tentar novamente</button></section>;
+  }
+  if (!state.schemaAvailable) {
+    return <section className="registrationJourneyState hasError"><CircleAlert aria-hidden="true" /><strong>A estrutura segura da inscrição ainda não foi aplicada ao banco de homologação.</strong></section>;
+  }
+
+  return (
+    <section className="registrationJourney">
+      <header className="registrationJourneyHeader">
+        <div><small>INSCRIÇÃO DO ATLETA</small><h2>Finalize sua participação</h2><p>Seus dados, pagamento e confirmação ficam conectados ao torneio e aos dois perfis.</p></div>
+        <ol aria-label="Etapas da inscrição"><li className="active">1 Dados</li><li className={registration ? "active" : ""}>2 Pagamento</li><li className={locked || registration?.workflow_status === "rejected" ? "active" : ""}>3 Validação</li></ol>
+      </header>
+
+      <div className="registrationTournamentSummary">
+        <strong>{tournament.name}</strong>
+        <span>{data?.eventDate ? <><CalendarDays aria-hidden="true" /> {formatDateBR(data.eventDate)}</> : null}</span>
+        <span>{data?.eventStartTime ? <><Clock3 aria-hidden="true" /> {data.eventStartTime}</> : null}</span>
+        <span>{data?.location ? <><MapPin aria-hidden="true" /> {data.location}</> : null}</span>
+      </div>
+
+      {workflowCopy ? (
+        <div className={`registrationWorkflowStatus ${workflowCopy.tone}`}>
+          {workflowCopy.tone === "approved" ? <BadgeCheck aria-hidden="true" /> : <Clock3 aria-hidden="true" />}
+          <div><strong>{workflowCopy.title}</strong><p>{workflowCopy.text}</p>{registration?.payment_proof_name ? <small>Comprovante: {registration.payment_proof_name}</small> : null}</div>
+        </div>
+      ) : null}
+      {notice ? <p className="registrationJourneyNotice" role="status">{notice}</p> : null}
+
+      {!locked ? (
+        <>
+          <section className="registrationAthleteData">
+            <header><UserRound aria-hidden="true" /><div><strong>Dados aproveitados do seu perfil</strong><small>Você pode ajustar apenas o necessário para este torneio.</small></div></header>
+            <div className="registrationAthleteFields">
+              <label><span>Nome do atleta</span><input value={form.athleteName} onChange={(event) => setForm((current) => ({ ...current, athleteName: event.target.value }))} /></label>
+              <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
+              <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
+              {pairCompetition ? <label><span>Nome da dupla, se já tiver</span><input value={form.partnerName} onChange={(event) => setForm((current) => ({ ...current, partnerName: event.target.value, lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Deixe vazio para se inscrever individualmente" /></label> : null}
+            </div>
+            {pairCompetition && !form.partnerName ? (
+              <label className={`registrationPartnerChoice${form.lookingForPartner ? " selected" : ""}`}>
+                <input type="checkbox" checked={form.lookingForPartner} onChange={(event) => setForm((current) => ({ ...current, lookingForPartner: event.target.checked }))} />
+                <Users aria-hidden="true" />
+                <span><strong>Quero encontrar uma dupla</strong><small>Após enviar a inscrição, atletas do mesmo torneio e categoria poderão encontrar seu perfil.</small></span>
+              </label>
+            ) : null}
+          </section>
+
+          <TournamentPaymentPanel
+            tournament={tournament}
+            organizer={organizer}
+            viewer={viewer}
+            supabase={supabase}
+            registrationClosed={registrationClosed}
+            onRequireLogin={onRequireLogin}
+            onSubmit={submitPayment}
+            busy={busy}
+          />
+        </>
+      ) : null}
+    </section>
+  );
+}

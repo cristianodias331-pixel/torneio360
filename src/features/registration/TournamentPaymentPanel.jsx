@@ -4,17 +4,8 @@ import {
   getSafePaymentLink,
   loadPublicOrganizationPaymentSettings,
 } from "../../services/organizationPaymentApi.mjs";
+import { validateRegistrationReceipt } from "../../services/tournamentRegistrationApi.mjs";
 import "../../styles/59-tournament-payment.css";
-
-const MAX_RECEIPT_SIZE = 10 * 1024 * 1024;
-const ACCEPTED_RECEIPT_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-
-function validateReceipt(file) {
-  if (!file) return "Escolha uma foto ou PDF do comprovante.";
-  if (!ACCEPTED_RECEIPT_TYPES.includes(String(file.type || "").toLowerCase())) return "Envie um arquivo PDF, JPG, PNG ou WebP.";
-  if (Number(file.size || 0) > MAX_RECEIPT_SIZE) return "O comprovante deve ter no máximo 10 MB.";
-  return "";
-}
 
 export default function TournamentPaymentPanel({
   tournament,
@@ -23,6 +14,8 @@ export default function TournamentPaymentPanel({
   supabase,
   registrationClosed = false,
   onRequireLogin,
+  onSubmit = null,
+  busy = false,
 }) {
   const organizationId = organizer.id || tournament?.user_id || null;
   const [settings, setSettings] = useState(() => ({
@@ -33,6 +26,7 @@ export default function TournamentPaymentPanel({
   const [receipt, setReceipt] = useState(null);
   const [receiptError, setReceiptError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -49,8 +43,14 @@ export default function TournamentPaymentPanel({
   const cardLink = useMemo(() => getSafePaymentLink(settings.cardPaymentLink), [settings.cardPaymentLink]);
   const hasPaymentMethod = Boolean(settings.pixKey || cardLink);
 
+  useEffect(() => {
+    if (paymentMethod) return;
+    if (settings.pixKey) setPaymentMethod("pix");
+    else if (cardLink) setPaymentMethod("card");
+  }, [cardLink, paymentMethod, settings.pixKey]);
+
   function chooseReceipt(file) {
-    const error = validateReceipt(file);
+    const error = validateRegistrationReceipt(file);
     setReceiptError(error);
     setReceipt(error ? null : file);
   }
@@ -64,6 +64,19 @@ export default function TournamentPaymentPanel({
     } catch {
       setCopied(false);
     }
+  }
+
+  async function submitReceipt() {
+    const error = validateRegistrationReceipt(receipt);
+    if (error) {
+      setReceiptError(error);
+      return;
+    }
+    if (!paymentMethod) {
+      setReceiptError("Escolha Pix ou cartão.");
+      return;
+    }
+    await onSubmit?.({ receipt, paymentMethod });
   }
 
   return (
@@ -80,17 +93,19 @@ export default function TournamentPaymentPanel({
       {hasPaymentMethod ? (
         <div className="tournamentPaymentMethods">
           {settings.pixKey ? (
-            <article>
+            <article className={paymentMethod === "pix" ? "selected" : ""}>
               <QrCode aria-hidden="true" />
               <span><small>Pix</small><strong>{settings.pixKey}</strong></span>
               <button type="button" onClick={copyPix}><Copy aria-hidden="true" /> {copied ? "Copiado" : "Copiar"}</button>
+              <label className="tournamentPaymentChoice"><input type="radio" name="payment-method" value="pix" checked={paymentMethod === "pix"} onChange={() => setPaymentMethod("pix")} /> Usar Pix</label>
             </article>
           ) : null}
           {cardLink ? (
-            <article>
+            <article className={paymentMethod === "card" ? "selected" : ""}>
               <CreditCard aria-hidden="true" />
               <span><small>Cartão de crédito</small><strong>Checkout da organização</strong></span>
               <a href={cardLink} target="_blank" rel="noreferrer">Abrir pagamento</a>
+              <label className="tournamentPaymentChoice"><input type="radio" name="payment-method" value="card" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} /> Usar cartão</label>
             </article>
           ) : null}
         </div>
@@ -108,17 +123,16 @@ export default function TournamentPaymentPanel({
         ) : (
           <>
             <label className={`tournamentReceiptPicker${receipt ? " hasFile" : ""}`}>
-              <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={registrationClosed} onChange={(event) => { chooseReceipt(event.target.files?.[0]); event.target.value = ""; }} />
+              <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={registrationClosed || busy} onChange={(event) => { chooseReceipt(event.target.files?.[0]); event.target.value = ""; }} />
               <FileUp aria-hidden="true" />
               <span>{receipt ? <><strong>{receipt.name}</strong><small>Arquivo selecionado com segurança neste dispositivo</small></> : <><strong>Selecionar comprovante</strong><small>Foto ou PDF</small></>}</span>
             </label>
             {receiptError ? <p className="tournamentReceiptError" role="alert">{receiptError}</p> : null}
-            <button type="button" className="tournamentReceiptSubmit" disabled title="O envio privado será habilitado após autorização do armazenamento de homologação">Enviar para conferência</button>
+            <button type="button" className="tournamentReceiptSubmit" disabled={registrationClosed || busy || !receipt || !paymentMethod || !onSubmit} onClick={submitReceipt}>{busy ? "Enviando com segurança..." : "Enviar para conferência"}</button>
           </>
         )}
-        <p className="tournamentReceiptPrivacy"><ShieldCheck aria-hidden="true" /> O arquivo permanece somente neste dispositivo nesta etapa. O envio privado ao organizador será habilitado após a autorização do armazenamento de homologação.</p>
+        <p className="tournamentReceiptPrivacy"><ShieldCheck aria-hidden="true" /> O comprovante fica em armazenamento privado. Somente você e a organização responsável por este torneio podem acessá-lo.</p>
       </div>
     </section>
   );
 }
-

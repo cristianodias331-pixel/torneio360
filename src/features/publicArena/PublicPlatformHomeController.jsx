@@ -106,8 +106,7 @@ export function PublicTournamentFeedSection({
           openSignup();
           return;
         }
-        if (registrationUrl) window.open(registrationUrl, "_blank", "noopener,noreferrer");
-        else navigatePlatform({ public: item.public_id });
+        navigatePlatform({ public: item.public_id, inscricao: "1" });
       }}
     />
   );

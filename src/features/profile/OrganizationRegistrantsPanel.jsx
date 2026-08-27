@@ -5,6 +5,7 @@ import {
   Check,
   CircleDollarSign,
   Clock3,
+  ExternalLink,
   Filter,
   RefreshCw,
   Search,
@@ -20,14 +21,16 @@ import {
 } from "../../domain/participantGenderRegistry.mjs";
 import {
   loadOrganizationRegistrants,
-  setOrganizationRegistrationPayment,
+  openOrganizationRegistrationReceipt,
+  reviewOrganizationRegistration,
 } from "../../services/organizationRegistrantsApi.mjs";
 import "../../styles/58-organization-registrants.css";
 
 const statusFilters = [
   { id: "all", label: "Todos" },
-  { id: "paid", label: "Pagos" },
-  { id: "pending", label: "Pendentes" },
+  { id: "approved", label: "Aprovados" },
+  { id: "submitted", label: "Em análise" },
+  { id: "rejected", label: "Recusados" },
   { id: "partner", label: "Procuram dupla" },
 ];
 
@@ -74,13 +77,17 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
       genderLabel: normalizeOption(getTournamentGenderLabel(genderMode, details.genderOther) || details.gender, "Gênero livre"),
       modalityLabel: normalizeOption(getModalityDisplayName(tournament.type), "Modalidade não informada"),
       paymentStatus: registration.payment_status === "paid" ? "paid" : "pending",
+      workflowStatus: ["submitted", "approved", "rejected"].includes(registration.workflow_status)
+        ? registration.workflow_status
+        : "draft",
     };
   }), [state.registrations]);
 
   const metrics = useMemo(() => ({
     total: registrations.length,
-    paid: registrations.filter((item) => item.paymentStatus === "paid").length,
-    pending: registrations.filter((item) => item.paymentStatus !== "paid").length,
+    approved: registrations.filter((item) => item.workflowStatus === "approved").length,
+    submitted: registrations.filter((item) => item.workflowStatus === "submitted").length,
+    rejected: registrations.filter((item) => item.workflowStatus === "rejected").length,
     partner: registrations.filter((item) => item.looking_for_partner).length,
   }), [registrations]);
 
@@ -94,8 +101,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
   const visibleRegistrations = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
     return registrations.filter((item) => {
-      if (statusFilter === "paid" && item.paymentStatus !== "paid") return false;
-      if (statusFilter === "pending" && item.paymentStatus === "paid") return false;
+      if (["approved", "submitted", "rejected"].includes(statusFilter) && item.workflowStatus !== statusFilter) return false;
       if (statusFilter === "partner" && !item.looking_for_partner) return false;
       if (tournamentFilter !== "all" && String(item.tournament?.id) !== tournamentFilter) return false;
       if (categoryFilter !== "all" && item.categoryLabel !== categoryFilter) return false;
@@ -127,21 +133,34 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     return [...grouped.values()].map((group) => ({ ...group, divisions: [...group.divisions.values()] }));
   }, [visibleRegistrations]);
 
-  async function togglePayment(registration) {
+  async function reviewRegistration(registration, decision) {
     if (!state.schemaAvailable || busyId) return;
-    const nextStatus = registration.paymentStatus === "paid" ? "pending" : "paid";
     setBusyId(registration.id);
     setNotice("");
     try {
-      await setOrganizationRegistrationPayment({
+      await reviewOrganizationRegistration({
         supabase,
         registrationId: registration.id,
-        paymentStatus: nextStatus,
+        decision,
       });
-      setNotice(nextStatus === "paid" ? "Pagamento confirmado." : "Pagamento devolvido para pendente.");
+      setNotice(decision === "approved" ? "Inscrição e pagamento aprovados." : "Inscrição recusada. O atleta poderá reenviar o comprovante.");
       await loadRegistrants();
     } catch (error) {
       setNotice(error?.message || "Não foi possível atualizar o pagamento.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function openReceipt(registration) {
+    if (!registration.payment_proof_path || busyId) return;
+    setBusyId(`receipt-${registration.id}`);
+    setNotice("");
+    try {
+      const url = await openOrganizationRegistrationReceipt({ supabase, path: registration.payment_proof_path });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível abrir o comprovante.");
     } finally {
       setBusyId("");
     }
@@ -165,8 +184,8 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
 
       <div className="organizationRegistrantMetrics">
         <article><Users aria-hidden="true" /><span><strong>{metrics.total}</strong><small>Inscritos</small></span></article>
-        <article className="paid"><BadgeCheck aria-hidden="true" /><span><strong>{metrics.paid}</strong><small>Pagos</small></span></article>
-        <article className="pending"><CircleDollarSign aria-hidden="true" /><span><strong>{metrics.pending}</strong><small>Pendentes</small></span></article>
+        <article className="paid"><BadgeCheck aria-hidden="true" /><span><strong>{metrics.approved}</strong><small>Aprovados</small></span></article>
+        <article className="pending"><CircleDollarSign aria-hidden="true" /><span><strong>{metrics.submitted}</strong><small>Em análise</small></span></article>
         <article className="partner"><UserRoundSearch aria-hidden="true" /><span><strong>{metrics.partner}</strong><small>Procuram dupla</small></span></article>
       </div>
 
@@ -200,8 +219,11 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
               <div className="organizationRegistrantRow" key={registration.id}>
                 <span className="organizationRegistrantAvatar">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt="" /> : getInitials(registration.athlete_name)}</span>
                 <div className="organizationRegistrantIdentity"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong><small>{registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small></div>
-                <div className="organizationRegistrantBadges"><span className={registration.paymentStatus}>{registration.paymentStatus === "paid" ? "Pago" : "Pendente"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.registration_status === "confirmed" ? "Confirmado" : "Aguardando confirmação"}</span></div>
-                <button type="button" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => togglePayment(registration)}>{registration.paymentStatus === "paid" ? "Marcar pendente" : "Marcar como pago"}</button>
+                <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
+                <div className="organizationRegistrantActions">
+                  {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Comprovante</button> : null}
+                  {registration.workflowStatus === "submitted" ? <><button type="button" className="approve" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "approved")}>Aprovar</button><button type="button" className="reject" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "rejected")}>Recusar</button></> : null}
+                </div>
               </div>
             ))}</div>
             </section>)}

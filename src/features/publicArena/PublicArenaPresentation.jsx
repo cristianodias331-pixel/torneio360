@@ -2,6 +2,7 @@ import React from "react";
 import {
   AtSign,
   CalendarDays,
+  ClipboardCheck,
   CreditCard,
   GitBranch,
   MapPin,
@@ -719,7 +720,7 @@ export function PublicTournamentFeedView({
                         <div className="publicTournamentPostActions">
                           <button type="button" onClick={() => onOpenTournament(item)}>Ver torneio</button>
                           {registrationOpen
-                            ? <button type="button" className="publicTournamentRegisterButton" onClick={() => onRegister(registrationUrl, item)}><MessageCircle aria-hidden="true" /> Inscrever-se</button>
+                            ? <button type="button" className="publicTournamentRegisterButton" onClick={() => onRegister(registrationUrl, item)}><ClipboardCheck aria-hidden="true" /> Inscrever-se</button>
                             : <span className="publicTournamentRegistrationClosed">Inscrições encerradas</span>}
                         </div>
                       </div>

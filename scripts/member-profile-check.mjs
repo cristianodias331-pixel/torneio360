@@ -82,6 +82,9 @@ const activityCalls = [];
 const activitySupabase = {
   rpc: async (name, payload) => {
     activityCalls.push({ name, payload });
+    if (name === "get_my_registration_workflows") {
+      return { data: [{ id: "registration-1", workflow_status: "submitted" }], error: null };
+    }
     return { data: { registrations: [{ id: "registration-1" }], circuits: [], partner_matches: [], challenges: [] }, error: null };
   },
 };
@@ -92,10 +95,12 @@ const publicActivityResult = await loadPublicAthleteActivity({
   supabase: activitySupabase,
   userId: "member-1",
 });
-assert(activityCalls[0].name === "get_my_athlete_activity", "O próprio perfil deve carregar inscrições, duplas e desafios.");
-assert(activityCalls[1].name === "get_public_athlete_activity", "O visitante deve carregar somente participações públicas.");
-assert(activityCalls[1].payload.p_user_id === "member-1", "A atividade pública deve permanecer vinculada ao atleta visitado.");
+assert(activityCalls[0].name === "get_my_registration_workflows", "O próprio perfil deve carregar o estado da inscrição e do comprovante.");
+assert(activityCalls[1].name === "get_my_athlete_activity", "O próprio perfil deve carregar inscrições, duplas e desafios.");
+assert(activityCalls[2].name === "get_public_athlete_activity", "O visitante deve carregar somente participações públicas.");
+assert(activityCalls[2].payload.p_user_id === "member-1", "A atividade pública deve permanecer vinculada ao atleta visitado.");
 assert(ownActivityResult.activity.registrations.length === 1, "As inscrições do atleta devem chegar à aba Torneios/Circuitos.");
+assert(ownActivityResult.activity.registrations[0].workflow_status === "submitted", "O atleta deve acompanhar o comprovante em análise.");
 assert(publicActivityResult.activity.registrations.length === 1, "As participações confirmadas devem chegar ao perfil público.");
 
 const unavailableActivity = await loadMyAthleteActivity({

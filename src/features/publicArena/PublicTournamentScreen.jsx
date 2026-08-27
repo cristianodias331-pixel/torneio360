@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   AtSign,
   CalendarDays,
+  ClipboardCheck,
   ClipboardPaste,
   Clock3,
   Flame,
@@ -51,8 +52,7 @@ import { getTournamentCompletionState } from "../../domain/tournamentLifecycle.m
 import {
   migratePlayRankingBracketForReferenceProfile,
 } from "../../domain/playRankingBracketMigration.mjs";
-import TournamentPartnerFinder from "../registration/TournamentPartnerFinder.jsx";
-import TournamentPaymentPanel from "../registration/TournamentPaymentPanel.jsx";
+import TournamentRegistrationPanel from "../registration/TournamentRegistrationPanel.jsx";
 
 function getSafePublicDocumentUrl(value) {
   try {
@@ -70,6 +70,7 @@ export default function PublicTournamentScreenView({
   embedded = false,
   viewer = null,
   onRequireLogin = null,
+  initialTab = "",
   runtime,
 }) {
   const {
@@ -89,7 +90,7 @@ export default function PublicTournamentScreenView({
   } = runtime;
   const publicTabStorageKey = `publicTournamentTab:${tournament.public_id || tournament.id}`;
   const publicMatchesTabStorageKey = `publicTournamentMatchesTab:${tournament.public_id || tournament.id}`;
-  const [activePublicTab, setActivePublicTabState] = useState(() => readPublicViewStorage(publicTabStorageKey, "participantes"));
+  const [activePublicTab, setActivePublicTabState] = useState(() => initialTab || readPublicViewStorage(publicTabStorageKey, "participantes"));
   const [activePublicMatchesTab, setActivePublicMatchesTabState] = useState(() => readPublicViewStorage(publicMatchesTabStorageKey, "grupos"));
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -102,6 +103,10 @@ export default function PublicTournamentScreenView({
     savePublicViewStorage(publicMatchesTabStorageKey, tab);
     setActivePublicMatchesTabState(tab);
   }
+
+  useEffect(() => {
+    if (initialTab === "inscricao") setActivePublicTab("inscricao");
+  }, [initialTab, tournament.id]);
   const config = modalityConfig[tournament.type];
   const normalizedData = normalizeTournamentData(tournament.type, tournament.data);
   const migrationTournament = tournament.user_id || !liveOrganizer?.id
@@ -280,32 +285,30 @@ export default function PublicTournamentScreenView({
         </div>
 
         <nav className="tournamentTopTabs publicTournamentTabs" aria-label="Visualização pública do torneio">
+          <button type="button" className={activePublicTab === "inscricao" ? "active" : ""} onClick={() => setActivePublicTab("inscricao")}><ClipboardCheck aria-hidden="true" /> Inscrição</button>
           <button type="button" className={activePublicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
           {isCup ? <button type="button" className={activePublicTab === "grupos" ? "active" : ""} onClick={() => setActivePublicTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button> : null}
           <button type="button" className={activePublicTab === "partidas" ? "active" : ""} onClick={() => setActivePublicTab("partidas")}><Flame aria-hidden="true" /> Partidas</button>
           <button type="button" className={activePublicTab === "ranking" ? "active" : ""} onClick={() => setActivePublicTab("ranking")}><Trophy aria-hidden="true" /> Ranking</button>
         </nav>
 
-        <section className="card publicAthletesCard" style={{ display: activePublicTab === "participantes" ? undefined : "none" }}>
-          <div className="cardTitleRow">
-            <h2>Participantes</h2>
-            <span className="readOnlyBadge">Somente visualização</span>
-          </div>
-          <TournamentPartnerFinder
+        <section className="card publicRegistrationCard" style={{ display: activePublicTab === "inscricao" ? undefined : "none" }}>
+          <TournamentRegistrationPanel
             tournament={tournament}
             data={data}
-            viewer={viewer}
-            registrationClosed={registrationClosed}
-            onRequireLogin={onRequireLogin}
-          />
-          <TournamentPaymentPanel
-            tournament={tournament}
             organizer={publicOrganizer}
             viewer={viewer}
             supabase={supabase}
             registrationClosed={registrationClosed}
             onRequireLogin={onRequireLogin}
           />
+        </section>
+
+        <section className="card publicAthletesCard" style={{ display: activePublicTab === "participantes" ? undefined : "none" }}>
+          <div className="cardTitleRow">
+            <h2>Participantes</h2>
+            <span className="readOnlyBadge">Somente visualização</span>
+          </div>
           {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" || config.type === "sunset" ? (
             <div className="formatInfoPublicPlacement">
               <TournamentFormatInfoButton data={data} config={config} publicView />

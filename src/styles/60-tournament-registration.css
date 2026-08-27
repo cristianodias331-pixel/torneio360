@@ -1,0 +1,81 @@
+.registrationJourney { display: grid; gap: 16px; color: var(--ui-text, #263850); }
+.registrationJourneyHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.registrationJourneyHeader > div { display: grid; gap: 4px; }
+.registrationJourneyHeader small { color: #1769d2; font-size: .68rem; font-weight: 900; letter-spacing: .09em; }
+.registrationJourneyHeader h2,
+.registrationJourneyHeader p { margin: 0; }
+.registrationJourneyHeader h2 { color: var(--ui-text-strong, #102038); }
+.registrationJourneyHeader p { color: var(--ui-muted, #65758b); font-size: .82rem; }
+.registrationJourneyHeader ol { display: flex; margin: 0; padding: 0; list-style: none; }
+.registrationJourneyHeader li { position: relative; min-width: 88px; border-top: 3px solid var(--ui-border, #d5dfec); padding-top: 7px; color: var(--ui-muted, #65758b); font-size: .68rem; font-weight: 800; text-align: center; }
+.registrationJourneyHeader li.active { border-color: #1769d2; color: #1769d2; }
+
+.registrationTournamentSummary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 14px; padding: 13px; background: var(--ui-surface-muted, #f3f7fb); }
+.registrationTournamentSummary > strong { min-width: 100%; color: var(--ui-text-strong, #102038); }
+.registrationTournamentSummary > span { display: inline-flex; align-items: center; gap: 5px; color: var(--ui-muted, #65758b); font-size: .72rem; }
+.registrationTournamentSummary svg { width: 15px; height: 15px; color: #1769d2; }
+
+.registrationWorkflowStatus { display: flex; align-items: flex-start; gap: 11px; border: 1px solid; border-radius: 14px; padding: 14px; }
+.registrationWorkflowStatus > svg { width: 24px; height: 24px; flex: 0 0 auto; }
+.registrationWorkflowStatus > div { display: grid; gap: 3px; }
+.registrationWorkflowStatus p { margin: 0; font-size: .78rem; }
+.registrationWorkflowStatus small { opacity: .8; font-size: .68rem; }
+.registrationWorkflowStatus.approved { border-color: #33a474; color: #087a50; background: color-mix(in srgb, #20b877 10%, var(--ui-surface-raised, #fff)); }
+.registrationWorkflowStatus.submitted { border-color: #4a8fe5; color: #155aa8; background: color-mix(in srgb, #2e79d8 9%, var(--ui-surface-raised, #fff)); }
+.registrationWorkflowStatus.rejected { border-color: #e27d62; color: #a53d27; background: color-mix(in srgb, #ef6b4a 9%, var(--ui-surface-raised, #fff)); }
+.registrationJourneyNotice { margin: 0; border-radius: 10px; padding: 10px 12px; color: var(--ui-text, #263850); background: var(--ui-surface-muted, #eef4fa); font-size: .75rem; }
+
+.registrationAthleteData { display: grid; gap: 14px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 18px; padding: 17px; background: var(--ui-surface-raised, #fff); }
+.registrationAthleteData > header { display: flex; align-items: center; gap: 10px; }
+.registrationAthleteData > header > svg { width: 22px; height: 22px; color: #1769d2; }
+.registrationAthleteData > header > div { display: grid; gap: 2px; }
+.registrationAthleteData > header strong { color: var(--ui-text-strong, #102038); font-size: .86rem; }
+.registrationAthleteData > header small { color: var(--ui-muted, #65758b); font-size: .68rem; }
+.registrationAthleteFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.registrationAthleteFields label { display: grid; gap: 6px; }
+.registrationAthleteFields label > span { display: flex; align-items: center; gap: 5px; color: var(--ui-text-strong, #102038); font-size: .7rem; font-weight: 800; }
+.registrationAthleteFields label > span svg { width: 14px; height: 14px; }
+.registrationAthleteFields input { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid var(--ui-border, #c9d5e5); border-radius: 11px; padding: 10px 12px; color: var(--ui-text-strong, #102038); background: var(--ui-surface-raised, #fff); }
+.registrationAthleteFields input[readonly] { color: var(--ui-muted, #65758b); background: var(--ui-surface-muted, #f1f5f9); }
+.registrationPartnerChoice { display: flex; align-items: center; gap: 11px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 13px; padding: 13px; cursor: pointer; }
+.registrationPartnerChoice.selected { border-color: #1769d2; background: color-mix(in srgb, #1769d2 7%, var(--ui-surface-raised, #fff)); }
+.registrationPartnerChoice > input { width: 17px; height: 17px; }
+.registrationPartnerChoice > svg { width: 23px; height: 23px; color: #1769d2; }
+.registrationPartnerChoice > span { display: grid; gap: 2px; }
+.registrationPartnerChoice strong { color: var(--ui-text-strong, #102038); font-size: .8rem; }
+.registrationPartnerChoice small { color: var(--ui-muted, #65758b); font-size: .68rem; }
+
+.registrationJourneyGuest { grid-template-columns: auto 1fr auto; align-items: center; border: 1px solid #79a9e4; border-radius: 18px; padding: 18px; background: color-mix(in srgb, #1769d2 7%, var(--ui-surface-raised, #fff)); }
+.registrationJourneyGuest > svg { width: 34px; height: 34px; color: #1769d2; }
+.registrationJourneyGuest > div { display: grid; gap: 3px; }
+.registrationJourneyGuest small { color: #1769d2; font-weight: 900; }
+.registrationJourneyGuest h2,
+.registrationJourneyGuest p { margin: 0; }
+.registrationJourneyGuest p { color: var(--ui-muted, #65758b); font-size: .76rem; }
+.registrationJourneyGuest button,
+.registrationJourneyState button { min-height: 38px; border-radius: 10px; padding: 8px 13px; font-weight: 850; }
+.registrationJourneyState { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 180px; border: 1px dashed var(--ui-border, #d5dfec); border-radius: 16px; color: var(--ui-text, #263850); }
+.registrationJourneyState > svg { width: 22px; height: 22px; }
+.registrationJourneyState.hasError { color: #b2402b; }
+
+.tournamentPaymentMethods article { flex-wrap: wrap; }
+.tournamentPaymentMethods article.selected { border-color: #16a36a; box-shadow: 0 0 0 1px color-mix(in srgb, #16a36a 35%, transparent); }
+.tournamentPaymentChoice { display: inline-flex; width: 100%; align-items: center; gap: 6px; color: var(--ui-text, #263850); font-size: .68rem; font-weight: 800; cursor: pointer; }
+.tournamentPaymentChoice input { accent-color: #16a36a; }
+
+.proDashboard.theme-dark .registrationTournamentSummary,
+.proDashboard.theme-dark .registrationAthleteData { border-color: #33485e; background: #172536; }
+.proDashboard.theme-dark .registrationAthleteFields input { border-color: #40546a; color: #f1f5f9; background: #101d2c; }
+.proDashboard.theme-dark .registrationAthleteFields input[readonly] { color: #a9b8ca; background: #142131; }
+.proDashboard.theme-dark .registrationWorkflowStatus.approved { color: #a7f3d0; background: #123328; }
+.proDashboard.theme-dark .registrationWorkflowStatus.submitted { color: #bfdbfe; background: #142d4b; }
+.proDashboard.theme-dark .registrationWorkflowStatus.rejected { color: #fecaca; background: #3b2022; }
+
+@media (max-width: 760px) {
+  .registrationJourneyHeader { display: grid; }
+  .registrationJourneyHeader ol { width: 100%; }
+  .registrationJourneyHeader li { min-width: 0; flex: 1; }
+  .registrationAthleteFields { grid-template-columns: 1fr; }
+  .registrationJourneyGuest { grid-template-columns: auto 1fr; }
+  .registrationJourneyGuest button { grid-column: 1 / -1; width: 100%; }
+}

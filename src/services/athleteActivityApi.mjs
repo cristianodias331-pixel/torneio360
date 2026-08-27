@@ -1,3 +1,5 @@
+import { loadMyRegistrationWorkflows } from "./tournamentRegistrationApi.mjs";
+
 function isUnavailableActivityError(error) {
   const code = String(error?.code || "").toUpperCase();
   const message = String(error?.message || "").toLocaleLowerCase("pt-BR");
@@ -20,9 +22,21 @@ function normalizeActivity(data) {
 }
 
 export async function loadMyAthleteActivity({ supabase }) {
+  let workflowResult = { registrations: [], schemaAvailable: false };
+  try {
+    workflowResult = await loadMyRegistrationWorkflows({ supabase });
+  } catch (error) {
+    if (!isUnavailableActivityError(error)) throw error;
+  }
   const { data, error } = await supabase.rpc("get_my_athlete_activity");
   if (error) {
     if (isUnavailableActivityError(error)) {
+      if (workflowResult.schemaAvailable) {
+        return {
+          activity: normalizeActivity({ registrations: workflowResult.registrations }),
+          schemaAvailable: true,
+        };
+      }
       if (typeof supabase.from === "function") {
         const fallbackResult = await supabase
           .from("tournament_registrations")
@@ -61,7 +75,13 @@ export async function loadMyAthleteActivity({ supabase }) {
     }
     throw error;
   }
-  return { activity: normalizeActivity(data), schemaAvailable: true };
+  return {
+    activity: normalizeActivity({
+      ...data,
+      registrations: workflowResult.schemaAvailable ? workflowResult.registrations : data?.registrations,
+    }),
+    schemaAvailable: workflowResult.schemaAvailable,
+  };
 }
 
 export async function loadPublicAthleteActivity({ supabase, userId }) {

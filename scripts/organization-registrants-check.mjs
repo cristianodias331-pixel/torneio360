@@ -1,6 +1,7 @@
 import {
   loadOrganizationRegistrants,
-  setOrganizationRegistrationPayment,
+  openOrganizationRegistrationReceipt,
+  reviewOrganizationRegistration,
 } from "../src/services/organizationRegistrantsApi.mjs";
 
 function assert(condition, message) {
@@ -17,6 +18,8 @@ const richResult = await loadOrganizationRegistrants({
           id: "registration-1",
           athlete_name: "Atleta Teste",
           payment_status: "paid",
+          workflow_status: "approved",
+          payment_proof_path: "athlete-1/registration-1/comprovante.pdf",
           looking_for_partner: true,
           tournament: { id: "tournament-1", name: "Torneio Teste", type: "Super 8", data: {} },
         }],
@@ -64,20 +67,32 @@ assert(fallbackResult.registrations.length === 1, "O fallback deve preservar os 
 assert(fallbackResult.registrations[0].category === "Iniciante", "A categoria do torneio deve preencher uma inscrição legada.");
 assert(fallbackResult.registrations[0].payment_status === "pending", "Uma inscrição sem gestão financeira deve permanecer pendente.");
 
-const paymentCalls = [];
-await setOrganizationRegistrationPayment({
+const reviewCalls = [];
+await reviewOrganizationRegistration({
   supabase: {
     rpc: async (name, payload) => {
-      paymentCalls.push({ name, payload });
-      return { data: { id: "registration-1", payment_status: "paid" }, error: null };
+      reviewCalls.push({ name, payload });
+      return { data: { id: "registration-1", workflow_status: "approved" }, error: null };
     },
   },
   registrationId: "registration-1",
-  paymentStatus: "paid",
+  decision: "approved",
 });
 
-assert(paymentCalls[0].name === "set_organization_registration_payment_status", "O pagamento deve ser alterado somente pelo RPC da organização.");
-assert(paymentCalls[0].payload.p_registration_id === "registration-1", "A atualização deve permanecer vinculada à inscrição escolhida.");
-assert(paymentCalls[0].payload.p_payment_status === "paid", "O estado de pagamento deve ser enviado sem texto livre.");
+assert(reviewCalls[0].name === "review_tournament_registration_workflow", "A validação deve passar pelo RPC protegido da organização.");
+assert(reviewCalls[0].payload.p_registration_id === "registration-1", "A atualização deve permanecer vinculada à inscrição escolhida.");
+assert(reviewCalls[0].payload.p_decision === "approved", "A decisão deve ser enviada sem texto livre.");
 
-console.log("Inscritos da organização: agrupamentos, pagamentos, procura de dupla e fallback passaram.");
+const receiptUrl = await openOrganizationRegistrationReceipt({
+  supabase: {
+    storage: {
+      from: (bucket) => ({
+        createSignedUrl: async (path, expiresIn) => ({ data: { signedUrl: `private://${bucket}/${path}?ttl=${expiresIn}` }, error: null }),
+      }),
+    },
+  },
+  path: "athlete-1/registration-1/comprovante.pdf",
+});
+assert(receiptUrl.includes("registration-receipts"), "O comprovante deve ser aberto por URL privada e temporária.");
+
+console.log("Inscritos da organização: agrupamentos, comprovantes privados, aprovação, procura de dupla e fallback passaram.");

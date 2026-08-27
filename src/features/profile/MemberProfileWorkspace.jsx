@@ -252,7 +252,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     });
   }
 
-  async function openPublishedTournament(item) {
+  async function openPublishedTournament(item, initialTab = "") {
     const publicId = String(item?.public_id || "").trim();
     if (!publicId || browsingTournamentLoading) return;
     setBrowsingTournamentLoading(true);
@@ -262,7 +262,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         setNotice({ tone: "error", message: "Não foi possível abrir este torneio agora." });
         return;
       }
-      setBrowsingTournament(result.data);
+      setBrowsingTournament({ ...result.data, _initialPublicTab: initialTab });
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     } finally {
       setBrowsingTournamentLoading(false);
@@ -309,6 +309,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           ? publicPlatformHomeRuntime.renderPublicTournament({
             tournament: browsingTournament,
             embedded: true,
+              initialTab: browsingTournament._initialPublicTab || "",
               viewer: {
                 ...user,
                 user_metadata: {
@@ -322,7 +323,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           : activePanel !== "profile" && browsingTournamentLoading
             ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
             : activePanel === "overview" && publicPlatformHomeRuntime
-              ? <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} />
+              ? <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} onRegister={(_, item) => openPublishedTournament(item, "inscricao")} />
               : activePanel === "explore" && publicPlatformHomeRuntime
                 ? <PublicExploreSection runtime={publicPlatformHomeRuntime} hasSession onOpenTournament={openPublishedTournament} />
                 : activePanel === "profile" ? (

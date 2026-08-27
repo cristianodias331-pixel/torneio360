@@ -50,6 +50,13 @@ function getStatusLabel(status) {
   return "Aguardando resposta";
 }
 
+function getRegistrationStatus(item) {
+  if (item?.workflow_status === "approved") return { tone: "approved", label: "Inscrição aprovada" };
+  if (item?.workflow_status === "submitted") return { tone: "submitted", label: "Comprovante em análise" };
+  if (item?.workflow_status === "rejected") return { tone: "rejected", label: "Reenvio necessário" };
+  return { tone: "draft", label: item?.bucket === "past" ? "Já participou" : item?.bucket === "participating" ? "Participando" : "Inscrição iniciada" };
+}
+
 function ContactActions({ athlete }) {
   const whatsapp = String(athlete?.whatsapp || "").replace(/\D/g, "");
   const telegram = String(athlete?.telegram || "").replace(/^@+/, "");
@@ -193,9 +200,10 @@ export default function AthleteProfileActivity({
             <article key={item.id}>
               {item.tournament?.cover_url ? <img src={item.tournament.cover_url} alt="" /> : <span className="athleteTournamentFallback"><Trophy aria-hidden="true" /></span>}
               <div>
-                <small>{item.bucket === "past" ? "Já participou" : item.bucket === "registered" ? "Inscrição enviada" : "Participando"}</small>
+                <small className={`athleteRegistrationStatus ${getRegistrationStatus(item).tone}`}>{getRegistrationStatus(item).label}</small>
                 <strong>{item.tournament?.name || "Torneio"}</strong>
                 <p>{[item.category, item.tournament?.location].filter(Boolean).join(" · ") || "Detalhes do torneio"}</p>
+                {item.workflow_status === "rejected" && item.payment_rejection_reason ? <em>{item.payment_rejection_reason}</em> : null}
                 <span>{item.tournament?.event_date ? <><CalendarDays aria-hidden="true" /> {formatDateBR(item.tournament.event_date)}</> : null}</span>
               </div>
               {item.tournament?.public_id ? <button type="button" onClick={() => openTournament(item)}>Abrir <ExternalLink aria-hidden="true" /></button> : null}

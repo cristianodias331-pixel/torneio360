@@ -328,16 +328,25 @@
   flex-wrap: wrap;
 }
 
-.organizationRegistrantBadges span.paid {
+.organizationRegistrantBadges span.paid,
+.organizationRegistrantBadges span.approved {
   border-color: color-mix(in srgb, #16a36a 48%, var(--ui-border));
   color: #0c8354;
   background: color-mix(in srgb, #16a36a 12%, var(--ui-surface));
 }
 
-.organizationRegistrantBadges span.pending {
+.organizationRegistrantBadges span.pending,
+.organizationRegistrantBadges span.submitted,
+.organizationRegistrantBadges span.draft {
   border-color: color-mix(in srgb, #ef9b29 48%, var(--ui-border));
   color: #bf6d08;
   background: color-mix(in srgb, #ef9b29 12%, var(--ui-surface));
+}
+
+.organizationRegistrantBadges span.rejected {
+  border-color: color-mix(in srgb, #e45555 48%, var(--ui-border));
+  color: #bd3535;
+  background: color-mix(in srgb, #e45555 12%, var(--ui-surface));
 }
 
 .organizationRegistrantBadges span.partner {
@@ -346,8 +355,19 @@
   background: color-mix(in srgb, #9b67e9 12%, var(--ui-surface));
 }
 
-.organizationRegistrantRow > button,
+.organizationRegistrantActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.organizationRegistrantActions button,
 .organizationRegistrantsState button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-height: 36px;
   padding: 0 11px;
   border: 1px solid color-mix(in srgb, #16a36a 44%, var(--ui-border));
@@ -357,7 +377,11 @@
   font-weight: 900;
 }
 
-.organizationRegistrantRow > button:disabled {
+.organizationRegistrantActions button svg { width: 14px; height: 14px; }
+.organizationRegistrantActions button.approve { border-color: #16a36a; color: #087a50; }
+.organizationRegistrantActions button.reject { border-color: #d85d5d; color: #b53838; background: color-mix(in srgb, #d85d5d 8%, var(--ui-surface)); }
+
+.organizationRegistrantActions button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -406,7 +430,7 @@
   .organizationRegistrantFilters > span { grid-column: 1 / -1; }
   .organizationRegistrantRow { grid-template-columns: auto 1fr; }
   .organizationRegistrantBadges,
-  .organizationRegistrantRow > button { grid-column: 2; justify-self: start; }
+  .organizationRegistrantActions { grid-column: 2; justify-self: start; }
 }
 
 @media (max-width: 560px) {
@@ -416,5 +440,6 @@
   .organizationRegistrantTournament > header { align-items: flex-start; }
   .organizationRegistrantRow { padding: 12px; }
   .organizationRegistrantBadges { grid-column: 1 / -1; }
-  .organizationRegistrantRow > button { grid-column: 1 / -1; width: 100%; }
+  .organizationRegistrantActions { grid-column: 1 / -1; width: 100%; justify-content: stretch; }
+  .organizationRegistrantActions button { flex: 1; justify-content: center; }
 }

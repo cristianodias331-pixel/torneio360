@@ -135,8 +135,13 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
 .athleteTournamentFallback svg { width: 28px; }
 .athleteTournamentList article > div { display: grid; min-width: 0; gap: 3px; }
 .athleteTournamentList article > div > small { color: #2563eb; font-size: .65rem; font-weight: 900; text-transform: uppercase; }
+.athleteTournamentList article > div > small.athleteRegistrationStatus.approved { color: #07824f; }
+.athleteTournamentList article > div > small.athleteRegistrationStatus.submitted { color: #2563eb; }
+.athleteTournamentList article > div > small.athleteRegistrationStatus.rejected { color: #c2413a; }
+.athleteTournamentList article > div > small.athleteRegistrationStatus.draft { color: #b66a08; }
 .athleteTournamentList article strong { overflow: hidden; color: var(--ui-text-strong, #102038); text-overflow: ellipsis; white-space: nowrap; }
 .athleteTournamentList article p { margin: 0; color: var(--ui-muted, #637189); font-size: .73rem; }
+.athleteTournamentList article em { color: #b23a35; font-size: .68rem; font-style: normal; }
 .athleteTournamentList article > div > span { display: inline-flex; align-items: center; gap: 5px; color: var(--ui-muted, #637189); font-size: .68rem; }
 .athleteTournamentList article > div > span svg { width: 13px; }
 
