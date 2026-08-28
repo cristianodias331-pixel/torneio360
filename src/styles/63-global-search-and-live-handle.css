@@ -229,6 +229,14 @@ html body .platformSearchResultItem:hover {
   background: var(--ui-selected, #edf5ff) !important;
   transform: none !important;
 }
+.theme-dark .platformSearchResultItem {
+  border-color: #30445a !important;
+  background: #14202e !important;
+}
+.theme-dark .platformSearchResultItem:hover {
+  border-color: #4f8dcc !important;
+  background: #1a2c3f !important;
+}
 .platformGlobalSearchThumb {
   display: grid;
   width: 48px;
