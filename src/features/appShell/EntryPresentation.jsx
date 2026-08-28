@@ -1,4 +1,4 @@
-import React, { useId, useState } from "react";
+import React, { useState } from "react";
 import { AtSign, Mail, MessageCircle } from "lucide-react";
 import {
   TORNEIO360_LOGO,
@@ -91,36 +91,16 @@ export function Info({ title, text }) {
 export function BeachLogo({ variant = "light", layout = "stacked" } = {}) {
   const logoSrc = variant === "blue" ? TORNEIO360_LOGO_BLUE : TORNEIO360_LOGO;
   const horizontal = layout === "horizontal";
-  const artworkId = useId().replace(/:/g, "");
-  const wordFilterId = `${artworkId}-word-filter`;
-  const wordMaskId = `${artworkId}-word-mask`;
-  const numberFilterId = `${artworkId}-number-filter`;
-  const numberMaskId = `${artworkId}-number-mask`;
 
   return (
     <div className={`beachLogo torneio360Logo ${horizontal ? "torneio360LogoHorizontal" : ""} ${variant === "blue" ? "torneio360LogoBlue" : ""}`} aria-label="Torneio 360">
       {horizontal ? (
-        <svg className="torneio360HorizontalArtwork" viewBox="0 0 900 150" role="img" aria-hidden="true" preserveAspectRatio="xMinYMid meet">
-          <defs>
-            <filter id={wordFilterId} colorInterpolationFilters="sRGB">
-              <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 1 0 0 0" />
-              <feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0 1 1" /></feComponentTransfer>
-            </filter>
-            <mask id={wordMaskId} maskUnits="userSpaceOnUse" x="0" y="0" width="599" height="280" style={{ maskType: "alpha" }}>
-              <image href={logoSrc} width="599" height="280" filter={`url(#${wordFilterId})`} />
-            </mask>
-            <filter id={numberFilterId} colorInterpolationFilters="sRGB">
-              <feColorMatrix type="matrix" values="1 0 -1 0 0  1 0 -1 0 0  1 0 -1 0 0  1 0 -1 0 0" />
-            </filter>
-            <mask id={numberMaskId} maskUnits="userSpaceOnUse" x="0" y="0" width="599" height="280" style={{ maskType: "alpha" }}>
-              <image href={logoSrc} width="599" height="280" filter={`url(#${numberFilterId})`} />
-            </mask>
-          </defs>
-          <svg x="0" y="8" width="560" height="118" viewBox="10 8 580 125" preserveAspectRatio="xMinYMin meet" overflow="hidden">
-            <image href={logoSrc} width="599" height="280" mask={`url(#${wordMaskId})`} />
+        <svg className="torneio360HorizontalArtwork" viewBox="0 0 910 150" role="img" aria-hidden="true" preserveAspectRatio="xMinYMid meet">
+          <svg x="0" y="10" width="575" height="124" viewBox="10 8 579 125" preserveAspectRatio="xMinYMid meet" overflow="hidden">
+            <image href={logoSrc} width="599" height="280" />
           </svg>
-          <svg x="555" y="0" width="345" height="150" viewBox="245 112 354 168" preserveAspectRatio="xMinYMid meet" overflow="hidden">
-            <image href={logoSrc} width="599" height="280" mask={`url(#${numberMaskId})`} />
+          <svg x="570" y="0" width="340" height="150" viewBox="250 126 349 154" preserveAspectRatio="xMinYMid meet" overflow="hidden">
+            <image href={logoSrc} width="599" height="280" />
           </svg>
         </svg>
       ) : <img src={logoSrc} alt="Torneio 360" />}

@@ -374,3 +374,46 @@ html body .proDashboard.playAppShell .profileAvatar {
     height: 32px !important;
   }
 }
+
+/* Identidade horizontal com mais presença, sem aumentar a barra superior. */
+html body .proDashboard.playAppShell .proTopbar .playTopBrand .torneio360LogoHorizontal {
+  width: 182px !important;
+  min-width: 182px !important;
+  max-width: 182px !important;
+  height: 32px !important;
+}
+
+html body .proDashboard.playAppShell .torneio360LogoHorizontal .torneio360HorizontalArtwork {
+  filter: saturate(1.16) contrast(1.1) brightness(1.06) drop-shadow(0 3px 5px rgba(0, 0, 0, .34)) !important;
+}
+
+html body .proDashboard.playAppShell button.themeToggleButton {
+  padding: 0 !important;
+}
+
+html body .proDashboard.playAppShell button.themeToggleButton svg {
+  width: 21px !important;
+  min-width: 21px !important;
+  height: 21px !important;
+  min-height: 21px !important;
+  flex: 0 0 21px !important;
+  stroke-width: 2.2 !important;
+}
+
+@media (max-width: 760px) {
+  html body .proDashboard.playAppShell .proTopbar .playTopBrand .torneio360LogoHorizontal {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+    height: 28px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  html body .proDashboard.playAppShell .proTopbar .playTopBrand .torneio360LogoHorizontal {
+    width: 128px !important;
+    min-width: 128px !important;
+    max-width: 128px !important;
+    height: 25px !important;
+  }
+}
