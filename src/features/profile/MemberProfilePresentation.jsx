@@ -11,7 +11,6 @@ import {
   Swords,
   Trophy,
   UserRound,
-  Users,
 } from "lucide-react";
 import { getMemberProfileInitials } from "../../domain/memberProfile.mjs";
 
@@ -23,11 +22,7 @@ export const MEMBER_PROFILE_TABS = [
   { id: "conquistas", label: "Conquistas", Icon: Award },
 ];
 
-export const OWNER_MEMBER_PROFILE_TABS = [
-  MEMBER_PROFILE_TABS[0],
-  { id: "duplas", label: "Procurando dupla", Icon: Users },
-  ...MEMBER_PROFILE_TABS.slice(1),
-];
+export const OWNER_MEMBER_PROFILE_TABS = MEMBER_PROFILE_TABS;
 
 function MediaInput({ disabled, onFile }) {
   return (
@@ -134,7 +129,7 @@ export function MemberProfileIdentityCard({
 export function MemberProfileTabs({ activeTab, onChange, owner = false }) {
   const tabs = owner ? OWNER_MEMBER_PROFILE_TABS : MEMBER_PROFILE_TABS;
   return (
-    <nav className="publicMemberProfileTabs" aria-label="Seções do perfil" role="tablist">
+    <nav className="publicMemberProfileTabs athleteProfileTabs" aria-label="Seções do perfil" role="tablist">
       {tabs.map(({ id, label, Icon }) => (
         <button
           type="button"

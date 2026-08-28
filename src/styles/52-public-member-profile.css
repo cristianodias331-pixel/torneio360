@@ -1097,6 +1097,45 @@ html[data-theme="dark"] :is(.memberProfileIdentityActions button, .memberProfile
     grid-template-columns: 1fr;
   }
 }
+
+/* As cinco áreas do perfil do atleta permanecem na mesma linha em qualquer tela. */
+.publicMemberProfileTabs.athleteProfileTabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: visible;
+}
+
+.publicMemberProfileTabs.athleteProfileTabs > button {
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .publicMemberProfileTabs.athleteProfileTabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    overflow: visible;
+    padding: 4px;
+  }
+
+  .publicMemberProfileTabs.athleteProfileTabs > button {
+    min-width: 0;
+    min-height: 58px;
+    flex: none;
+    flex-direction: column;
+    gap: 3px;
+    padding: 5px 2px;
+    font-size: .58rem;
+    line-height: 1.08;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .publicMemberProfileTabs.athleteProfileTabs > button svg {
+    width: 14px;
+    height: 14px;
+  }
+}
 .publicMemberAthleteDetails {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -45,6 +45,72 @@
   background: #f97316;
 }
 
+.athleteActivityKinds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.athleteActivityKinds.hasPartnerSearch {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.athleteActivityKinds button {
+  display: flex;
+  min-width: 0;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 13px;
+  padding: 8px 10px;
+  color: var(--ui-muted, #637189);
+  background: var(--ui-surface-muted, #eef3fa);
+  cursor: pointer;
+}
+
+.athleteActivityKinds button > svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+}
+
+.athleteActivityKinds button > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.athleteActivityKinds button strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: .75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.athleteActivityKinds button small {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-raised, #fff);
+  font-size: .65rem;
+  font-weight: 900;
+}
+
+.athleteActivityKinds button.active {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: color-mix(in srgb, #2563eb 10%, var(--ui-surface-raised, #fff));
+  box-shadow: inset 0 -3px 0 #2563eb;
+}
+
 .athleteActivityFilters {
   display: flex;
   gap: 6px;
@@ -205,6 +271,10 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
   font-size: .74rem;
 }
 
+.athletePartnerHubContent {
+  display: grid;
+}
+
 .athletePartnerSearches,
 .athletePartnerMatches { display: grid; gap: 9px; }
 .athletePartnerMatches { margin-top: 20px; }
@@ -270,6 +340,192 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
 .memberContactVisibility strong { color: var(--ui-text-strong, #102038); font-size: .78rem; }
 .memberContactVisibility small { color: var(--ui-muted, #637189); font-size: .68rem; }
 
+.athletePerformancePanel {
+  color: var(--ui-text, #253247);
+  background: var(--ui-surface-raised, #fff);
+}
+
+.athletePerformanceSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.athletePerformanceSummary article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
+.athletePerformanceSummary strong {
+  color: #2563eb;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.athletePerformanceSummary span {
+  color: var(--ui-muted, #637189);
+  font-size: .69rem;
+  font-weight: 750;
+}
+
+.athletePerformanceCharts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.athletePerformanceCard {
+  min-width: 0;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 15px;
+  padding: 15px;
+  background: var(--ui-surface-muted, #eef3fa);
+}
+
+.athletePerformanceCard > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.athletePerformanceCard > header strong {
+  color: var(--ui-text-strong, #102038);
+  font-size: .82rem;
+}
+
+.athletePerformanceCard > header small {
+  color: var(--ui-muted, #637189);
+  font-size: .64rem;
+}
+
+.athleteStatusChart,
+.athleteTypeChart {
+  display: grid;
+  gap: 12px;
+}
+
+.athleteStatusChart > div {
+  display: grid;
+  gap: 5px;
+}
+
+.athleteStatusChart > div > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ui-muted, #637189);
+}
+
+.athleteStatusChart > div > span strong {
+  color: var(--ui-text-strong, #102038);
+  font-size: .72rem;
+}
+
+.athleteStatusChart i,
+.athleteTypeChart i {
+  display: block;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-border, #c8d4e6) 68%, transparent);
+}
+
+.athleteStatusChart i b,
+.athleteTypeChart i b {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+}
+
+.athleteStatusChart i b.registered { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.athleteStatusChart i b.past { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+
+.athleteTypeChart > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 8px;
+}
+
+.athleteTypeChart > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-muted, #637189);
+  font-size: .69rem;
+  font-weight: 800;
+}
+
+.athleteTypeChart > div > span svg { width: 14px; color: #2563eb; }
+.athleteTypeChart > div:nth-child(2) > span svg { color: #7c3aed; }
+.athleteTypeChart > div:nth-child(2) i b { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+.athleteTypeChart > div > strong { color: var(--ui-text-strong, #102038); font-size: .72rem; text-align: right; }
+
+.athletePerformanceTimeline {
+  grid-column: 1 / -1;
+}
+
+.athleteMonthChart {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  min-height: 150px;
+  align-items: end;
+  gap: 9px;
+}
+
+.athleteMonthChart > div {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 5px;
+}
+
+.athleteMonthChart > div > strong {
+  color: var(--ui-text-strong, #102038);
+  font-size: .66rem;
+}
+
+.athleteMonthChart > div > i {
+  display: flex;
+  width: min(100%, 44px);
+  height: 98px;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 9px 9px 5px 5px;
+  background: color-mix(in srgb, var(--ui-border, #c8d4e6) 42%, transparent);
+}
+
+.athleteMonthChart > div > i b {
+  display: block;
+  width: 100%;
+  min-height: 4px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #38bdf8, #2563eb);
+}
+
+.athleteMonthChart > div > span {
+  color: var(--ui-muted, #637189);
+  font-size: .63rem;
+  text-transform: capitalize;
+}
+
+.athletePerformanceFootnote {
+  margin: 12px 0 0;
+  color: var(--ui-muted, #637189);
+  font-size: .68rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
 @media (max-width: 760px) {
   .athleteCircuitList,
   .athleteChallengeOptions { grid-template-columns: 1fr; }
@@ -284,4 +540,14 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
   .athleteActivityAvatar { width: 46px; height: 46px; }
   .athleteChallengeActions,
   .athleteChallengeCancel { grid-column: 1 / -1; width: 100%; }
+  .athleteActivityKinds { gap: 5px; }
+  .athleteActivityKinds button { min-height: 58px; flex-direction: column; gap: 3px; padding: 6px 3px; }
+  .athleteActivityKinds button > span { gap: 4px; }
+  .athleteActivityKinds button strong { font-size: .62rem; white-space: normal; text-align: center; line-height: 1.1; }
+  .athleteActivityKinds button small { min-width: 18px; height: 18px; font-size: .58rem; }
+  .athletePerformanceSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .athletePerformanceCharts { grid-template-columns: 1fr; }
+  .athletePerformanceTimeline { grid-column: auto; }
+  .athleteMonthChart { gap: 5px; }
+  .athleteMonthChart > div > i { height: 82px; }
 }

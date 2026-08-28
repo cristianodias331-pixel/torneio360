@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Award,
   AtSign,
   CalendarDays,
   Check,
@@ -35,6 +36,12 @@ const activityFilters = [
   { id: "past", label: "Já participei" },
 ];
 
+const circuitFilters = [
+  { id: "all", label: "Todos" },
+  { id: "participating", label: "Em andamento" },
+  { id: "past", label: "Concluídos" },
+];
+
 function getInitials(name) {
   return String(name || "T3").trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("") || "T3";
 }
@@ -55,6 +62,110 @@ function getRegistrationStatus(item) {
   if (item?.workflow_status === "submitted") return { tone: "submitted", label: "Comprovante em análise" };
   if (item?.workflow_status === "rejected") return { tone: "rejected", label: "Reenvio necessário" };
   return { tone: "draft", label: item?.bucket === "past" ? "Já participou" : item?.bucket === "participating" ? "Participando" : "Inscrição iniciada" };
+}
+
+function getActivityDate(item) {
+  const rawDate = item?.tournament?.event_date || item?.created_at || item?.registered_at || "";
+  if (!rawDate) return null;
+  const date = new Date(String(rawDate).includes("T") ? rawDate : `${rawDate}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildSixMonthActivity(registrations) {
+  const today = new Date();
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(today.getFullYear(), today.getMonth() - (5 - index), 1);
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      label: date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+      count: 0,
+    };
+  });
+  registrations.forEach((registration) => {
+    const date = getActivityDate(registration);
+    if (!date) return;
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const month = months.find((item) => item.key === key);
+    if (month) month.count += 1;
+  });
+  const maximum = Math.max(1, ...months.map((month) => month.count));
+  return months.map((month) => ({
+    ...month,
+    height: month.count ? Math.max(18, Math.round((month.count / maximum) * 100)) : 4,
+  }));
+}
+
+function AthletePerformance({ activity, schemaNotice }) {
+  const registrations = activity.registrations || [];
+  const circuits = activity.circuits || [];
+  const participating = registrations.filter((item) => item.bucket === "participating").length;
+  const registered = registrations.filter((item) => item.bucket === "registered").length;
+  const past = registrations.filter((item) => item.bucket === "past").length;
+  const total = registrations.length;
+  const maximumType = Math.max(1, total, circuits.length);
+  const monthActivity = buildSixMonthActivity(registrations);
+  const statusRows = [
+    { label: "Participando", value: participating, tone: "current" },
+    { label: "Inscrições", value: registered, tone: "registered" },
+    { label: "Histórico", value: past, tone: "past" },
+  ];
+
+  return (
+    <section className="publicMemberSection athletePerformancePanel">
+      <header className="athleteActivityHeader">
+        <div><Award aria-hidden="true" /><span><h2>Desempenho e conquistas</h2><small>Indicadores gerados com as participações registradas na plataforma.</small></span></div>
+      </header>
+      {schemaNotice}
+
+      <div className="athletePerformanceSummary" aria-label="Resumo do desempenho esportivo">
+        <article><strong>{total}</strong><span>Torneios registrados</span></article>
+        <article><strong>{participating}</strong><span>Participações atuais</span></article>
+        <article><strong>{past}</strong><span>Histórico concluído</span></article>
+        <article><strong>{circuits.length}</strong><span>Circuitos vinculados</span></article>
+      </div>
+
+      <div className="athletePerformanceCharts">
+        <article className="athletePerformanceCard">
+          <header><strong>Situação dos torneios</strong><small>{total} registro(s)</small></header>
+          <div className="athleteStatusChart">
+            {statusRows.map((item) => (
+              <div key={item.label}>
+                <span><small>{item.label}</small><strong>{item.value}</strong></span>
+                <i><b className={item.tone} style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%` }} /></i>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="athletePerformanceCard">
+          <header><strong>Atividade por tipo</strong><small>Torneios e circuitos</small></header>
+          <div className="athleteTypeChart">
+            <div><span><Trophy aria-hidden="true" /> Torneios</span><i><b style={{ width: `${Math.round((total / maximumType) * 100)}%` }} /></i><strong>{total}</strong></div>
+            <div><span><GitBranch aria-hidden="true" /> Circuitos</span><i><b style={{ width: `${Math.round((circuits.length / maximumType) * 100)}%` }} /></i><strong>{circuits.length}</strong></div>
+          </div>
+        </article>
+
+        <article className="athletePerformanceCard athletePerformanceTimeline">
+          <header><strong>Eventos por mês</strong><small>Últimos seis meses</small></header>
+          <div className="athleteMonthChart" aria-label="Eventos registrados por mês">
+            {monthActivity.map((month) => (
+              <div key={month.key} title={`${month.label}: ${month.count}`}>
+                <strong>{month.count}</strong>
+                <i><b style={{ height: `${month.height}%` }} /></i>
+                <span>{month.label}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      {!total && !circuits.length ? (
+        <p className="athletePerformanceFootnote">Os gráficos serão preenchidos automaticamente após a primeira inscrição ou participação confirmada.</p>
+      ) : (
+        <p className="athletePerformanceFootnote">Vitórias, derrotas e aproveitamento serão acrescentados somente quando houver resultados oficiais de partidas vinculados ao atleta.</p>
+      )}
+    </section>
+  );
 }
 
 function ContactActions({ athlete }) {
@@ -90,6 +201,7 @@ export default function AthleteProfileActivity({
 }) {
   const [state, setState] = useState({ status: "loading", activity: null, schemaAvailable: true, error: "" });
   const [filter, setFilter] = useState("all");
+  const [activitySection, setActivitySection] = useState("tournaments");
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -169,69 +281,16 @@ export default function AthleteProfileActivity({
     if (item.tournament?.public_id) navigatePlatform({ public: item.tournament.public_id });
   }
 
-  if (state.status === "loading") {
-    return <section className="publicMemberSection athleteActivityState"><RefreshCw className="spinning" aria-hidden="true" /><strong>Carregando sua atividade esportiva...</strong></section>;
+  function selectActivitySection(section) {
+    setActivitySection(section);
+    setFilter("all");
+    setNotice("");
   }
-  if (state.error) {
-    return <section className="publicMemberSection athleteActivityState hasError"><X aria-hidden="true" /><strong>{state.error}</strong><button type="button" onClick={loadActivity}>Tentar novamente</button></section>;
-  }
-  const schemaNotice = !state.schemaAvailable ? (
-    <p className="athleteActivityNotice"><ShieldCheck aria-hidden="true" /> A estrutura compartilhada desta área ainda precisa ser aplicada ao banco da homologação. A organização visual já está disponível e nenhum dado atual foi alterado.</p>
-  ) : null;
 
-  if (activeTab === "atividades") {
+  function renderPartnerContent() {
     return (
-      <section className="publicMemberSection athleteActivityPanel">
-        <header className="athleteActivityHeader">
-          <div><Trophy aria-hidden="true" /><span><h2>Torneios e circuitos</h2><small>Acompanhe inscrições, participações atuais e histórico.</small></span></div>
-        </header>
-        {schemaNotice}
-        <nav className="athleteActivityFilters" aria-label="Filtrar participações">
-          {activityFilters.map((item) => {
-            const count = item.id === "all"
-              ? activity.registrations.length + activity.circuits.length
-              : activity.registrations.filter((entry) => entry.bucket === item.id).length + activity.circuits.filter((entry) => entry.bucket === item.id).length;
-            return <button type="button" key={item.id} className={filter === item.id ? "active" : ""} onClick={() => setFilter(item.id)}>{item.label}<span>{count}</span></button>;
-          })}
-        </nav>
-
-        {visibleRegistrations.length ? <div className="athleteTournamentList">
-          {visibleRegistrations.map((item) => (
-            <article key={item.id}>
-              {item.tournament?.cover_url ? <img src={item.tournament.cover_url} alt="" /> : <span className="athleteTournamentFallback"><Trophy aria-hidden="true" /></span>}
-              <div>
-                <small className={`athleteRegistrationStatus ${getRegistrationStatus(item).tone}`}>{getRegistrationStatus(item).label}</small>
-                <strong>{item.tournament?.name || "Torneio"}</strong>
-                <p>{[item.category, item.tournament?.location].filter(Boolean).join(" · ") || "Detalhes do torneio"}</p>
-                {item.workflow_status === "rejected" && item.payment_rejection_reason ? <em>{item.payment_rejection_reason}</em> : null}
-                <span>{item.tournament?.event_date ? <><CalendarDays aria-hidden="true" /> {formatDateBR(item.tournament.event_date)}</> : null}</span>
-              </div>
-              {item.tournament?.public_id ? <button type="button" onClick={() => openTournament(item)}>Abrir <ExternalLink aria-hidden="true" /></button> : null}
-            </article>
-          ))}
-        </div> : null}
-
-        {visibleCircuits.length ? <div className="athleteCircuitList">
-          {visibleCircuits.map((item) => <article key={item.id}><GitBranch aria-hidden="true" /><span><small>{item.bucket === "past" ? "Circuito concluído" : "Circuito em andamento"}</small><strong>{item.name}</strong><p>{item.tournament_count || 0} torneio(s)</p></span></article>)}
-        </div> : null}
-
-        {!visibleRegistrations.length && !visibleCircuits.length ? (
-          <div className="athleteActivityEmpty"><Trophy aria-hidden="true" /><strong>Nenhuma participação nesta situação</strong><span>As inscrições realizadas pela plataforma aparecerão aqui automaticamente.</span></div>
-        ) : null}
-      </section>
-    );
-  }
-
-  if (activeTab === "duplas" && owner) {
-    return (
-      <section className="publicMemberSection athletePartnerHub">
-        <header className="athleteActivityHeader">
-          <div><Users aria-hidden="true" /><span><h2>Procurando dupla</h2><small>Somente atletas do mesmo torneio e categoria aparecem uns para os outros.</small></span></div>
-          <strong>{activity.partnerMatches.length}</strong>
-        </header>
-        {schemaNotice}
+      <div className="athletePartnerHubContent">
         {notice ? <p className="athleteActivityNotice">{notice}</p> : null}
-
         <div className="athletePartnerSearches">
           <h3>Meus torneios sem dupla</h3>
           {eligiblePartnerRegistrations.length ? eligiblePartnerRegistrations.map((registration) => {
@@ -249,6 +308,85 @@ export default function AthleteProfileActivity({
             </article>
           )) : <div className="athleteActivityEmpty compact"><UserRound aria-hidden="true" /><strong>Ninguém compatível por enquanto</strong><span>Você será notificado aqui quando outro atleta da mesma categoria também procurar dupla.</span></div>}
         </div>
+      </div>
+    );
+  }
+
+  if (state.status === "loading") {
+    return <section className="publicMemberSection athleteActivityState"><RefreshCw className="spinning" aria-hidden="true" /><strong>Carregando sua atividade esportiva...</strong></section>;
+  }
+  if (state.error) {
+    return <section className="publicMemberSection athleteActivityState hasError"><X aria-hidden="true" /><strong>{state.error}</strong><button type="button" onClick={loadActivity}>Tentar novamente</button></section>;
+  }
+  const schemaNotice = !state.schemaAvailable ? (
+    <p className="athleteActivityNotice"><ShieldCheck aria-hidden="true" /> A estrutura compartilhada desta área ainda precisa ser aplicada ao banco da homologação. A organização visual já está disponível e nenhum dado atual foi alterado.</p>
+  ) : null;
+
+  if (activeTab === "conquistas") {
+    return <AthletePerformance activity={activity} schemaNotice={schemaNotice} />;
+  }
+
+  if (activeTab === "atividades") {
+    return (
+      <section className="publicMemberSection athleteActivityPanel">
+        <header className="athleteActivityHeader">
+          <div><Trophy aria-hidden="true" /><span><h2>Torneios e circuitos</h2><small>Acompanhe inscrições, participações atuais e histórico.</small></span></div>
+        </header>
+        {schemaNotice}
+        <nav className={`athleteActivityKinds${owner ? " hasPartnerSearch" : ""}`} aria-label="Tipo de atividade esportiva">
+          <button type="button" className={activitySection === "tournaments" ? "active" : ""} onClick={() => selectActivitySection("tournaments")}><Trophy aria-hidden="true" /><span><strong>Torneios</strong><small>{activity.registrations.length}</small></span></button>
+          <button type="button" className={activitySection === "circuits" ? "active" : ""} onClick={() => selectActivitySection("circuits")}><GitBranch aria-hidden="true" /><span><strong>Circuitos</strong><small>{activity.circuits.length}</small></span></button>
+          {owner ? <button type="button" className={activitySection === "partners" ? "active" : ""} onClick={() => selectActivitySection("partners")}><Users aria-hidden="true" /><span><strong>Procurando dupla</strong><small>{activity.partnerMatches.length}</small></span></button> : null}
+        </nav>
+
+        {activitySection !== "partners" ? <nav className="athleteActivityFilters" aria-label={activitySection === "circuits" ? "Filtrar circuitos" : "Filtrar torneios"}>
+          {(activitySection === "circuits" ? circuitFilters : activityFilters).map((item) => {
+            const source = activitySection === "circuits" ? activity.circuits : activity.registrations;
+            const count = item.id === "all" ? source.length : source.filter((entry) => entry.bucket === item.id).length;
+            return <button type="button" key={item.id} className={filter === item.id ? "active" : ""} onClick={() => setFilter(item.id)}>{item.label}<span>{count}</span></button>;
+          })}
+        </nav> : null}
+
+        {activitySection === "tournaments" && visibleRegistrations.length ? <div className="athleteTournamentList">
+          {visibleRegistrations.map((item) => (
+            <article key={item.id}>
+              {item.tournament?.cover_url ? <img src={item.tournament.cover_url} alt="" /> : <span className="athleteTournamentFallback"><Trophy aria-hidden="true" /></span>}
+              <div>
+                <small className={`athleteRegistrationStatus ${getRegistrationStatus(item).tone}`}>{getRegistrationStatus(item).label}</small>
+                <strong>{item.tournament?.name || "Torneio"}</strong>
+                <p>{[item.category, item.tournament?.location].filter(Boolean).join(" · ") || "Detalhes do torneio"}</p>
+                {item.workflow_status === "rejected" && item.payment_rejection_reason ? <em>{item.payment_rejection_reason}</em> : null}
+                <span>{item.tournament?.event_date ? <><CalendarDays aria-hidden="true" /> {formatDateBR(item.tournament.event_date)}</> : null}</span>
+              </div>
+              {item.tournament?.public_id ? <button type="button" onClick={() => openTournament(item)}>Abrir <ExternalLink aria-hidden="true" /></button> : null}
+            </article>
+          ))}
+        </div> : null}
+
+        {activitySection === "circuits" && visibleCircuits.length ? <div className="athleteCircuitList">
+          {visibleCircuits.map((item) => <article key={item.id}><GitBranch aria-hidden="true" /><span><small>{item.bucket === "past" ? "Circuito concluído" : "Circuito em andamento"}</small><strong>{item.name}</strong><p>{item.tournament_count || 0} torneio(s)</p></span></article>)}
+        </div> : null}
+
+        {activitySection === "tournaments" && !visibleRegistrations.length ? (
+          <div className="athleteActivityEmpty"><Trophy aria-hidden="true" /><strong>Nenhuma participação nesta situação</strong><span>As inscrições realizadas pela plataforma aparecerão aqui automaticamente.</span></div>
+        ) : null}
+        {activitySection === "circuits" && !visibleCircuits.length ? (
+          <div className="athleteActivityEmpty"><GitBranch aria-hidden="true" /><strong>Nenhum circuito nesta situação</strong><span>Os circuitos vinculados às suas participações aparecerão aqui automaticamente.</span></div>
+        ) : null}
+        {activitySection === "partners" && owner ? renderPartnerContent() : null}
+      </section>
+    );
+  }
+
+  if (activeTab === "duplas" && owner) {
+    return (
+      <section className="publicMemberSection athletePartnerHub">
+        <header className="athleteActivityHeader">
+          <div><Users aria-hidden="true" /><span><h2>Procurando dupla</h2><small>Somente atletas do mesmo torneio e categoria aparecem uns para os outros.</small></span></div>
+          <strong>{activity.partnerMatches.length}</strong>
+        </header>
+        {schemaNotice}
+        {renderPartnerContent()}
       </section>
     );
   }

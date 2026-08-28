@@ -1763,3 +1763,79 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
     justify-content: center;
   }
 }
+
+/* O perfil da organização usa uma única faixa de navegação, inclusive com Inscritos. */
+.proDashboard.playAppShell .organizationProfileTabs {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  overflow: visible !important;
+}
+
+.proDashboard.playAppShell .organizationProfileTabs.hasRegistrantTab {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.proDashboard.playAppShell .organizationProfileTabs > button,
+.proDashboard.playAppShell .organizationProfileTabs > button:not(.active) {
+  min-width: 0 !important;
+  flex: none !important;
+}
+
+.proDashboard.playAppShell .profileSubtabs.athleteProfileTabs {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  overflow: visible !important;
+}
+
+.proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button,
+.proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button:not(.active) {
+  min-width: 0 !important;
+  flex: none !important;
+}
+
+@media (max-width: 700px) {
+  .proDashboard.playAppShell .organizationProfileTabs,
+  .proDashboard.playAppShell .organizationProfileTabs.hasRegistrantTab {
+    display: grid !important;
+    gap: 3px !important;
+    overflow: visible !important;
+  }
+
+  .proDashboard.playAppShell .organizationProfileTabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .proDashboard.playAppShell .organizationProfileTabs.hasRegistrantTab {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .proDashboard.playAppShell .organizationProfileTabs > button,
+  .proDashboard.playAppShell .organizationProfileTabs > button:not(.active) {
+    min-width: 0 !important;
+    min-height: 56px !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    padding: 5px 2px !important;
+    font-size: 9.5px !important;
+    line-height: 1.05 !important;
+  }
+
+  .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+    overflow: visible !important;
+  }
+
+  .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button,
+  .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button:not(.active) {
+    min-width: 0 !important;
+    min-height: 58px !important;
+    flex: none !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    padding: 5px 2px !important;
+    font-size: 9px !important;
+    line-height: 1.05 !important;
+  }
+}

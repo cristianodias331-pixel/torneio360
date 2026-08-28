@@ -138,7 +138,7 @@ export default function OrganizationProfilePresentation({
         </div>
       </div>
 
-      <div className="profileSubtabs" role="tablist" aria-label="Seções do perfil da organização">
+      <div className={`profileSubtabs organizationProfileTabs${canManageRegistrants ? " hasRegistrantTab" : ""}`} role="tablist" aria-label="Seções do perfil da organização">
         <button type="button" role="tab" className={activeTab === "publicacoes" ? "active" : ""} onClick={() => onTabChange?.("publicacoes")} aria-selected={activeTab === "publicacoes"}>
           <Grid3X3 aria-hidden="true" /> Publicações
         </button>

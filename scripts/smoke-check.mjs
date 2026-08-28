@@ -5147,7 +5147,7 @@ assert.ok(
 );
 assert.ok(
   organizerWorkspaceSource.includes("Torneios/Circuitos")
-    && organizerWorkspaceSource.includes("Procurando dupla")
+    && athleteProfileActivitySource.includes("Procurando dupla")
     && organizerWorkspaceSource.includes("Desafios")
     && !organizerWorkspaceSource.includes("Publicações do atleta")
     && athleteProfileActivitySource.includes("Quem pratica mais?")

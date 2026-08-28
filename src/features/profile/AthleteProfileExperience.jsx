@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Award, AtSign, ImagePlus, Images, MapPin, UserRound, X, ZoomIn } from "lucide-react";
+import { AtSign, ImagePlus, Images, MapPin, UserRound, X, ZoomIn } from "lucide-react";
 import { MAX_MEMBER_GALLERY_PHOTOS } from "../../domain/memberProfile.mjs";
 import AthleteProfileActivity from "./AthleteProfileActivity.jsx";
 import {
@@ -62,7 +62,7 @@ export default function AthleteProfileExperience({
 
       <MemberProfileTabs activeTab={activeTab} onChange={onTabChange} owner={owner} />
 
-      {(["atividades", "duplas", "desafios"].includes(activeTab)) ? (
+      {(["atividades", "duplas", "desafios", "conquistas"].includes(activeTab)) ? (
         <AthleteProfileActivity
           supabase={supabase}
           profile={profile}
@@ -154,14 +154,6 @@ export default function AthleteProfileExperience({
             ? "Os contatos permanecem protegidos e só são liberados depois de uma combinação esportiva válida."
             : "Os contatos permanecem privados até a autorização para uma combinação esportiva."}</p>
           {owner ? <button type="button" className="secondaryBtn" onClick={onEdit}>Editar informações do perfil</button> : null}
-        </section>
-      ) : null}
-
-      {activeTab === "conquistas" ? (
-        <section className="publicMemberSection publicMemberEmptyProfileSection">
-          <Award aria-hidden="true" />
-          <strong>Conquistas</strong>
-          <span>Resultados e títulos reconhecidos pela plataforma aparecerão aqui.</span>
         </section>
       ) : null}
 

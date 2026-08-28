@@ -8825,7 +8825,7 @@ setNewPublicInfo({
       </div>
     </div>
 
-    <div className="profileSubtabs" role="tablist" aria-label="Seções do perfil">
+    <div className="profileSubtabs athleteProfileTabs" role="tablist" aria-label="Seções do perfil">
       <button
         type="button"
         role="tab"
@@ -8834,16 +8834,6 @@ setNewPublicInfo({
         aria-selected={profileSubtab === "atividades"}
       >
         <Trophy aria-hidden="true" /> Torneios/Circuitos
-      </button>
-      <button
-        type="button"
-        role="tab"
-        className={profileSubtab === "duplas" ? "active" : ""}
-        onClick={() => openProfileSection("duplas", "athlete")}
-        aria-selected={profileSubtab === "duplas"}
-      >
-        <Users aria-hidden="true" />
-        Procurando dupla
       </button>
       <button
         type="button"
@@ -9046,7 +9036,7 @@ setNewPublicInfo({
       </div>
     ) : null} */}
 
-    {profileIdentity === "athlete" && ["atividades", "duplas", "desafios"].includes(profileSubtab) ? (
+    {profileIdentity === "athlete" && ["atividades", "duplas", "desafios", "conquistas"].includes(profileSubtab) ? (
       <AthleteProfileActivity
         supabase={supabase}
         profile={memberProfile}
@@ -9163,13 +9153,6 @@ setNewPublicInfo({
       </div>
     ) : null}
 
-    {profileSubtab === "conquistas" && profileIdentity === "athlete" ? (
-      <div className="profileSubtabPanel profileAchievementsPanel">
-        <Award aria-hidden="true" />
-        <strong>Conquistas do atleta</strong>
-        <span>Pódios, títulos e resultados reconhecidos pela plataforma aparecerão aqui.</span>
-      </div>
-    ) : null}
   </section>
   ) : null}
 
