@@ -451,6 +451,7 @@ const root = new URL("../", import.meta.url);
 const mainEntrySource = readFileSync(new URL("src/main.jsx", root), "utf8");
 const organizerWorkspaceSource = readFileSync(new URL("src/OrganizerWorkspace.jsx", root), "utf8");
 const organizationProfilePresentationSource = readFileSync(new URL("src/features/profile/OrganizationProfilePresentation.jsx", root), "utf8");
+const organizationProfileContentPresentationSource = readFileSync(new URL("src/features/profile/OrganizationProfileContentPresentation.jsx", root), "utf8");
 const platformChromeSource = readFileSync(new URL("src/features/appShell/PlatformChrome.jsx", root), "utf8");
 const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}\n${platformChromeSource}`;
 const lazyFeaturesSource = readFileSync(
@@ -5046,7 +5047,12 @@ assert.ok(
     && lazyFeaturesSource.includes('import("../matchOperations/speechAnnouncements.mjs")'),
   "As áreas pesadas deixaram de ser carregadas sob demanda ou perderam o fallback seguro."
 );
-assert.ok(publicArenaPresentationSource.includes('className="publicArenaTabs"'), "O link público não abre o perfil com abas de Torneios e Circuitos.");
+assert.ok(
+  publicArenaPresentationSource.includes("<OrganizationProfileContentPresentation")
+    && organizationProfileContentPresentationSource.includes('className="profilePublicationFilters"')
+    && organizationProfileContentPresentationSource.includes('className="profileTournamentGrid"'),
+  "O link público não abre a mesma experiência real de publicações do perfil da organização."
+);
 assert.ok(mainSource.includes('navigator.serviceWorker.register("/sw.js")'), "O service worker do app não está registrado.");
 assert.ok(!mainSource.includes("@torenio360"), "O usuário do Instagram continua escrito incorretamente.");
 assert.ok(!mainSource.includes("data:image/png;base64"), "Ainda existem imagens PNG Base64 no JavaScript.");
@@ -5200,9 +5206,9 @@ assert.ok(
     && organizationCoverApiSource.includes("get_my_organization_profile_cover")
     && organizationCoverApiSource.includes("set_my_organization_profile_cover")
     && organizationCoverMigrationSource.includes("cover_url text not null default ''")
-    && publicArenaPresentationSource.includes("Entrar no grupo do WhatsApp")
-    && publicArenaPresentationSource.includes("Chave Pix pública")
-    && publicArenaPresentationSource.includes("Pagamento com cartão")
+    && organizerWorkspaceSource.includes("Entrar no grupo do WhatsApp")
+    && organizerWorkspaceSource.includes("Chave Pix pública")
+    && organizerWorkspaceSource.includes("Pagamento com cartão")
     && organizationPaymentApiSource.includes("get_public_organization_payment_settings")
     && organizationPublicPaymentsMigrationSource.includes("pix_key text not null default ''")
     && organizationPublicPaymentsMigrationSource.includes("card_payment_link text not null default ''")
@@ -5213,16 +5219,21 @@ assert.ok(
   "A capa, o modal, os dados públicos ou a preparação segura do pagamento da organização regrediram."
 );
 assert.ok(
-  organizerWorkspaceSource.includes('const navItems = [\n      { panel: "inicio", label: "Início", Icon: LayoutDashboard },\n      { panel: "notificacoes", label: "Notificações", Icon: Bell, unreadCount: unreadNotificationCount },\n      { panel: "ajustes", label: "Perfis", Icon: UserRound },')
+  organizerWorkspaceSource.includes('{ panel: "inicio", label: "Início", Icon: LayoutDashboard }')
+    && organizerWorkspaceSource.includes('{ panel: "notificacoes", label: "Notificações", Icon: Bell, unreadCount: unreadNotificationCount }')
+    && organizerWorkspaceSource.includes('{ panel: "ajustes", label: "Perfis", Icon: UserRound }')
     && !unifiedPlatformFrameSource.includes('label: "Explorar"')
     && !unifiedPlatformFrameSource.includes('label: "Criar"')
-    && organizerWorkspaceSource.includes("<OrganizationProfileSectionsView")
-    && publicArenaPresentationSource.includes("export function OrganizationProfileSectionsView")
-    && publicArenaPresentationSource.includes('className="publicArenaTabs"')
-    && publicArenaPresentationSource.includes('className="publicArenaStatusTabs"')
+    && organizerWorkspaceSource.includes("<OrganizationProfileContentPresentation")
+    && publicArenaPresentationSource.includes("<OrganizationProfileContentPresentation")
+    && organizationProfileContentPresentationSource.includes("profileTournamentToolbar")
+    && organizationProfileContentPresentationSource.includes("Pesquisar torneios no perfil da organização")
+    && organizationProfileContentPresentationSource.includes("profileTournamentGenderFilters")
+    && organizationProfileContentPresentationSource.includes("canManageEvents")
+    && organizationProfileContentPresentationSource.includes("canEdit")
     && organizerWorkspaceSource.includes('setOrganizationGalleryStatus("local")')
     && organizerWorkspaceSource.includes("A capa já aparece separada neste perfil")
-    && publicArenaPresentationSource.includes("A capa permanece separada")
+    && organizerWorkspaceSource.includes("A capa do perfil é separada")
     && !organizerWorkspaceSource.includes("A primeira foto é usada como capa")
     && !organizerWorkspaceSource.match(/organizationProfileAvatarShortcut[\s\S]{0,900}profileAvatarEditBadge/),
   "A navegação simplificada, os filtros do perfil ou a remoção da câmera azul da organização regrediram."

@@ -122,11 +122,7 @@ import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
 import OrganizationRegistrantsPanel from "./features/profile/OrganizationRegistrantsPanel.jsx";
 import OrganizationProfilePresentation from "./features/profile/OrganizationProfilePresentation.jsx";
-import {
-  OrganizationProfileSectionsView,
-  PublicArenaTournamentCardsView,
-  PublicRegistrationStatusView,
-} from "./features/publicArena/PublicArenaPresentation.jsx";
+import OrganizationProfileContentPresentation from "./features/profile/OrganizationProfileContentPresentation.jsx";
 import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "./features/notifications/useUnreadNotificationCount.js";
 import { createAthleteIdentityIndex, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
@@ -503,24 +499,6 @@ function isFixedDoublesCompetition(type) {
   return Boolean(config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config)));
 }
 
-function WorkspaceProfileRegistrationStatus(props) {
-  return <PublicRegistrationStatusView {...props} getWhatsAppUrl={getBrazilianWhatsAppUrl} />;
-}
-
-function WorkspaceProfileTournamentCards(props) {
-  return (
-    <PublicArenaTournamentCardsView
-      {...props}
-      getRegistrationDeadline={getTournamentRegistrationDeadline}
-      isRegistrationOpen={isRegistrationDeadlineOpen}
-      getModalityName={getModalityDisplayName}
-      formatDate={formatDateBR}
-      sortTournaments={sortTournamentsByEventSchedule}
-      RegistrationStatus={WorkspaceProfileRegistrationStatus}
-    />
-  );
-}
-
 function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile, publicPlatformHomeRuntime }) {
   const { unreadCount: unreadNotificationCount } = useUnreadNotificationCount({ supabase, enabled: Boolean(user?.id) });
   const [tournaments, setTournaments] = useState([]);
@@ -620,8 +598,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     if (!athleteIdentity && initialSubtab === "conquistas") return "inscritos";
     return initialSubtab;
   });
-  const [profilePublicationFilter, setProfilePublicationFilter] = useState("tournaments");
-  const [profilePublicationStatus, setProfilePublicationStatus] = useState("active");
+  const [profilePublicationFilter, setProfilePublicationFilter] = useState("all");
   const [profileIdentity, setProfileIdentity] = useState(() => {
     const identity = new URLSearchParams(window.location.search).get("identidade");
     return identity === "atleta" ? "athlete" : "organization";
@@ -1575,16 +1552,6 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const isolatedTournaments = groupedTournaments.flatMap((group) => (
     group.items.length === 1 && group.items[0]?.data?.multiCategoryEvent !== true ? group.items : []
   ));
-  const organizationProfileSourceItems = profilePublicationFilter === "circuits" ? circuits : tournaments;
-  const organizationProfileActiveItems = organizationProfileSourceItems.filter((item) => (
-    !isPublicItemFinished(item, profilePublicationFilter === "circuits" ? "circuit" : "tournament")
-  ));
-  const organizationProfileFinishedItems = organizationProfileSourceItems.filter((item) => (
-    isPublicItemFinished(item, profilePublicationFilter === "circuits" ? "circuit" : "tournament")
-  ));
-  const organizationProfileVisibleItems = profilePublicationStatus === "finished"
-    ? organizationProfileFinishedItems
-    : organizationProfileActiveItems;
   const isCombinedCircuitEntry = (circuit) => (
     normalizeCircuitRankingSettings(circuit?.rankingSettings).sourceCircuitIds.length > 0
   );
@@ -8922,54 +8889,162 @@ setNewPublicInfo({
     )}
 
     {profileIdentity === "organization" && ["publicacoes", "fotos", "contato"].includes(profileSubtab) ? (
-      <OrganizationProfileSectionsView
-        activeProfileTab={profileSubtab}
+      <OrganizationProfileContentPresentation
+        activeTab={profileSubtab}
+        profile={organizerProfile}
+        tournaments={tournaments}
+        circuits={circuits}
+        gallery={organizationGallery}
         canEdit
         canManageEvents
-        arenaName={organizerProfile.arenaName || "Minha organização"}
-        organizer={organizerProfile}
-        organizationGallery={organizationGallery}
-        contactDescription="Dados públicos usados por atletas e visitantes para conhecer e contatar a organização."
-        onEditAbout={() => setProfileEditing(true)}
-        onAddGalleryPhotos={handleOrganizationGalleryFiles}
-        onRemoveGalleryPhoto={removeOrganizationGalleryPhoto}
-        onSaveGallery={saveOrganizationGallery}
         galleryBusy={organizationGallerySaving}
         galleryReady={organizationGalleryStatus === "ready"}
-        activeArenaTab={profilePublicationFilter}
-        activeStatusTab={profilePublicationStatus}
-        activeItems={organizationProfileActiveItems}
-        finishedItems={organizationProfileFinishedItems}
-        visibleItems={organizationProfileVisibleItems}
-        onArenaTabChange={setProfilePublicationFilter}
-        onStatusTabChange={setProfilePublicationStatus}
-        onOpenTournament={(tournament) => {
-          if (tournament.public_id) void openPublishedTournamentFromFeed(tournament);
-          else openTournament(tournament);
-        }}
-        onOpenCircuit={openOrganizerCircuit}
-        getWhatsAppUrl={getBrazilianWhatsAppUrl}
-        getCircuitStatus={(item) => normalizeCircuitStatus(getAutomaticEventStatus(item.end_date || item.endDate))}
-        getCircuitDateLabel={(item) => {
-          const startDate = item.start_date || item.startDate;
-          const endDate = item.end_date || item.endDate;
-          return startDate ? `${formatDateBR(startDate)}${endDate ? ` até ${formatDateBR(endDate)}` : ""}` : "";
-        }}
-        getCircuitTournamentCount={(item) => (item.tournament_ids || item.tournamentIds || []).length}
-        TournamentCards={WorkspaceProfileTournamentCards}
-        hasSession={Boolean(user)}
         onCreateTournament={() => { goToPanel("criar"); setCreateTournamentOpen(true); }}
         onCreateCircuit={() => { goToPanel("circuitos"); setCreateCircuitOpen(true); }}
-        onManageTournament={openTournament}
+        onOpenTournament={openTournament}
         onEditTournament={openEditTournament}
         onShareTournament={shareArenaProfile}
         onDeleteTournament={setDeleteTarget}
-        onManageCircuit={openOrganizerCircuit}
+        onOpenCircuit={openOrganizerCircuit}
         onEditCircuit={editCircuit}
-        onShareCircuit={shareArenaProfile}
         onDeleteCircuit={setCircuitDeleteTarget}
+        onAddGalleryPhotos={handleOrganizationGalleryFiles}
+        onRemoveGalleryPhoto={removeOrganizationGalleryPhoto}
+        onSaveGallery={saveOrganizationGallery}
+        onEditAbout={() => setProfileEditing(true)}
+        onCopyPix={(pixKey) => {
+          navigator.clipboard?.writeText(pixKey);
+          showNotice("success", "Chave Pix copiada", "A chave foi copiada para a área de transferência.");
+        }}
       />
     ) : null}
+
+    {/* Legacy organization publication markup retained temporarily while the canonical shared view is validated.
+    {profileSubtab === "publicacoes" && profileIdentity === "organization" ? (
+      <div className="profileSubtabPanel">
+    <div className="profilePublicationsHeader">
+      <div><strong>Publicações</strong><span>{tournaments.length} campeonato(s) criado(s)</span></div>
+      <div className="profilePublicationCreateActions">
+        <button type="button" onClick={() => { goToPanel("criar"); setCreateTournamentOpen(true); }}><PlusCircle aria-hidden="true" /> Criar torneio</button>
+        <button type="button" onClick={() => { goToPanel("circuitos"); setCreateCircuitOpen(true); }}><GitBranch aria-hidden="true" /> Criar circuito</button>
+      </div>
+    </div>
+
+    <nav className="profilePublicationFilters" aria-label="Filtrar publicações" role="tablist">
+      <button type="button" role="tab" aria-selected={profilePublicationFilter === "all"} className={profilePublicationFilter === "all" ? "active" : ""} onClick={() => setProfilePublicationFilter("all")}>Tudo <span>{tournaments.length + circuits.length}</span></button>
+      <button type="button" role="tab" aria-selected={profilePublicationFilter === "tournaments"} className={profilePublicationFilter === "tournaments" ? "active" : ""} onClick={() => setProfilePublicationFilter("tournaments")}>Torneios <span>{tournaments.length}</span></button>
+      <button type="button" role="tab" aria-selected={profilePublicationFilter === "circuits"} className={profilePublicationFilter === "circuits" ? "active" : ""} onClick={() => setProfilePublicationFilter("circuits")}>Circuitos <span>{circuits.length}</span></button>
+    </nav>
+
+    {profilePublicationFilter !== "circuits" ? <>
+    <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar" aria-label="Filtrar torneios do perfil por situação">
+      <button type="button" className={`active ${tournamentStatusFilter === "active" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "active"} onClick={() => setTournamentStatusFilter("active")}>
+        <strong>{tournamentLifecycleCounts.active}</strong> Em andamento
+      </button>
+      <button type="button" className={`upcoming ${tournamentStatusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "upcoming"} onClick={() => setTournamentStatusFilter("upcoming")}>
+        <strong>{tournamentLifecycleCounts.upcoming}</strong> Próximos
+      </button>
+      <button type="button" className={`finished ${tournamentStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={tournamentStatusFilter === "finished"} onClick={() => setTournamentStatusFilter("finished")}>
+        <strong>{tournamentLifecycleCounts.finished}</strong> Encerrados
+      </button>
+      <label className="eventListSearch platformUnifiedSearch">
+        <Search aria-hidden="true" />
+        <input
+          type="search"
+          value={tournamentSearch}
+          onChange={(event) => setTournamentSearch(event.target.value)}
+          aria-label="Pesquisar torneios no perfil da organização"
+          placeholder="Ex.: nome, modalidade, categoria ou local"
+        />
+        {tournamentSearch ? <button type="button" aria-label="Limpar pesquisa de torneios do perfil" onClick={() => setTournamentSearch("")}><X aria-hidden="true" /></button> : null}
+      </label>
+    </div>
+    <div className="tournamentGenderSubtabs profileTournamentGenderFilters" aria-label="Filtrar torneios do perfil por gênero">
+      <span className="tournamentGenderSubtabsLabel">Gênero</span>
+      {[
+        { value: tournamentListGenderFilters.all, label: "Todos" },
+        { value: tournamentListGenderFilters.masculine, label: "Masculino" },
+        { value: tournamentListGenderFilters.feminine, label: "Feminino" },
+        { value: tournamentListGenderFilters.mixed, label: "Misto/Livre" },
+      ].map((option) => (
+        <button
+          type="button"
+          key={option.value}
+          className={tournamentGenderFilter === option.value ? "selected" : ""}
+          aria-pressed={tournamentGenderFilter === option.value}
+          onClick={() => setTournamentGenderFilter(option.value)}
+        >
+          {option.label} <strong>{tournamentGenderCounts[option.value]}</strong>
+        </button>
+      ))}
+    </div>
+    </> : null}
+
+    {profilePublicationFilter !== "circuits" ? <div className="profileTournamentGrid">
+      {tournaments.length === 0 ? (
+        <div className="profileEmptyPost">Nenhum campeonato criado ainda.</div>
+      ) : organizerVisibleTournaments.length === 0 ? (
+        <div className="profileEmptyPost">{tournamentSearch.trim()
+          ? `Nenhum torneio encontrado para “${tournamentSearch.trim()}” nos filtros selecionados.`
+          : "Nenhum torneio corresponde aos filtros selecionados."}</div>
+      ) : organizerVisibleTournaments.map((t) => {
+        const details = t.data || {};
+        return (
+          <article className="profileTournamentPost tournamentItem" key={t.id}>
+            {details.coverImageThumbnailUrl || details.coverImageUrl ? (
+              <img className="profileTournamentCover" src={details.coverImageThumbnailUrl || details.coverImageUrl} alt={`Foto de ${t.name}`} />
+            ) : null}
+            <div className="tournamentInfo">
+              <div className="tournamentTitleRow">
+                <strong>{t.name}</strong>
+                <span className="tournamentTypeBadge">{getModalityDisplayName(t.type)}</span>
+              </div>
+              <div className="tournamentMeta">
+                {details.multiCategoryEvent ? <span><Grid3X3 aria-hidden="true" /> {details.eventName}</span> : null}
+                {getTournamentClassificationLabels(details).map((label) => <span key={label}><Tag aria-hidden="true" /> {label}</span>)}
+                {details.eventDate ? <span><CalendarDays aria-hidden="true" /> {formatDateBR(details.eventDate)}</span> : null}
+                {details.eventStartTime ? <span><Clock3 aria-hidden="true" /> {details.eventStartTime}</span> : null}
+                {details.location ? <span><MapPin aria-hidden="true" /> {details.location}</span> : null}
+                {details.winningScore ? <span><Target aria-hidden="true" /> {details.winningScore} games</span> : null}
+              </div>
+            </div>
+            <div className="tournamentActions">
+              <button type="button" className="editBtn" onClick={() => openEditTournament(t)}>Editar</button>
+              <button type="button" className="actionOpenBtn" onClick={() => openTournament(t)}>Abrir</button>
+              <button type="button" className="shareTournamentBtn" onClick={shareArenaProfile}><Share2 aria-hidden="true" /> Compartilhar</button>
+              <button type="button" className="deleteBtn" onClick={() => setDeleteTarget(t)}>Excluir</button>
+            </div>
+          </article>
+        );
+      })}
+    </div> : null}
+
+    {profilePublicationFilter !== "tournaments" ? <>
+    <div className="profilePublicationsHeader profileCircuitsHeading">
+      <strong>Circuitos</strong>
+      <span>{circuits.length} circuito(s) publicado(s)</span>
+    </div>
+    <div className="profileCircuitPublicationGrid">
+      {circuits.length === 0 ? (
+        <div className="profileEmptyPost">Nenhum circuito criado ainda.</div>
+      ) : circuits.map((circuit) => (
+        <article className="profileCircuitPublication" key={circuit.id}>
+          <span className="profileCircuitPublicationIcon"><GitBranch aria-hidden="true" /></span>
+          <div>
+            <strong>{circuit.name}</strong>
+            <small>
+              {(circuit.tournamentIds || []).length} torneio(s)
+              {circuit.startDate ? ` · ${formatDateBR(circuit.startDate)}` : ""}
+            </small>
+          </div>
+          <button type="button" onClick={() => openOrganizerCircuit(circuit)}>Abrir</button>
+        </article>
+      ))}
+    </div>
+    </> : null}
+
+      </div>
+    ) : null} */}
 
     {profileIdentity === "athlete" && ["atividades", "duplas", "desafios"].includes(profileSubtab) ? (
       <AthleteProfileActivity
@@ -8987,6 +9062,7 @@ setNewPublicInfo({
 
     {profileSubtab === "fotos" && profileIdentity === "athlete" ? (
       <div className="profileSubtabPanel profilePhotosPanel">
+        {profileIdentity === "athlete" ? (
         <section className="unifiedMemberGalleryEditor" aria-labelledby="member-gallery-profile-title">
           <header>
             <div>
@@ -9032,6 +9108,58 @@ setNewPublicInfo({
             </button>
           </div>
         </section>
+        ) : (
+        <section className="unifiedMemberGalleryEditor organizationGalleryEditor organizationProfilePhotos" aria-labelledby="organization-gallery-profile-title">
+          <header>
+            <div>
+              <span><Building2 aria-hidden="true" /></span>
+              <div>
+                <h3 id="organization-gallery-profile-title">Fotos da organização</h3>
+                <p>Até seis fotos institucionais escolhidas para esta galeria. A capa do perfil é separada.</p>
+              </div>
+            </div>
+            <strong>{organizationGallery.length}/6</strong>
+          </header>
+
+          <div className="unifiedMemberGalleryGrid">
+            {organizationGallery.map((photoUrl, index) => (
+              <figure key={`${photoUrl}-${index}`}>
+                <img src={photoUrl} alt={`Foto ${index + 1} da organização`} />
+                <button type="button" className="removeOrganizationGalleryPhoto" onClick={() => removeOrganizationGalleryPhoto(index)} disabled={organizationGallerySaving}>Remover</button>
+              </figure>
+            ))}
+            {organizationGallery.length < 6 ? (
+              <label className="unifiedMemberGalleryAdd">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files || []);
+                    if (files.length) handleOrganizationGalleryFiles(files);
+                    event.target.value = "";
+                  }}
+                />
+                <PlusCircle aria-hidden="true" />
+                <strong>Adicionar fotos</strong>
+                <small>Restam {6 - organizationGallery.length}</small>
+              </label>
+            ) : null}
+          </div>
+          <div className="profilePhotosActions">
+            <button
+              type="button"
+              className="saveProfileBtn actionConfirmBtn"
+              onClick={saveOrganizationGallery}
+              disabled={organizationGallerySaving || organizationGalleryStatus !== "ready"}
+              aria-busy={organizationGallerySaving}
+            >
+              {organizationGallerySaving ? "Salvando fotos..." : "Salvar fotos da organização"}
+            </button>
+          </div>
+        </section>
+        )}
       </div>
     ) : null}
 
@@ -9067,6 +9195,33 @@ setNewPublicInfo({
     </aside>
   </section>
   ) : null}
+
+  {/* Legacy organization about markup retained temporarily while the canonical shared view is validated.
+  {profileSubtab === "contato" && profileIdentity === "organization" ? (
+  <section className="card organizationAboutOverview">
+    <header>
+      <div>
+        <span>Sobre a organização</span>
+        <h2>{organizerProfile.arenaName || "Minha organização"}</h2>
+        <p>Dados públicos usados por atletas e visitantes para conhecer e contatar a organização.</p>
+      </div>
+      <button type="button" className="secondaryBtn" onClick={() => setProfileEditing(true)}><Settings aria-hidden="true" /> Editar informações</button>
+    </header>
+    <div className="organizationAboutGrid">
+      <article><UserRound aria-hidden="true" /><span><small>Responsável</small><strong>{organizerProfile.organizerName || "Não informado"}</strong></span></article>
+      <article><MapPin aria-hidden="true" /><span><small>Endereço</small><strong>{[organizerProfile.city, organizerProfile.state].filter(Boolean).join("/") || "Não informado"}</strong><em>{organizerProfile.address || "Endereço não informado"}</em>{getSafePaymentLink(organizerProfile.mapsLink) ? <a href={getSafePaymentLink(organizerProfile.mapsLink)} target="_blank" rel="noreferrer"><Link2 aria-hidden="true" /> Abrir no mapa</a> : null}</span></article>
+      <article><MessageCircle aria-hidden="true" /><span><small>WhatsApp</small>{organizerProfile.whatsapp ? <a href={getBrazilianWhatsAppUrl(organizerProfile.whatsapp)} target="_blank" rel="noreferrer"><strong>{organizerProfile.whatsapp}</strong></a> : <strong>Não informado</strong>}</span></article>
+      <article><AtSign aria-hidden="true" /><span><small>Instagram</small>{getSafePaymentLink(organizerProfile.instagramLink) ? <a href={getSafePaymentLink(organizerProfile.instagramLink)} target="_blank" rel="noreferrer"><strong>{organizerProfile.instagramHandle || "Abrir Instagram"}</strong></a> : <strong>{organizerProfile.instagramHandle || "Não informado"}</strong>}</span></article>
+      <article><Users aria-hidden="true" /><span><small>Grupo da organização</small>{getSafePaymentLink(organizerProfile.whatsappGroupLink) ? <a href={getSafePaymentLink(organizerProfile.whatsappGroupLink)} target="_blank" rel="noreferrer"><strong>Entrar no grupo do WhatsApp</strong></a> : <strong>Link não informado</strong>}</span></article>
+      <article><Copy aria-hidden="true" /><span><small>Chave Pix pública</small><strong>{organizerProfile.pixKey || "Não informada"}</strong>{organizerProfile.pixKey ? <button type="button" className="organizationCopyValue" onClick={() => { navigator.clipboard?.writeText(organizerProfile.pixKey); showNotice("success", "Chave Pix copiada", "A chave foi copiada para a área de transferência."); }}><Copy aria-hidden="true" /> Copiar chave</button> : null}</span></article>
+      <article><CreditCard aria-hidden="true" /><span><small>Pagamento com cartão</small>{getSafePaymentLink(organizerProfile.cardPaymentLink) ? <a href={getSafePaymentLink(organizerProfile.cardPaymentLink)} target="_blank" rel="noreferrer"><strong>Abrir link seguro de pagamento</strong></a> : <strong>Link não informado</strong>}</span></article>
+    </div>
+    <aside className="organizationPublicPaymentNotice">
+      <CreditCard aria-hidden="true" />
+      <span><strong>Recebimentos visíveis no perfil</strong><small>Pix e link de cartão podem ser usados pelos atletas. Para evitar expor CPF ou telefone, prefira uma chave Pix aleatória ou empresarial.</small></span>
+    </aside>
+  </section>
+  ) : null} */}
 
   {profileIdentity === "organization" && profileEditing ? (
   <div className="organizerProfileModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !profileSaving) setProfileEditing(false); }}>

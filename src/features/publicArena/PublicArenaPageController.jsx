@@ -539,9 +539,10 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
     setActiveStatusTab("active");
   }, [activeArenaTab]);
 
-  async function openPublicTournament(item) {
+  async function openPublicTournament(item, options = {}) {
+    const initialTab = options.initialTab === "inscricao" ? "inscricao" : "";
     if (!item?.directoryEntry) {
-      setSelectedTournament(item);
+      setSelectedTournament({ ...item, initialPublicTab: initialTab });
       return;
     }
 
@@ -554,7 +555,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       return;
     }
 
-    setSelectedTournament({ ...item, ...result.data, directoryEntry: false });
+    setSelectedTournament({ ...item, ...result.data, directoryEntry: false, initialPublicTab: initialTab });
   }
 
   async function openPublicCircuit(item) {
@@ -630,7 +631,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         organizer={organizer}
         onBackToArena={() => setSelectedTournament(null)}
         embedded={embedded}
-        initialTab={new URLSearchParams(window.location.search).get("inscricao") === "1" ? "inscricao" : ""}
+        initialTab={selectedTournament.initialPublicTab || (new URLSearchParams(window.location.search).get("inscricao") === "1" ? "inscricao" : "")}
         viewer={session?.user || null}
         onRequireLogin={() => {
           const url = new URL(window.location.origin);
@@ -687,6 +688,8 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       arenaName={arenaName}
       organizer={organizer}
       organizationGallery={organizationGallery}
+      tournaments={tournaments}
+      circuits={circuits}
       profileCounts={profileCounts}
       hasSession={Boolean(session)}
       onRequireLogin={() => {
