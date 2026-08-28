@@ -29,7 +29,6 @@ import {
 } from "./features/appShell/lazyFeatures.jsx";
 import {
   AccessPreparing,
-  Blocked,
   ProfileUnavailable,
 } from "./features/appShell/AccessStatusViews.jsx";
 import {
@@ -58,9 +57,6 @@ import {
   getBrazilianWhatsAppUrl,
   getPlanRegularizationWhatsAppUrl,
 } from "./domain/contactLinks.mjs";
-import {
-  formatStatusBR,
-} from "./domain/statusFormatting.mjs";
 import {
   getTournamentRegistrationDeadline,
   isRegistrationDeadlineOpen,
@@ -253,6 +249,32 @@ function App() {
     }
 
     return result;
+  }
+
+  async function activateOrganizationAccess() {
+    const { data, error } = await supabase.rpc("activate_my_organization");
+    if (error) throw error;
+
+    const refreshed = await supabase.auth.refreshSession();
+    if (refreshed.error || !refreshed.data?.session?.user) {
+      throw refreshed.error || new Error("Não foi possível atualizar a permissão da organização.");
+    }
+
+    const nextSession = refreshed.data.session;
+    const nextProfile = data?.profile || await loadProfile(nextSession.user.id, {
+      waitForAccess: false,
+      emailConfirmed: true,
+    });
+
+    setSession(nextSession);
+    activeUserIdRef.current = nextSession.user.id;
+    if (nextProfile) {
+      setProfile(nextProfile);
+      saveCachedProfile(nextSession.user.id, nextProfile);
+    }
+
+    navigatePlatform({ aba: "ajustes", perfil: "publicacoes", identidade: "organizacao" });
+    return data;
   }
 
   async function loadProfile(userId, { waitForAccess = false, emailConfirmed = false } = {}) {
@@ -546,16 +568,20 @@ function App() {
   }
 
   const sessionRole = String(session.user?.app_metadata?.role || "organizer").toLowerCase();
+  const renderMemberWorkspace = (organizationAccess) => (
+    <MemberProfileWorkspaceView
+      supabase={supabase}
+      user={session.user}
+      accessProfile={profile}
+      organizationAccess={organizationAccess}
+      onActivateOrganization={activateOrganizationAccess}
+      onLogout={logout}
+      publicPlatformHomeRuntime={publicPlatformHomeRuntime}
+    />
+  );
+
   if (["athlete", "visitor", "spectator"].includes(sessionRole)) {
-    return (
-      <MemberProfileWorkspaceView
-        supabase={supabase}
-        user={session.user}
-        accessProfile={profile}
-        onLogout={logout}
-        publicPlatformHomeRuntime={publicPlatformHomeRuntime}
-      />
-    );
+    return renderMemberWorkspace({ state: "available" });
   }
 
   if (!profile) {
@@ -583,17 +609,11 @@ function App() {
   }
 
   if (expired || !isActive || !hasActivePeriod) {
-    return (
-      <Blocked
-        plan={profile.plan || "Não informado"}
-        status={formatStatusBR(profile.status)}
-        expiresAt={profile.expires_at ? formatDateBR(profile.expires_at) : "Não definido"}
-        regularizationUrl={getPlanRegularizationWhatsAppUrl(profile, session.user)}
-        autoRedirect={status !== "suspended"}
-        onBrowse={() => navigatePlatform({ publico: "1" })}
-        onLogout={logout}
-      />
-    );
+    return renderMemberWorkspace({
+      state: status === "suspended" ? "suspended" : status === "blocked" ? "blocked" : "expired",
+      profile,
+      regularizationUrl: getPlanRegularizationWhatsAppUrl(profile, session.user),
+    });
   }
 
   return (

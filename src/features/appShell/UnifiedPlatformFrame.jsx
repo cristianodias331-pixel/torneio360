@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Bell, Home, LogIn, Moon, Sun, UserRound } from "lucide-react";
+import { Bell, Building2, Home, LogIn, Moon, Sun, UserRound } from "lucide-react";
 import { PlatformSidebar, PlatformTopbar } from "./PlatformChrome.jsx";
 import "../../styles/53-public-social-platform.css";
 
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { panel: "overview", label: "Início", Icon: Home },
   { panel: "notifications", label: "Notificações", Icon: Bell, requiresSession: true },
   { panel: "profile", label: "Perfil", Icon: UserRound },
+  { panel: "organization", label: "Organizar", Icon: Building2, requiresSession: true, organizationAction: true },
 ];
 
 export default function UnifiedPlatformFrame({
@@ -19,6 +20,7 @@ export default function UnifiedPlatformFrame({
   accountLabel,
   unreadNotificationCount = 0,
   canCreate = false,
+  showOrganizationAction = false,
   onNavigate,
   onAccountAction,
   onSignup,
@@ -44,9 +46,12 @@ export default function UnifiedPlatformFrame({
     document.documentElement.dataset.theme = colorMode;
   }, [colorMode]);
 
-  const navItems = NAV_ITEMS.filter((item) => !item.requiresSession || hasSession).map((item) => ({
+  const navItems = NAV_ITEMS.filter((item) => (
+    (!item.requiresSession || hasSession)
+    && (!item.organizationAction || showOrganizationAction)
+  )).map((item) => ({
     ...item,
-    locked: item.requiresCreationPermission && !canCreate,
+    locked: item.organizationAction && !canCreate,
     unreadCount: item.panel === "notifications" ? unreadNotificationCount : 0,
   }));
 

@@ -5448,7 +5448,8 @@ assert.ok(
     && accessStatusViewsSource.includes("export function FreeTrialNotice")
     && mainSource.includes("<ProfileUnavailable")
     && mainSource.includes("<AccessPreparing")
-    && mainSource.includes("<Blocked")
+    && mainSource.includes('return renderMemberWorkspace({')
+    && mainSource.includes('regularizationUrl: getPlanRegularizationWhatsAppUrl')
     && mainSource.includes("<FreeTrialNotice")
     && !mainSource.includes("function AccessPreparing("),
   "As telas visuais de situação do acesso voltaram a depender do arquivo principal."

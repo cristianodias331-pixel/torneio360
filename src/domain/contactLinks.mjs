@@ -22,3 +22,8 @@ export function getPlanRegularizationWhatsAppUrl(profile, user) {
   const email = user?.email ? ` E-mail da conta: ${user.email}.` : "";
   return getPlatformWhatsAppUrl(`Olá! Meu período de acesso ao Torneio360 terminou e quero regularizar o pagamento do meu plano.${plan}${email}`);
 }
+
+export function getOrganizationSubscriptionWhatsAppUrl(user) {
+  const email = user?.email ? ` Meu e-mail de acesso é ${user.email}.` : "";
+  return getPlatformWhatsAppUrl(`Olá! Quero usar minha conta do Torneio360 também como organização e conhecer a assinatura para criar torneios e circuitos.${email}`);
+}

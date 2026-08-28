@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Building2, Check, CreditCard, ShieldCheck, UserRound } from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -19,6 +20,7 @@ import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 import NotificationCenter from "../notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "../notifications/useUnreadNotificationCount.js";
 import { PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
+import { getOrganizationSubscriptionWhatsAppUrl } from "../../domain/contactLinks.mjs";
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
 
@@ -45,7 +47,83 @@ function saveLocalAthleteDetails(userId, profile) {
   }
 }
 
-export default function MemberProfileWorkspace({ supabase, user, accessProfile, onLogout, publicPlatformHomeRuntime }) {
+function OrganizationAccessPanel({ user, access, activating, activationError, onActivate }) {
+  const accessState = access?.state || "available";
+  const needsRegularization = accessState === "expired" || accessState === "blocked" || accessState === "suspended";
+  const subscriptionUrl = access?.regularizationUrl || getOrganizationSubscriptionWhatsAppUrl(user);
+
+  return (
+    <section className="memberOrganizationAccess" aria-labelledby="member-organization-access-title">
+      <header>
+        <span className="memberOrganizationAccessIcon" aria-hidden="true"><Building2 /></span>
+        <div>
+          <span className="pageEyebrow">Conta única</span>
+          <h2 id="member-organization-access-title">
+            {needsRegularization ? "Reative sua organização" : "Use esta conta também como organização"}
+          </h2>
+          <p>
+            {needsRegularization
+              ? "Seu perfil de atleta continua gratuito. Regularize somente a assinatura usada para criar e administrar eventos."
+              : "Você mantém este perfil de atleta e ganha, na mesma conta, um perfil de organização para criar torneios e circuitos."}
+          </p>
+        </div>
+      </header>
+
+      <div className="memberOrganizationAccessFlow" aria-label="Como funciona a conta unificada">
+        <article>
+          <span><UserRound aria-hidden="true" /></span>
+          <div><strong>Perfil de atleta preservado</strong><small>Inscrições, histórico, conquistas, fotos e dados esportivos continuam aqui.</small></div>
+          <Check aria-hidden="true" />
+        </article>
+        <article>
+          <span><Building2 aria-hidden="true" /></span>
+          <div><strong>Nova identidade de organização</strong><small>Nome, capa, contatos, inscritos, torneios e circuitos ficam separados do atleta.</small></div>
+          <Check aria-hidden="true" />
+        </article>
+        <article>
+          <span><ShieldCheck aria-hidden="true" /></span>
+          <div><strong>Um login, permissões diferentes</strong><small>Você alterna entre os dois perfis e só a organização recebe recursos administrativos.</small></div>
+          <Check aria-hidden="true" />
+        </article>
+      </div>
+
+      <div className="memberOrganizationPlan">
+        <div>
+          <span><CreditCard aria-hidden="true" /></span>
+          <div>
+            <strong>{needsRegularization ? "Assinatura da organização pendente" : "Experimente a gestão antes de assinar"}</strong>
+            <small>{needsRegularization ? "A equipe do Torneio360 confirma o plano sem alterar seu perfil esportivo." : "O período de organização começa somente agora e não é renovado ao tocar novamente."}</small>
+          </div>
+        </div>
+        <div className="memberOrganizationPlanActions">
+          {!needsRegularization ? (
+            <button type="button" onClick={onActivate} disabled={activating}>
+              <Building2 aria-hidden="true" /> {activating ? "Ativando organização..." : "Ativar organização"}
+            </button>
+          ) : null}
+          <a href={subscriptionUrl} target="_blank" rel="noopener noreferrer">
+            <CreditCard aria-hidden="true" /> {needsRegularization ? "Regularizar assinatura" : "Conhecer a assinatura"}
+          </a>
+        </div>
+      </div>
+
+      {activationError ? <div className="memberOrganizationActivationError" role="alert">{activationError}</div> : null}
+      <p className="memberOrganizationAccessFootnote">
+        Ativar a organização não transforma nem apaga o atleta: são duas identidades vinculadas ao mesmo acesso.
+      </p>
+    </section>
+  );
+}
+
+export default function MemberProfileWorkspace({
+  supabase,
+  user,
+  accessProfile,
+  organizationAccess,
+  onActivateOrganization,
+  onLogout,
+  publicPlatformHomeRuntime,
+}) {
   const { unreadCount: unreadNotificationCount } = useUnreadNotificationCount({ supabase, enabled: Boolean(user?.id) });
   const fallback = useMemo(() => ({
     ...createMemberProfileFallback({ user, accessProfile }),
@@ -66,6 +144,8 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   const [imageEditor, setImageEditor] = useState(null);
   const [browsingTournament, setBrowsingTournament] = useState(null);
   const [browsingTournamentLoading, setBrowsingTournamentLoading] = useState(false);
+  const [organizationActivating, setOrganizationActivating] = useState(false);
+  const [organizationActivationError, setOrganizationActivationError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -238,7 +318,7 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
   }
 
   function navigate(panel) {
-    if (panel === "overview" || panel === "explore" || panel === "profile" || panel === "notifications") {
+    if (panel === "overview" || panel === "explore" || panel === "profile" || panel === "notifications" || panel === "organization") {
       setNotice(null);
       setBrowsingTournament(null);
       setActivePanel(panel);
@@ -248,6 +328,23 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
       tone: "info",
       message: "A criação de torneios e circuitos pertence a uma identidade de organização. Seu perfil de atleta continua no mesmo ambiente, apenas sem permissão de gestão.",
     });
+  }
+
+  async function activateOrganization() {
+    if (organizationActivating || typeof onActivateOrganization !== "function") return;
+    setOrganizationActivating(true);
+    setOrganizationActivationError("");
+    try {
+      await onActivateOrganization();
+    } catch (error) {
+      console.error("Não foi possível ativar a organização:", error);
+      const schemaMissing = /activate_my_organization|schema cache|function.*does not exist/i.test(`${error?.message || ""} ${error?.code || ""}`);
+      setOrganizationActivationError(schemaMissing
+        ? "A ativação já está preparada no site, mas a nova estrutura ainda precisa ser aplicada ao banco de homologação. Você pode falar com o atendimento sobre a assinatura enquanto isso."
+        : error?.message || "Não foi possível ativar a organização agora. Tente novamente.");
+    } finally {
+      setOrganizationActivating(false);
+    }
   }
 
   async function openPublishedTournament(item, initialTab = "") {
@@ -271,10 +368,12 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
     <UnifiedPlatformFrame
       activePanel={activePanel}
       hasSession
-      title={activePanel === "profile" ? "Meu perfil" : activePanel === "notifications" ? "Notificações" : activePanel === "explore" ? "Explorar" : "Início"}
-      eyebrow={activePanel === "profile" ? "Perfil de atleta" : activePanel === "notifications" ? "Central da plataforma" : activePanel === "explore" ? "Descobrir" : "Publicações"}
+      title={activePanel === "organization" ? "Organizar no Torneio360" : activePanel === "profile" ? "Meu perfil" : activePanel === "notifications" ? "Notificações" : activePanel === "explore" ? "Explorar" : "Início"}
+      eyebrow={activePanel === "organization" ? "Assinatura da organização" : activePanel === "profile" ? "Perfil de atleta" : activePanel === "notifications" ? "Central da plataforma" : activePanel === "explore" ? "Descobrir" : "Publicações"}
       description={activePanel === "profile"
         ? "Seu perfil pessoal como ele aparece para a comunidade. Somente você pode editar."
+        : activePanel === "organization"
+          ? "Mantenha o perfil esportivo e libere a gestão de torneios e circuitos nesta mesma conta."
         : activePanel === "notifications"
           ? "Acompanhe convites de dupla, inscrições e decisões importantes."
         : activePanel === "explore"
@@ -282,6 +381,8 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
           : "Acompanhe as publicações de torneios das organizações."}
       accountLabel="Sair"
       unreadNotificationCount={unreadNotificationCount}
+      showOrganizationAction
+      canCreate={false}
       onAccountAction={onLogout}
       onNavigate={navigate}
     >
@@ -307,7 +408,16 @@ export default function MemberProfileWorkspace({ supabase, user, accessProfile, 
         onSave={saveDetailsAndClose}
       />
       {activePanel === "notifications" ? <NotificationCenter supabase={supabase} onOpenTournament={(item) => openPublishedTournament(item)} /> : null}
-      {activePanel !== "profile" && activePanel !== "notifications" && browsingTournament
+      {activePanel === "organization" ? (
+        <OrganizationAccessPanel
+          user={user}
+          access={organizationAccess}
+          activating={organizationActivating}
+          activationError={organizationActivationError}
+          onActivate={activateOrganization}
+        />
+      ) : null}
+      {activePanel !== "profile" && activePanel !== "notifications" && activePanel !== "organization" && browsingTournament
           ? publicPlatformHomeRuntime.renderPublicTournament({
             tournament: browsingTournament,
             embedded: true,
