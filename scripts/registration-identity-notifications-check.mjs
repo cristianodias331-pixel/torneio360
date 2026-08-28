@@ -17,6 +17,7 @@ const galleryCover = read("src/features/media/organizationGalleryCover.mjs");
 const migration = read("supabase/migrations/202608270006_registration_identity_notifications.sql");
 const unifiedRegistrationMigration = read("supabase/migrations/202608270007_unified_athlete_registration.sql");
 const achievementsMigration = read("supabase/migrations/202608280001_fixed_doubles_and_athlete_achievements.sql");
+const persistentAchievementsMigration = read("supabase/migrations/202608280006_persistent_athlete_achievements.sql");
 const registrationStyles = read("src/styles/60-tournament-registration.css");
 const unifiedProfileStyles = read("src/styles/51-unified-profile.css");
 
@@ -90,6 +91,16 @@ assert.ok(
     && !organizer.includes("Identidades pendentes no pódio")
     && !organizer.includes("Confirmar 1º, 2º e 3º"),
   "As conquistas oficiais deixaram de ser sincronizadas automaticamente e sem bloqueio."
+);
+
+assert.ok(
+  persistentAchievementsMigration.includes("history_locked_at")
+    && persistentAchievementsMigration.includes("interval '24 hours'")
+    && persistentAchievementsMigration.includes("on delete set null")
+    && persistentAchievementsMigration.includes("tournament_name")
+    && persistentAchievementsMigration.includes("organization_name")
+    && persistentAchievementsMigration.includes("left join public.tournaments"),
+  "A conquista deixou de manter um histórico independente após a janela de correção de 24 horas."
 );
 
 const partialPairEntries = buildVerifiedPodiumEntries({

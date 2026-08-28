@@ -160,7 +160,7 @@ function AthletePerformance({ activity, profile, schemaNotice }) {
         <div className="athleteAchievementEmpty">
           <Award aria-hidden="true" />
           <strong>Nenhuma conquista oficial confirmada</strong>
-          <span>Quando a organização confirmar um 1º, 2º ou 3º lugar no pódio do torneio, ele aparecerá aqui com a data e a dupla vinculada.</span>
+          <span>Assim que os placares forem finalizados, o 1º, 2º ou 3º lugar aparecerá aqui automaticamente com a data e a dupla verificada.</span>
         </div>
       )}
 
@@ -209,7 +209,7 @@ function AthletePerformance({ activity, profile, schemaNotice }) {
       {!total && !circuits.length ? (
         <p className="athletePerformanceFootnote">Os gráficos serão preenchidos automaticamente após a primeira inscrição ou participação confirmada.</p>
       ) : (
-        <p className="athletePerformanceFootnote">Somente pódios confirmados pela organização entram nas conquistas. Resultados provisórios não alteram estas estatísticas.</p>
+        <p className="athletePerformanceFootnote">Somente resultados finalizados entram nas conquistas. Placar provisório não altera estas estatísticas.</p>
       )}
     </section>
   );
