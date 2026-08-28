@@ -1793,6 +1793,10 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   flex: none !important;
 }
 
+.proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button > span {
+  min-width: 0 !important;
+}
+
 @media (max-width: 700px) {
   .proDashboard.playAppShell .organizationProfileTabs,
   .proDashboard.playAppShell .organizationProfileTabs.hasRegistrantTab {
@@ -1837,6 +1841,12 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
     padding: 5px 2px !important;
     font-size: 9px !important;
     line-height: 1.05 !important;
+  }
+
+  .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button > span {
+    max-width: 100% !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
   }
 }
 

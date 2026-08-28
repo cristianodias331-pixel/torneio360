@@ -8829,11 +8829,12 @@ setNewPublicInfo({
       <button
         type="button"
         role="tab"
+        aria-label="Torneios/Circuitos"
         className={profileSubtab === "atividades" ? "active" : ""}
         onClick={() => openProfileSection("atividades", "athlete")}
         aria-selected={profileSubtab === "atividades"}
       >
-        <Trophy aria-hidden="true" /> Torneios/Circuitos
+        <Trophy aria-hidden="true" /> <span>Torneios<wbr />/Circuitos</span>
       </button>
       <button
         type="button"

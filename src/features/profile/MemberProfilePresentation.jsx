@@ -139,7 +139,8 @@ export function MemberProfileTabs({ activeTab, onChange, owner = false }) {
           onClick={() => onChange(id)}
           aria-selected={activeTab === id}
         >
-          <Icon aria-hidden="true" /> {label}
+          <Icon aria-hidden="true" />
+          <span>{id === "atividades" ? <>Torneios<wbr />/Circuitos</> : label}</span>
         </button>
       ))}
     </nav>

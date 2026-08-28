@@ -1128,6 +1128,10 @@ html[data-theme="dark"] body .proDashboard.playAppShell .publicMemberProfileTabs
   min-width: 0;
 }
 
+.publicMemberProfileTabs.athleteProfileTabs > button > span {
+  min-width: 0;
+}
+
 @media (max-width: 700px) {
   .publicMemberProfileTabs.athleteProfileTabs {
     display: grid;
@@ -1153,6 +1157,12 @@ html[data-theme="dark"] body .proDashboard.playAppShell .publicMemberProfileTabs
   .publicMemberProfileTabs.athleteProfileTabs > button svg {
     width: 14px;
     height: 14px;
+  }
+
+  .publicMemberProfileTabs.athleteProfileTabs > button > span {
+    max-width: 100%;
+    line-height: 1.05;
+    text-align: center;
   }
 }
 .publicMemberAthleteDetails {
