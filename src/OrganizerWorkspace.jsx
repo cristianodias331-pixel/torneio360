@@ -117,6 +117,7 @@ import {
 import { PlatformSidebar, PlatformTopbar } from "./features/appShell/PlatformChrome.jsx";
 import TournamentErrorBoundary from "./features/tournamentWorkspace/TournamentErrorBoundary.jsx";
 import MemberProfileDetailsModal from "./features/profile/MemberProfileDetailsModal.jsx";
+import useMemberHandleAvailability from "./features/profile/useMemberHandleAvailability.js";
 import ProfileImageEditor from "./features/profile/ProfileImageEditor.jsx";
 import AthleteProfileActivity from "./features/profile/AthleteProfileActivity.jsx";
 import OrganizationRegistrantsPanel from "./features/profile/OrganizationRegistrantsPanel.jsx";
@@ -1431,6 +1432,12 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [memberProfileStatus, setMemberProfileStatus] = useState("loading");
   const [memberProfileSaving, setMemberProfileSaving] = useState(false);
   const [memberProfileErrors, setMemberProfileErrors] = useState({});
+  const memberHandleAvailability = useMemberHandleAvailability({
+    supabase,
+    handle: memberProfile.handle,
+    currentHandle: memberProfileBaseRef.current?.handle || "",
+    enabled: memberProfileEditorOpen,
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -6833,6 +6840,7 @@ setNewPublicInfo({
         loading={memberProfileStatus === "loading"}
         saving={memberProfileSaving}
         schemaAvailable={memberProfileStatus !== "unavailable"}
+        handleAvailability={memberHandleAvailability}
         profileKind="athlete"
         onChange={updateMemberProfile}
         onClose={() => { if (!memberProfileSaving) setMemberProfileEditorOpen(false); }}

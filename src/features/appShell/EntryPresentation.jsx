@@ -95,11 +95,11 @@ export function BeachLogo({ variant = "light", layout = "stacked" } = {}) {
   return (
     <div className={`beachLogo torneio360Logo ${horizontal ? "torneio360LogoHorizontal" : ""} ${variant === "blue" ? "torneio360LogoBlue" : ""}`} aria-label="Torneio 360">
       {horizontal ? (
-        <svg className="torneio360HorizontalArtwork" viewBox="0 0 900 160" role="img" aria-hidden="true" preserveAspectRatio="xMinYMid meet">
-          <svg x="0" y="0" width="560" height="130" viewBox="10 10 580 118" preserveAspectRatio="xMinYMin meet" overflow="hidden">
+        <svg className="torneio360HorizontalArtwork" viewBox="0 0 900 150" role="img" aria-hidden="true" preserveAspectRatio="xMinYMid meet">
+          <svg x="0" y="8" width="560" height="118" viewBox="10 10 580 118" preserveAspectRatio="xMinYMin meet" overflow="hidden">
             <image href={logoSrc} width="599" height="280" />
           </svg>
-          <svg x="555" y="0" width="345" height="160" viewBox="245 105 345 165" preserveAspectRatio="xMinYMid meet" overflow="hidden">
+          <svg x="555" y="7" width="345" height="143" viewBox="245 128 345 142" preserveAspectRatio="xMinYMid meet" overflow="hidden">
             <image href={logoSrc} width="599" height="280" />
           </svg>
         </svg>

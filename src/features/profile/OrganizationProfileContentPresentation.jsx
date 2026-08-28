@@ -229,7 +229,7 @@ export default function OrganizationProfileContentPresentation({
             <strong>{gallery.length}/6</strong>
           </header>
 
-          {gallery.length > 0 ? (
+          {gallery.length > 0 || canEdit ? (
             <div className="unifiedMemberGalleryGrid">
               {gallery.map((photoUrl, index) => (
                 <figure key={`${photoUrl}-${index}`}>
@@ -252,7 +252,7 @@ export default function OrganizationProfileContentPresentation({
                   />
                   <PlusCircle aria-hidden="true" />
                   <strong>Adicionar fotos</strong>
-                  <small>Restam {6 - gallery.length}</small>
+                  <small>{gallery.length ? `Restam ${6 - gallery.length}` : "Escolha até 6 imagens"}</small>
                 </label>
               ) : null}
             </div>

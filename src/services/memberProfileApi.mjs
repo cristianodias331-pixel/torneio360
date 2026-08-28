@@ -155,3 +155,37 @@ export async function fetchPublicMemberDirectory({
     error: null,
   };
 }
+
+export async function checkMemberHandleAvailability({ supabase, handle, currentHandle = "" }) {
+  const normalizedHandle = String(handle || "").replace(/^@/, "").trim().toLocaleLowerCase("pt-BR");
+  const normalizedCurrent = String(currentHandle || "").replace(/^@/, "").trim().toLocaleLowerCase("pt-BR");
+
+  if (!/^[a-z0-9._]{3,30}$/.test(normalizedHandle)) {
+    return { available: false, valid: false, handle: normalizedHandle, source: "format" };
+  }
+  if (normalizedHandle === normalizedCurrent) {
+    return { available: true, valid: true, handle: normalizedHandle, source: "current" };
+  }
+
+  const { data, error } = await supabase.rpc("check_member_handle_availability", {
+    p_handle: normalizedHandle,
+  });
+
+  if (!error) {
+    return {
+      available: data?.available === true,
+      valid: data?.valid !== false,
+      handle: data?.handle || normalizedHandle,
+      source: "database",
+    };
+  }
+
+  if (!isUnavailableSchemaError(error) && !/check_member_handle_availability/i.test(String(error?.message || ""))) {
+    throw error;
+  }
+
+  const fallback = await fetchPublicMemberDirectory({ supabase, search: normalizedHandle, limit: 8 });
+  if (fallback.error) throw fallback.error;
+  const occupied = fallback.items.some((item) => String(item?.handle || "").toLocaleLowerCase("pt-BR") === normalizedHandle);
+  return { available: !occupied, valid: true, handle: normalizedHandle, source: "directory" };
+}

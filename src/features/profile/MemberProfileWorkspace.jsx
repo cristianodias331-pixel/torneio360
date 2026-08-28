@@ -14,12 +14,13 @@ import {
 } from "../../services/mediaStorage.mjs";
 import { loadMyMemberProfile, saveMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import MemberProfileDetailsModal from "./MemberProfileDetailsModal.jsx";
+import useMemberHandleAvailability from "./useMemberHandleAvailability.js";
 import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import AthleteProfileExperience from "./AthleteProfileExperience.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
 import NotificationCenter from "../notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "../notifications/useUnreadNotificationCount.js";
-import { PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
+import { PlatformGlobalSearch, PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import { getOrganizationSubscriptionWhatsAppUrl } from "../../domain/contactLinks.mjs";
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
@@ -146,6 +147,12 @@ export default function MemberProfileWorkspace({
   const [browsingTournamentLoading, setBrowsingTournamentLoading] = useState(false);
   const [organizationActivating, setOrganizationActivating] = useState(false);
   const [organizationActivationError, setOrganizationActivationError] = useState("");
+  const handleAvailability = useMemberHandleAvailability({
+    supabase,
+    handle: profile.handle,
+    currentHandle: baseProfileRef.current?.handle || "",
+    enabled: detailsOpen,
+  });
 
   useEffect(() => {
     let active = true;
@@ -403,6 +410,7 @@ export default function MemberProfileWorkspace({
         loading={status === "loading"}
         saving={saving}
         schemaAvailable={status !== "unavailable"}
+        handleAvailability={handleAvailability}
         onChange={updateProfile}
         onClose={() => { if (!saving) setDetailsOpen(false); }}
         onSave={saveDetailsAndClose}
@@ -435,7 +443,7 @@ export default function MemberProfileWorkspace({
           : activePanel !== "profile" && activePanel !== "notifications" && browsingTournamentLoading
             ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
             : activePanel === "overview" && publicPlatformHomeRuntime
-              ? <PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} onRegister={(_, item) => openPublishedTournament(item, "inscricao")} />
+              ? <><PlatformGlobalSearch runtime={publicPlatformHomeRuntime} onOpenTournament={openPublishedTournament} /><PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} onRegister={(_, item) => openPublishedTournament(item, "inscricao")} /></>
               : activePanel === "explore" && publicPlatformHomeRuntime
                 ? <PublicExploreSection runtime={publicPlatformHomeRuntime} hasSession onOpenTournament={openPublishedTournament} />
                 : activePanel === "profile" ? (

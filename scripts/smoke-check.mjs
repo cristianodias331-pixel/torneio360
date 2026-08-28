@@ -4056,7 +4056,9 @@ assert.ok(
     && publicPlatformHomeControllerSource.includes("embedded")
     && publicArenaPresentationSource.includes("UnifiedPlatformFrame")
     && publicArenaPresentationSource.includes("activePanel={activePanel}")
-    && publicArenaPresentationSource.includes("exploring ? <Explore /> : <TournamentFeed />")
+    && publicPlatformHomeControllerSource.includes("PlatformGlobalSearch")
+    && publicArenaPresentationSource.includes("<GlobalSearch />")
+    && publicArenaPresentationSource.includes("<TournamentFeed />")
     && !publicArenaPresentationSource.includes('<a href="#perfis">Atletas</a>')
     && !publicArenaPresentationSource.includes('<a href="#organizacoes">Organizações</a>'),
   "A visão geral pública voltou a usar uma página paralela ou diretórios fora do fluxo principal."

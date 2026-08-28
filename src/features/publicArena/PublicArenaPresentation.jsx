@@ -806,6 +806,7 @@ export function PublicPlatformHomeView({
   onNavigate,
   TournamentFeed,
   Explore,
+  GlobalSearch,
   tagline,
 }) {
   const exploring = activePanel === "explore";
@@ -823,7 +824,7 @@ export function PublicPlatformHomeView({
       onSignup={onAthleteSignup}
       onAccountAction={onAccountAction}
     >
-      {exploring ? <Explore /> : <TournamentFeed />}
+      {exploring ? <Explore /> : <><GlobalSearch /> <TournamentFeed /></>}
     </UnifiedPlatformFrame>
   );
 }

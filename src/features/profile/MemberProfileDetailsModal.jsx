@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { AtSign, Eye, MapPin, MessageCircle, Save, Send, X } from "lucide-react";
+import { AtSign, CheckCircle2, Eye, LoaderCircle, MapPin, MessageCircle, Save, Send, X, XCircle } from "lucide-react";
+import "../../styles/63-global-search-and-live-handle.css";
 
 export default function MemberProfileDetailsModal({
   open,
@@ -9,6 +10,7 @@ export default function MemberProfileDetailsModal({
   saving = false,
   schemaAvailable = true,
   profileKind = "athlete",
+  handleAvailability = null,
   onChange,
   onClose,
   onSave,
@@ -73,7 +75,7 @@ export default function MemberProfileDetailsModal({
 
           <div className="formField">
             <label htmlFor="member-modal-handle"><AtSign aria-hidden="true" /> Nome de usuário</label>
-            <div className="unifiedMemberHandleField">
+            <div className={`unifiedMemberHandleField handleAvailabilityField ${handleAvailability?.status || "idle"}`}>
               <span>@</span>
               <input
                 id="member-modal-handle"
@@ -84,10 +86,15 @@ export default function MemberProfileDetailsModal({
                 spellCheck="false"
                 placeholder="seunome"
                 onChange={(event) => onChange("handle", event.target.value)}
-                aria-invalid={Boolean(errors.handle)}
+                aria-invalid={Boolean(errors.handle) || ["invalid", "unavailable"].includes(handleAvailability?.status)}
               />
+              {handleAvailability?.status === "checking" ? <LoaderCircle className="handleAvailabilitySpinner" aria-hidden="true" /> : null}
+              {handleAvailability?.status === "available" ? <CheckCircle2 className="handleAvailabilityIcon" aria-hidden="true" /> : null}
+              {["invalid", "unavailable"].includes(handleAvailability?.status) ? <XCircle className="handleAvailabilityIcon" aria-hidden="true" /> : null}
             </div>
-            {errors.handle ? <small className="unifiedMemberFieldError">{errors.handle}</small> : <small>Seu identificador único na plataforma.</small>}
+            {errors.handle
+              ? <small className="unifiedMemberFieldError">{errors.handle}</small>
+              : <small className={`memberHandleAvailability ${handleAvailability?.status || "idle"}`} role="status" aria-live="polite">{handleAvailability?.message || "Seu identificador único na plataforma."}</small>}
           </div>
 
           <div className="formField fullField">
@@ -226,7 +233,7 @@ export default function MemberProfileDetailsModal({
             type="button"
             className="saveProfileBtn actionConfirmBtn"
             onClick={onSave}
-            disabled={loading || saving || !schemaAvailable}
+            disabled={loading || saving || !schemaAvailable || ["checking", "invalid", "unavailable"].includes(handleAvailability?.status)}
             aria-busy={saving}
           >
             <Save aria-hidden="true" /> {saving ? "Salvando..." : "Salvar alterações"}
