@@ -490,6 +490,13 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
 
   useEffect(() => {
     if (!bundle?.profile || bundle.pagination?.enabled !== true) return;
+    if (activeArenaTab === "circuits") {
+      ["active", "finished"].forEach((status) => {
+        const page = eventPagesRef.current?.circuits?.[status];
+        if (!page?.loaded && !page?.loading) void loadPublicEventPage({ kind: "circuits", status });
+      });
+      return;
+    }
     const currentPage = eventPagesRef.current?.[activeArenaTab]?.[activeStatusTab];
     if (!currentPage?.loaded && !currentPage?.loading) {
       void loadPublicEventPage({ kind: activeArenaTab, status: activeStatusTab });
@@ -682,6 +689,21 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       ? (eventPages?.circuits?.active?.total || 0) + (eventPages?.circuits?.finished?.total || 0)
       : circuits.length,
   };
+  const profilePagination = bundle.pagination?.enabled === true ? {
+    tournamentLoading: eventPages?.tournaments?.[activeStatusTab]?.loading === true,
+    tournamentHasMore: eventPages?.tournaments?.[activeStatusTab]?.hasMore === true,
+    onLoadMoreTournaments: () => loadPublicEventPage({
+      kind: "tournaments",
+      status: activeStatusTab,
+      append: true,
+    }),
+    circuitLoading: eventPages?.circuits?.active?.loading === true || eventPages?.circuits?.finished?.loading === true,
+    circuitHasMore: eventPages?.circuits?.active?.hasMore === true || eventPages?.circuits?.finished?.hasMore === true,
+    onLoadMoreCircuits: () => {
+      const status = eventPagesRef.current?.circuits?.active?.hasMore === true ? "active" : "finished";
+      return loadPublicEventPage({ kind: "circuits", status, append: true });
+    },
+  } : null;
 
   return (
     <PublicArenaPageView
@@ -691,6 +713,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       tournaments={tournaments}
       circuits={circuits}
       profileCounts={profileCounts}
+      profilePagination={profilePagination}
       hasSession={Boolean(session)}
       onRequireLogin={() => {
         const url = new URL(window.location.origin);

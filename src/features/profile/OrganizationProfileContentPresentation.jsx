@@ -77,6 +77,11 @@ export default function OrganizationProfileContentPresentation({
   canManageEvents = false,
   galleryBusy = false,
   galleryReady = true,
+  publicationCounts = null,
+  tournamentPageLoading = false,
+  tournamentHasMore = false,
+  circuitPageLoading = false,
+  circuitHasMore = false,
   onCreateTournament,
   onCreateCircuit,
   onOpenTournament,
@@ -94,11 +99,19 @@ export default function OrganizationProfileContentPresentation({
   onCopyPix,
   onPublicationFilterChange,
   onTournamentStatusChange,
+  onLoadMoreTournaments,
+  onLoadMoreCircuits,
 }) {
   const [publicationFilter, setPublicationFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [genderFilter, setGenderFilter] = useState(tournamentListGenderFilters.all);
   const [search, setSearch] = useState("");
+  const tournamentTotal = Number.isFinite(Number(publicationCounts?.tournaments))
+    ? Number(publicationCounts.tournaments)
+    : tournaments.length;
+  const circuitTotal = Number.isFinite(Number(publicationCounts?.circuits))
+    ? Number(publicationCounts.circuits)
+    : circuits.length;
 
   function selectPublicationFilter(nextFilter) {
     setPublicationFilter(nextFilter);
@@ -249,7 +262,7 @@ export default function OrganizationProfileContentPresentation({
   return (
     <div className="profileSubtabPanel organizationRealPublications">
       <div className="profilePublicationsHeader">
-        <div><strong>Publicações</strong><span>{tournaments.length} campeonato(s) criado(s)</span></div>
+        <div><strong>Publicações</strong><span>{tournamentTotal} campeonato(s) criado(s)</span></div>
         {canManageEvents ? (
           <div className="profilePublicationCreateActions">
             <button type="button" onClick={onCreateTournament}><PlusCircle aria-hidden="true" /> Criar torneio</button>
@@ -259,9 +272,9 @@ export default function OrganizationProfileContentPresentation({
       </div>
 
       <nav className="profilePublicationFilters" aria-label="Filtrar publicações" role="tablist">
-        <button type="button" role="tab" aria-selected={publicationFilter === "all"} className={publicationFilter === "all" ? "active" : ""} onClick={() => selectPublicationFilter("all")}>Tudo <span>{tournaments.length + circuits.length}</span></button>
-        <button type="button" role="tab" aria-selected={publicationFilter === "tournaments"} className={publicationFilter === "tournaments" ? "active" : ""} onClick={() => selectPublicationFilter("tournaments")}>Torneios <span>{tournaments.length}</span></button>
-        <button type="button" role="tab" aria-selected={publicationFilter === "circuits"} className={publicationFilter === "circuits" ? "active" : ""} onClick={() => selectPublicationFilter("circuits")}>Circuitos <span>{circuits.length}</span></button>
+        <button type="button" role="tab" aria-selected={publicationFilter === "all"} className={publicationFilter === "all" ? "active" : ""} onClick={() => selectPublicationFilter("all")}>Tudo <span>{tournamentTotal + circuitTotal}</span></button>
+        <button type="button" role="tab" aria-selected={publicationFilter === "tournaments"} className={publicationFilter === "tournaments" ? "active" : ""} onClick={() => selectPublicationFilter("tournaments")}>Torneios <span>{tournamentTotal}</span></button>
+        <button type="button" role="tab" aria-selected={publicationFilter === "circuits"} className={publicationFilter === "circuits" ? "active" : ""} onClick={() => selectPublicationFilter("circuits")}>Circuitos <span>{circuitTotal}</span></button>
       </nav>
 
       {publicationFilter !== "circuits" ? (
@@ -291,7 +304,7 @@ export default function OrganizationProfileContentPresentation({
           </div>
 
           <div className="profileTournamentGrid">
-            {visibleTournaments.length === 0 ? <div className="profileEmptyPost">Nenhum torneio corresponde aos filtros selecionados.</div> : visibleTournaments.map((tournament) => {
+            {visibleTournaments.length === 0 ? <div className="profileEmptyPost">{tournamentPageLoading ? "Carregando torneios..." : "Nenhum torneio corresponde aos filtros selecionados."}</div> : visibleTournaments.map((tournament) => {
               const details = tournament.data || {};
               const registrationOpen = isRegistrationDeadlineOpen(getTournamentRegistrationDeadline(tournament));
               return (
@@ -320,14 +333,15 @@ export default function OrganizationProfileContentPresentation({
               );
             })}
           </div>
+          {tournamentHasMore && onLoadMoreTournaments ? <button type="button" className="organizationProfileLoadMore" onClick={onLoadMoreTournaments} disabled={tournamentPageLoading} aria-busy={tournamentPageLoading}>{tournamentPageLoading ? "Carregando mais torneios..." : "Mostrar mais torneios"}</button> : null}
         </>
       ) : null}
 
       {publicationFilter !== "tournaments" ? (
         <>
-          <div className="profilePublicationsHeader profileCircuitsHeading"><strong>Circuitos</strong><span>{circuits.length} circuito(s) publicado(s)</span></div>
+          <div className="profilePublicationsHeader profileCircuitsHeading"><strong>Circuitos</strong><span>{circuitTotal} circuito(s) publicado(s)</span></div>
           <div className="profileCircuitPublicationGrid">
-            {visibleCircuits.length === 0 ? <div className="profileEmptyPost">Nenhum circuito corresponde aos filtros selecionados.</div> : visibleCircuits.map((circuit) => {
+            {visibleCircuits.length === 0 ? <div className="profileEmptyPost">{circuitPageLoading ? "Carregando circuitos..." : "Nenhum circuito corresponde aos filtros selecionados."}</div> : visibleCircuits.map((circuit) => {
               const normalized = normalizeCircuitForProfile(circuit);
               const cover = getCircuitCover(circuit);
               return (
@@ -343,6 +357,7 @@ export default function OrganizationProfileContentPresentation({
               );
             })}
           </div>
+          {circuitHasMore && onLoadMoreCircuits ? <button type="button" className="organizationProfileLoadMore" onClick={onLoadMoreCircuits} disabled={circuitPageLoading} aria-busy={circuitPageLoading}>{circuitPageLoading ? "Carregando mais circuitos..." : "Mostrar mais circuitos"}</button> : null}
         </>
       ) : null}
     </div>

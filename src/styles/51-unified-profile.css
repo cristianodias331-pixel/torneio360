@@ -968,6 +968,27 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   background: color-mix(in srgb, #f97316 12%, var(--ui-surface-raised, #fff));
 }
 
+.organizationProfileLoadMore {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  margin: 14px auto 0;
+  padding: 9px 18px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 12px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-raised, #fff);
+  box-shadow: var(--ui-shadow-soft, 0 8px 18px rgba(15, 23, 42, .08));
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.organizationProfileLoadMore:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
 .organizationRealAboutPanel {
   margin-top: 18px;
 }

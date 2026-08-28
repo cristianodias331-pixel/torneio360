@@ -284,6 +284,7 @@ export function PublicArenaPageView({
   tournaments = [],
   circuits = [],
   profileCounts = { tournaments: 0, circuits: 0 },
+  profilePagination = null,
   hasSession = false,
   onRequireLogin,
   pageClassName = "publicArenaRealPage",
@@ -356,6 +357,11 @@ export function PublicArenaPageView({
             tournaments={tournaments}
             circuits={circuits}
             gallery={organizationGallery}
+            publicationCounts={profileCounts}
+            tournamentPageLoading={profilePagination?.tournamentLoading === true}
+            tournamentHasMore={profilePagination?.tournamentHasMore === true}
+            circuitPageLoading={profilePagination?.circuitLoading === true}
+            circuitHasMore={profilePagination?.circuitHasMore === true}
             onOpenTournament={onOpenTournament}
             onRegisterTournament={(tournament) => onOpenTournament?.(tournament, { initialTab: "inscricao" })}
             onOpenCircuit={onOpenCircuit}
@@ -367,6 +373,8 @@ export function PublicArenaPageView({
               onArenaTabChange?.("tournaments");
               onStatusTabChange?.(status === "finished" ? "finished" : "active");
             }}
+            onLoadMoreTournaments={profilePagination?.onLoadMoreTournaments}
+            onLoadMoreCircuits={profilePagination?.onLoadMoreCircuits}
           />
 
         {/* Legacy simplified public profile retained temporarily while the canonical shared view is validated.
