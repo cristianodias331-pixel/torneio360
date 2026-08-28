@@ -127,11 +127,46 @@
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
 }
 
+.tournamentReadOnlyExperience .participantImportBar,
+.tournamentReadOnlyExperience .participantAttendanceToolbar,
+.tournamentReadOnlyExperience .organizationCourtCenterShortcut,
+.tournamentReadOnlyExperience .actionGenerateBtn,
+.tournamentReadOnlyExperience .compactRegenerateBtn,
+.tournamentReadOnlyExperience .deleteBtn,
+.tournamentReadOnlyExperience .actions:not(.tournamentHeaderActions) {
+  display: none !important;
+}
+
+.tournamentReadOnlyExperience input,
+.tournamentReadOnlyExperience select,
+.tournamentReadOnlyExperience textarea,
+.tournamentReadOnlyExperience [contenteditable="true"] {
+  pointer-events: none;
+  cursor: default;
+}
+
+.tournamentReadOnlyExperience .savingBadge.readOnly {
+  color: #075985;
+  background: #ecfeff;
+  border-color: #a5f3fc;
+}
+
+html[data-theme="dark"] .tournamentReadOnlyExperience .savingBadge.readOnly,
+.theme-dark .tournamentReadOnlyExperience .savingBadge.readOnly {
+  color: #a5f3fc;
+  background: rgba(8, 47, 73, .72);
+  border-color: rgba(34, 211, 238, .38);
+}
+
 .proDashboard.playAppShell .organizationSubTabs button.organizationCourtCenterShortcut {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 7px !important;
+}
+
+html body .proDashboard.playAppShell .tournamentReadOnlyExperience .organizationSubTabs button.organizationCourtCenterShortcut {
+  display: none !important;
 }
 
 .organizationCourtCenterShortcut svg {

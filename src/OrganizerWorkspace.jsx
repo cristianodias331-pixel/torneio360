@@ -9509,6 +9509,7 @@ function TournamentScreen({
   onOpenCourtCenter,
   onRegisterCentralCourtNumber,
   onCourtUsagesChange,
+  readOnly = false,
 }) {
   const config = modalityConfig[tournament.type];
 
@@ -9529,7 +9530,7 @@ function TournamentScreen({
   }
 
   const initialTournamentState = useMemo(() => {
-    const draft = readTournamentDraft(userId, tournament);
+    const draft = readOnly ? null : readTournamentDraft(userId, tournament);
     const sourceData = draft?.data || tournament.data;
     const normalizedData = normalizeTournamentData(tournament.type, sourceData);
     const playRankingMigration = migratePlayRankingBracketForReferenceProfile(tournament, normalizedData);
@@ -9545,12 +9546,12 @@ function TournamentScreen({
       baseUpdatedAt: draft?.baseUpdatedAt || tournament.updated_at || null,
       baseRevision: draft?.baseRevision ?? getCollaborationRevision(tournament),
       baseData: draft?.baseData || tournament.data || {},
-      shouldPersistRepair: repairNeeded && repairIsSafe,
-      unsafeRepairDetected: repairNeeded && !repairIsSafe,
+      shouldPersistRepair: !readOnly && repairNeeded && repairIsSafe,
+      unsafeRepairDetected: !readOnly && repairNeeded && !repairIsSafe,
       allowScoreRegression: draft?.allowScoreRegression === true || playRankingMigration.applied,
       playRankingMigration,
     };
-  }, [tournament.id, tournament.type, userId]);
+  }, [tournament.id, tournament.type, userId, readOnly]);
   const initialDataWasRepairedRef = useRef(
     initialTournamentState.shouldPersistRepair
   );
@@ -9586,7 +9587,9 @@ function TournamentScreen({
   const participantAttendanceEntries = getParticipantAttendanceEntries(config, data);
   const pendingParticipantEntries = participantAttendanceEntries.filter((entry) => !entry.confirmed);
 
-  const [savingStatus, setSavingStatus] = useState(initialTournamentState.recoveredDraft ? "Pendente de sincronização" : "Salvo na nuvem");
+  const [savingStatus, setSavingStatus] = useState(readOnly
+    ? "Somente visualização"
+    : initialTournamentState.recoveredDraft ? "Pendente de sincronização" : "Salvo na nuvem");
   const [shuffleOverlay, setShuffleOverlay] = useState(null);
   const [shuffleVideoSnapshot, setShuffleVideoSnapshot] = useState(null);
   const [tieBreakDraw, setTieBreakDraw] = useState(null);
@@ -9620,7 +9623,7 @@ function TournamentScreen({
   });
   const supportsTournamentFormatConfiguration = isCupType(config) || isFlexibleSimpleType(config) || isReizinhoType(config);
   const [activeOrganizationTab, setActiveOrganizationTab] = useState(() => (
-    supportsTournamentFormatConfiguration ? "formato" : "participantes"
+    readOnly ? "participantes" : supportsTournamentFormatConfiguration ? "formato" : "participantes"
   ));
 
   useEffect(() => {
@@ -9630,6 +9633,7 @@ function TournamentScreen({
   }, [supportsTournamentFormatConfiguration, activeOrganizationTab]);
 
   async function updateTournamentUrl(next = {}) {
+    if (readOnly) return;
     const params = new URLSearchParams(window.location.search);
     params.set("aba", "criar");
     params.set("torneio", tournament.id);
@@ -9745,6 +9749,7 @@ function TournamentScreen({
   }
 
   function setData(nextValue, { allowScoreRegression = false } = {}) {
+    if (readOnly) return;
     if (unsafeRepairDetectedRef.current) {
       setNotice({
         type: "warning",
@@ -9806,7 +9811,14 @@ function TournamentScreen({
         if (!active) return;
         setApprovedAthleteIdentities(result.identities);
         const merged = applyApprovedRegistrationsToTournamentData(latestDataRef.current, config, result.identities);
-        if (merged.changed) setData(merged.data);
+        if (merged.changed) {
+          if (readOnly) {
+            latestDataRef.current = merged.data;
+            setDataState(merged.data);
+          } else {
+            setData(merged.data);
+          }
+        }
       })
       .catch((error) => {
         console.warn("Não foi possível sincronizar os inscritos confirmados com as vagas:", error);
@@ -10362,6 +10374,10 @@ function TournamentScreen({
   }, []);
 
   async function handleBack() {
+    if (readOnly) {
+      onBack();
+      return;
+    }
     const canLeave = await flushPendingTournamentSave();
     if (!canLeave) return;
 
@@ -11851,6 +11867,9 @@ const courtEditorUsedNumbers = courtEditor
   : [];
 
   function SavingStatusBadge() {
+    if (readOnly) {
+      return <span className="savingBadge readOnly">Somente visualização</span>;
+    }
     const normalizedStatus = savingStatus.toLowerCase();
     const statusClass = /erro|revisão/.test(normalizedStatus)
       ? "error"
@@ -11996,7 +12015,7 @@ return (
       document.body
     )}
 
-    <div className="appPage">
+    <div className={`appPage${readOnly ? " tournamentReadOnlyExperience" : ""}`}>
       <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
         <div>
           <div className="tournamentHeaderTitleRow">
@@ -12505,4 +12524,12 @@ return (
 export default function OrganizerWorkspaceDashboard({ supabase, ...dashboardProps }) {
   const { Dashboard } = useMemo(() => createOrganizerWorkspace({ supabase }), [supabase]);
   return <Dashboard {...dashboardProps} />;
+}
+
+export function TournamentWorkspaceScreen({ supabase, ...screenProps }) {
+  const { TournamentScreen: RealTournamentScreen } = useMemo(
+    () => createOrganizerWorkspace({ supabase }),
+    [supabase]
+  );
+  return <RealTournamentScreen {...screenProps} />;
 }

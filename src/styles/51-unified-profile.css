@@ -1482,6 +1482,23 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   object-position: center;
 }
 
+.athleteProfileSharedGallery .unifiedMemberGalleryGrid figure img[role="button"] {
+  cursor: zoom-in;
+}
+
+.athleteProfileGalleryZoom {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 18px;
+  height: 18px;
+  padding: 4px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(15, 23, 42, .72);
+  pointer-events: none;
+}
+
 .unifiedMemberGalleryGrid figure button {
   position: absolute;
   right: 7px;
