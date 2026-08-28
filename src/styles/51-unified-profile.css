@@ -1593,3 +1593,213 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
     justify-content: center;
   }
 }
+
+/* Perfil real compartilhado: proprietário e visitante usam a mesma superfície. */
+.organizationSharedPublications {
+  display: grid;
+  gap: 12px;
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaTabs,
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaStatusTabs {
+  gap: 5px;
+  padding: 4px;
+  border-radius: 13px;
+  border-color: var(--ui-border, #c8d4e6);
+  background: var(--ui-surface, #fff);
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaTabs button,
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaStatusTabs button {
+  min-height: 38px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  color: var(--ui-muted, #637189);
+  font-size: 11px;
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaTabs button.active,
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaStatusTabs button.active {
+  color: #fff;
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventGrid {
+  gap: 10px;
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCard {
+  position: relative;
+  min-height: 0;
+  gap: 11px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  color: var(--ui-text, #24344d);
+  background: var(--ui-surface, #fff);
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCardWithCover {
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  overflow: visible;
+  padding: 0;
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCard h2 {
+  color: var(--ui-text-strong, #102038);
+}
+
+.publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCard p {
+  color: var(--ui-muted, #637189);
+}
+
+.profileEventOwnerMenu {
+  position: absolute;
+  z-index: 4;
+  top: 8px;
+  right: 8px;
+}
+
+.profileEventOwnerMenu summary {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 10px;
+  color: var(--ui-text-strong, #102038);
+  background: color-mix(in srgb, var(--ui-surface, #fff) 92%, transparent);
+  box-shadow: 0 8px 20px rgb(15 23 42 / 12%);
+  cursor: pointer;
+  list-style: none;
+}
+
+.profileEventOwnerMenu summary::-webkit-details-marker { display: none; }
+.profileEventOwnerMenu summary svg { width: 17px; height: 17px; }
+
+.profileEventOwnerMenu > div {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 168px;
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 12px;
+  background: var(--ui-surface-raised, #fff);
+  box-shadow: 0 18px 42px rgb(15 23 42 / 20%);
+}
+
+.profileEventOwnerMenu button {
+  display: flex !important;
+  width: 100% !important;
+  min-height: 36px !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  margin: 0 !important;
+  padding: 7px 9px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  color: var(--ui-text-strong, #102038) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+}
+
+.profileEventOwnerMenu button:hover { background: var(--ui-surface-muted, #eef3fa) !important; }
+.profileEventOwnerMenu button.danger { color: #dc2626 !important; }
+.profileEventOwnerMenu button svg { width: 15px; height: 15px; }
+
+.organizationSharedGallery .publicOrganizationGalleryGrid {
+  align-items: stretch;
+}
+
+.organizationSharedGalleryItem {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+}
+
+.organizationSharedGalleryItem > button:first-child {
+  width: 100%;
+  height: 100%;
+}
+
+.organizationSharedGalleryItem .organizationSharedGalleryRemove {
+  position: absolute;
+  z-index: 2;
+  right: 7px;
+  top: 7px;
+  width: auto;
+  height: auto;
+  min-height: 30px;
+  aspect-ratio: auto;
+  padding: 5px 9px;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 9px;
+  color: #fff;
+  background: rgb(127 29 29 / 86%);
+  box-shadow: 0 7px 16px rgb(15 23 42 / 18%);
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.organizationSharedGalleryAdd {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  border: 1px dashed color-mix(in srgb, #ff6b2c 60%, var(--ui-border, #c8d4e6));
+  border-radius: 12px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-muted, #eef3fa);
+  cursor: pointer;
+  text-align: center;
+}
+
+.organizationSharedGalleryAdd input { position: absolute; opacity: 0; pointer-events: none; }
+.organizationSharedGalleryAdd svg { width: 24px; height: 24px; color: #ff6b2c; }
+.organizationSharedGalleryAdd small { color: var(--ui-muted, #637189); }
+.organizationSharedGalleryActions { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+@media (max-width: 700px) {
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCard,
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCardWithCover {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 9px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCardWithCover .publicArenaEventCover {
+    width: 58px;
+    height: 58px;
+    min-height: 58px;
+    border-radius: 12px;
+  }
+
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventBody {
+    padding: 0;
+  }
+
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCard > button,
+  .publicOrganizationRealProfile .organizationSharedPublications .publicArenaEventCardWithCover > button {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 42px;
+    margin: 0;
+  }
+
+  .profileEventOwnerMenu {
+    top: 6px;
+    right: 6px;
+  }
+
+  .organizationSharedGalleryActions > button { width: 100%; }
+}

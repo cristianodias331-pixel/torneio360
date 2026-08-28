@@ -4,11 +4,17 @@ import {
   AtSign,
   CalendarDays,
   ClipboardCheck,
+  Copy,
   CreditCard,
+  Edit3,
   GitBranch,
   MapPin,
   MessageCircle,
+  MoreHorizontal,
+  PlusCircle,
   Search,
+  Share2,
+  Trash2,
   Trophy,
   UserRound,
   Users,
@@ -71,6 +77,15 @@ function PublicImagePreviewButton({ src, previewSrc, alt, title, variant, onPrev
       <span className="publicImageZoomBadge" aria-hidden="true"><ZoomIn /></span>
     </button>
   );
+}
+
+function getSafePublicHttpUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
 }
 
 export function PublicRegistrationStatusView({ open, whatsapp, eventName, getWhatsAppUrl, hasSession = false, onRequireLogin }) {
@@ -161,6 +176,11 @@ export function PublicArenaTournamentCardsView({
   onRequireLogin,
   onPreviewImage,
   onRequestCover,
+  canManageEvents = false,
+  onManage,
+  onEdit,
+  onShare,
+  onDelete,
 }) {
   const groups = (items || []).reduce((result, tournament) => {
     const details = tournament.data || {};
@@ -216,6 +236,17 @@ export function PublicArenaTournamentCardsView({
         className={`card publicArenaEventCard publicArenaEventCardWithCover ${grouped ? "publicArenaGroupedCategoryCard" : ""}`}
         key={tournament.id}
       >
+        {canManageEvents ? (
+          <details className="profileEventOwnerMenu">
+            <summary aria-label={`Gerenciar ${tournament.name}`} title="Gerenciar publicação"><MoreHorizontal aria-hidden="true" /></summary>
+            <div>
+              {onManage ? <button type="button" onClick={() => onManage(tournament)}><Trophy aria-hidden="true" /> Gerenciar</button> : null}
+              {onEdit ? <button type="button" onClick={() => onEdit(tournament)}><Edit3 aria-hidden="true" /> Editar</button> : null}
+              {onShare ? <button type="button" onClick={() => onShare(tournament)}><Share2 aria-hidden="true" /> Compartilhar</button> : null}
+              {onDelete ? <button type="button" className="danger" onClick={() => onDelete(tournament)}><Trash2 aria-hidden="true" /> Excluir</button> : null}
+            </div>
+          </details>
+        ) : null}
         <div className={`publicArenaEventCover ${coverVariant}`}>
           {coverImage ? (
             <PublicImagePreviewButton
@@ -276,6 +307,262 @@ export function PublicArenaTournamentCardsView({
   });
 }
 
+/**
+ * Conteúdo público único do perfil da organização.
+ * Proprietário e visitante renderizam estas mesmas seções; as permissões
+ * apenas acrescentam os controles de edição e gestão ao proprietário.
+ */
+export function OrganizationProfileSectionsView({
+  activeProfileTab,
+  canEdit = false,
+  canManageEvents = false,
+  arenaName,
+  organizer,
+  organizationGallery = [],
+  contactDescription = "Torneios e circuitos aparecem aqui automaticamente desde a criação.",
+  onEditAbout,
+  onAddGalleryPhotos,
+  onRemoveGalleryPhoto,
+  onSaveGallery,
+  galleryBusy = false,
+  galleryReady = true,
+  activeArenaTab,
+  activeStatusTab,
+  activeItems = [],
+  finishedItems = [],
+  visibleItems = [],
+  onArenaTabChange,
+  onStatusTabChange,
+  onOpenTournament,
+  onOpenCircuit,
+  openingPublicId = null,
+  openingCircuitId = null,
+  getWhatsAppUrl,
+  getCircuitStatus,
+  getCircuitDateLabel,
+  getCircuitTournamentCount,
+  TournamentCards,
+  tournamentCardRuntime = {},
+  onRequestTournamentCover,
+  onRequestCircuitCover,
+  serverPagination = null,
+  hasSession = false,
+  onRequireLogin,
+  onCreateTournament,
+  onCreateCircuit,
+  onManageTournament,
+  onEditTournament,
+  onShareTournament,
+  onDeleteTournament,
+  onManageCircuit,
+  onEditCircuit,
+  onShareCircuit,
+  onDeleteCircuit,
+}) {
+  const initialVisibleItems = 8;
+  const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
+  const [previewImage, setPreviewImage] = React.useState(null);
+
+  React.useEffect(() => {
+    setVisibleLimit(initialVisibleItems);
+  }, [activeArenaTab, activeStatusTab]);
+
+  const usesServerPagination = Boolean(serverPagination);
+  const displayedItems = usesServerPagination ? visibleItems : visibleItems.slice(0, visibleLimit);
+  const visibleTotal = activeStatusTab === "finished"
+    ? serverPagination?.finishedTotal ?? finishedItems.length
+    : serverPagination?.activeTotal ?? activeItems.length;
+  const remainingItems = Math.max(0, visibleTotal - displayedItems.length);
+
+  React.useEffect(() => {
+    if (activeProfileTab !== "publicacoes" || activeArenaTab !== "circuits" || !onRequestCircuitCover) return;
+    displayedItems.forEach((item) => {
+      const coverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl;
+      if (!coverImage) onRequestCircuitCover(item);
+    });
+  }, [activeProfileTab, activeArenaTab, displayedItems, onRequestCircuitCover]);
+
+  if (activeProfileTab === "contato") {
+    return (
+      <section className="publicArenaContacts organizationAboutOverview publicOrganizationAboutOverview profileSubtabPanel">
+        <header>
+          <div>
+            <span>Sobre a organização</span>
+            <h2>{arenaName}</h2>
+            <p>{contactDescription}</p>
+          </div>
+          {canEdit && onEditAbout ? <button type="button" className="secondaryBtn" onClick={onEditAbout}><Edit3 aria-hidden="true" /> Editar informações</button> : null}
+        </header>
+        <div className="organizationAboutGrid">
+          <article><UserRound aria-hidden="true" /><span><small>Responsável</small><strong>{organizer.organizerName || "Não informado"}</strong></span></article>
+          <article><MapPin aria-hidden="true" /><span><small>Endereço</small><strong>{[organizer.city, organizer.state].filter(Boolean).join("/") || "Não informado"}</strong><em>{organizer.address || "Endereço não informado"}</em>{getSafePublicHttpUrl(organizer.mapsLink) ? <a href={getSafePublicHttpUrl(organizer.mapsLink)} target="_blank" rel="noreferrer">Abrir no mapa</a> : null}</span></article>
+          <article><MessageCircle aria-hidden="true" /><span><small>WhatsApp</small>{organizer.whatsapp ? <a href={getWhatsAppUrl(organizer.whatsapp)} target="_blank" rel="noreferrer"><strong>{organizer.whatsapp}</strong></a> : <strong>Não informado</strong>}</span></article>
+          <article><AtSign aria-hidden="true" /><span><small>Instagram</small>{getSafePublicHttpUrl(organizer.instagramLink) ? <a href={getSafePublicHttpUrl(organizer.instagramLink)} target="_blank" rel="noreferrer"><strong>{organizer.instagramHandle || "Abrir Instagram"}</strong></a> : <strong>{organizer.instagramHandle || "Não informado"}</strong>}</span></article>
+          <article><Users aria-hidden="true" /><span><small>Grupo da organização</small>{getSafePublicHttpUrl(organizer.whatsappGroupLink) ? <a href={getSafePublicHttpUrl(organizer.whatsappGroupLink)} target="_blank" rel="noreferrer"><strong>Entrar no grupo do WhatsApp</strong></a> : <strong>Link não informado</strong>}</span></article>
+          <article><CreditCard aria-hidden="true" /><span><small>Chave Pix pública</small><strong>{organizer.pixKey || "Não informada"}</strong>{organizer.pixKey ? <button type="button" className="organizationCopyValue" onClick={() => navigator.clipboard?.writeText(organizer.pixKey)}><Copy aria-hidden="true" /> Copiar chave</button> : null}</span></article>
+          <article><CreditCard aria-hidden="true" /><span><small>Pagamento com cartão</small>{getSafePublicHttpUrl(organizer.cardPaymentLink) ? <a href={getSafePublicHttpUrl(organizer.cardPaymentLink)} target="_blank" rel="noreferrer"><strong>Abrir link seguro de pagamento</strong></a> : <strong>Link não informado</strong>}</span></article>
+        </div>
+      </section>
+    );
+  }
+
+  if (activeProfileTab === "fotos") {
+    return (
+      <section className="publicOrganizationGallerySection profileSubtabPanel profilePhotosPanel organizationSharedGallery">
+        <header><div><h2>Fotos da organização</h2><p>Galeria institucional do perfil. A capa permanece separada.</p></div><span>{organizationGallery.length}/6</span></header>
+        <div className="publicOrganizationGalleryGrid">
+          {organizationGallery.map((photoUrl, index) => (
+            <div className="organizationSharedGalleryItem" key={`${photoUrl}-${index}`}>
+              <button
+                type="button"
+                onClick={() => setPreviewImage({ src: photoUrl, alt: `Foto ${index + 1} de ${arenaName}`, title: arenaName })}
+                aria-label={`Ampliar foto ${index + 1} da organização`}
+              >
+                <img src={photoUrl} alt={`Foto ${index + 1} de ${arenaName}`} loading="lazy" decoding="async" />
+                <span><ZoomIn aria-hidden="true" /></span>
+              </button>
+              {canEdit && onRemoveGalleryPhoto ? <button type="button" className="organizationSharedGalleryRemove" onClick={() => onRemoveGalleryPhoto(index)} disabled={galleryBusy}>Remover</button> : null}
+            </div>
+          ))}
+          {canEdit && organizationGallery.length < 6 ? (
+            <label className="organizationSharedGalleryAdd">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={galleryBusy || !galleryReady}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  if (files.length) onAddGalleryPhotos?.(files);
+                  event.target.value = "";
+                }}
+              />
+              <PlusCircle aria-hidden="true" />
+              <strong>Adicionar fotos</strong>
+              <small>Restam {6 - organizationGallery.length}</small>
+            </label>
+          ) : null}
+        </div>
+        {!canEdit && organizationGallery.length === 0 ? <div className="profileEmptyPost">Esta organização ainda não adicionou fotos à galeria.</div> : null}
+        {canEdit && onSaveGallery ? (
+          <div className="organizationSharedGalleryActions">
+            <button type="button" className="saveProfileBtn actionConfirmBtn" onClick={onSaveGallery} disabled={galleryBusy || !galleryReady} aria-busy={galleryBusy}>
+              {galleryBusy ? "Salvando fotos..." : "Salvar fotos da organização"}
+            </button>
+          </div>
+        ) : null}
+        <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
+      </section>
+    );
+  }
+
+  if (activeProfileTab !== "publicacoes") return null;
+
+  return (
+    <div className="profileSubtabPanel organizationSharedPublications">
+      <div className="profilePublicationsHeader publicProfilePublicationsHeader">
+        <div><strong>Publicações</strong><span>Torneios e circuitos publicados pela organização</span></div>
+        {canManageEvents ? (
+          <div className="profilePublicationCreateActions">
+            {onCreateTournament ? <button type="button" onClick={onCreateTournament}><PlusCircle aria-hidden="true" /> Criar torneio</button> : null}
+            {onCreateCircuit ? <button type="button" onClick={onCreateCircuit}><GitBranch aria-hidden="true" /> Criar circuito</button> : null}
+          </div>
+        ) : null}
+      </div>
+
+      <nav className="publicArenaTabs" aria-label="Conteúdo público da organização">
+        <button type="button" className={activeArenaTab === "tournaments" ? "active" : ""} onClick={() => onArenaTabChange("tournaments")}><Trophy aria-hidden="true" /> Torneios</button>
+        <button type="button" className={activeArenaTab === "circuits" ? "active" : ""} onClick={() => onArenaTabChange("circuits")}><GitBranch aria-hidden="true" /> Circuitos</button>
+      </nav>
+
+      <nav className="publicArenaStatusTabs" aria-label="Situação dos eventos">
+        <button type="button" className={activeStatusTab === "active" ? "active" : ""} onClick={() => onStatusTabChange("active")}>Ativos <span>{serverPagination?.activeTotal ?? activeItems.length}</span></button>
+        <button type="button" className={activeStatusTab === "finished" ? "active" : ""} onClick={() => onStatusTabChange("finished")}>Encerrados <span>{serverPagination?.finishedTotal ?? finishedItems.length}</span></button>
+      </nav>
+
+      <section className="publicArenaEventGrid" aria-live="polite">
+        {serverPagination?.loading && displayedItems.length === 0 ? (
+          <div className="card publicArenaEmpty">Carregando eventos...</div>
+        ) : serverPagination?.error && displayedItems.length === 0 ? (
+          <div className="card publicArenaEmpty">{serverPagination.error}</div>
+        ) : visibleItems.length === 0 ? (
+          <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
+        ) : activeArenaTab === "tournaments" ? (
+          <TournamentCards
+            {...tournamentCardRuntime}
+            items={displayedItems}
+            organizer={organizer}
+            onOpen={onOpenTournament}
+            openingPublicId={openingPublicId}
+            onPreviewImage={setPreviewImage}
+            onRequestCover={onRequestTournamentCover}
+            hasSession={hasSession}
+            onRequireLogin={onRequireLogin}
+            canManageEvents={canManageEvents}
+            onManage={onManageTournament}
+            onEdit={onEditTournament}
+            onShare={onShareTournament}
+            onDelete={onDeleteTournament}
+          />
+        ) : displayedItems.map((item) => {
+          const circuitStatus = getCircuitStatus(item);
+          const circuitCoverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl || "";
+          const circuitCoverThumbnail = item.ranking_settings?.coverImageThumbnailUrl || item.rankingSettings?.coverImageThumbnailUrl || item.coverImageThumbnailUrl || "";
+          const circuitImage = circuitCoverThumbnail || circuitCoverImage || organizer.photoUrl || "";
+          const circuitImageVariant = circuitCoverImage || circuitCoverThumbnail ? "event-cover" : "profile-photo";
+          return (
+            <article className={`card publicArenaEventCard publicArenaCircuitCard ${circuitImage ? "publicArenaEventCardWithCover" : ""}`} key={item.id}>
+              {canManageEvents ? (
+                <details className="profileEventOwnerMenu">
+                  <summary aria-label={`Gerenciar ${item.name}`} title="Gerenciar publicação"><MoreHorizontal aria-hidden="true" /></summary>
+                  <div>
+                    {onManageCircuit ? <button type="button" onClick={() => onManageCircuit(item)}><GitBranch aria-hidden="true" /> Gerenciar</button> : null}
+                    {onEditCircuit ? <button type="button" onClick={() => onEditCircuit(item)}><Edit3 aria-hidden="true" /> Editar</button> : null}
+                    {onShareCircuit ? <button type="button" onClick={() => onShareCircuit(item)}><Share2 aria-hidden="true" /> Compartilhar</button> : null}
+                    {onDeleteCircuit ? <button type="button" className="danger" onClick={() => onDeleteCircuit(item)}><Trash2 aria-hidden="true" /> Excluir</button> : null}
+                  </div>
+                </details>
+              ) : null}
+              {circuitImage ? (
+                <div className={`publicArenaEventCover ${circuitImageVariant}`}>
+                  <PublicImagePreviewButton
+                    src={circuitImage}
+                    previewSrc={circuitCoverImage || circuitCoverThumbnail || organizer.photoUrl}
+                    alt={circuitImageVariant === "event-cover" ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "organização"}`}
+                    title={circuitImageVariant === "event-cover" ? item.name : organizer.arenaName || "Perfil da organização"}
+                    variant={circuitImageVariant}
+                    onPreview={setPreviewImage}
+                  />
+                </div>
+              ) : <div className="publicArenaEventIcon"><GitBranch aria-hidden="true" /></div>}
+              <div>
+                <small>Circuito</small><h2>{item.name}</h2>
+                <span className={`publicCircuitStatus ${circuitStatus}`}>{circuitStatus === "closed" ? "Encerrado" : "Em andamento"}</span>
+                <p>{getCircuitDateLabel(item) ? <span><CalendarDays aria-hidden="true" /> {getCircuitDateLabel(item)}</span> : null}<span>{getCircuitTournamentCount(item)} torneio(s)</span></p>
+              </div>
+              <button type="button" onClick={() => onOpenCircuit(item)} disabled={openingCircuitId === item.id} aria-busy={openingCircuitId === item.id}>
+                {openingCircuitId === item.id ? "Abrindo..." : "Ver circuito"}
+              </button>
+            </article>
+          );
+        })}
+        {remainingItems > 0 && (!usesServerPagination || serverPagination.hasMore) ? (
+          <button
+            type="button"
+            className="publicArenaLoadMore"
+            onClick={usesServerPagination ? serverPagination.onLoadMore : () => setVisibleLimit((current) => Math.min(current + initialVisibleItems, visibleItems.length))}
+            disabled={serverPagination?.loading === true}
+            aria-busy={serverPagination?.loading === true}
+          >
+            {serverPagination?.loading ? "Carregando mais eventos..." : "Mostrar mais eventos"} <span>{remainingItems}</span>
+          </button>
+        ) : null}
+      </section>
+      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
+    </div>
+  );
+}
+
 export function PublicArenaPageView({
   arenaName,
   organizer,
@@ -308,29 +595,7 @@ export function PublicArenaPageView({
   serverPagination = null,
   embedded = false,
 }) {
-  const initialVisibleItems = 8;
-  const [visibleLimit, setVisibleLimit] = React.useState(initialVisibleItems);
-  const [previewImage, setPreviewImage] = React.useState(null);
   const [activeProfileTab, setActiveProfileTab] = React.useState("publicacoes");
-
-  React.useEffect(() => {
-    setVisibleLimit(initialVisibleItems);
-  }, [activeArenaTab, activeStatusTab]);
-
-  const usesServerPagination = Boolean(serverPagination);
-  const displayedItems = usesServerPagination ? visibleItems : visibleItems.slice(0, visibleLimit);
-  const visibleTotal = activeStatusTab === "finished"
-    ? serverPagination?.finishedTotal ?? finishedItems.length
-    : serverPagination?.activeTotal ?? activeItems.length;
-  const remainingItems = Math.max(0, visibleTotal - displayedItems.length);
-
-  React.useEffect(() => {
-    if (activeArenaTab !== "circuits" || !onRequestCircuitCover) return;
-    displayedItems.forEach((item) => {
-      const coverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl;
-      if (!coverImage) onRequestCircuitCover(item);
-    });
-  }, [activeArenaTab, displayedItems, onRequestCircuitCover]);
 
   return (
     <div className={`publicPage publicArenaPage ${pageClassName} ${embedded ? "embeddedPublicOrganizationProfile" : ""}`.trim()}>
@@ -347,121 +612,36 @@ export function PublicArenaPageView({
             circuitCount={profileCounts.circuits}
           />
 
-        {activeProfileTab === "contato" ? (
-        <section className="publicArenaContacts organizationAboutOverview publicOrganizationAboutOverview">
-          <header>
-            <div>
-              <span>Sobre a organização</span>
-              <h2>{arenaName}</h2>
-              <p>{contactDescription}</p>
-            </div>
-          </header>
-          <div className="organizationAboutGrid">
-            <article><UserRound aria-hidden="true" /><span><small>Responsável</small><strong>{organizer.organizerName || "Não informado"}</strong></span></article>
-            <article><MapPin aria-hidden="true" /><span><small>Endereço</small><strong>{[organizer.city, organizer.state].filter(Boolean).join("/") || "Não informado"}</strong><em>{organizer.address || "Endereço não informado"}</em>{organizer.mapsLink ? <a href={organizer.mapsLink} target="_blank" rel="noreferrer">Abrir no mapa</a> : null}</span></article>
-            <article><MessageCircle aria-hidden="true" /><span><small>WhatsApp</small>{organizer.whatsapp ? <a href={getWhatsAppUrl(organizer.whatsapp)} target="_blank" rel="noreferrer"><strong>{organizer.whatsapp}</strong></a> : <strong>Não informado</strong>}</span></article>
-            <article><AtSign aria-hidden="true" /><span><small>Instagram</small>{organizer.instagramLink ? <a href={organizer.instagramLink} target="_blank" rel="noreferrer"><strong>{organizer.instagramHandle || "Abrir Instagram"}</strong></a> : <strong>{organizer.instagramHandle || "Não informado"}</strong>}</span></article>
-            <article><Users aria-hidden="true" /><span><small>Grupo da organização</small>{organizer.whatsappGroupLink ? <a href={organizer.whatsappGroupLink} target="_blank" rel="noreferrer"><strong>Entrar no grupo do WhatsApp</strong></a> : <strong>Link não informado</strong>}</span></article>
-            <article><CreditCard aria-hidden="true" /><span><small>Chave Pix pública</small><strong>{organizer.pixKey || "Não informada"}</strong></span></article>
-            <article><CreditCard aria-hidden="true" /><span><small>Pagamento com cartão</small>{organizer.cardPaymentLink ? <a href={organizer.cardPaymentLink} target="_blank" rel="noreferrer"><strong>Abrir link seguro de pagamento</strong></a> : <strong>Link não informado</strong>}</span></article>
-          </div>
-        </section>
-        ) : null}
-
-        {activeProfileTab === "fotos" ? (
-          <section className="publicOrganizationGallerySection profileSubtabPanel profilePhotosPanel">
-            <header><div><h2>Fotos da organização</h2><p>Galeria institucional do perfil.</p></div><span>{organizationGallery.length}/6</span></header>
-            {organizationGallery.length > 0 ? <div className="publicOrganizationGalleryGrid">
-              {organizationGallery.map((photoUrl, index) => (
-                <button
-                  type="button"
-                  key={`${photoUrl}-${index}`}
-                  onClick={() => setPreviewImage({ src: photoUrl, alt: `Foto ${index + 1} de ${arenaName}`, title: arenaName })}
-                  aria-label={`Ampliar foto ${index + 1} da organização`}
-                >
-                  <img src={photoUrl} alt={`Foto ${index + 1} de ${arenaName}`} loading="lazy" decoding="async" />
-                  <span><ZoomIn aria-hidden="true" /></span>
-                </button>
-              ))}
-            </div> : <div className="profileEmptyPost">Esta organização ainda não adicionou fotos à galeria.</div>}
-          </section>
-        ) : null}
-
-        {activeProfileTab === "publicacoes" ? <>
-        <div className="profilePublicationsHeader publicProfilePublicationsHeader">
-          <div><strong>Publicações</strong><span>Torneios e circuitos publicados pela organização</span></div>
-        </div>
-        <nav className="publicArenaTabs" aria-label="Conteúdo público da organização">
-          <button type="button" className={activeArenaTab === "tournaments" ? "active" : ""} onClick={() => onArenaTabChange("tournaments")}><Trophy aria-hidden="true" /> Torneios</button>
-          <button type="button" className={activeArenaTab === "circuits" ? "active" : ""} onClick={() => onArenaTabChange("circuits")}><GitBranch aria-hidden="true" /> Circuitos</button>
-        </nav>
-
-        <nav className="publicArenaStatusTabs" aria-label="Situação dos eventos">
-          <button type="button" className={activeStatusTab === "active" ? "active" : ""} onClick={() => onStatusTabChange("active")}>Ativos <span>{serverPagination?.activeTotal ?? activeItems.length}</span></button>
-          <button type="button" className={activeStatusTab === "finished" ? "active" : ""} onClick={() => onStatusTabChange("finished")}>Encerrados <span>{serverPagination?.finishedTotal ?? finishedItems.length}</span></button>
-        </nav>
-
-        <section className="publicArenaEventGrid" aria-live="polite">
-          {serverPagination?.loading && displayedItems.length === 0 ? (
-            <div className="card publicArenaEmpty">Carregando eventos...</div>
-          ) : serverPagination?.error && displayedItems.length === 0 ? (
-            <div className="card publicArenaEmpty">{serverPagination.error}</div>
-          ) : visibleItems.length === 0 ? (
-            <div className="card publicArenaEmpty">Nenhum {activeArenaTab === "tournaments" ? "torneio" : "circuito"} {activeStatusTab === "finished" ? "encerrado" : "ativo"} neste perfil.</div>
-          ) : activeArenaTab === "tournaments" ? (
-            <TournamentCards items={displayedItems} organizer={organizer} onOpen={onOpenTournament} openingPublicId={openingPublicId} onPreviewImage={setPreviewImage} onRequestCover={onRequestTournamentCover} hasSession={hasSession} onRequireLogin={onRequireLogin} />
-          ) : displayedItems.map((item) => {
-            const circuitStatus = getCircuitStatus(item);
-            const circuitCoverImage = item.ranking_settings?.coverImageUrl || item.rankingSettings?.coverImageUrl || item.coverImageUrl || "";
-            const circuitCoverThumbnail = item.ranking_settings?.coverImageThumbnailUrl
-              || item.rankingSettings?.coverImageThumbnailUrl
-              || item.coverImageThumbnailUrl
-              || "";
-            const circuitImage = circuitCoverThumbnail || circuitCoverImage || organizer.photoUrl || "";
-            const circuitImageVariant = circuitCoverImage || circuitCoverThumbnail ? "event-cover" : "profile-photo";
-            return (
-              <article className={`card publicArenaEventCard publicArenaCircuitCard ${circuitImage ? "publicArenaEventCardWithCover" : ""}`} key={item.id}>
-                {circuitImage ? (
-                  <div className={`publicArenaEventCover ${circuitImageVariant}`}>
-                    <PublicImagePreviewButton
-                      src={circuitImage}
-                      previewSrc={circuitCoverImage || circuitCoverThumbnail || organizer.photoUrl}
-                      alt={circuitImageVariant === "event-cover" ? `Foto de ${item.name}` : `Foto do perfil de ${organizer.arenaName || "organização"}`}
-                      title={circuitImageVariant === "event-cover" ? item.name : organizer.arenaName || "Perfil da organização"}
-                      variant={circuitImageVariant}
-                      onPreview={setPreviewImage}
-                    />
-                  </div>
-                ) : <div className="publicArenaEventIcon"><GitBranch aria-hidden="true" /></div>}
-                <div>
-                  <small>Circuito</small><h2>{item.name}</h2>
-                  <span className={`publicCircuitStatus ${circuitStatus}`}>{circuitStatus === "closed" ? "Encerrado" : "Em andamento"}</span>
-                  <p>{getCircuitDateLabel(item) ? <span><CalendarDays aria-hidden="true" /> {getCircuitDateLabel(item)}</span> : null}<span>{getCircuitTournamentCount(item)} torneio(s)</span></p>
-                </div>
-                <button type="button" onClick={() => onOpenCircuit(item)} disabled={openingCircuitId === item.id} aria-busy={openingCircuitId === item.id}>
-                  {openingCircuitId === item.id ? "Abrindo..." : "Ver circuito"}
-                </button>
-              </article>
-            );
-          })}
-          {remainingItems > 0 && (!usesServerPagination || serverPagination.hasMore) ? (
-            <button
-              type="button"
-              className="publicArenaLoadMore"
-              onClick={usesServerPagination
-                ? serverPagination.onLoadMore
-                : () => setVisibleLimit((current) => Math.min(current + initialVisibleItems, visibleItems.length))}
-              disabled={serverPagination?.loading === true}
-              aria-busy={serverPagination?.loading === true}
-            >
-              {serverPagination?.loading ? "Carregando mais eventos..." : "Mostrar mais eventos"} <span>{remainingItems}</span>
-            </button>
-          ) : null}
-        </section>
-        </> : null}
+          <OrganizationProfileSectionsView
+            activeProfileTab={activeProfileTab}
+            arenaName={arenaName}
+            organizer={organizer}
+            organizationGallery={organizationGallery}
+            contactDescription={contactDescription}
+            activeArenaTab={activeArenaTab}
+            activeStatusTab={activeStatusTab}
+            activeItems={activeItems}
+            finishedItems={finishedItems}
+            visibleItems={visibleItems}
+            onArenaTabChange={onArenaTabChange}
+            onStatusTabChange={onStatusTabChange}
+            onOpenTournament={onOpenTournament}
+            onOpenCircuit={onOpenCircuit}
+            openingPublicId={openingPublicId}
+            openingCircuitId={openingCircuitId}
+            getWhatsAppUrl={getWhatsAppUrl}
+            getCircuitStatus={getCircuitStatus}
+            getCircuitDateLabel={getCircuitDateLabel}
+            getCircuitTournamentCount={getCircuitTournamentCount}
+            TournamentCards={TournamentCards}
+            onRequestTournamentCover={onRequestTournamentCover}
+            onRequestCircuitCover={onRequestCircuitCover}
+            serverPagination={serverPagination}
+            hasSession={hasSession}
+            onRequireLogin={onRequireLogin}
+          />
         </section>
       </main>
-      <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }
