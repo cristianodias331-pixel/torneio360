@@ -565,21 +565,22 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
     </div>
   );
 }
-function ParticipantAttendanceButton({ confirmed, onChange }) {
+function ParticipantAttendanceButton({ confirmed, onChange, readOnly = false }) {
   return (
     <button
       type="button"
       className={`participantAttendanceStatus ${confirmed ? "confirmed" : "pending"}`}
       onClick={() => onChange(!confirmed)}
       aria-pressed={confirmed}
-      title={confirmed ? "Clique para marcar como pendente" : "Clique para confirmar a presença"}
+      disabled={readOnly}
+      title={readOnly ? "Presença exibida somente para consulta" : confirmed ? "Clique para marcar como pendente" : "Clique para confirmar a presença"}
     >
       {confirmed ? "Confirmado" : "Pendente"}
     </button>
   );
 }
 
-export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance, modalityConfig, participantIdentityIndex = null }) {
+export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttendance, modalityConfig, participantIdentityIndex = null, readOnly = false }) {
   const config = modalityConfig[type];
   const attendance = normalizeParticipantAttendance(config, data.players, data.participantAttendance);
 
@@ -587,7 +588,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
     return (
       <div className="participantIdentityInput">
         <AthleteIdentityLink name={name} identityIndex={participantIdentityIndex} compact avatarOnly />
-        <input value={name} onChange={onChange} />
+        <input value={name} onChange={onChange} readOnly={readOnly} />
       </div>
     );
   }
@@ -604,6 +605,7 @@ export function PlayerInputs({ type, data, updatePlayer, updateParticipantAttend
       <ParticipantAttendanceButton
         confirmed={isConfirmed(path)}
         onChange={(confirmed) => updateParticipantAttendance(path, confirmed)}
+        readOnly={readOnly}
       />
     );
   }

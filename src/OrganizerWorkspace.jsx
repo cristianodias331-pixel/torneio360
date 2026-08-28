@@ -12147,6 +12147,7 @@ return (
             updatePlayer={updatePlayer}
             updateParticipantAttendance={updateParticipantAttendance}
             participantIdentityIndex={approvedAthleteIdentityIndex}
+            readOnly={readOnly}
           />
 
           {!isCupType(config) && (
