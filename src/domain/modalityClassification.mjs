@@ -29,3 +29,11 @@ export function isReizinhoType(config) {
 export function isIndividualCupType(config) {
   return config?.type === "cearenseIndividual" || config?.individualCup === true;
 }
+
+export function requiresFixedDoubles(config) {
+  return Boolean(
+    config
+    && !isIndividualCupType(config)
+    && (isFixedTeamType(config) || isCupType(config))
+  );
+}

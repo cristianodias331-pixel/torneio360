@@ -64,9 +64,9 @@
 .tournamentPaymentChoice input { accent-color: #16a36a; }
 .tournamentPaymentMethods article > .tournamentPaymentChoice { border: 0; background: transparent; box-shadow: none; color: inherit; cursor: pointer; font: inherit; font-size: .68rem; font-weight: 850; padding: 4px 0; text-align: left; }
 .tournamentPaymentMethods article > .tournamentPaymentChoice[aria-pressed="true"] { color: #059669; }
-.registrationHandleInput { display: flex; align-items: center; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 12px; overflow: hidden; background: var(--ui-surface-raised, #fff); }
-.registrationHandleInput b { padding-left: 13px; color: #2563eb; font-size: 16px; }
-.registrationHandleInput input { border: 0 !important; box-shadow: none !important; padding-left: 4px !important; min-width: 0; flex: 1; }
+.registrationHandleInput { display: flex; min-height: 46px; align-items: stretch; box-sizing: border-box; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 12px; overflow: hidden; padding: 0 12px; background: var(--ui-surface-raised, #fff); }
+.registrationHandleInput b { display: grid; width: 18px; flex: 0 0 18px; place-items: center; align-self: stretch; padding: 0; color: #2563eb; font-size: 16px; line-height: 1; }
+.registrationHandleInput input { min-width: 0; min-height: 44px !important; height: auto; flex: 1; align-self: stretch; margin: 0; border: 0 !important; border-radius: 0 !important; padding: 0 0 0 4px !important; background: transparent !important; box-shadow: none !important; line-height: normal; }
 .registrationPartnerHandleField > small,
 .registrationOwnIdentityField > small { color: var(--ui-muted, #64748b); line-height: 1.35; }
 .registrationPartnerLookup { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 14px; color: var(--ui-muted, #64748b); }

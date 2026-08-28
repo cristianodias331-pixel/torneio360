@@ -5049,7 +5049,7 @@ assert.ok(
 );
 assert.ok(
   publicArenaPresentationSource.includes("<OrganizationProfileContentPresentation")
-    && organizationProfileContentPresentationSource.includes('className="profilePublicationFilters"')
+    && organizationProfileContentPresentationSource.includes('className="profilePublicationFilters organizationPublicationKinds"')
     && organizationProfileContentPresentationSource.includes('className="profileTournamentGrid"'),
   "O link público não abre a mesma experiência real de publicações do perfil da organização."
 );

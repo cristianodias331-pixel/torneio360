@@ -921,6 +921,35 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
   object-fit: cover;
 }
 
+.organizationRealPublications .organizationPublicationKinds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.organizationRealPublications .organizationPublicationKinds > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  margin: 0;
+}
+
+.organizationRealPublications .profileCircuitsHeading {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+.organizationRealPublications .profileCircuitsHeading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.organizationRealPublications .profileCircuitToolbar {
+  margin-bottom: 12px;
+}
+
 .profileCircuitPublicationActions {
   display: flex !important;
   align-items: center;
@@ -1784,12 +1813,18 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
 .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs {
   display: grid !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
   overflow: visible !important;
+  box-sizing: border-box !important;
 }
 
 .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button,
 .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button:not(.active) {
   min-width: 0 !important;
+  height: 100% !important;
+  align-self: stretch !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
   flex: none !important;
 }
 

@@ -3229,6 +3229,26 @@ html[data-theme="dark"] .courtConfigCentralLink small,
   }
 }
 
+.approvePodiumAchievements {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #16a36a;
+  border-radius: 11px;
+  padding: 8px 12px;
+  color: #08784c;
+  background: color-mix(in srgb, #16a36a 10%, var(--ui-surface-raised, #fff));
+  font-size: .7rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.approvePodiumAchievements svg { width: 15px; height: 15px; }
+.approvePodiumAchievements.approved { color: #fff; background: #14895c; }
+.approvePodiumAchievements:disabled { opacity: .66; cursor: wait; }
+
 /* Regra final da navegação: replica o trilho do painel oficial sem herdar a lateral flutuante antiga. */
 @media (min-width: 1025px) {
   html body .proDashboard.playAppShell > .playMain {

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { formatDateBR } from "../../domain/dateTime.mjs";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
-import { isCupType, isFixedTeamType, isIndividualCupType } from "../../domain/modalityClassification.mjs";
+import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import {
   loadMyTournamentRegistrationCheckout,
   findTournamentPartnerByHandle,
@@ -23,8 +23,7 @@ import TournamentPaymentPanel from "./TournamentPaymentPanel.jsx";
 import "../../styles/60-tournament-registration.css";
 
 function isPairCompetition(type) {
-  const config = modalityConfig[type];
-  return Boolean(config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config)));
+  return requiresFixedDoubles(modalityConfig[type]);
 }
 
 function getViewerName(viewer) {

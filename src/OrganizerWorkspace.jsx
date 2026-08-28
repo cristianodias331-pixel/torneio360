@@ -125,7 +125,8 @@ import OrganizationProfilePresentation from "./features/profile/OrganizationProf
 import OrganizationProfileContentPresentation from "./features/profile/OrganizationProfileContentPresentation.jsx";
 import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "./features/notifications/useUnreadNotificationCount.js";
-import { createAthleteIdentityIndex, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
+import { createAthleteIdentityIndex, normalizeAthleteIdentityName, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
+import { approveTournamentPodium } from "./services/athleteActivityApi.mjs";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -379,6 +380,7 @@ import {
   isIndividualCupType,
   isMixedType,
   isReizinhoType,
+  requiresFixedDoubles,
 } from "./domain/modalityClassification.mjs";
 import {
   getReizinhoPlayerCount,
@@ -495,8 +497,7 @@ export function createOrganizerWorkspace(runtime) {
   }
 
 function isFixedDoublesCompetition(type) {
-  const config = modalityConfig[type];
-  return Boolean(config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config)));
+  return requiresFixedDoubles(modalityConfig[type]);
 }
 
 function Dashboard({ profile, user, onProfileChange, onReconcileOwnProfile, publicPlatformHomeRuntime }) {
@@ -681,6 +682,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const appStateCloudQueueRef = useRef(null);
   const restoredAppStateRef = useRef(false);
   const appStateRestoreReadyRef = useRef(false);
+  const userNavigationStartedRef = useRef(false);
   const pendingScrollRestoreRef = useRef(null);
   const scrollRestoreTimersRef = useRef([]);
   const initialAppRouteRef = useRef(`${window.location.pathname}${window.location.search}${window.location.hash || ""}`);
@@ -804,6 +806,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   function applySavedAppState(state, { restoreRoute = false } = {}) {
     if (!state || typeof state !== "object") return false;
+    if (userNavigationStartedRef.current) return false;
 
     const savedRoute = getStateRoute(state);
     const initialRoute = initialAppRouteRef.current;
@@ -900,6 +903,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function goToPanel(panel) {
+    userNavigationStartedRef.current = true;
     if (!await guardSelectedTournamentBeforeLeaving()) return false;
     setSidebarExpanded(false);
     setSelected(null);
@@ -946,6 +950,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   }
 
   async function openProfileSection(nextSubtab = "publicacoes", nextIdentity = profileIdentity) {
+    userNavigationStartedRef.current = true;
     if (!await guardSelectedTournamentBeforeLeaving()) return false;
     const normalizedIdentity = nextIdentity === "athlete" ? "athlete" : "organization";
     let normalizedSubtab = normalizeProfileSubtab(nextSubtab);
@@ -9542,11 +9547,67 @@ function TournamentScreen({
 
   const [data, setDataState] = useState(() => initialTournamentState.data);
   const [approvedAthleteIdentities, setApprovedAthleteIdentities] = useState([]);
+  const [achievementApprovalByBracket, setAchievementApprovalByBracket] = useState({});
   const approvedAthleteIdentityIndex = useMemo(
     () => createAthleteIdentityIndex(approvedAthleteIdentities),
     [approvedAthleteIdentities]
   );
   const renderApprovedParticipant = (value) => renderAthleteNames(value, approvedAthleteIdentityIndex, true);
+
+  async function confirmPodiumAchievements(podium, bracketName = "Principal") {
+    if (readOnly || !Array.isArray(podium) || podium.length === 0) return;
+    const bracketKey = String(bracketName || "Principal");
+    const entries = [];
+    const unresolvedNames = [];
+
+    podium.slice(0, 3).forEach((item, index) => {
+      const names = String(item?.name || "").split(/\s+\+\s+/).map((name) => name.trim()).filter(Boolean);
+      const identities = names.map((name) => {
+        const identity = approvedAthleteIdentityIndex.get(normalizeAthleteIdentityName(name));
+        if (!identity?.user_id) unresolvedNames.push(name);
+        return identity || null;
+      });
+      identities.forEach((identity, identityIndex) => {
+        if (!identity?.user_id) return;
+        const partner = identities.length === 2 ? identities[identityIndex === 0 ? 1 : 0] : null;
+        entries.push({
+          athlete_user_id: identity.user_id,
+          partner_user_id: partner?.user_id || null,
+          placement: index + 1,
+          bracket_name: bracketKey,
+          category: data.category || data.eventName || "",
+          event_date: data.eventDate || data.eventStartDate || "",
+        });
+      });
+    });
+
+    if (unresolvedNames.length || !entries.length) {
+      setNotice({
+        type: "warning",
+        title: "Identidades pendentes no pódio",
+        message: `Confirme a inscrição e o perfil de ${Array.from(new Set(unresolvedNames)).join(", ") || "todos os atletas"} antes de publicar as conquistas.`,
+      });
+      return;
+    }
+
+    setAchievementApprovalByBracket((current) => ({ ...current, [bracketKey]: "saving" }));
+    try {
+      await approveTournamentPodium({ supabase, tournamentId: tournament.id, entries });
+      setAchievementApprovalByBracket((current) => ({ ...current, [bracketKey]: "approved" }));
+      setNotice({
+        type: "success",
+        title: "Conquistas confirmadas",
+        message: "O pódio foi assinado pela organização e já pode aparecer nos perfis dos atletas vinculados.",
+      });
+    } catch (error) {
+      setAchievementApprovalByBracket((current) => ({ ...current, [bracketKey]: "" }));
+      setNotice({
+        type: "error",
+        title: "Conquistas não confirmadas",
+        message: error?.message || "Não foi possível confirmar o pódio agora.",
+      });
+    }
+  }
   const currentCourtCount = getTournamentCourtCount(config, data);
   const normalizedCentralCourtNumbers = Array.from(new Set(
     (centralCourtNumbers || []).map(normalizeCourtNumberValue).filter(Boolean)
@@ -11828,6 +11889,11 @@ const laterParallelOrdinal = isOfficialCearenseCup ? "2ª" : "3ª";
 const sunsetFinalDisplayName = data.cupConfig?.sunsetBracketName || "Etapa Sunset";
 const rankingOrganizer = data.publicInfo?.organizer || {};
 const tournamentTimingSummary = getTournamentTimingSummary(data);
+const nonCupOperationalGames = !isCupType(config) ? getTournamentOperationalGames(data) : [];
+const nonCupPodiumReady = !isCupType(config)
+  && nonCupOperationalGames.length > 0
+  && nonCupOperationalGames.every((item) => isGameFinished(item.game, getWinningScore(data)))
+  && ranking.length > 0;
 const tournamentRankingShareContext = {
   title: tournament.name,
   subtitle: getModalityDisplayName(tournament.type),
@@ -11839,6 +11905,10 @@ const tournamentRankingShareContext = {
 const tournamentCircuitAction = typeof onManageCircuits === "function"
   ? { onClick: onManageCircuits, managed: circuitMembershipCount > 0 }
   : null;
+const getAchievementApprovalProps = (bracketName) => readOnly ? {} : ({
+  onApproveAchievements: confirmPodiumAchievements,
+  achievementApprovalState: achievementApprovalByBracket[String(bracketName || "Principal")] || "",
+});
 const courtEditorContext = getCourtAssignmentContext(data, courtEditor);
 const courtEditorGame = courtEditorContext.game;
 const courtEditorUsedNumbers = courtEditor
@@ -12326,7 +12396,7 @@ return (
                 <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
                   {mainCupPodium.length > 0 ? (
-                    <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={tournamentRankingShareContext} circuitAction={tournamentCircuitAction} />
+                    <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={tournamentRankingShareContext} circuitAction={tournamentCircuitAction} {...getAchievementApprovalProps(data.cupConfig?.mainBracketName || "Principal")} />
                   ) : (
                     <p>Finalize a chave principal para ver o ranking da chave principal.</p>
                   )}
@@ -12343,6 +12413,7 @@ return (
                         title={data.cupConfig?.repechageName || "Consolação"}
                         variant="parallel"
                         shareContext={tournamentRankingShareContext}
+                        {...getAchievementApprovalProps(data.cupConfig?.repechageName || "Consolação")}
                       />
                     ) : (
                       <p>Finalize a consolação para ver o pódio.</p>
@@ -12357,6 +12428,7 @@ return (
                       title={firstParallelDisplayName}
                       variant="parallel"
                       shareContext={tournamentRankingShareContext}
+                      {...getAchievementApprovalProps(firstParallelDisplayName)}
                     />
                   ) : (
                     <p>Gere ou finalize a disputa paralela para ver o ranking separado.</p>
@@ -12366,7 +12438,7 @@ return (
                   <div className="cupRankingPanel">
                     <h3>{sunsetSecondParallelDisplayName}</h3>
                     {secondParallelPodium.length > 0 ? (
-                      <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={tournamentRankingShareContext} />
+                      <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={tournamentRankingShareContext} {...getAchievementApprovalProps(sunsetSecondParallelDisplayName)} />
                     ) : (
                       <p>Finalize a 2ª disputa paralela para ver o pódio.</p>
                     )}
@@ -12381,6 +12453,7 @@ return (
                         title={laterParallelDisplayName}
                         variant="parallel"
                         shareContext={tournamentRankingShareContext}
+                        {...getAchievementApprovalProps(laterParallelDisplayName)}
                       />
                     ) : (
                       <p>Finalize a {laterParallelOrdinal} disputa paralela para ver o pódio.</p>
@@ -12391,7 +12464,7 @@ return (
                   <div className="cupRankingPanel">
                     <h3>{sunsetFinalDisplayName}</h3>
                     {sunsetPodium.length > 0 ? (
-                      <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={tournamentRankingShareContext} />
+                      <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={tournamentRankingShareContext} {...getAchievementApprovalProps(sunsetFinalDisplayName)} />
                     ) : (
                       <p>Finalize o encontro entre as campeãs para ver o pódio Sunset.</p>
                     )}
@@ -12483,7 +12556,24 @@ return (
           <section className="card" style={{ display: activeTournamentTab === "ranking" ? undefined : "none" }}>
             <div className="cardTitleRow">
               <h2>Ranking do dia</h2>
-              <SavingStatusBadge />
+              <div className="cardTitleControls">
+                {nonCupPodiumReady && !readOnly ? (
+                  <button
+                    type="button"
+                    className={`approvePodiumAchievements${achievementApprovalByBracket.Principal === "approved" ? " approved" : ""}`}
+                    disabled={achievementApprovalByBracket.Principal === "saving"}
+                    onClick={() => confirmPodiumAchievements(ranking.slice(0, 3), "Principal")}
+                  >
+                    <Award aria-hidden="true" />
+                    {achievementApprovalByBracket.Principal === "saving"
+                      ? "Confirmando..."
+                      : achievementApprovalByBracket.Principal === "approved"
+                        ? "Conquistas confirmadas"
+                        : "Confirmar 1º, 2º e 3º"}
+                  </button>
+                ) : null}
+                <SavingStatusBadge />
+              </div>
             </div>
 
             <TournamentTimingSummary data={data} />

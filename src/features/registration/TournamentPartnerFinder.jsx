@@ -12,14 +12,13 @@ import {
   X,
 } from "lucide-react";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
+import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import { formatDateBR } from "../../domain/dateTime.mjs";
 import { validatePublicTextFields } from "../../domain/contentModeration.mjs";
 import "../../styles/55-partner-finder.css";
 
 function isPairCompetition(type) {
-  const config = modalityConfig[type];
-  if (!config || config.individualCup) return false;
-  return Boolean(config.teams || config.defaultTeams || config.cupMode);
+  return requiresFixedDoubles(modalityConfig[type]);
 }
 
 function getStorageKey(tournament, viewer) {

@@ -374,6 +374,10 @@ export function PublicArenaPageView({
               onArenaTabChange?.("tournaments");
               onStatusTabChange?.(status === "finished" ? "finished" : "active");
             }}
+            onCircuitStatusChange={(status) => {
+              onArenaTabChange?.("circuits");
+              onStatusTabChange?.(status === "finished" ? "finished" : "active");
+            }}
             onLoadMoreTournaments={profilePagination?.onLoadMoreTournaments}
             onLoadMoreCircuits={profilePagination?.onLoadMoreCircuits}
           />

@@ -1,12 +1,23 @@
 import React from "react";
 import { formatMatchTotalDuration } from "../../domain/matchTimer.mjs";
+import { Check, ShieldCheck } from "lucide-react";
 import { getPodiumInitials } from "../media/canvasTools.mjs";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { TournamentCircuitButton } from "../circuitManagement/TournamentCircuitManager.jsx";
 
-export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null, renderParticipant = null }) {
+export default function CupPodiumView({
+  podium,
+  title = "Principal",
+  variant = "main",
+  shareContext = null,
+  circuitAction = null,
+  renderParticipant = null,
+  onApproveAchievements = null,
+  achievementApprovalState = "",
+}) {
   if (!podium || podium.length === 0) return null;
 
+  const approvalPodium = podium.slice(0, 3).map((item, index) => ({ ...item, place: index + 1 }));
   const podiumLimit = variant === "parallel" ? 1 : 3;
   const podiumPlaces = podium.slice(0, podiumLimit).map((item, index) => ({ ...item, place: index + 1 }));
   const displayOrder = podiumPlaces.length === 1
@@ -32,6 +43,17 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
           <h3>{title}</h3>
         </div>
         <div className="rankingHeadingActions">
+          {onApproveAchievements ? (
+            <button
+              type="button"
+              className={`approvePodiumAchievements${achievementApprovalState === "approved" ? " approved" : ""}`}
+              disabled={achievementApprovalState === "saving"}
+              onClick={() => onApproveAchievements(approvalPodium, title)}
+            >
+              {achievementApprovalState === "approved" ? <Check aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
+              {achievementApprovalState === "saving" ? "Confirmando..." : achievementApprovalState === "approved" ? "Conquistas confirmadas" : "Confirmar conquistas"}
+            </button>
+          ) : null}
           <RankingShareButton config={shareConfig} compact />
           {circuitAction ? <TournamentCircuitButton {...circuitAction} /> : null}
         </div>

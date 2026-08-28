@@ -67,6 +67,17 @@ function getCircuitCover(circuit) {
     || "";
 }
 
+function getCircuitLifecycleStatus(circuit) {
+  const normalized = normalizeCircuitForProfile(circuit);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = normalized.startDate ? new Date(`${normalized.startDate}T00:00:00`) : null;
+  const end = normalized.endDate ? new Date(`${normalized.endDate}T23:59:59`) : null;
+  if (end && !Number.isNaN(end.getTime()) && end < today) return "finished";
+  if (start && !Number.isNaN(start.getTime()) && start > today) return "upcoming";
+  return "active";
+}
+
 export default function OrganizationProfileContentPresentation({
   activeTab,
   profile,
@@ -100,13 +111,16 @@ export default function OrganizationProfileContentPresentation({
   onCopyPix,
   onPublicationFilterChange,
   onTournamentStatusChange,
+  onCircuitStatusChange,
   onLoadMoreTournaments,
   onLoadMoreCircuits,
 }) {
-  const [publicationFilter, setPublicationFilter] = useState("all");
+  const [publicationFilter, setPublicationFilter] = useState("tournaments");
   const [statusFilter, setStatusFilter] = useState("active");
   const [genderFilter, setGenderFilter] = useState(tournamentListGenderFilters.all);
   const [search, setSearch] = useState("");
+  const [circuitStatusFilter, setCircuitStatusFilter] = useState("active");
+  const [circuitSearch, setCircuitSearch] = useState("");
   const tournamentTotal = Number.isFinite(Number(publicationCounts?.tournaments))
     ? Number(publicationCounts.tournaments)
     : tournaments.length;
@@ -122,6 +136,12 @@ export default function OrganizationProfileContentPresentation({
   function selectStatusFilter(nextFilter) {
     setStatusFilter(nextFilter);
     onTournamentStatusChange?.(nextFilter);
+  }
+
+
+  function selectCircuitStatusFilter(nextFilter) {
+    setCircuitStatusFilter(nextFilter);
+    onCircuitStatusChange?.(nextFilter);
   }
 
   const lifecycleCounts = useMemo(() => tournaments.reduce((counts, item) => {
@@ -167,7 +187,26 @@ export default function OrganizationProfileContentPresentation({
     });
   }, [genderFilter, search, statusFilter, tournaments]);
 
-  const visibleCircuits = circuits;
+  const circuitLifecycleCounts = useMemo(() => circuits.reduce((counts, item) => {
+    const status = getCircuitLifecycleStatus(item);
+    counts[status] += 1;
+    return counts;
+  }, { active: 0, upcoming: 0, finished: 0 }), [circuits]);
+
+  const visibleCircuits = useMemo(() => {
+    const normalizedSearch = normalizeModalitySearch(circuitSearch);
+    return circuits.filter((item) => {
+      if (getCircuitLifecycleStatus(item) !== circuitStatusFilter) return false;
+      if (!normalizedSearch) return true;
+      const normalized = normalizeCircuitForProfile(item);
+      return normalizeModalitySearch([
+        item.name,
+        normalized.startDate,
+        normalized.endDate,
+        normalized.tournamentIds.length,
+      ].filter(Boolean).join(" ")).includes(normalizedSearch);
+    });
+  }, [circuitSearch, circuitStatusFilter, circuits]);
 
   if (activeTab === "fotos") {
     return (
@@ -267,7 +306,7 @@ export default function OrganizationProfileContentPresentation({
   return (
     <div className="profileSubtabPanel organizationRealPublications">
       <div className="profilePublicationsHeader">
-        <div><strong>Publicações</strong><span>{tournamentTotal} campeonato(s) criado(s)</span></div>
+        <div><strong>Publicações</strong><span>{tournamentTotal} torneio(s) e {circuitTotal} circuito(s)</span></div>
         {canManageEvents ? (
           <div className="profilePublicationCreateActions">
             <button type="button" onClick={onCreateTournament}><PlusCircle aria-hidden="true" /> Criar torneio</button>
@@ -276,13 +315,12 @@ export default function OrganizationProfileContentPresentation({
         ) : null}
       </div>
 
-      <nav className="profilePublicationFilters" aria-label="Filtrar publicações" role="tablist">
-        <button type="button" role="tab" aria-selected={publicationFilter === "all"} className={publicationFilter === "all" ? "active" : ""} onClick={() => selectPublicationFilter("all")}>Tudo <span>{tournamentTotal + circuitTotal}</span></button>
+      <nav className="profilePublicationFilters organizationPublicationKinds" aria-label="Tipo de publicação" role="tablist">
         <button type="button" role="tab" aria-selected={publicationFilter === "tournaments"} className={publicationFilter === "tournaments" ? "active" : ""} onClick={() => selectPublicationFilter("tournaments")}>Torneios <span>{tournamentTotal}</span></button>
         <button type="button" role="tab" aria-selected={publicationFilter === "circuits"} className={publicationFilter === "circuits" ? "active" : ""} onClick={() => selectPublicationFilter("circuits")}>Circuitos <span>{circuitTotal}</span></button>
       </nav>
 
-      {publicationFilter !== "circuits" ? (
+      {publicationFilter === "tournaments" ? (
         <>
           <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar" aria-label="Filtrar torneios do perfil por situação">
             <button type="button" className={`active ${statusFilter === "active" ? "selected" : ""}`} aria-pressed={statusFilter === "active"} onClick={() => selectStatusFilter("active")}><strong>{displayedLifecycleCounts.active}</strong> Em andamento</button>
@@ -342,9 +380,19 @@ export default function OrganizationProfileContentPresentation({
         </>
       ) : null}
 
-      {publicationFilter !== "tournaments" ? (
+      {publicationFilter === "circuits" ? (
         <>
-          <div className="profilePublicationsHeader profileCircuitsHeading"><strong>Circuitos</strong><span>{circuitTotal} circuito(s) publicado(s)</span></div>
+          <div className="profilePublicationsHeader profileCircuitsHeading"><div><strong>Circuitos</strong><span>Temporadas, etapas e rankings publicados pela organização.</span></div></div>
+          <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar profileCircuitToolbar" aria-label="Filtrar circuitos do perfil por situação">
+            <button type="button" className={`active ${circuitStatusFilter === "active" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "active"} onClick={() => selectCircuitStatusFilter("active")}><strong>{circuitLifecycleCounts.active}</strong> Em andamento</button>
+            <button type="button" className={`upcoming ${circuitStatusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "upcoming"} onClick={() => selectCircuitStatusFilter("upcoming")}><strong>{circuitLifecycleCounts.upcoming}</strong> Próximos</button>
+            <button type="button" className={`finished ${circuitStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "finished"} onClick={() => selectCircuitStatusFilter("finished")}><strong>{circuitLifecycleCounts.finished}</strong> Encerrados</button>
+            <label className="eventListSearch platformUnifiedSearch">
+              <Search aria-hidden="true" />
+              <input type="search" value={circuitSearch} onChange={(event) => setCircuitSearch(event.target.value)} aria-label="Pesquisar circuitos no perfil da organização" placeholder="Ex.: nome ou período do circuito" />
+              {circuitSearch ? <button type="button" aria-label="Limpar pesquisa de circuitos do perfil" onClick={() => setCircuitSearch("")}><X aria-hidden="true" /></button> : null}
+            </label>
+          </div>
           <div className="profileCircuitPublicationGrid">
             {visibleCircuits.length === 0 ? <div className="profileEmptyPost">{circuitPageLoading ? "Carregando circuitos..." : "Nenhum circuito corresponde aos filtros selecionados."}</div> : visibleCircuits.map((circuit) => {
               const normalized = normalizeCircuitForProfile(circuit);

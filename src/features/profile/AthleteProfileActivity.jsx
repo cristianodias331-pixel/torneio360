@@ -19,6 +19,8 @@ import {
   X,
 } from "lucide-react";
 import { formatDateBR } from "../../domain/dateTime.mjs";
+import { modalityConfig } from "../../domain/modalityConfig.mjs";
+import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import {
   loadMyAthleteActivity,
@@ -95,9 +97,10 @@ function buildSixMonthActivity(registrations) {
   }));
 }
 
-function AthletePerformance({ activity, schemaNotice }) {
+function AthletePerformance({ activity, profile, schemaNotice }) {
   const registrations = activity.registrations || [];
   const circuits = activity.circuits || [];
+  const achievements = activity.achievements || [];
   const participating = registrations.filter((item) => item.bucket === "participating").length;
   const registered = registrations.filter((item) => item.bucket === "registered").length;
   const past = registrations.filter((item) => item.bucket === "past").length;
@@ -109,6 +112,13 @@ function AthletePerformance({ activity, schemaNotice }) {
     { label: "Inscrições", value: registered, tone: "registered" },
     { label: "Histórico", value: past, tone: "past" },
   ];
+  const podiumCounts = [1, 2, 3].map((placement) => achievements.filter((item) => Number(item.placement) === placement).length);
+  const selfAthlete = {
+    user_id: profile?.userId,
+    handle: profile?.handle,
+    display_name: profile?.displayName,
+    photo_url: profile?.photoUrl,
+  };
 
   return (
     <section className="publicMemberSection athletePerformancePanel">
@@ -116,6 +126,43 @@ function AthletePerformance({ activity, schemaNotice }) {
         <div><Award aria-hidden="true" /><span><h2>Desempenho e conquistas</h2><small>Indicadores gerados com as participações registradas na plataforma.</small></span></div>
       </header>
       {schemaNotice}
+
+      <div className="athletePodiumSummary" aria-label="Resumo das conquistas oficiais">
+        <article className="total"><Trophy aria-hidden="true" /><span><strong>{achievements.length}</strong><small>Pódios oficiais</small></span></article>
+        <article className="gold"><strong>{podiumCounts[0]}</strong><span>1º lugar</span></article>
+        <article className="silver"><strong>{podiumCounts[1]}</strong><span>2º lugar</span></article>
+        <article className="bronze"><strong>{podiumCounts[2]}</strong><span>3º lugar</span></article>
+      </div>
+
+      {achievements.length ? (
+        <div className="athleteAchievementList">
+          {achievements.map((achievement) => (
+            <article className={`athleteAchievementCard place${achievement.placement}`} key={achievement.id}>
+              <span className="athleteAchievementPlacement"><strong>{achievement.placement}º</strong><small>lugar</small></span>
+              <div className="athleteAchievementMain">
+                <header>
+                  <div><small>{achievement.bracket_name || "Principal"}</small><h3>{achievement.tournament?.name || "Torneio"}</h3></div>
+                  <span><ShieldCheck aria-hidden="true" /> Confirmada por {achievement.organization?.name || "organização"}</span>
+                </header>
+                <p>{[
+                  achievement.category,
+                  achievement.event_date ? formatDateBR(achievement.event_date) : "",
+                ].filter(Boolean).join(" · ")}</p>
+                <div className={`athleteAchievementTeam${achievement.partner ? " isPair" : ""}`}>
+                  <AchievementAthleteLink athlete={selfAthlete} label={achievement.partner ? "Atleta da dupla" : "Atleta"} />
+                  {achievement.partner ? <AchievementAthleteLink athlete={achievement.partner} label="Dupla fixa" /> : null}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="athleteAchievementEmpty">
+          <Award aria-hidden="true" />
+          <strong>Nenhuma conquista oficial confirmada</strong>
+          <span>Quando a organização confirmar um 1º, 2º ou 3º lugar no pódio do torneio, ele aparecerá aqui com a data e a dupla vinculada.</span>
+        </div>
+      )}
 
       <div className="athletePerformanceSummary" aria-label="Resumo do desempenho esportivo">
         <article><strong>{total}</strong><span>Torneios registrados</span></article>
@@ -162,7 +209,7 @@ function AthletePerformance({ activity, schemaNotice }) {
       {!total && !circuits.length ? (
         <p className="athletePerformanceFootnote">Os gráficos serão preenchidos automaticamente após a primeira inscrição ou participação confirmada.</p>
       ) : (
-        <p className="athletePerformanceFootnote">Vitórias, derrotas e aproveitamento serão acrescentados somente quando houver resultados oficiais de partidas vinculados ao atleta.</p>
+        <p className="athletePerformanceFootnote">Somente pódios confirmados pela organização entram nas conquistas. Resultados provisórios não alteram estas estatísticas.</p>
       )}
     </section>
   );
@@ -189,6 +236,22 @@ function AthleteAvatar({ athlete }) {
     <span className="athleteActivityAvatar" aria-hidden="true">
       {athlete?.photo_url ? <img src={athlete.photo_url} alt="" /> : getInitials(athlete?.display_name)}
     </span>
+  );
+}
+
+function AchievementAthleteLink({ athlete, label }) {
+  if (!athlete) return null;
+  const address = athlete.handle || athlete.user_id;
+  return (
+    <button
+      type="button"
+      className="athleteAchievementPerson"
+      disabled={!address}
+      onClick={() => { if (address) navigatePlatform({ perfil: address }); }}
+    >
+      <AthleteAvatar athlete={athlete} />
+      <span><small>{label}</small><strong>{athlete.display_name || "Atleta"}</strong>{athlete.handle ? <em>@{athlete.handle}</em> : null}</span>
+    </button>
   );
 }
 
@@ -221,16 +284,38 @@ export default function AthleteProfileActivity({
 
   useEffect(() => { void loadActivity(); }, [loadActivity]);
 
-  const activity = state.activity || { registrations: [], circuits: [], myPartnerSearches: [], partnerMatches: [], challenges: [] };
+  const activity = state.activity || { registrations: [], circuits: [], myPartnerSearches: [], partnerMatches: [], challenges: [], achievements: [] };
   const visibleRegistrations = useMemo(() => activity.registrations.filter((item) => filter === "all" || item.bucket === filter), [activity.registrations, filter]);
   const visibleCircuits = useMemo(() => activity.circuits.filter((item) => filter === "all" || item.bucket === filter), [activity.circuits, filter]);
-  const activeSearchTournamentIds = useMemo(() => new Set(activity.myPartnerSearches.map((item) => item.tournament_id)), [activity.myPartnerSearches]);
-  const eligiblePartnerRegistrations = activity.registrations.filter((item) => item.bucket !== "past" && !item.partner_name);
+  const fixedDoublesRegistrations = useMemo(() => activity.registrations.filter((item) => (
+    requiresFixedDoubles(modalityConfig[item.tournament?.type])
+  )), [activity.registrations]);
+  const fixedDoublesTournamentIds = useMemo(() => new Set(
+    fixedDoublesRegistrations.map((item) => String(item.tournament?.id || "")).filter(Boolean)
+  ), [fixedDoublesRegistrations]);
+  const activeSearchTournamentIds = useMemo(() => new Set(
+    activity.myPartnerSearches
+      .map((item) => String(item.tournament_id || ""))
+      .filter((id) => id && fixedDoublesTournamentIds.has(id))
+  ), [activity.myPartnerSearches, fixedDoublesTournamentIds]);
+  const eligiblePartnerRegistrations = fixedDoublesRegistrations.filter((item) => item.bucket !== "past" && !item.partner_name);
+  const fixedDoublesPartnerMatches = useMemo(() => activity.partnerMatches.filter((item) => (
+    fixedDoublesTournamentIds.has(String(item.tournament?.id || ""))
+  )), [activity.partnerMatches, fixedDoublesTournamentIds]);
+  const showPartnerSearch = owner && (
+    eligiblePartnerRegistrations.length > 0
+    || activeSearchTournamentIds.size > 0
+    || fixedDoublesPartnerMatches.length > 0
+  );
+
+  useEffect(() => {
+    if (activitySection === "partners" && !showPartnerSearch) setActivitySection("tournaments");
+  }, [activitySection, showPartnerSearch]);
 
   async function togglePartnerSearch(registration) {
     const tournamentId = registration.tournament?.id;
     if (!tournamentId || busyId) return;
-    const active = !activeSearchTournamentIds.has(tournamentId);
+    const active = !activeSearchTournamentIds.has(String(tournamentId));
     setBusyId(`partner-${tournamentId}`);
     setNotice("");
     try {
@@ -294,14 +379,14 @@ export default function AthleteProfileActivity({
         <div className="athletePartnerSearches">
           <h3>Meus torneios sem dupla</h3>
           {eligiblePartnerRegistrations.length ? eligiblePartnerRegistrations.map((registration) => {
-            const active = activeSearchTournamentIds.has(registration.tournament?.id);
+            const active = activeSearchTournamentIds.has(String(registration.tournament?.id || ""));
             return <article key={registration.id}><span><Trophy aria-hidden="true" /></span><div><strong>{registration.tournament?.name}</strong><small>{registration.category || "Categoria do torneio"}</small></div><button type="button" className={active ? "active" : ""} disabled={Boolean(busyId)} onClick={() => togglePartnerSearch(registration)}>{active ? <><Check aria-hidden="true" /> Procurando dupla</> : <><Heart aria-hidden="true" /> Avisar que procuro dupla</>}</button></article>;
           }) : <div className="athleteActivityEmpty compact"><Users aria-hidden="true" /><strong>Nenhuma inscrição sem dupla</strong><span>Quando você se inscrever individualmente em um torneio de duplas, ele aparecerá aqui.</span></div>}
         </div>
 
         <div className="athletePartnerMatches">
           <h3>Atletas compatíveis</h3>
-          {activity.partnerMatches.length ? activity.partnerMatches.map((match) => (
+          {fixedDoublesPartnerMatches.length ? fixedDoublesPartnerMatches.map((match) => (
             <article key={match.id}>
               <AthleteAvatar athlete={match.athlete} />
               <div><strong>{match.athlete?.display_name}</strong><small>{match.tournament?.name} · {match.category}</small><p>{[match.athlete?.sports_category, match.athlete?.dominant_hand, [match.athlete?.city, match.athlete?.state].filter(Boolean).join("/")].filter(Boolean).join(" · ")}</p><ContactActions athlete={match.athlete} /></div>
@@ -323,7 +408,7 @@ export default function AthleteProfileActivity({
   ) : null;
 
   if (activeTab === "conquistas") {
-    return <AthletePerformance activity={activity} schemaNotice={schemaNotice} />;
+    return <AthletePerformance activity={activity} profile={profile} schemaNotice={schemaNotice} />;
   }
 
   if (activeTab === "atividades") {
@@ -333,10 +418,10 @@ export default function AthleteProfileActivity({
           <div><Trophy aria-hidden="true" /><span><h2>Torneios e circuitos</h2><small>Acompanhe inscrições, participações atuais e histórico.</small></span></div>
         </header>
         {schemaNotice}
-        <nav className={`athleteActivityKinds${owner ? " hasPartnerSearch" : ""}`} aria-label="Tipo de atividade esportiva">
+        <nav className={`athleteActivityKinds${showPartnerSearch ? " hasPartnerSearch" : ""}`} aria-label="Tipo de atividade esportiva">
           <button type="button" className={activitySection === "tournaments" ? "active" : ""} onClick={() => selectActivitySection("tournaments")}><Trophy aria-hidden="true" /><span><strong>Torneios</strong><small>{activity.registrations.length}</small></span></button>
           <button type="button" className={activitySection === "circuits" ? "active" : ""} onClick={() => selectActivitySection("circuits")}><GitBranch aria-hidden="true" /><span><strong>Circuitos</strong><small>{activity.circuits.length}</small></span></button>
-          {owner ? <button type="button" className={activitySection === "partners" ? "active" : ""} onClick={() => selectActivitySection("partners")}><Users aria-hidden="true" /><span><strong>Procurando dupla</strong><small>{activity.partnerMatches.length}</small></span></button> : null}
+          {showPartnerSearch ? <button type="button" className={activitySection === "partners" ? "active" : ""} onClick={() => selectActivitySection("partners")}><Users aria-hidden="true" /><span><strong>Procurando dupla</strong><small>{fixedDoublesPartnerMatches.length}</small></span></button> : null}
         </nav>
 
         {activitySection !== "partners" ? <nav className="athleteActivityFilters" aria-label={activitySection === "circuits" ? "Filtrar circuitos" : "Filtrar torneios"}>
@@ -373,7 +458,7 @@ export default function AthleteProfileActivity({
         {activitySection === "circuits" && !visibleCircuits.length ? (
           <div className="athleteActivityEmpty"><GitBranch aria-hidden="true" /><strong>Nenhum circuito nesta situação</strong><span>Os circuitos vinculados às suas participações aparecerão aqui automaticamente.</span></div>
         ) : null}
-        {activitySection === "partners" && owner ? renderPartnerContent() : null}
+        {activitySection === "partners" && showPartnerSearch ? renderPartnerContent() : null}
       </section>
     );
   }
@@ -383,7 +468,7 @@ export default function AthleteProfileActivity({
       <section className="publicMemberSection athletePartnerHub">
         <header className="athleteActivityHeader">
           <div><Users aria-hidden="true" /><span><h2>Procurando dupla</h2><small>Somente atletas do mesmo torneio e categoria aparecem uns para os outros.</small></span></div>
-          <strong>{activity.partnerMatches.length}</strong>
+          <strong>{fixedDoublesPartnerMatches.length}</strong>
         </header>
         {schemaNotice}
         {renderPartnerContent()}

@@ -1121,11 +1121,17 @@ html[data-theme="dark"] body .proDashboard.playAppShell .publicMemberProfileTabs
 .publicMemberProfileTabs.athleteProfileTabs {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
   overflow: visible;
+  box-sizing: border-box;
 }
 
 .publicMemberProfileTabs.athleteProfileTabs > button {
   min-width: 0;
+  height: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 .publicMemberProfileTabs.athleteProfileTabs > button > span {

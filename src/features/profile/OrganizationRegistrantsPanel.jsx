@@ -17,7 +17,7 @@ import { formatDateBR } from "../../domain/dateTime.mjs";
 import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
-import { isCupType, isFixedTeamType, isIndividualCupType } from "../../domain/modalityClassification.mjs";
+import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import {
   getTournamentGenderLabel,
   inferTournamentGenderMode,
@@ -68,9 +68,12 @@ function formatRegistrationTimestamp(value) {
 
 function canOrganizerPairRegistration(registration) {
   const config = modalityConfig[registration.tournament?.type];
-  const doublesCompetition = config && !isIndividualCupType(config) && (isFixedTeamType(config) || isCupType(config));
   const hasPartner = registration.partner?.user_id || registration.partner_user_id || registration.partner_handle || registration.partner_name;
-  return Boolean(doublesCompetition && registration.workflowStatus === "approved" && !hasPartner);
+  return Boolean(requiresFixedDoubles(config) && registration.workflowStatus === "approved" && !hasPartner);
+}
+
+function canRegistrationLookForPartner(registration) {
+  return requiresFixedDoubles(modalityConfig[registration.tournament?.type]);
 }
 
 export default function OrganizationRegistrantsPanel({ supabase, tournaments = [] }) {
@@ -120,7 +123,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     approved: registrations.filter((item) => item.workflowStatus === "approved").length,
     submitted: registrations.filter((item) => item.workflowStatus === "submitted").length,
     rejected: registrations.filter((item) => item.workflowStatus === "rejected").length,
-    partner: registrations.filter((item) => item.looking_for_partner).length,
+    partner: registrations.filter((item) => item.looking_for_partner && canRegistrationLookForPartner(item)).length,
   }), [registrations]);
 
   const registrationOrder = useMemo(() => {
@@ -152,7 +155,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
     return registrations.filter((item) => {
       if (["approved", "submitted", "rejected"].includes(statusFilter) && item.workflowStatus !== statusFilter) return false;
-      if (statusFilter === "partner" && !item.looking_for_partner) return false;
+      if (statusFilter === "partner" && (!item.looking_for_partner || !canRegistrationLookForPartner(item))) return false;
       if (tournamentFilter !== "all" && String(item.tournament?.id) !== tournamentFilter) return false;
       if (categoryFilter !== "all" && item.categoryLabel !== categoryFilter) return false;
       if (genderFilter !== "all" && item.genderLabel !== genderFilter) return false;
@@ -323,7 +326,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
                 <button type="button" className="organizationRegistrantAvatar" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt={`Foto de ${registration.athlete?.display_name || registration.athlete_name}`} /> : getInitials(registration.athlete_name)}</button>
                 <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small><small className="organizationRegistrantChronology"><Clock3 aria-hidden="true" /> <strong>{registrationOrder.get(String(registration.id)) || "—"}º inscrito</strong> · {formatRegistrationTimestamp(registration.created_at)}</small></div>
                 <div className="organizationRegistrantControls">
-                  <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
+                  <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner && canRegistrationLookForPartner(registration) ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
                   <div className="organizationRegistrantActions">
                   {canOrganizerPairRegistration(registration) ? <button type="button" aria-pressed={pairSelection.includes(registration.id)} className={`pair${pairSelection.includes(registration.id) ? " selected" : ""}`} disabled={Boolean(busyId)} onClick={() => togglePairSelection(registration)}>{pairSelection.includes(registration.id) ? <Check aria-hidden="true" /> : <Users aria-hidden="true" />}{pairSelection.includes(registration.id) ? "Remover da seleção" : "Selecionar para dupla"}</button> : null}
                   {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Ver comprovante</button> : null}

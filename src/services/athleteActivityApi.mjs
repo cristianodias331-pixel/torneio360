@@ -7,6 +7,7 @@ function isUnavailableActivityError(error) {
     || code === "42883"
     || code === "42P01"
     || message.includes("athlete_activity")
+    || message.includes("athlete_achievements")
     || message.includes("athlete_challenge")
     || message.includes("partner_search");
 }
@@ -18,7 +19,19 @@ function normalizeActivity(data) {
     myPartnerSearches: Array.isArray(data?.my_partner_searches) ? data.my_partner_searches : [],
     partnerMatches: Array.isArray(data?.partner_matches) ? data.partner_matches : [],
     challenges: Array.isArray(data?.challenges) ? data.challenges : [],
+    achievements: Array.isArray(data?.achievements) ? data.achievements : [],
   };
+}
+
+async function loadAchievements({ supabase, userId = "" }) {
+  const rpcName = userId ? "get_athlete_achievements" : "get_my_athlete_achievements";
+  const rpcArgs = userId ? { p_user_id: userId } : undefined;
+  const { data, error } = await supabase.rpc(rpcName, rpcArgs);
+  if (error) {
+    if (isUnavailableActivityError(error)) return { achievements: [], schemaAvailable: false };
+    throw error;
+  }
+  return { achievements: Array.isArray(data) ? data : [], schemaAvailable: true };
 }
 
 export async function loadMyAthleteActivity({ supabase }) {
@@ -28,13 +41,16 @@ export async function loadMyAthleteActivity({ supabase }) {
   } catch (error) {
     if (!isUnavailableActivityError(error)) throw error;
   }
-  const { data, error } = await supabase.rpc("get_my_athlete_activity");
+  const [{ data, error }, achievementResult] = await Promise.all([
+    supabase.rpc("get_my_athlete_activity"),
+    loadAchievements({ supabase }),
+  ]);
   if (error) {
     if (isUnavailableActivityError(error)) {
       if (workflowResult.schemaAvailable) {
         return {
-          activity: normalizeActivity({ registrations: workflowResult.registrations }),
-          schemaAvailable: true,
+          activity: normalizeActivity({ registrations: workflowResult.registrations, achievements: achievementResult.achievements }),
+          schemaAvailable: achievementResult.schemaAvailable,
         };
       }
       if (typeof supabase.from === "function") {
@@ -47,6 +63,7 @@ export async function loadMyAthleteActivity({ supabase }) {
           const today = new Date().toISOString().slice(0, 10);
           return {
             activity: normalizeActivity({
+              achievements: achievementResult.achievements,
               registrations: (fallbackResult.data || []).map((registration) => {
                 const tournament = registration.tournaments || {};
                 const details = tournament.data || {};
@@ -78,19 +95,35 @@ export async function loadMyAthleteActivity({ supabase }) {
   return {
     activity: normalizeActivity({
       ...data,
+      achievements: achievementResult.achievements,
       registrations: workflowResult.schemaAvailable ? workflowResult.registrations : data?.registrations,
     }),
-    schemaAvailable: workflowResult.schemaAvailable,
+    schemaAvailable: workflowResult.schemaAvailable && achievementResult.schemaAvailable,
   };
 }
 
 export async function loadPublicAthleteActivity({ supabase, userId }) {
-  const { data, error } = await supabase.rpc("get_public_athlete_activity", { p_user_id: userId });
+  const [{ data, error }, achievementResult] = await Promise.all([
+    supabase.rpc("get_public_athlete_activity", { p_user_id: userId }),
+    loadAchievements({ supabase, userId }),
+  ]);
   if (error) {
     if (isUnavailableActivityError(error)) return { activity: normalizeActivity(null), schemaAvailable: false };
     throw error;
   }
-  return { activity: normalizeActivity(data), schemaAvailable: true };
+  return {
+    activity: normalizeActivity({ ...data, achievements: achievementResult.achievements }),
+    schemaAvailable: achievementResult.schemaAvailable,
+  };
+}
+
+export async function approveTournamentPodium({ supabase, tournamentId, entries }) {
+  const { data, error } = await supabase.rpc("approve_tournament_podium", {
+    p_tournament_id: tournamentId,
+    p_entries: entries,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function setMyPartnerSearch({ supabase, tournamentId, category, active }) {

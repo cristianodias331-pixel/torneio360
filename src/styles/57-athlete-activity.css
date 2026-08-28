@@ -345,6 +345,64 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
   background: var(--ui-surface-raised, #fff);
 }
 
+.athletePodiumSummary {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.athletePodiumSummary article {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  padding: 12px;
+  color: var(--ui-text-strong, #102038);
+  background: var(--ui-surface-muted, #eef3fa);
+  text-align: center;
+}
+
+.athletePodiumSummary article.total { justify-content: flex-start; color: #fff; background: linear-gradient(135deg, #174d95, #217eb1); }
+.athletePodiumSummary article.total > svg { width: 32px; height: 32px; flex: 0 0 auto; }
+.athletePodiumSummary article.total span { display: grid; gap: 2px; text-align: left; }
+.athletePodiumSummary article > strong { font-size: 1.35rem; }
+.athletePodiumSummary article span { font-size: .7rem; font-weight: 800; }
+.athletePodiumSummary article.gold { border-color: #e8bd4e; background: color-mix(in srgb, #f4c84d 17%, var(--ui-surface-raised, #fff)); }
+.athletePodiumSummary article.silver { border-color: #aab5c4; background: color-mix(in srgb, #cbd5e1 28%, var(--ui-surface-raised, #fff)); }
+.athletePodiumSummary article.bronze { border-color: #c98556; background: color-mix(in srgb, #c77a44 14%, var(--ui-surface-raised, #fff)); }
+
+.athleteAchievementList { display: grid; gap: 10px; margin-bottom: 14px; }
+.athleteAchievementCard { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: stretch; overflow: hidden; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 15px; background: var(--ui-surface-muted, #eef3fa); }
+.athleteAchievementPlacement { display: grid; place-content: center; justify-items: center; gap: 2px; color: #4f3604; background: linear-gradient(145deg, #f8da79, #e5ad2e); }
+.athleteAchievementCard.place2 .athleteAchievementPlacement { color: #344054; background: linear-gradient(145deg, #e2e8f0, #aab5c4); }
+.athleteAchievementCard.place3 .athleteAchievementPlacement { color: #fff; background: linear-gradient(145deg, #cf8757, #9a512b); }
+.athleteAchievementPlacement strong { font-size: 1.25rem; }
+.athleteAchievementPlacement small { font-size: .64rem; font-weight: 900; text-transform: uppercase; }
+.athleteAchievementMain { display: grid; gap: 8px; padding: 14px; }
+.athleteAchievementMain > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.athleteAchievementMain > header > div { display: grid; gap: 2px; }
+.athleteAchievementMain h3 { margin: 0; color: var(--ui-text-strong, #102038); font-size: .92rem; }
+.athleteAchievementMain header small { color: #2563eb; font-size: .62rem; font-weight: 900; text-transform: uppercase; }
+.athleteAchievementMain header > span { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 6px 9px; color: #08784c; background: color-mix(in srgb, #16a36a 11%, var(--ui-surface-raised, #fff)); font-size: .64rem; font-weight: 850; }
+.athleteAchievementMain header > span svg { width: 14px; height: 14px; }
+.athleteAchievementMain > p { margin: 0; color: var(--ui-muted, #637189); font-size: .7rem; }
+.athleteAchievementTeam { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
+.athleteAchievementTeam.isPair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.athleteAchievementPerson { display: flex; min-width: 0; min-height: 58px; align-items: center; gap: 9px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 12px; padding: 7px 10px; color: var(--ui-text, #253247); background: var(--ui-surface-raised, #fff); text-align: left; cursor: pointer; }
+.athleteAchievementPerson .athleteActivityAvatar { width: 42px; height: 42px; flex: 0 0 42px; }
+.athleteAchievementPerson > span { display: grid; min-width: 0; gap: 1px; }
+.athleteAchievementPerson small { color: var(--ui-muted, #637189); font-size: .58rem; }
+.athleteAchievementPerson strong { overflow: hidden; color: var(--ui-text-strong, #102038); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.athleteAchievementPerson em { color: #2563eb; font-size: .61rem; font-style: normal; }
+.athleteAchievementEmpty { display: grid; justify-items: center; gap: 7px; margin-bottom: 14px; border: 1px dashed var(--ui-border, #c8d4e6); border-radius: 15px; padding: 28px 18px; color: var(--ui-muted, #637189); text-align: center; }
+.athleteAchievementEmpty svg { width: 31px; height: 31px; color: #d79b16; }
+.athleteAchievementEmpty strong { color: var(--ui-text-strong, #102038); }
+.athleteAchievementEmpty span { max-width: 640px; font-size: .72rem; line-height: 1.5; }
+
 .athletePerformanceSummary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -546,6 +604,11 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
   .athleteActivityKinds button strong { font-size: .62rem; white-space: normal; text-align: center; line-height: 1.1; }
   .athleteActivityKinds button small { min-width: 18px; height: 18px; font-size: .58rem; }
   .athletePerformanceSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .athletePodiumSummary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .athletePodiumSummary article.total { grid-column: 1 / -1; }
+  .athleteAchievementCard { grid-template-columns: 58px minmax(0, 1fr); }
+  .athleteAchievementMain > header { align-items: flex-start; flex-direction: column; }
+  .athleteAchievementTeam.isPair { grid-template-columns: 1fr; }
   .athletePerformanceCharts { grid-template-columns: 1fr; }
   .athletePerformanceTimeline { grid-column: auto; }
   .athleteMonthChart { gap: 5px; }
