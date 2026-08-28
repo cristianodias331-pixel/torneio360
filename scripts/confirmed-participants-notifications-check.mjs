@@ -57,6 +57,8 @@ const loadingStyles = read("src/styles/22-public-links-and-interactions.css");
 const coverStyles = read("src/styles/41-responsive-public-covers.css");
 const navigationStyles = read("src/styles/56-unified-navigation.css");
 const registrantStyles = read("src/styles/58-organization-registrants.css");
+const tournamentJourneyStyles = read("src/styles/62-public-tournament-journey.css");
+const main = read("src/main.jsx");
 
 assert.ok(chrome.includes("navUnreadDot") && notificationHook.includes("!item.read_at"), "O sino perdeu o indicador de não visualizadas.");
 assert.ok(notifications.includes("automaticViewRef") && notifications.includes("broadcastUnreadNotificationCount(0)"), "Abrir a central deve registrar a visualização.");
@@ -74,6 +76,10 @@ assert.ok(arenaController.includes("EmbeddedArenaLoadingState") && arenaControll
 assert.ok(coverStyles.includes("grid-template-columns: clamp(220px, 23vw, 264px)") && coverStyles.includes("width: min(72vw, 224px)"), "O cartaz do torneio perdeu o enquadramento responsivo.");
 assert.ok(tournamentScreen.includes("publicAthleteEntry") && tournamentScreen.includes("publicAthleteGroupHeader") && coverStyles.includes("PARTICIPANTES PÚBLICOS"), "A lista pública de participantes perdeu os cartões de duplas.");
 assert.ok(coverStyles.includes("-webkit-text-fill-color: transparent") && navigationStyles.includes(".publicAthleteEntry\n  > .athleteIdentityLink"), "A dupla voltou a duplicar o conector ou perdeu contraste no modo escuro.");
+assert.ok(coverStyles.includes("grid-template-columns: repeat(2, minmax(0, 1fr))") && coverStyles.includes("width: 52px !important") && coverStyles.includes("align-content: center"), "Os inscritos perderam as fotos maiores, o agrupamento em duplas ou o alinhamento vertical.");
+assert.ok(tournamentScreen.includes("dedicatedRegistrationFlow") && tournamentScreen.includes("publicTournamentPrimaryAction") && !tournamentScreen.includes('setActivePublicTab("inscricao")'), "Consulta e inscrição voltaram a disputar as mesmas abas.");
+assert.ok(main.includes('experienceMode={props.initialTab === "inscricao" ? "registration" : "view"}') && !main.includes("<TournamentWorkspaceScreen"), "Ver torneio voltou a abrir a tela administrativa ou perdeu o fluxo dedicado de inscrição.");
+assert.ok(tournamentJourneyStyles.includes("publicTournamentRegistrationExperience") && tournamentJourneyStyles.includes("theme-dark") && tournamentJourneyStyles.includes("@media (max-width: 760px)"), "A jornada pública perdeu a adaptação para tema escuro ou celular.");
 assert.ok(registrants.includes("organizationRegistrantControls") && registrants.includes("Organizar inscritos") && registrantStyles.includes("selectedForPair"), "A gestão de inscritos perdeu a hierarquia visual e a seleção de duplas.");
 
 console.log("Notificações, fotos e participantes confirmados passaram.");

@@ -56,6 +56,7 @@ import {
 import TournamentRegistrationPanel from "../registration/TournamentRegistrationPanel.jsx";
 import AthleteIdentityLink, { createAthleteIdentityIndex, normalizeAthleteIdentityName, renderAthleteNames } from "../profile/AthleteIdentityLink.jsx";
 import { loadPublicTournamentAthleteIdentities } from "../../services/tournamentIdentityApi.mjs";
+import "../../styles/62-public-tournament-journey.css";
 
 function getSafePublicDocumentUrl(value) {
   try {
@@ -74,6 +75,7 @@ export default function PublicTournamentScreenView({
   viewer = null,
   onRequireLogin = null,
   initialTab = "",
+  experienceMode = "view",
   runtime,
 }) {
   const {
@@ -93,7 +95,17 @@ export default function PublicTournamentScreenView({
   } = runtime;
   const publicTabStorageKey = `publicTournamentTab:${tournament.public_id || tournament.id}`;
   const publicMatchesTabStorageKey = `publicTournamentMatchesTab:${tournament.public_id || tournament.id}`;
-  const [activePublicTab, setActivePublicTabState] = useState(() => initialTab || readPublicViewStorage(publicTabStorageKey, "participantes"));
+  const [activeExperienceMode, setActiveExperienceMode] = useState(() => (
+    experienceMode === "registration" || initialTab === "inscricao" ? "registration" : "view"
+  ));
+  const [activePublicTab, setActivePublicTabState] = useState(() => {
+    const requestedTab = initialTab && initialTab !== "inscricao"
+      ? initialTab
+      : readPublicViewStorage(publicTabStorageKey, "participantes");
+    return ["participantes", "grupos", "partidas", "ranking"].includes(requestedTab)
+      ? requestedTab
+      : "participantes";
+  });
   const [activePublicMatchesTab, setActivePublicMatchesTabState] = useState(() => readPublicViewStorage(publicMatchesTabStorageKey, "grupos"));
   const [previewImage, setPreviewImage] = useState(null);
   const [athleteIdentities, setAthleteIdentities] = useState([]);
@@ -109,8 +121,8 @@ export default function PublicTournamentScreenView({
   }
 
   useEffect(() => {
-    if (initialTab === "inscricao") setActivePublicTab("inscricao");
-  }, [initialTab, tournament.id]);
+    setActiveExperienceMode(experienceMode === "registration" || initialTab === "inscricao" ? "registration" : "view");
+  }, [experienceMode, initialTab, tournament.id]);
   useEffect(() => {
     let active = true;
     loadPublicTournamentAthleteIdentities({ supabase, tournamentId: tournament.id })
@@ -201,8 +213,19 @@ export default function PublicTournamentScreenView({
   const regulationsText = String(data.regulations?.text || "").trim();
   const regulationsPdfUrl = getSafePublicDocumentUrl(data.regulations?.pdfUrl);
 
+  function openRegistrationExperience() {
+    setActiveExperienceMode("registration");
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+
+  function returnToTournamentExperience() {
+    setActiveExperienceMode("view");
+    setActivePublicTab("participantes");
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+
   return (
-    <div className={`publicPage${embedded ? " embeddedPublicTournament" : ""}`}>
+    <div className={`publicPage${embedded ? " embeddedPublicTournament" : ""}${activeExperienceMode === "registration" ? " publicTournamentRegistrationExperience" : " publicTournamentViewExperience"}`}>
       {!embedded ? <header className="publicHeader publicHeaderWithLogo">
         <div className="publicBrandRow">
           <BeachLogo />
@@ -224,19 +247,27 @@ export default function PublicTournamentScreenView({
         </div>
 
         <div className="publicTournamentHeaderActions">
-          {onBackToArena ? <button type="button" onClick={onBackToArena}>← Voltar ao perfil da arena</button> : null}
+          {activeExperienceMode === "registration"
+            ? <button type="button" onClick={returnToTournamentExperience}>← Voltar ao torneio</button>
+            : onBackToArena ? <button type="button" onClick={onBackToArena}>← Voltar ao perfil da arena</button> : null}
           <div className="publicBadge">
-            {registrationClosed ? "Inscrições encerradas" : "Somente visualização"}
+            {activeExperienceMode === "registration" ? "Inscrição" : registrationClosed ? "Inscrições encerradas" : "Consulta pública"}
           </div>
         </div>
       </header> : (
         <section className="platformEntityHeader">
           <div>
-            <span>TORNEIO</span>
+            <span>{activeExperienceMode === "registration" ? "INSCRIÇÃO" : "TORNEIO"}</span>
             <h1>{tournament.name}</h1>
-            <p>{getModalityDisplayName(tournament.type)} · Você continua no mesmo ambiente da plataforma</p>
+            <p>{activeExperienceMode === "registration"
+              ? `${getModalityDisplayName(tournament.type)} · Revise seus dados e finalize a participação`
+              : `${getModalityDisplayName(tournament.type)} · Participantes, partidas e ranking no mesmo ambiente`}</p>
           </div>
-          {onBackToArena ? <button type="button" onClick={onBackToArena}>← Voltar às publicações</button> : null}
+          <div className="platformEntityHeaderActions">
+            {activeExperienceMode === "registration"
+              ? <button type="button" onClick={returnToTournamentExperience}>← Voltar ao torneio</button>
+              : onBackToArena ? <button type="button" onClick={onBackToArena}>← Voltar às publicações</button> : null}
+          </div>
         </section>
       )}
 
@@ -305,15 +336,8 @@ export default function PublicTournamentScreenView({
         </div>
         </div>
 
-        <nav className="tournamentTopTabs publicTournamentTabs" aria-label="Visualização pública do torneio">
-          <button type="button" className={activePublicTab === "inscricao" ? "active" : ""} onClick={() => setActivePublicTab("inscricao")}><ClipboardCheck aria-hidden="true" /> Inscrição</button>
-          <button type="button" className={activePublicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
-          {isCup ? <button type="button" className={activePublicTab === "grupos" ? "active" : ""} onClick={() => setActivePublicTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button> : null}
-          <button type="button" className={activePublicTab === "partidas" ? "active" : ""} onClick={() => setActivePublicTab("partidas")}><Flame aria-hidden="true" /> Partidas</button>
-          <button type="button" className={activePublicTab === "ranking" ? "active" : ""} onClick={() => setActivePublicTab("ranking")}><Trophy aria-hidden="true" /> Ranking</button>
-        </nav>
-
-        <section className="card publicRegistrationCard" style={{ display: activePublicTab === "inscricao" ? undefined : "none" }}>
+        {activeExperienceMode === "registration" ? (
+        <section className="card publicRegistrationCard dedicatedRegistrationFlow" aria-label="Fluxo de inscrição do torneio">
           <TournamentRegistrationPanel
             tournament={tournament}
             data={data}
@@ -324,6 +348,29 @@ export default function PublicTournamentScreenView({
             onRequireLogin={onRequireLogin}
           />
         </section>
+        ) : (
+        <>
+        <section className={`publicTournamentPrimaryAction${registrationClosed ? " isClosed" : ""}`}>
+          <div>
+            <span><ClipboardCheck aria-hidden="true" /></span>
+            <div>
+              <strong>{registrationClosed ? "Inscrições encerradas" : "Quer participar deste torneio?"}</strong>
+              <p>{registrationClosed
+                ? "Você ainda pode acompanhar participantes, partidas e ranking."
+                : "Abra o fluxo de inscrição para revisar seus dados, definir a dupla e enviar o comprovante."}</p>
+            </div>
+          </div>
+          <button type="button" onClick={openRegistrationExperience} disabled={registrationClosed}>
+            <ClipboardCheck aria-hidden="true" /> {registrationClosed ? "Prazo encerrado" : "Inscrever-se"}
+          </button>
+        </section>
+
+        <nav className="tournamentTopTabs publicTournamentTabs" aria-label="Visualização pública do torneio">
+          <button type="button" className={activePublicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
+          {isCup ? <button type="button" className={activePublicTab === "grupos" ? "active" : ""} onClick={() => setActivePublicTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button> : null}
+          <button type="button" className={activePublicTab === "partidas" ? "active" : ""} onClick={() => setActivePublicTab("partidas")}><Flame aria-hidden="true" /> Partidas</button>
+          <button type="button" className={activePublicTab === "ranking" ? "active" : ""} onClick={() => setActivePublicTab("ranking")}><Trophy aria-hidden="true" /> Ranking</button>
+        </nav>
 
         <section className="card publicAthletesCard" style={{ display: activePublicTab === "participantes" ? undefined : "none" }}>
           <div className="cardTitleRow">
@@ -583,6 +630,8 @@ export default function PublicTournamentScreenView({
             <RankingView ranking={ranking} type={tournament.type} rankingCriteria={data.rankingCriteria || defaultRankingCriteria} shareContext={publicRankingShareContext} renderParticipant={renderParticipant} />
           )}
         </section>
+        </>
+        )}
 
       </main>
       <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />

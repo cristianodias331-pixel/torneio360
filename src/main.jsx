@@ -26,7 +26,6 @@ import {
   PublicTournamentPageController,
   PublicTournamentScreenView,
   SimpleFormatInfoButton,
-  TournamentWorkspaceScreen,
 } from "./features/appShell/lazyFeatures.jsx";
 import {
   AccessPreparing,
@@ -759,25 +758,11 @@ const publicTournamentScreenRuntime = {
 };
 
 function PublicTournamentScreen(props) {
-  if (props.initialTab === "inscricao") {
-    return <PublicTournamentScreenView {...props} runtime={publicTournamentScreenRuntime} />;
-  }
-
-  const tournament = props.tournament || {};
-  const organizerId = tournament.user_id || props.organizer?.id || props.viewer?.id || "public";
   return (
-    <TournamentWorkspaceScreen
-      supabase={supabase}
-      tournament={tournament}
-      openTournaments={[tournament]}
-      userId={organizerId}
-      readOnly
-      onBack={props.onBackToArena || (() => window.history.back())}
-      onSave={async () => ({ ok: true, tournament, savedData: tournament.data || {} })}
-      onManageCircuits={undefined}
-      circuitMembershipCount={0}
-      arenaGenderRegistry={{}}
-      onOpenCourtCenter={() => {}}
+    <PublicTournamentScreenView
+      {...props}
+      experienceMode={props.initialTab === "inscricao" ? "registration" : "view"}
+      runtime={publicTournamentScreenRuntime}
     />
   );
 }

@@ -41,10 +41,6 @@ export const MemberProfileWorkspaceView = React.lazy(
 export const OrganizerWorkspaceDashboard = React.lazy(
   () => import("../../OrganizerWorkspace.jsx")
 );
-export const TournamentWorkspaceScreen = lazyNamed(
-  () => import("../../OrganizerWorkspace.jsx"),
-  "TournamentWorkspaceScreen"
-);
 export const LoginScreen = React.lazy(() => import("../auth/LoginScreen.jsx"));
 export const EmailConfirmationPendingScreen = lazyNamed(
   () => import("../auth/LoginScreen.jsx"),
