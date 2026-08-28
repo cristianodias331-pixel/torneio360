@@ -78,6 +78,7 @@ export default function OrganizationProfileContentPresentation({
   galleryBusy = false,
   galleryReady = true,
   publicationCounts = null,
+  lifecycleCountsOverride = null,
   tournamentPageLoading = false,
   tournamentHasMore = false,
   circuitPageLoading = false,
@@ -128,6 +129,10 @@ export default function OrganizationProfileContentPresentation({
     counts[status] = (counts[status] || 0) + 1;
     return counts;
   }, { active: 0, upcoming: 0, finished: 0 }), [tournaments]);
+  const displayedLifecycleCounts = {
+    ...lifecycleCounts,
+    ...(lifecycleCountsOverride || {}),
+  };
 
   const genderCounts = useMemo(() => tournaments.reduce((counts, item) => {
     if (getTournamentLifecycleStatus(item) !== statusFilter) return counts;
@@ -280,9 +285,9 @@ export default function OrganizationProfileContentPresentation({
       {publicationFilter !== "circuits" ? (
         <>
           <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar" aria-label="Filtrar torneios do perfil por situação">
-            <button type="button" className={`active ${statusFilter === "active" ? "selected" : ""}`} aria-pressed={statusFilter === "active"} onClick={() => selectStatusFilter("active")}><strong>{lifecycleCounts.active}</strong> Em andamento</button>
-            <button type="button" className={`upcoming ${statusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={statusFilter === "upcoming"} onClick={() => selectStatusFilter("upcoming")}><strong>{lifecycleCounts.upcoming}</strong> Próximos</button>
-            <button type="button" className={`finished ${statusFilter === "finished" ? "selected" : ""}`} aria-pressed={statusFilter === "finished"} onClick={() => selectStatusFilter("finished")}><strong>{lifecycleCounts.finished}</strong> Encerrados</button>
+            <button type="button" className={`active ${statusFilter === "active" ? "selected" : ""}`} aria-pressed={statusFilter === "active"} onClick={() => selectStatusFilter("active")}><strong>{displayedLifecycleCounts.active}</strong> Em andamento</button>
+            <button type="button" className={`upcoming ${statusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={statusFilter === "upcoming"} onClick={() => selectStatusFilter("upcoming")}><strong>{displayedLifecycleCounts.upcoming}</strong> Próximos</button>
+            <button type="button" className={`finished ${statusFilter === "finished" ? "selected" : ""}`} aria-pressed={statusFilter === "finished"} onClick={() => selectStatusFilter("finished")}><strong>{displayedLifecycleCounts.finished}</strong> Encerrados</button>
             <label className="eventListSearch platformUnifiedSearch">
               <Search aria-hidden="true" />
               <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Pesquisar torneios no perfil da organização" placeholder="Ex.: nome, modalidade, categoria ou local" />

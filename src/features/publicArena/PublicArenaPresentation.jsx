@@ -358,6 +358,7 @@ export function PublicArenaPageView({
             circuits={circuits}
             gallery={organizationGallery}
             publicationCounts={profileCounts}
+            lifecycleCountsOverride={profilePagination ? { finished: profilePagination.finishedTournamentTotal } : null}
             tournamentPageLoading={profilePagination?.tournamentLoading === true}
             tournamentHasMore={profilePagination?.tournamentHasMore === true}
             circuitPageLoading={profilePagination?.circuitLoading === true}

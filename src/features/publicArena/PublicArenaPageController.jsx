@@ -490,13 +490,11 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
 
   useEffect(() => {
     if (!bundle?.profile || bundle.pagination?.enabled !== true) return;
-    if (activeArenaTab === "circuits") {
-      ["active", "finished"].forEach((status) => {
-        const page = eventPagesRef.current?.circuits?.[status];
-        if (!page?.loaded && !page?.loading) void loadPublicEventPage({ kind: "circuits", status });
-      });
-      return;
-    }
+    ["active", "finished"].forEach((status) => {
+      const page = eventPagesRef.current?.circuits?.[status];
+      if (!page?.loaded && !page?.loading) void loadPublicEventPage({ kind: "circuits", status });
+    });
+    if (activeArenaTab === "circuits") return;
     const currentPage = eventPagesRef.current?.[activeArenaTab]?.[activeStatusTab];
     if (!currentPage?.loaded && !currentPage?.loading) {
       void loadPublicEventPage({ kind: activeArenaTab, status: activeStatusTab });
@@ -690,6 +688,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       : circuits.length,
   };
   const profilePagination = bundle.pagination?.enabled === true ? {
+    finishedTournamentTotal: eventPages?.tournaments?.finished?.total || 0,
     tournamentLoading: eventPages?.tournaments?.[activeStatusTab]?.loading === true,
     tournamentHasMore: eventPages?.tournaments?.[activeStatusTab]?.hasMore === true,
     onLoadMoreTournaments: () => loadPublicEventPage({
