@@ -1098,6 +1098,25 @@ html[data-theme="dark"] :is(.memberProfileIdentityActions button, .memberProfile
   }
 }
 
+html[data-theme="dark"] body .proDashboard.playAppShell .publicMemberProfileTabs.athleteProfileTabs > button:not(.active),
+.proDashboard.playAppShell.theme-dark .publicMemberProfileTabs.athleteProfileTabs > button:not(.active),
+.theme-dark .proDashboard.playAppShell .publicMemberProfileTabs.athleteProfileTabs > button:not(.active) {
+  border-color: #293a52 !important;
+  color: #aebdd0 !important;
+  background: #121e2e !important;
+  -webkit-text-fill-color: #aebdd0 !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .publicMemberProfileTabs.athleteProfileTabs > button.active,
+.proDashboard.playAppShell.theme-dark .publicMemberProfileTabs.athleteProfileTabs > button.active,
+.theme-dark .proDashboard.playAppShell .publicMemberProfileTabs.athleteProfileTabs > button.active {
+  border-color: #4c8dff !important;
+  color: #eff5ff !important;
+  background: #19345b !important;
+  box-shadow: inset 0 -3px 0 #4c8dff !important;
+  -webkit-text-fill-color: #eff5ff !important;
+}
+
 /* As cinco áreas do perfil do atleta permanecem na mesma linha em qualquer tela. */
 .publicMemberProfileTabs.athleteProfileTabs {
   display: grid;

@@ -1839,3 +1839,41 @@ html body .proDashboard.playAppShell button.organizationProfileAvatarShortcut {
     line-height: 1.05 !important;
   }
 }
+
+html[data-theme="dark"] body .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button:not(.active),
+.proDashboard.playAppShell.theme-dark .profileSubtabs.athleteProfileTabs > button:not(.active),
+.theme-dark .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button:not(.active) {
+  border-color: #293a52 !important;
+  color: #aebdd0 !important;
+  background: #121e2e !important;
+  -webkit-text-fill-color: #aebdd0 !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button.active,
+.proDashboard.playAppShell.theme-dark .profileSubtabs.athleteProfileTabs > button.active,
+.theme-dark .proDashboard.playAppShell .profileSubtabs.athleteProfileTabs > button.active {
+  border-color: #4c8dff !important;
+  color: #eff5ff !important;
+  background: #19345b !important;
+  box-shadow: inset 0 -3px 0 #4c8dff !important;
+  -webkit-text-fill-color: #eff5ff !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .organizationProfileTabs > button:not(.active),
+.proDashboard.playAppShell.theme-dark .organizationProfileTabs > button:not(.active),
+.theme-dark .proDashboard.playAppShell .organizationProfileTabs > button:not(.active) {
+  border-color: #293a52 !important;
+  color: #aebdd0 !important;
+  background: #121e2e !important;
+  -webkit-text-fill-color: #aebdd0 !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .organizationProfileTabs > button.active,
+.proDashboard.playAppShell.theme-dark .organizationProfileTabs > button.active,
+.theme-dark .proDashboard.playAppShell .organizationProfileTabs > button.active {
+  border-color: #26b779 !important;
+  color: #effff8 !important;
+  background: #123d31 !important;
+  box-shadow: inset 0 -3px 0 #26b779 !important;
+  -webkit-text-fill-color: #effff8 !important;
+}
