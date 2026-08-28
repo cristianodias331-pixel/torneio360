@@ -111,6 +111,38 @@
   box-shadow: inset 0 -3px 0 #2563eb;
 }
 
+html body .proDashboard.playAppShell .athleteActivityKinds button.active {
+  border-color: #2563eb !important;
+  color: #1249a3 !important;
+  -webkit-text-fill-color: #1249a3 !important;
+  background: #e8f1ff !important;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, .18), inset 0 -4px 0 #2563eb !important;
+}
+
+html body .proDashboard.playAppShell .athleteActivityKinds button.active small {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  background: #2563eb !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .athleteActivityKinds button.active,
+.proDashboard.playAppShell.theme-dark .athleteActivityKinds button.active,
+.theme-dark .proDashboard.playAppShell .athleteActivityKinds button.active {
+  border-color: #60a5fa !important;
+  color: #eff6ff !important;
+  -webkit-text-fill-color: #eff6ff !important;
+  background: #19345b !important;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, .28), inset 0 -4px 0 #60a5fa !important;
+}
+
+html[data-theme="dark"] body .proDashboard.playAppShell .athleteActivityKinds button.active small,
+.proDashboard.playAppShell.theme-dark .athleteActivityKinds button.active small,
+.theme-dark .proDashboard.playAppShell .athleteActivityKinds button.active small {
+  color: #071a32 !important;
+  -webkit-text-fill-color: #071a32 !important;
+  background: #93c5fd !important;
+}
+
 .athleteActivityFilters {
   display: flex;
   gap: 6px;
@@ -369,6 +401,14 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
 .athletePodiumSummary article.total { justify-content: flex-start; color: #fff; background: linear-gradient(135deg, #174d95, #217eb1); }
 .athletePodiumSummary article.total > svg { width: 32px; height: 32px; flex: 0 0 auto; }
 .athletePodiumSummary article.total span { display: grid; gap: 2px; text-align: left; }
+.athletePodiumSummary article.total,
+.athletePodiumSummary article.total strong,
+.athletePodiumSummary article.total small,
+.athletePodiumSummary article.total span,
+.athletePodiumSummary article.total svg {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
 .athletePodiumSummary article > strong { font-size: 1.35rem; }
 .athletePodiumSummary article span { font-size: .7rem; font-weight: 800; }
 .athletePodiumSummary article.gold { border-color: #e8bd4e; background: color-mix(in srgb, #f4c84d 17%, var(--ui-surface-raised, #fff)); }

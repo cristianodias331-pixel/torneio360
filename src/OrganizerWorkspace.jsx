@@ -125,7 +125,8 @@ import OrganizationProfilePresentation from "./features/profile/OrganizationProf
 import OrganizationProfileContentPresentation from "./features/profile/OrganizationProfileContentPresentation.jsx";
 import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "./features/notifications/useUnreadNotificationCount.js";
-import { createAthleteIdentityIndex, normalizeAthleteIdentityName, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
+import { createAthleteIdentityIndex, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
+import { buildVerifiedPodiumEntries } from "./domain/athleteAchievementEntries.mjs";
 import { approveTournamentPodium } from "./services/athleteActivityApi.mjs";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
@@ -936,14 +937,20 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   async function openPublishedTournamentFromFeed(item) {
     const publicId = String(item?.public_id || "").trim();
     if (!publicId || browsingPublicTournamentLoading) return;
+    const returnPanel = ["inicio", "explorar"].includes(activePanel) ? "" : activePanel;
+    if (returnPanel) {
+      const moved = await goToPanel("inicio");
+      if (!moved) return;
+    }
     setBrowsingPublicTournamentLoading(true);
     try {
       const result = await publicPlatformHomeRuntime.fetchPublicTournamentDetail(publicId);
       if (result?.error || !result?.data) {
         showNotice("error", "Torneio indisponível", "Não foi possível abrir esta publicação agora.");
+        if (returnPanel) void goToPanel(returnPanel);
         return;
       }
-      setBrowsingPublicTournament(result.data);
+      setBrowsingPublicTournament({ ...result.data, _returnPanel: returnPanel });
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     } finally {
       setBrowsingPublicTournamentLoading(false);
@@ -7414,7 +7421,9 @@ setNewPublicInfo({
                       state: organizerProfile.state || "",
                     },
                     onBackToArena: () => {
+                      const returnPanel = String(browsingPublicTournament?._returnPanel || "");
                       setBrowsingPublicTournament(null);
+                      if (returnPanel) void goToPanel(returnPanel);
                       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
                     },
                   })
@@ -9558,7 +9567,7 @@ function TournamentScreen({
 
   const [data, setDataState] = useState(() => initialTournamentState.data);
   const [approvedAthleteIdentities, setApprovedAthleteIdentities] = useState([]);
-  const [achievementApprovalByBracket, setAchievementApprovalByBracket] = useState({});
+  const automaticAchievementAttemptsRef = useRef(new Set());
   const approvedAthleteIdentityIndex = useMemo(
     () => createAthleteIdentityIndex(approvedAthleteIdentities),
     [approvedAthleteIdentities]
@@ -9568,55 +9577,20 @@ function TournamentScreen({
   async function confirmPodiumAchievements(podium, bracketName = "Principal") {
     if (readOnly || !Array.isArray(podium) || podium.length === 0) return;
     const bracketKey = String(bracketName || "Principal");
-    const entries = [];
-    const unresolvedNames = [];
-
-    podium.slice(0, 3).forEach((item, index) => {
-      const names = String(item?.name || "").split(/\s+\+\s+/).map((name) => name.trim()).filter(Boolean);
-      const identities = names.map((name) => {
-        const identity = approvedAthleteIdentityIndex.get(normalizeAthleteIdentityName(name));
-        if (!identity?.user_id) unresolvedNames.push(name);
-        return identity || null;
-      });
-      identities.forEach((identity, identityIndex) => {
-        if (!identity?.user_id) return;
-        const partner = identities.length === 2 ? identities[identityIndex === 0 ? 1 : 0] : null;
-        entries.push({
-          athlete_user_id: identity.user_id,
-          partner_user_id: partner?.user_id || null,
-          placement: index + 1,
-          bracket_name: bracketKey,
-          category: data.category || data.eventName || "",
-          event_date: data.eventDate || data.eventStartDate || "",
-        });
-      });
+    const entries = buildVerifiedPodiumEntries({
+      podium,
+      identityIndex: approvedAthleteIdentityIndex,
+      bracketName: bracketKey,
+      category: data.category || data.eventName || "",
+      eventDate: data.eventDate || data.eventStartDate || "",
     });
 
-    if (unresolvedNames.length || !entries.length) {
-      setNotice({
-        type: "warning",
-        title: "Identidades pendentes no pódio",
-        message: `Confirme a inscrição e o perfil de ${Array.from(new Set(unresolvedNames)).join(", ") || "todos os atletas"} antes de publicar as conquistas.`,
-      });
-      return;
-    }
+    if (!entries.length) return;
 
-    setAchievementApprovalByBracket((current) => ({ ...current, [bracketKey]: "saving" }));
     try {
       await approveTournamentPodium({ supabase, tournamentId: tournament.id, entries });
-      setAchievementApprovalByBracket((current) => ({ ...current, [bracketKey]: "approved" }));
-      setNotice({
-        type: "success",
-        title: "Conquistas confirmadas",
-        message: "O pódio foi assinado pela organização e já pode aparecer nos perfis dos atletas vinculados.",
-      });
     } catch (error) {
-      setAchievementApprovalByBracket((current) => ({ ...current, [bracketKey]: "" }));
-      setNotice({
-        type: "error",
-        title: "Conquistas não confirmadas",
-        message: error?.message || "Não foi possível confirmar o pódio agora.",
-      });
+      console.warn("Não foi possível sincronizar automaticamente as conquistas do pódio.", error);
     }
   }
   const currentCourtCount = getTournamentCourtCount(config, data);
@@ -11905,6 +11879,74 @@ const nonCupPodiumReady = !isCupType(config)
   && nonCupOperationalGames.length > 0
   && nonCupOperationalGames.every((item) => isGameFinished(item.game, getWinningScore(data)))
   && ranking.length > 0;
+const automaticAchievementCandidates = [];
+if (nonCupPodiumReady) {
+  automaticAchievementCandidates.push({ bracketName: "Principal", podium: ranking.slice(0, 3) });
+}
+if (isCupType(config)) {
+  if (mainCupPodium.length > 0) {
+    automaticAchievementCandidates.push({
+      bracketName: data.cupConfig?.mainBracketName || "Principal",
+      podium: mainCupPodium,
+    });
+  }
+  if (secondParallelVisible) {
+    if (isCopinhaData(data) && data.cupConfig?.teamCount !== 6 && consolationCupPodium.length > 0) {
+      automaticAchievementCandidates.push({
+        bracketName: data.cupConfig?.repechageName || "Consolação",
+        podium: consolationCupPodium,
+      });
+    } else if (!isCopinhaData(data) && parallelRanking.length > 0) {
+      automaticAchievementCandidates.push({
+        bracketName: firstParallelDisplayName,
+        podium: parallelRanking.slice(0, 3).map((item, index) => ({
+          position: index === 0 ? "Campeão" : index === 1 ? "Vice" : "3º lugar",
+          name: item.name,
+          playTimeSeconds: item.playTimeSeconds,
+        })),
+      });
+    }
+  }
+  if (sunsetSecondParallelVisible && secondParallelPodium.length > 0) {
+    automaticAchievementCandidates.push({ bracketName: sunsetSecondParallelDisplayName, podium: secondParallelPodium });
+  }
+  if (thirdParallelVisible && thirdParallelPodium.length > 0) {
+    automaticAchievementCandidates.push({ bracketName: laterParallelDisplayName, podium: thirdParallelPodium });
+  }
+  if (sunsetFinalVisible && sunsetPodium.length > 0) {
+    automaticAchievementCandidates.push({ bracketName: sunsetFinalDisplayName, podium: sunsetPodium });
+  }
+}
+const automaticAchievementSyncSignature = JSON.stringify({
+  candidates: automaticAchievementCandidates.map(({ bracketName, podium }) => ({
+    bracketName,
+    podium: podium.slice(0, 3).map((item) => String(item?.name || "")),
+  })),
+  identities: approvedAthleteIdentities
+    .map((identity) => `${identity?.user_id || ""}:${identity?.display_name || ""}`)
+    .sort(),
+});
+
+useEffect(() => {
+  if (readOnly || automaticAchievementCandidates.length === 0) return;
+
+  automaticAchievementCandidates.forEach(({ bracketName, podium }) => {
+    const entries = buildVerifiedPodiumEntries({
+      podium,
+      identityIndex: approvedAthleteIdentityIndex,
+      bracketName,
+      category: data.category || data.eventName || "",
+      eventDate: data.eventDate || data.eventStartDate || "",
+    });
+    if (entries.length === 0) return;
+
+    const attemptKey = JSON.stringify({ tournamentId: tournament.id, bracketName, entries });
+    if (automaticAchievementAttemptsRef.current.has(attemptKey)) return;
+    automaticAchievementAttemptsRef.current.add(attemptKey);
+    void confirmPodiumAchievements(podium, bracketName);
+  });
+}, [automaticAchievementSyncSignature, readOnly, tournament.id]);
+
 const tournamentRankingShareContext = {
   title: tournament.name,
   subtitle: getModalityDisplayName(tournament.type),
@@ -11916,10 +11958,6 @@ const tournamentRankingShareContext = {
 const tournamentCircuitAction = typeof onManageCircuits === "function"
   ? { onClick: onManageCircuits, managed: circuitMembershipCount > 0 }
   : null;
-const getAchievementApprovalProps = (bracketName) => readOnly ? {} : ({
-  onApproveAchievements: confirmPodiumAchievements,
-  achievementApprovalState: achievementApprovalByBracket[String(bracketName || "Principal")] || "",
-});
 const courtEditorContext = getCourtAssignmentContext(data, courtEditor);
 const courtEditorGame = courtEditorContext.game;
 const courtEditorUsedNumbers = courtEditor
@@ -12407,7 +12445,7 @@ return (
                 <div className="cupRankingPanel">
                   <h3>{data.cupConfig?.mainBracketName || "Chave Principal"}</h3>
                   {mainCupPodium.length > 0 ? (
-                    <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={tournamentRankingShareContext} circuitAction={tournamentCircuitAction} {...getAchievementApprovalProps(data.cupConfig?.mainBracketName || "Principal")} />
+                    <CupPodiumView podium={mainCupPodium} title={data.cupConfig?.mainBracketName || "Principal"} shareContext={tournamentRankingShareContext} circuitAction={tournamentCircuitAction} />
                   ) : (
                     <p>Finalize a chave principal para ver o ranking da chave principal.</p>
                   )}
@@ -12424,7 +12462,6 @@ return (
                         title={data.cupConfig?.repechageName || "Consolação"}
                         variant="parallel"
                         shareContext={tournamentRankingShareContext}
-                        {...getAchievementApprovalProps(data.cupConfig?.repechageName || "Consolação")}
                       />
                     ) : (
                       <p>Finalize a consolação para ver o pódio.</p>
@@ -12439,7 +12476,6 @@ return (
                       title={firstParallelDisplayName}
                       variant="parallel"
                       shareContext={tournamentRankingShareContext}
-                      {...getAchievementApprovalProps(firstParallelDisplayName)}
                     />
                   ) : (
                     <p>Gere ou finalize a disputa paralela para ver o ranking separado.</p>
@@ -12449,7 +12485,7 @@ return (
                   <div className="cupRankingPanel">
                     <h3>{sunsetSecondParallelDisplayName}</h3>
                     {secondParallelPodium.length > 0 ? (
-                      <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={tournamentRankingShareContext} {...getAchievementApprovalProps(sunsetSecondParallelDisplayName)} />
+                      <CupPodiumView podium={secondParallelPodium} title={sunsetSecondParallelDisplayName} variant="parallel" shareContext={tournamentRankingShareContext} />
                     ) : (
                       <p>Finalize a 2ª disputa paralela para ver o pódio.</p>
                     )}
@@ -12464,7 +12500,6 @@ return (
                         title={laterParallelDisplayName}
                         variant="parallel"
                         shareContext={tournamentRankingShareContext}
-                        {...getAchievementApprovalProps(laterParallelDisplayName)}
                       />
                     ) : (
                       <p>Finalize a {laterParallelOrdinal} disputa paralela para ver o pódio.</p>
@@ -12475,7 +12510,7 @@ return (
                   <div className="cupRankingPanel">
                     <h3>{sunsetFinalDisplayName}</h3>
                     {sunsetPodium.length > 0 ? (
-                      <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={tournamentRankingShareContext} {...getAchievementApprovalProps(sunsetFinalDisplayName)} />
+                      <CupPodiumView podium={sunsetPodium} title={sunsetFinalDisplayName} shareContext={tournamentRankingShareContext} />
                     ) : (
                       <p>Finalize o encontro entre as campeãs para ver o pódio Sunset.</p>
                     )}
@@ -12568,21 +12603,6 @@ return (
             <div className="cardTitleRow">
               <h2>Ranking do dia</h2>
               <div className="cardTitleControls">
-                {nonCupPodiumReady && !readOnly ? (
-                  <button
-                    type="button"
-                    className={`approvePodiumAchievements${achievementApprovalByBracket.Principal === "approved" ? " approved" : ""}`}
-                    disabled={achievementApprovalByBracket.Principal === "saving"}
-                    onClick={() => confirmPodiumAchievements(ranking.slice(0, 3), "Principal")}
-                  >
-                    <Award aria-hidden="true" />
-                    {achievementApprovalByBracket.Principal === "saving"
-                      ? "Confirmando..."
-                      : achievementApprovalByBracket.Principal === "approved"
-                        ? "Conquistas confirmadas"
-                        : "Confirmar 1º, 2º e 3º"}
-                  </button>
-                ) : null}
                 <SavingStatusBadge />
               </div>
             </div>

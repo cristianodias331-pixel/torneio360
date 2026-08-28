@@ -118,6 +118,7 @@ const memberPresentationSource = await readFile(new URL("../src/features/profile
 const athleteActivitySource = await readFile(new URL("../src/features/profile/AthleteProfileActivity.jsx", import.meta.url), "utf8");
 const organizationPresentationSource = await readFile(new URL("../src/features/profile/OrganizationProfilePresentation.jsx", import.meta.url), "utf8");
 const organizerWorkspaceSource = await readFile(new URL("../src/OrganizerWorkspace.jsx", import.meta.url), "utf8");
+const memberProfileWorkspaceSource = await readFile(new URL("../src/features/profile/MemberProfileWorkspace.jsx", import.meta.url), "utf8");
 const memberProfileStyles = await readFile(new URL("../src/styles/52-public-member-profile.css", import.meta.url), "utf8");
 const organizationProfileStyles = await readFile(new URL("../src/styles/51-unified-profile.css", import.meta.url), "utf8");
 const athleteActivityStyles = await readFile(new URL("../src/styles/57-athlete-activity.css", import.meta.url), "utf8");
@@ -131,5 +132,8 @@ assert(organizationPresentationSource.includes("organizationProfileTabs") && org
 assert(organizerWorkspaceSource.includes('profileSubtabs athleteProfileTabs') && !organizerWorkspaceSource.includes('onClick={() => openProfileSection("duplas", "athlete")}'), "O perfil próprio do atleta deve usar cinco abas em uma única linha e levar a busca por dupla para dentro da atividade.");
 assert(organizerWorkspaceSource.includes('["atividades", "duplas", "desafios", "conquistas"]'), "O desempenho do perfil próprio deve usar o mesmo painel de atividade do perfil visitado.");
 assert(athleteActivityStyles.includes("athletePerformanceCharts") && athleteActivityStyles.includes("athleteActivityKinds"), "Os gráficos e as subdivisões da atividade devem ter estilos claros e responsivos.");
+assert(athleteActivitySource.includes('role="tablist"') && athleteActivitySource.includes("aria-selected={activitySection ==="), "A subdivisão esportiva deve indicar semanticamente qual botão está selecionado.");
+assert(athleteActivityStyles.includes("html body .proDashboard.playAppShell .athleteActivityKinds button.active"), "O botão selecionado da atividade deve permanecer visível nos temas claro e escuro.");
+assert(organizerWorkspaceSource.includes('const returnPanel = ["inicio", "explorar"].includes(activePanel)') && memberProfileWorkspaceSource.includes('const returnPanel = ["overview", "explore"].includes(activePanel)'), "Abrir um torneio pelo perfil deve revelar a tela do evento e permitir voltar ao painel de origem.");
 
 console.log("Perfil unificado: dados esportivos, contatos protegidos, atividades, duplas e desafios passaram.");

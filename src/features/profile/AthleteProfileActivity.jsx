@@ -418,10 +418,10 @@ export default function AthleteProfileActivity({
           <div><Trophy aria-hidden="true" /><span><h2>Torneios e circuitos</h2><small>Acompanhe inscrições, participações atuais e histórico.</small></span></div>
         </header>
         {schemaNotice}
-        <nav className={`athleteActivityKinds${showPartnerSearch ? " hasPartnerSearch" : ""}`} aria-label="Tipo de atividade esportiva">
-          <button type="button" className={activitySection === "tournaments" ? "active" : ""} onClick={() => selectActivitySection("tournaments")}><Trophy aria-hidden="true" /><span><strong>Torneios</strong><small>{activity.registrations.length}</small></span></button>
-          <button type="button" className={activitySection === "circuits" ? "active" : ""} onClick={() => selectActivitySection("circuits")}><GitBranch aria-hidden="true" /><span><strong>Circuitos</strong><small>{activity.circuits.length}</small></span></button>
-          {showPartnerSearch ? <button type="button" className={activitySection === "partners" ? "active" : ""} onClick={() => selectActivitySection("partners")}><Users aria-hidden="true" /><span><strong>Procurando dupla</strong><small>{fixedDoublesPartnerMatches.length}</small></span></button> : null}
+        <nav className={`athleteActivityKinds${showPartnerSearch ? " hasPartnerSearch" : ""}`} role="tablist" aria-label="Tipo de atividade esportiva">
+          <button type="button" role="tab" aria-selected={activitySection === "tournaments"} className={activitySection === "tournaments" ? "active" : ""} onClick={() => selectActivitySection("tournaments")}><Trophy aria-hidden="true" /><span><strong>Torneios</strong><small>{activity.registrations.length}</small></span></button>
+          <button type="button" role="tab" aria-selected={activitySection === "circuits"} className={activitySection === "circuits" ? "active" : ""} onClick={() => selectActivitySection("circuits")}><GitBranch aria-hidden="true" /><span><strong>Circuitos</strong><small>{activity.circuits.length}</small></span></button>
+          {showPartnerSearch ? <button type="button" role="tab" aria-selected={activitySection === "partners"} className={activitySection === "partners" ? "active" : ""} onClick={() => selectActivitySection("partners")}><Users aria-hidden="true" /><span><strong>Procurando dupla</strong><small>{fixedDoublesPartnerMatches.length}</small></span></button> : null}
         </nav>
 
         {activitySection !== "partners" ? <nav className="athleteActivityFilters" aria-label={activitySection === "circuits" ? "Filtrar circuitos" : "Filtrar torneios"}>

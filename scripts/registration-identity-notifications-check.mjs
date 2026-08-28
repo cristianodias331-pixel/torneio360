@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { buildVerifiedPodiumEntries } from "../src/domain/athleteAchievementEntries.mjs";
 
 function read(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -12,7 +13,6 @@ const notifications = read("src/features/notifications/NotificationCenter.jsx");
 const publicTournament = read("src/features/publicArena/PublicTournamentScreen.jsx");
 const registrants = read("src/features/profile/OrganizationRegistrantsPanel.jsx");
 const organizationPublications = read("src/features/profile/OrganizationProfileContentPresentation.jsx");
-const podium = read("src/features/ranking/CupPodiumView.jsx");
 const galleryCover = read("src/features/media/organizationGalleryCover.mjs");
 const migration = read("supabase/migrations/202608270006_registration_identity_notifications.sql");
 const unifiedRegistrationMigration = read("supabase/migrations/202608270007_unified_athlete_registration.sql");
@@ -85,9 +85,41 @@ assert.ok(
 assert.ok(
   achievementsMigration.includes("create table if not exists public.athlete_achievements")
     && achievementsMigration.includes("approve_tournament_podium")
-    && organizer.includes("Confirmar 1º, 2º e 3º")
-    && podium.includes("approvalPodium"),
-  "As conquistas oficiais deixaram de registrar o pódio completo confirmado pela organização."
+    && organizer.includes("automaticAchievementCandidates")
+    && organizer.includes("automaticAchievementAttemptsRef")
+    && !organizer.includes("Identidades pendentes no pódio")
+    && !organizer.includes("Confirmar 1º, 2º e 3º"),
+  "As conquistas oficiais deixaram de ser sincronizadas automaticamente e sem bloqueio."
+);
+
+const partialPairEntries = buildVerifiedPodiumEntries({
+  podium: [{ name: "Atleta Verificado + Atleta sem perfil" }],
+  identityIndex: new Map([["atleta verificado", { user_id: "verified-1" }]]),
+  bracketName: "Principal",
+});
+assert.equal(partialPairEntries.length, 1, "A pessoa verificada da dupla deve receber a conquista mesmo sem identidade do parceiro.");
+assert.equal(partialPairEntries[0].athlete_user_id, "verified-1");
+assert.equal(partialPairEntries[0].partner_user_id, null, "A identidade ausente do parceiro não pode impedir ou fabricar vínculo.");
+
+const verifiedPairEntries = buildVerifiedPodiumEntries({
+  podium: [{ name: "Atleta Um + Atleta Dois" }],
+  identityIndex: new Map([
+    ["atleta um", { user_id: "verified-1" }],
+    ["atleta dois", { user_id: "verified-2" }],
+  ]),
+  bracketName: "Principal",
+});
+assert.equal(verifiedPairEntries.length, 2, "Cada atleta verificado da dupla deve receber a própria conquista.");
+assert.equal(verifiedPairEntries[0].partner_user_id, "verified-2");
+assert.equal(verifiedPairEntries[1].partner_user_id, "verified-1");
+
+assert.deepEqual(
+  buildVerifiedPodiumEntries({
+    podium: [{ name: "Atleta sem perfil" }],
+    identityIndex: new Map(),
+  }),
+  [],
+  "Participantes sem perfil verificado devem ser ignorados sem bloquear o torneio."
 );
 
 assert.ok(

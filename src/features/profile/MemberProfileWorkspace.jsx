@@ -357,14 +357,17 @@ export default function MemberProfileWorkspace({
   async function openPublishedTournament(item, initialTab = "") {
     const publicId = String(item?.public_id || "").trim();
     if (!publicId || browsingTournamentLoading) return;
+    const returnPanel = ["overview", "explore"].includes(activePanel) ? "" : activePanel;
+    if (returnPanel) setActivePanel("overview");
     setBrowsingTournamentLoading(true);
     try {
       const result = await publicPlatformHomeRuntime.fetchPublicTournamentDetail(publicId);
       if (result?.error || !result?.data) {
         setNotice({ tone: "error", message: "Não foi possível abrir este torneio agora." });
+        if (returnPanel) setActivePanel(returnPanel);
         return;
       }
-      setBrowsingTournament({ ...result.data, _initialPublicTab: initialTab });
+      setBrowsingTournament({ ...result.data, _initialPublicTab: initialTab, _returnPanel: returnPanel });
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     } finally {
       setBrowsingTournamentLoading(false);
@@ -438,7 +441,11 @@ export default function MemberProfileWorkspace({
                   dominant_hand: profile.dominantHand,
                 },
               },
-              onBackToArena: () => setBrowsingTournament(null),
+              onBackToArena: () => {
+                const returnPanel = String(browsingTournament?._returnPanel || "");
+                setBrowsingTournament(null);
+                if (returnPanel) setActivePanel(returnPanel);
+              },
             })
           : activePanel !== "profile" && activePanel !== "notifications" && browsingTournamentLoading
             ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
