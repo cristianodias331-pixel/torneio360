@@ -1,66 +1,22 @@
 /* Cabeçalho compacto: identidade horizontal, teste discreto e ações por ícone. */
 .proDashboard .proTopbar .playTopBrand .torneio360LogoHorizontal {
   display: flex !important;
-  width: auto !important;
-  min-width: 166px !important;
-  max-width: none !important;
+  width: 188px !important;
+  min-width: 188px !important;
+  max-width: 188px !important;
   height: 34px !important;
   align-items: center !important;
-  gap: 3px !important;
   margin-right: 8px !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
-.torneio360LogoHorizontal .torneio360LogoWord,
-.torneio360LogoHorizontal .torneio360LogoNumber {
+.torneio360LogoHorizontal .torneio360HorizontalArtwork {
   display: block;
-  flex: 0 0 auto;
-  font-family: "Arial Black", "Inter", sans-serif;
-  font-style: italic;
-  font-weight: 950;
-  letter-spacing: -.075em;
-  line-height: 1;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, .28), 0 4px 9px rgba(0, 0, 0, .3);
-}
-
-.torneio360LogoHorizontal .torneio360LogoWord {
-  color: #fff9ee;
-  font-size: 23px;
-}
-
-.torneio360LogoHorizontal .torneio360LogoNumber {
-  color: #ff4b16;
-  font-size: 25px;
-  letter-spacing: -.08em;
-  text-shadow: 0 2px 0 #9a260c, 0 4px 9px rgba(0, 0, 0, .32);
-}
-
-.torneio360LogoHorizontal .torneio360LogoBall {
-  position: relative;
-  display: block;
-  width: 22px;
-  height: 22px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  flex: 0 0 auto;
-  border: 2px solid #f7b500;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #fff72f, #bdda00);
-  box-shadow: 0 2px 0 #bd5f00, 0 4px 8px rgba(0, 0, 0, .28);
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .28));
 }
-
-.torneio360LogoHorizontal .torneio360LogoBall::before,
-.torneio360LogoHorizontal .torneio360LogoBall::after {
-  position: absolute;
-  width: 18px;
-  height: 26px;
-  border: 2px solid transparent;
-  border-left-color: #ef6c28;
-  border-radius: 50%;
-  content: "";
-}
-
-.torneio360LogoHorizontal .torneio360LogoBall::before { top: -4px; left: 5px; transform: rotate(-20deg); }
-.torneio360LogoHorizontal .torneio360LogoBall::after { top: -3px; right: 5px; transform: rotate(160deg); }
 
 .proDashboard .playTopbarNotice {
   display: flex;
@@ -172,14 +128,11 @@
 
 @media (max-width: 760px) {
   .proDashboard .proTopbar .playTopBrand .torneio360LogoHorizontal {
-    min-width: 142px !important;
-    gap: 2px !important;
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
     margin-right: 0 !important;
   }
-
-  .torneio360LogoHorizontal .torneio360LogoWord { font-size: 20px; }
-  .torneio360LogoHorizontal .torneio360LogoNumber { font-size: 22px; }
-  .torneio360LogoHorizontal .torneio360LogoBall { width: 19px; height: 19px; }
 
   .proDashboard .playTopbarNotice .freeTrialNoticeIcon,
   .proDashboard .playTopbarNotice .freeTrialNoticeSupport { display: none !important; }
@@ -189,14 +142,11 @@
 
 @media (max-width: 520px) {
   .proDashboard .proTopbar .playTopBrand .torneio360LogoHorizontal {
-    min-width: 116px !important;
-    gap: 1px !important;
+    width: 122px !important;
+    min-width: 122px !important;
+    max-width: 122px !important;
     margin-right: 0 !important;
   }
-
-  .torneio360LogoHorizontal .torneio360LogoWord { font-size: 15px; }
-  .torneio360LogoHorizontal .torneio360LogoNumber { font-size: 17px; }
-  .torneio360LogoHorizontal .torneio360LogoBall { width: 15px; height: 15px; border-width: 1px; }
 
   .proDashboard .playTopbarNotice { padding-inline: 3px; }
   .proDashboard .playTopbarNotice .freeTrialNoticeCopy > strong { font-size: 9.5px !important; }
