@@ -59,6 +59,7 @@ const navigationStyles = read("src/styles/56-unified-navigation.css");
 const registrantStyles = read("src/styles/58-organization-registrants.css");
 const tournamentJourneyStyles = read("src/styles/62-public-tournament-journey.css");
 const main = read("src/main.jsx");
+const publicHome = read("src/features/publicArena/PublicPlatformHomeController.jsx");
 
 assert.ok(chrome.includes("navUnreadDot") && notificationHook.includes("!item.read_at"), "O sino perdeu o indicador de não visualizadas.");
 assert.ok(notifications.includes("automaticViewRef") && notifications.includes("broadcastUnreadNotificationCount(0)"), "Abrir a central deve registrar a visualização.");
@@ -79,6 +80,7 @@ assert.ok(coverStyles.includes("-webkit-text-fill-color: transparent") && naviga
 assert.ok(coverStyles.includes("grid-template-columns: repeat(2, minmax(0, 1fr))") && coverStyles.includes("width: 52px !important") && coverStyles.includes("align-content: center"), "Os inscritos perderam as fotos maiores, o agrupamento em duplas ou o alinhamento vertical.");
 assert.ok(tournamentScreen.includes("dedicatedRegistrationFlow") && tournamentScreen.includes("publicTournamentPrimaryAction") && !tournamentScreen.includes('setActivePublicTab("inscricao")'), "Consulta e inscrição voltaram a disputar as mesmas abas.");
 assert.ok(main.includes('experienceMode={props.initialTab === "inscricao" ? "registration" : "view"}') && !main.includes("<TournamentWorkspaceScreen"), "Ver torneio voltou a abrir a tela administrativa ou perdeu o fluxo dedicado de inscrição.");
+assert.ok(publicHome.includes('navigatePlatform({ public: item.public_id, inscricao: "1" })') && !publicHome.includes("if (!hasSession) {\n          openSignup();"), "Inscrever-se voltou a desviar o visitante antes de apresentar o fluxo e as informações do torneio.");
 assert.ok(tournamentJourneyStyles.includes("publicTournamentRegistrationExperience") && tournamentJourneyStyles.includes("theme-dark") && tournamentJourneyStyles.includes("@media (max-width: 760px)"), "A jornada pública perdeu a adaptação para tema escuro ou celular.");
 assert.ok(registrants.includes("organizationRegistrantControls") && registrants.includes("Organizar inscritos") && registrantStyles.includes("selectedForPair"), "A gestão de inscritos perdeu a hierarquia visual e a seleção de duplas.");
 

@@ -102,10 +102,6 @@ export function PublicTournamentFeedSection({
           onRegister(registrationUrl, item);
           return;
         }
-        if (!hasSession) {
-          openSignup();
-          return;
-        }
         navigatePlatform({ public: item.public_id, inscricao: "1" });
       }}
     />
