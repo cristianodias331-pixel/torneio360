@@ -229,11 +229,12 @@ html body .platformSearchResultItem:hover {
   background: var(--ui-selected, #edf5ff) !important;
   transform: none !important;
 }
-html body .theme-dark .platformSearchResultItem {
+.proDashboard.playAppShell.theme-dark button.platformSearchResultItem {
   border-color: #30445a !important;
   background: #14202e !important;
+  color: var(--ui-text, #f5f8fc) !important;
 }
-html body .theme-dark .platformSearchResultItem:hover {
+.proDashboard.playAppShell.theme-dark button.platformSearchResultItem:hover {
   border-color: #4f8dcc !important;
   background: #1a2c3f !important;
 }
