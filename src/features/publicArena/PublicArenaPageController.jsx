@@ -116,7 +116,7 @@ function EmbeddedArenaLoadingState() {
   );
 }
 
-export default function PublicArenaPageController({ arenaId = null, publicId = null, session = null, runtime, embedded = false }) {
+export default function PublicArenaPageController({ arenaId = null, publicId = null, initialCircuitId = null, session = null, runtime, embedded = false }) {
   const {
     PublicArenaHeroHeader,
     PublicArenaTournamentCards,
@@ -154,11 +154,29 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   const eventPagesRef = useRef(eventPages);
   const lastBundleLoadAtRef = useRef(0);
   const selectedPublicTournamentRef = useRef(null);
+  const initialCircuitRequestRef = useRef("");
   eventPagesRef.current = eventPages;
 
   useEffect(() => {
     selectedPublicTournamentRef.current = selectedTournament;
   }, [selectedTournament]);
+
+  useEffect(() => {
+    const normalizedCircuitId = String(initialCircuitId || "").trim();
+    const organizationId = String(bundle?.profile?.id || "").trim();
+    if (!normalizedCircuitId || !organizationId || loading) return;
+    const requestKey = `${organizationId}:${normalizedCircuitId}`;
+    if (initialCircuitRequestRef.current === requestKey) return;
+    initialCircuitRequestRef.current = requestKey;
+
+    const directoryCircuit = (bundle?.circuits || []).find((item) => String(item.id) === normalizedCircuitId);
+    setOpeningCircuitId(normalizedCircuitId);
+    void fetchPublicCircuitDetail(normalizedCircuitId).then((result) => {
+      setOpeningCircuitId(null);
+      if (result.error || !result.data || String(result.data.user_id || "") !== organizationId) return;
+      setSelectedCircuit(normalizePublicCircuitForDisplay({ ...directoryCircuit, ...result.data }, { directoryEntry: false }));
+    });
+  }, [bundle?.circuits, bundle?.profile?.id, fetchPublicCircuitDetail, initialCircuitId, loading]);
 
   function getTournamentCardCoverKey(tournament) {
     const details = tournament?.data || {};

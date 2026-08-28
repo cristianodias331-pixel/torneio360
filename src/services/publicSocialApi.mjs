@@ -25,6 +25,37 @@ export async function fetchPublicTournamentFeed({ supabase, limit = 12, cursor =
   };
 }
 
+function emptyPlatformSearchResult(error = null) {
+  return {
+    tournaments: [],
+    accounts: [],
+    circuits: [],
+    locations: [],
+    cities: [],
+    error,
+  };
+}
+
+export async function searchPublicPlatform({ supabase, query, limit = 12 } = {}) {
+  const normalizedQuery = String(query || "").trim();
+  if (normalizedQuery.length < 2) return emptyPlatformSearchResult();
+
+  const { data, error } = await supabase.rpc("search_public_platform", {
+    p_query: normalizedQuery,
+    p_limit_per_kind: Math.max(1, Math.min(Number(limit) || 12, 24)),
+  });
+
+  if (error) return emptyPlatformSearchResult(error);
+  return {
+    tournaments: Array.isArray(data?.tournaments) ? data.tournaments : [],
+    accounts: Array.isArray(data?.accounts) ? data.accounts : [],
+    circuits: Array.isArray(data?.circuits) ? data.circuits : [],
+    locations: Array.isArray(data?.locations) ? data.locations : [],
+    cities: Array.isArray(data?.cities) ? data.cities : [],
+    error: null,
+  };
+}
+
 export async function loadMyOrganizationGallery({ supabase }) {
   const { data, error } = await supabase.rpc("get_my_organization_profile_photos");
   if (error) throw error;

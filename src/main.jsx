@@ -74,6 +74,7 @@ import {
 import {
   fetchPublicTournamentFeed,
   loadPublicOrganizationGallery,
+  searchPublicPlatform,
 } from "./services/publicSocialApi.mjs";
 import {
   isRetryableConnectionError,
@@ -169,6 +170,7 @@ const publicPlatformHomeRuntime = Object.freeze({
   fetchPublicArenaDirectory,
   fetchPublicMemberDirectory: (options) => fetchPublicMemberDirectory({ supabase, ...options }),
   fetchPublicTournamentFeed: (options) => fetchPublicTournamentFeed({ supabase, ...options }),
+  searchPublicPlatform: (options) => searchPublicPlatform({ supabase, ...options }),
   fetchPublicTournamentDetail,
   renderPublicTournament: (props) => <PublicTournamentScreen {...props} />,
   formatDate: formatDateBR,
@@ -221,6 +223,7 @@ function App() {
   const routeParams = new URL(locationHref).searchParams;
   const publicId = routeParams.get("public");
   const arenaId = routeParams.get("organizacao") || routeParams.get("arena");
+  const circuitId = routeParams.get("circuito");
   const memberIdentifier = routeParams.get("membro")
     || (!routeParams.get("aba") ? routeParams.get("perfil") : null);
   const signupType = routeParams.get("cadastro");
@@ -511,7 +514,7 @@ function App() {
   }
 
   if (arenaId) {
-    return <UnifiedPublicArenaProfile arenaId={arenaId} session={session} />;
+    return <UnifiedPublicArenaProfile arenaId={arenaId} initialCircuitId={circuitId} session={session} />;
   }
 
   if (publicMode && authFlow !== "recovery") {

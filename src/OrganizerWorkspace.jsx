@@ -7358,7 +7358,7 @@ setNewPublicInfo({
         {renderDataSafetyBanner()}
 
         <main className="playContent">
-          {activePanel !== "ajustes" ? <section className="playTitleBlock">
+          {!(["ajustes", "inicio"].includes(activePanel)) ? <section className="playTitleBlock">
             <div>
               <span className="pageEyebrow">Painel de gestão</span>
               <h1>{currentPanelMeta.title}</h1>
