@@ -19,7 +19,6 @@ import {
   ChevronRight,
   ClipboardPaste,
   CircleHelp,
-  CloudCheck,
   CloudOff,
   Clock3,
   Copy,
@@ -6556,28 +6555,8 @@ setNewPublicInfo({
   }
 
   function renderAppTopbar() {
-    const syncStatus = !networkOnline
-      ? {
-          className: "offline",
-          label: pendingSyncCount > 0 ? `${pendingSyncCount} pendente(s) no aparelho` : "Modo offline",
-          Icon: CloudOff,
-        }
-      : pendingSyncCount > 0
-        ? { className: "pending", label: "Sincronizando dados", Icon: RefreshCw }
-        : { className: "synced", label: "Dados sincronizados", Icon: CloudCheck };
-    const SyncStatusIcon = syncStatus.Icon;
-
     const actions = (
       <>
-          <div
-            className={`cloudSyncStatus ${syncStatus.className}`}
-            role="status"
-            aria-live="polite"
-            title={syncStatus.label}
-          >
-            <SyncStatusIcon aria-hidden="true" />
-            <span>{syncStatus.label}</span>
-          </div>
           <button
             type="button"
             className="themeToggleButton"
@@ -6587,7 +6566,6 @@ setNewPublicInfo({
             title={colorMode === "dark" ? "Modo claro" : "Modo noturno"}
           >
             {colorMode === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-            <span>{colorMode === "dark" ? "Modo claro" : "Modo noturno"}</span>
           </button>
 
           <div className="profileMenuWrap" ref={profileMenuRef}>
@@ -6675,6 +6653,7 @@ setNewPublicInfo({
         sidebarExpanded={sidebarExpanded}
         onSidebarExpandedChange={setSidebarExpanded}
         tagline={TORNEIO360_TAGLINE}
+        notice={freeTrialDetails ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
         actions={actions}
       />
     );
@@ -7380,7 +7359,6 @@ setNewPublicInfo({
             <div className="playPlanPill">Plano {profile.plan} · {formatStatusBR(profile.status)}</div>
           </section> : null}
 
-          {freeTrialDetails && activePanel !== "ajustes" ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
           {renderCreationNavigation()}
 
           {["inicio", "explorar"].includes(activePanel) && (

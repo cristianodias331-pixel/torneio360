@@ -88,12 +88,19 @@ export function Info({ title, text }) {
   );
 }
 
-export function BeachLogo({ variant = "light" } = {}) {
+export function BeachLogo({ variant = "light", layout = "stacked" } = {}) {
   const logoSrc = variant === "blue" ? TORNEIO360_LOGO_BLUE : TORNEIO360_LOGO;
+  const horizontal = layout === "horizontal";
 
   return (
-    <div className={`beachLogo torneio360Logo ${variant === "blue" ? "torneio360LogoBlue" : ""}`} aria-label="Torneio 360">
-      <img src={logoSrc} alt="Torneio 360" />
+    <div className={`beachLogo torneio360Logo ${horizontal ? "torneio360LogoHorizontal" : ""} ${variant === "blue" ? "torneio360LogoBlue" : ""}`} aria-label="Torneio 360">
+      {horizontal ? (
+        <>
+          <span className="torneio360LogoWord" aria-hidden="true">TORNEIO</span>
+          <span className="torneio360LogoNumber" aria-hidden="true">360</span>
+          <span className="torneio360LogoBall" aria-hidden="true" />
+        </>
+      ) : <img src={logoSrc} alt="Torneio 360" />}
     </div>
   );
 }

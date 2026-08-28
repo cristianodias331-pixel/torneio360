@@ -1,0 +1,219 @@
+/* Cabeçalho compacto: identidade horizontal, teste discreto e ações por ícone. */
+.proDashboard .proTopbar .playTopBrand .torneio360LogoHorizontal {
+  display: flex !important;
+  width: auto !important;
+  min-width: 166px !important;
+  max-width: none !important;
+  height: 34px !important;
+  align-items: center !important;
+  gap: 3px !important;
+  margin-right: 8px !important;
+  overflow: visible !important;
+}
+
+.torneio360LogoHorizontal .torneio360LogoWord,
+.torneio360LogoHorizontal .torneio360LogoNumber {
+  display: block;
+  flex: 0 0 auto;
+  font-family: "Arial Black", "Inter", sans-serif;
+  font-style: italic;
+  font-weight: 950;
+  letter-spacing: -.075em;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .28), 0 4px 9px rgba(0, 0, 0, .3);
+}
+
+.torneio360LogoHorizontal .torneio360LogoWord {
+  color: #fff9ee;
+  font-size: 23px;
+}
+
+.torneio360LogoHorizontal .torneio360LogoNumber {
+  color: #ff4b16;
+  font-size: 25px;
+  letter-spacing: -.08em;
+  text-shadow: 0 2px 0 #9a260c, 0 4px 9px rgba(0, 0, 0, .32);
+}
+
+.torneio360LogoHorizontal .torneio360LogoBall {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border: 2px solid #f7b500;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fff72f, #bdda00);
+  box-shadow: 0 2px 0 #bd5f00, 0 4px 8px rgba(0, 0, 0, .28);
+}
+
+.torneio360LogoHorizontal .torneio360LogoBall::before,
+.torneio360LogoHorizontal .torneio360LogoBall::after {
+  position: absolute;
+  width: 18px;
+  height: 26px;
+  border: 2px solid transparent;
+  border-left-color: #ef6c28;
+  border-radius: 50%;
+  content: "";
+}
+
+.torneio360LogoHorizontal .torneio360LogoBall::before { top: -4px; left: 5px; transform: rotate(-20deg); }
+.torneio360LogoHorizontal .torneio360LogoBall::after { top: -3px; right: 5px; transform: rotate(160deg); }
+
+.proDashboard .playTopbarNotice {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  padding: 0 10px;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNotice {
+  display: flex !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 5px 7px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(125, 211, 252, .22) !important;
+  border-radius: 12px !important;
+  background: rgba(8, 30, 61, .56) !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNotice::before { display: none !important; }
+
+.proDashboard .playTopbarNotice .freeTrialNoticeIcon {
+  display: grid !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  place-items: center !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: rgba(14, 165, 233, .13) !important;
+  box-shadow: none !important;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNoticeIcon svg {
+  width: 15px !important;
+  height: 15px !important;
+  color: #7dd3fc !important;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNoticeCopy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNoticeCopy > strong {
+  color: #f8fbff !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNoticeCopy > span {
+  display: block !important;
+  margin: 0 !important;
+  color: #a9bfd8 !important;
+  font-size: 9px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.15 !important;
+  text-transform: none !important;
+  white-space: nowrap;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNoticeSupport {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 4px;
+  border-left: 1px solid rgba(255, 255, 255, .14);
+  padding: 0 3px 0 9px;
+  color: #86efac;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.proDashboard .playTopbarNotice .freeTrialNoticeSupport:hover { color: #bbf7d0; }
+.proDashboard .playTopbarNotice .freeTrialNoticeSupport svg { width: 13px; height: 13px; }
+
+.proDashboard.playAppShell button.themeToggleButton {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+}
+
+.proDashboard.playAppShell button.themeToggleButton svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+@media (max-width: 1180px) {
+  .proDashboard .proTopbar .brandTaglineOnly { display: none !important; }
+  .proDashboard .playTopbarNotice { padding-inline: 6px; }
+  .proDashboard .playTopbarNotice .freeTrialNoticeSupport { width: 28px; justify-content: center; padding: 0; border-left: 0; font-size: 0; }
+}
+
+@media (max-width: 760px) {
+  .proDashboard .proTopbar .playTopBrand .torneio360LogoHorizontal {
+    min-width: 142px !important;
+    gap: 2px !important;
+    margin-right: 0 !important;
+  }
+
+  .torneio360LogoHorizontal .torneio360LogoWord { font-size: 20px; }
+  .torneio360LogoHorizontal .torneio360LogoNumber { font-size: 22px; }
+  .torneio360LogoHorizontal .torneio360LogoBall { width: 19px; height: 19px; }
+
+  .proDashboard .playTopbarNotice .freeTrialNoticeIcon,
+  .proDashboard .playTopbarNotice .freeTrialNoticeSupport { display: none !important; }
+  .proDashboard .playTopbarNotice .freeTrialNotice { padding: 5px 7px !important; }
+  .proDashboard .playTopbarNotice .freeTrialNoticeCopy > span { display: none !important; }
+}
+
+@media (max-width: 520px) {
+  .proDashboard .proTopbar .playTopBrand .torneio360LogoHorizontal {
+    min-width: 116px !important;
+    gap: 1px !important;
+    margin-right: 0 !important;
+  }
+
+  .torneio360LogoHorizontal .torneio360LogoWord { font-size: 15px; }
+  .torneio360LogoHorizontal .torneio360LogoNumber { font-size: 17px; }
+  .torneio360LogoHorizontal .torneio360LogoBall { width: 15px; height: 15px; border-width: 1px; }
+
+  .proDashboard .playTopbarNotice { padding-inline: 3px; }
+  .proDashboard .playTopbarNotice .freeTrialNoticeCopy > strong { font-size: 9.5px !important; }
+  .proDashboard.playAppShell button.themeToggleButton {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+  }
+
+  .proDashboard .proTopActions > .publicOverviewCreateProfile,
+  .proDashboard .proTopActions > .publicOverviewLogin {
+    min-height: 36px !important;
+    padding: 0 9px !important;
+    font-size: 10.5px !important;
+  }
+
+  .proDashboard .proTopActions > .publicOverviewCreateProfile svg,
+  .proDashboard .proTopActions > .publicOverviewLogin svg { display: none !important; }
+}

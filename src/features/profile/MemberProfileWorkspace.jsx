@@ -91,14 +91,14 @@ function OrganizationAccessPanel({ user, access, activating, activationError, on
         <div>
           <span><CreditCard aria-hidden="true" /></span>
           <div>
-            <strong>{needsRegularization ? "Assinatura da organização pendente" : "Experimente a gestão antes de assinar"}</strong>
-            <small>{needsRegularization ? "A equipe do Torneio360 confirma o plano sem alterar seu perfil esportivo." : "O período de organização começa somente agora e não é renovado ao tocar novamente."}</small>
+            <strong>{needsRegularization ? "Assinatura da organização pendente" : "Teste a gestão gratuitamente por 3 dias"}</strong>
+            <small>{needsRegularization ? "A equipe do Torneio360 confirma o plano sem alterar seu perfil esportivo." : "Os 3 dias começam somente agora e não são renovados ao tocar novamente."}</small>
           </div>
         </div>
         <div className="memberOrganizationPlanActions">
           {!needsRegularization ? (
             <button type="button" onClick={onActivate} disabled={activating}>
-              <Building2 aria-hidden="true" /> {activating ? "Ativando organização..." : "Ativar organização"}
+              <Building2 aria-hidden="true" /> {activating ? "Ativando organização..." : "Ativar 3 dias grátis"}
             </button>
           ) : null}
           <a href={subscriptionUrl} target="_blank" rel="noopener noreferrer">

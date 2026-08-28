@@ -64,7 +64,7 @@ export function EmailConfirmationPendingScreen({ email, onRefresh, supabase, onL
       setNotice({
         type: "success",
         title: "E-mail reenviado",
-        message: "Abra o link recebido para confirmar seu endereço e iniciar os 7 dias grátis.",
+        message: "Abra o link recebido para confirmar seu endereço e ativar sua conta gratuita.",
       });
     } catch (error) {
       console.error(error);
@@ -523,7 +523,7 @@ export default function LoginScreen({
             <div className="landingTrialBenefits" aria-label="Benefícios do teste grátis">
               <span>Foto, capa e apresentação</span>
               <span>Galeria pessoal com até 6 fotos</span>
-              <span>Começa após confirmar o e-mail</span>
+              <span>3 dias de gestão quando ativar a organização</span>
             </div>
           </div>
 

@@ -152,6 +152,7 @@ export function Blocked({
 export function FreeTrialNotice({ details, formatDate }) {
   const isLastDay = details.daysRemaining === 1;
   const dayLabel = details.daysRemaining === 1 ? "dia" : "dias";
+  const whatsappSupport = PLATFORM_SUPPORT.find(({ id }) => id === "whatsapp");
 
   return (
     <section
@@ -163,19 +164,19 @@ export function FreeTrialNotice({ details, formatDate }) {
       <div className="freeTrialNoticeIcon" aria-hidden="true"><Gift /></div>
 
       <div className="freeTrialNoticeCopy">
-        <span>Seu período gratuito está ativo</span>
         <strong>
           {isLastDay
-            ? "Hoje é o seu último dia grátis"
-            : `Você ainda tem ${details.daysRemaining} dias grátis`}
+            ? "Último dia grátis"
+            : `${details.daysRemaining} ${dayLabel} grátis`}
         </strong>
-        <p>Plano Premium liberado até {formatDate(details.expiresAt)}.</p>
+        <span>Premium até {formatDate(details.expiresAt)}</span>
       </div>
 
-      <div className="freeTrialNoticeDays" aria-hidden="true">
-        <strong>{details.daysRemaining}</strong>
-        <span>{dayLabel}</span>
-      </div>
+      {whatsappSupport ? (
+        <a className="freeTrialNoticeSupport" href={whatsappSupport.href} target="_blank" rel="noopener noreferrer">
+          <MessageCircle aria-hidden="true" /> Suporte
+        </a>
+      ) : null}
     </section>
   );
 }

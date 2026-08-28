@@ -65,7 +65,6 @@ export default function UnifiedPlatformFrame({
         aria-pressed={colorMode === "dark"}
       >
         {colorMode === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-        <span>{colorMode === "dark" ? "Modo claro" : "Modo noturno"}</span>
       </button>
       {!hasSession && onSignup ? (
         <button type="button" className="publicOverviewCreateProfile" onClick={onSignup}>

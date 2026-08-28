@@ -3,6 +3,7 @@ import { LockKeyhole, Menu } from "lucide-react";
 import { BeachLogo } from "./EntryPresentation.jsx";
 import "../../styles/40-organizer-data-and-navigation.css";
 import "../../styles/56-unified-navigation.css";
+import "../../styles/57-compact-topbar.css";
 
 export function PlatformSidebar({
   activePanel,
@@ -63,6 +64,7 @@ export function PlatformTopbar({
   sidebarExpanded = false,
   onSidebarExpandedChange,
   tagline = "Gestão inteligente de torneios",
+  notice = null,
   actions = null,
 }) {
   return (
@@ -79,9 +81,10 @@ export function PlatformTopbar({
           <Menu aria-hidden="true" />
           <span>Menu</span>
         </button>
-        <BeachLogo />
+        <BeachLogo layout="horizontal" />
         <div className="brandTaglineOnly"><span>{tagline}</span></div>
       </div>
+      {notice ? <div className="playTopbarNotice">{notice}</div> : null}
       <div className="playUserBox proTopActions">
         {actions}
       </div>
