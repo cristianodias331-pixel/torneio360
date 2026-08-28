@@ -358,7 +358,9 @@ export function PublicArenaPageView({
             circuits={circuits}
             gallery={organizationGallery}
             publicationCounts={profileCounts}
-            lifecycleCountsOverride={profilePagination ? { finished: profilePagination.finishedTournamentTotal } : null}
+            lifecycleCountsOverride={profilePagination ? { active: profilePagination.activeTournamentTotal, finished: profilePagination.finishedTournamentTotal } : null}
+            circuitLifecycleCountsOverride={profilePagination ? { active: profilePagination.activeCircuitTotal, finished: profilePagination.finishedCircuitTotal } : null}
+            combineActiveAndUpcoming={Boolean(profilePagination)}
             tournamentPageLoading={profilePagination?.tournamentLoading === true}
             tournamentHasMore={profilePagination?.tournamentHasMore === true}
             circuitPageLoading={profilePagination?.circuitLoading === true}

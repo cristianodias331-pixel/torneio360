@@ -688,7 +688,10 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
       : circuits.length,
   };
   const profilePagination = bundle.pagination?.enabled === true ? {
+    activeTournamentTotal: eventPages?.tournaments?.active?.total || 0,
     finishedTournamentTotal: eventPages?.tournaments?.finished?.total || 0,
+    activeCircuitTotal: eventPages?.circuits?.active?.total || 0,
+    finishedCircuitTotal: eventPages?.circuits?.finished?.total || 0,
     tournamentLoading: eventPages?.tournaments?.[activeStatusTab]?.loading === true,
     tournamentHasMore: eventPages?.tournaments?.[activeStatusTab]?.hasMore === true,
     onLoadMoreTournaments: () => loadPublicEventPage({

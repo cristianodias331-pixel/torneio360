@@ -90,6 +90,8 @@ export default function OrganizationProfileContentPresentation({
   galleryReady = true,
   publicationCounts = null,
   lifecycleCountsOverride = null,
+  circuitLifecycleCountsOverride = null,
+  combineActiveAndUpcoming = false,
   tournamentPageLoading = false,
   tournamentHasMore = false,
   circuitPageLoading = false,
@@ -192,6 +194,10 @@ export default function OrganizationProfileContentPresentation({
     counts[status] += 1;
     return counts;
   }, { active: 0, upcoming: 0, finished: 0 }), [circuits]);
+  const displayedCircuitLifecycleCounts = {
+    ...circuitLifecycleCounts,
+    ...(circuitLifecycleCountsOverride || {}),
+  };
 
   const visibleCircuits = useMemo(() => {
     const normalizedSearch = normalizeModalitySearch(circuitSearch);
@@ -323,8 +329,8 @@ export default function OrganizationProfileContentPresentation({
       {publicationFilter === "tournaments" ? (
         <>
           <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar" aria-label="Filtrar torneios do perfil por situação">
-            <button type="button" className={`active ${statusFilter === "active" ? "selected" : ""}`} aria-pressed={statusFilter === "active"} onClick={() => selectStatusFilter("active")}><strong>{displayedLifecycleCounts.active}</strong> Em andamento</button>
-            <button type="button" className={`upcoming ${statusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={statusFilter === "upcoming"} onClick={() => selectStatusFilter("upcoming")}><strong>{displayedLifecycleCounts.upcoming}</strong> Próximos</button>
+            <button type="button" className={`active ${statusFilter === "active" ? "selected" : ""}`} aria-pressed={statusFilter === "active"} onClick={() => selectStatusFilter("active")}><strong>{displayedLifecycleCounts.active}</strong> {combineActiveAndUpcoming ? "Ativos e próximos" : "Em andamento"}</button>
+            {!combineActiveAndUpcoming ? <button type="button" className={`upcoming ${statusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={statusFilter === "upcoming"} onClick={() => selectStatusFilter("upcoming")}><strong>{displayedLifecycleCounts.upcoming}</strong> Próximos</button> : null}
             <button type="button" className={`finished ${statusFilter === "finished" ? "selected" : ""}`} aria-pressed={statusFilter === "finished"} onClick={() => selectStatusFilter("finished")}><strong>{displayedLifecycleCounts.finished}</strong> Encerrados</button>
             <label className="eventListSearch platformUnifiedSearch">
               <Search aria-hidden="true" />
@@ -384,9 +390,9 @@ export default function OrganizationProfileContentPresentation({
         <>
           <div className="profilePublicationsHeader profileCircuitsHeading"><div><strong>Circuitos</strong><span>Temporadas, etapas e rankings publicados pela organização.</span></div></div>
           <div className="tournamentStatusSummary eventListToolbar profileTournamentToolbar profileCircuitToolbar" aria-label="Filtrar circuitos do perfil por situação">
-            <button type="button" className={`active ${circuitStatusFilter === "active" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "active"} onClick={() => selectCircuitStatusFilter("active")}><strong>{circuitLifecycleCounts.active}</strong> Em andamento</button>
-            <button type="button" className={`upcoming ${circuitStatusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "upcoming"} onClick={() => selectCircuitStatusFilter("upcoming")}><strong>{circuitLifecycleCounts.upcoming}</strong> Próximos</button>
-            <button type="button" className={`finished ${circuitStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "finished"} onClick={() => selectCircuitStatusFilter("finished")}><strong>{circuitLifecycleCounts.finished}</strong> Encerrados</button>
+            <button type="button" className={`active ${circuitStatusFilter === "active" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "active"} onClick={() => selectCircuitStatusFilter("active")}><strong>{displayedCircuitLifecycleCounts.active}</strong> {combineActiveAndUpcoming ? "Ativos e próximos" : "Em andamento"}</button>
+            {!combineActiveAndUpcoming ? <button type="button" className={`upcoming ${circuitStatusFilter === "upcoming" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "upcoming"} onClick={() => selectCircuitStatusFilter("upcoming")}><strong>{displayedCircuitLifecycleCounts.upcoming}</strong> Próximos</button> : null}
+            <button type="button" className={`finished ${circuitStatusFilter === "finished" ? "selected" : ""}`} aria-pressed={circuitStatusFilter === "finished"} onClick={() => selectCircuitStatusFilter("finished")}><strong>{displayedCircuitLifecycleCounts.finished}</strong> Encerrados</button>
             <label className="eventListSearch platformUnifiedSearch">
               <Search aria-hidden="true" />
               <input type="search" value={circuitSearch} onChange={(event) => setCircuitSearch(event.target.value)} aria-label="Pesquisar circuitos no perfil da organização" placeholder="Ex.: nome ou período do circuito" />
