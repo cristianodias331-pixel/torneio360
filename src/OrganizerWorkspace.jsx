@@ -428,6 +428,10 @@ import {
 import { createTournamentOperations } from "./domain/tournamentOperations.mjs";
 import { createCupPresentation } from "./domain/cupPresentation.mjs";
 import { createTournamentRuntimeAdapters } from "./features/tournamentWorkspace/TournamentRuntimeAdapters.jsx";
+import {
+  isLegacyOrganizerManagementPanel,
+  normalizePersistedOrganizerPanel,
+} from "./domain/organizerWorkspaceNavigation.mjs";
 
 const HOMOLOGATION_LOAD_LAB_ENABLED = String(import.meta.env.VITE_SUPABASE_URL || "")
   .includes("vcixhzvytkrautotinpi.supabase.co");
@@ -613,7 +617,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const [organizationProfileImageEditor, setOrganizationProfileImageEditor] = useState(null);
   const [activePanel, setActivePanel] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("aba") || "inicio";
+    return normalizePersistedOrganizerPanel(params.get("aba"));
   });
   const [browsingPublicTournament, setBrowsingPublicTournament] = useState(null);
   const [browsingPublicTournamentLoading, setBrowsingPublicTournamentLoading] = useState(false);
@@ -731,7 +735,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       const url = new URL(state.last_url, window.location.origin);
       if (url.origin !== window.location.origin) return null;
 
-      if (!url.searchParams.get("aba") && state.last_panel) url.searchParams.set("aba", state.last_panel);
+      const restoredPanel = normalizePersistedOrganizerPanel(url.searchParams.get("aba") || state.last_panel);
+      url.searchParams.set("aba", restoredPanel);
       if (!url.searchParams.get("torneio") && state.last_tournament_id) url.searchParams.set("torneio", state.last_tournament_id);
       if (!url.searchParams.get("tab") && state.last_tournament_tab) url.searchParams.set("tab", state.last_tournament_tab);
       if (!url.searchParams.get("partidas") && state.last_matches_tab) url.searchParams.set("partidas", state.last_matches_tab);
@@ -820,8 +825,16 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     if (!canRestoreDetails) return false;
 
     const currentParams = new URLSearchParams(window.location.search);
-    if (state.last_panel) setActivePanel(state.last_panel);
-    if (state.last_profile_subtab) setProfileSubtab(normalizeProfileSubtab(state.last_profile_subtab));
+    const restoredLegacyManagement = isLegacyOrganizerManagementPanel(state.last_panel);
+    if (state.last_panel) {
+      const restoredPanel = normalizePersistedOrganizerPanel(state.last_panel);
+      setActivePanel(restoredPanel);
+      if (restoredLegacyManagement) {
+        setProfileIdentity("organization");
+        setProfileSubtab("publicacoes");
+      }
+    }
+    if (state.last_profile_subtab && !restoredLegacyManagement) setProfileSubtab(normalizeProfileSubtab(state.last_profile_subtab));
     const circuitId = currentParams.get("circuito") || state.last_circuit_id;
     if (circuitId) setExpandedCircuitId(circuitId);
 
@@ -838,8 +851,8 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   function updateAppUrl(next = {}) {
     const params = new URLSearchParams(window.location.search);
 
-    if (next.activePanel) params.set("aba", next.activePanel);
-    else if (!params.get("aba")) params.set("aba", activePanel || "inicio");
+    if (next.activePanel) params.set("aba", normalizePersistedOrganizerPanel(next.activePanel));
+    else if (!params.get("aba")) params.set("aba", normalizePersistedOrganizerPanel(activePanel));
 
     if (Object.prototype.hasOwnProperty.call(next, "selectedTournamentId")) {
       if (next.selectedTournamentId) params.set("torneio", next.selectedTournamentId);
@@ -904,8 +917,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function goToPanel(panel) {
     userNavigationStartedRef.current = true;
-    if (!await guardSelectedTournamentBeforeLeaving()) return false;
+    if (selected?.id && !await guardSelectedTournamentBeforeLeaving()) return false;
     setSidebarExpanded(false);
+    if (!isLegacyOrganizerManagementPanel(panel)) {
+      setCreateTournamentOpen(false);
+      setCreateCircuitOpen(false);
+      setCombineCircuitsOpen(false);
+    }
     setSelected(null);
     setExpandedCircuitId(null);
     setExpandedCircuitToolsId(null);
@@ -1247,7 +1265,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const payload = {
       user_id: user.id,
       last_url: `${window.location.pathname}${window.location.search}${window.location.hash || ""}`,
-      last_panel: extra.activePanel || activePanel || params.get("aba") || "inicio",
+      last_panel: normalizePersistedOrganizerPanel(extra.activePanel || activePanel || params.get("aba")),
       last_tournament_id: extra.selectedTournamentId ?? params.get("torneio"),
       last_tournament_tab: extra.tournamentTab || params.get("tab"),
       last_matches_tab: extra.matchesTab || params.get("partidas"),
@@ -5328,8 +5346,11 @@ setNewPublicInfo({
     if (confirmedCreatedTournaments[0]) {
       setTournamentStatusFilter(getTournamentLifecycleStatus(confirmedCreatedTournaments[0]));
     }
-    updateAppUrl({ activePanel: "criar", selectedTournamentId: null });
-    saveUserAppState({ activePanel: "criar", selectedTournamentId: null });
+    setProfileIdentity("organization");
+    setProfileSubtab("publicacoes");
+    setActivePanel("ajustes");
+    updateAppUrl({ activePanel: "ajustes", selectedTournamentId: null, profileSubtab: "publicacoes", profileIdentity: "organization" });
+    saveUserAppState({ activePanel: "ajustes", selectedTournamentId: null, profileSubtab: "publicacoes" });
     showNotice("success", isMultiCategory ? "Torneios criados" : "Torneio criado", isMultiCategory ? "As categorias foram criadas como torneios separados dentro do mesmo evento." : "O torneio foi criado com sucesso.");
     window.requestAnimationFrame(() => {
       document.getElementById("historico-torneios")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -7425,8 +7446,9 @@ setNewPublicInfo({
             />
           ) : null}
 
-    {activePanel === "criar" && (
+    {(activePanel === "criar" || createTournamentOpen) && (
     <>
+    {activePanel === "criar" ? (
     <section className="card eventManagerToolbar">
       <div>
         <span className="managerEyebrow">Organização dos eventos</span>
@@ -7435,6 +7457,7 @@ setNewPublicInfo({
       </div>
       <button type="button" className="actionCreateBtn" onClick={() => setCreateTournamentOpen(true)}>+ Criar torneio</button>
     </section>
+    ) : null}
 
     {createTournamentOpen ? (
     <div className="eventEditorOverlay" role="dialog" aria-modal="true" aria-label="Criar torneio">
@@ -7793,6 +7816,7 @@ setNewPublicInfo({
       </div>
       ) : null}
 
+{activePanel === "criar" ? (
 <section id="historico-torneios" className="card">
   <h2>Torneios cadastrados</h2>
   <div className="tournamentStatusSummary eventListToolbar" aria-label="Filtrar torneios por situação">
@@ -8001,6 +8025,7 @@ setNewPublicInfo({
     </div>
   )}
 </section>
+    ) : null}
     </>
     )}
 
@@ -8881,7 +8906,7 @@ setNewPublicInfo({
         canManageEvents
         galleryBusy={organizationGallerySaving}
         galleryReady={organizationGalleryStatus === "ready"}
-        onCreateTournament={() => { goToPanel("criar"); setCreateTournamentOpen(true); }}
+        onCreateTournament={() => setCreateTournamentOpen(true)}
         onCreateCircuit={() => { goToPanel("circuitos"); setCreateCircuitOpen(true); }}
         onOpenTournament={openTournament}
         onEditTournament={openEditTournament}
@@ -9666,7 +9691,7 @@ function TournamentScreen({
   async function updateTournamentUrl(next = {}) {
     if (readOnly) return;
     const params = new URLSearchParams(window.location.search);
-    params.set("aba", "criar");
+    params.set("aba", "ajustes");
     params.set("torneio", tournament.id);
     params.set("tab", next.activeTournamentTab || activeTournamentTab);
     params.set("partidas", next.activeMatchesTab || activeMatchesTab);
@@ -9686,7 +9711,7 @@ function TournamentScreen({
       const { error } = await supabase.from("user_app_state").upsert({
         user_id: tournament.user_id,
         last_url: nextUrl,
-        last_panel: "criar",
+        last_panel: "ajustes",
         last_tournament_id: tournament.id,
         last_tournament_tab: params.get("tab"),
         last_matches_tab: params.get("partidas"),
