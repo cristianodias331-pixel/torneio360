@@ -15,8 +15,11 @@ const calls = [];
 const supabase = {
   rpc: async (name, payload) => {
     calls.push({ type: "rpc", name, payload });
-    if (name === "get_my_tournament_registration_checkout") {
-      return { data: { registration: null, athlete: { display_name: "Atleta Teste" } }, error: null };
+    if (name === "get_my_tournament_registration_checkout_v2") {
+      return { data: { registration: null, athlete: { display_name: "Atleta Teste", gender: "Masculino" } }, error: null };
+    }
+    if (name === "validate_tournament_registration_eligibility") {
+      return { data: { eligible: true, requires_partner: true, gender_mode: "mista" }, error: null };
     }
     if (name === "prepare_my_tournament_registration") {
       return { data: { registration: { id: "registration-1" } }, error: null };
@@ -42,6 +45,7 @@ const supabase = {
 const checkout = await loadMyTournamentRegistrationCheckout({ supabase, tournamentId: "tournament-1" });
 assert(checkout.schemaAvailable === true, "A jornada deve reconhecer a estrutura aplicada.");
 assert(checkout.checkout.athlete.display_name === "Atleta Teste", "Os dados do perfil devem preencher a inscrição.");
+assert(checkout.checkout.athlete.gender === "Masculino", "A inscrição deve usar o gênero obrigatório do perfil.");
 
 const receipt = { name: "pix.pdf", type: "application/pdf", size: 2048 };
 const submitted = await submitTournamentRegistrationWorkflow({
@@ -60,6 +64,8 @@ assert(uploadCall.bucket === "registration-receipts", "O comprovante deve usar o
 assert(uploadCall.path === "athlete-1/registration-1/comprovante.pdf", "O caminho deve vincular atleta e inscrição.");
 assert(uploadCall.options.upsert === true && uploadCall.options.contentType === "application/pdf", "O envio deve preservar o tipo e permitir reenvio controlado.");
 const submitCall = calls.find((call) => call.name === "submit_my_tournament_registration_proof_v2");
+const eligibilityCall = calls.find((call) => call.name === "validate_tournament_registration_eligibility");
+assert(eligibilityCall?.payload.p_looking_for_partner === true, "O banco deve validar dupla fixa e gênero antes de preparar a inscrição.");
 assert(submitCall.payload.p_looking_for_partner === true, "A procura de dupla deve ser conectada à mesma inscrição.");
 assert(submitCall.payload.p_payment_proof_path === uploadCall.path, "O banco deve receber somente o caminho privado do arquivo.");
 
@@ -69,7 +75,7 @@ assert(validateRegistrationReceipt({ name: "grande.pdf", type: "application/pdf"
 const controlsCalls = [];
 const controlsSupabase = { rpc: async (name, payload) => {
   controlsCalls.push({ name, payload });
-  if (name === "search_tournament_partner_candidates") return { data: [{ user_id: "athlete-2", display_name: "Dupla Teste", handle: "dupla.teste" }], error: null };
+  if (name === "search_tournament_partner_candidates_v2") return { data: [{ user_id: "athlete-2", display_name: "Dupla Teste", handle: "dupla.teste", gender: "Feminino" }], error: null };
   return { data: { registration_id: "registration-1" }, error: null };
 } };
 const candidates = await searchTournamentPartnerCandidates({ supabase: controlsSupabase, tournamentId: "tournament-1", query: "Dupla" });

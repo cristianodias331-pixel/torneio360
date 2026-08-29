@@ -154,6 +154,21 @@ export default function MemberProfileDetailsModal({
           </div>
 
           <div className="formField">
+            <label htmlFor="member-modal-gender">Gênero do atleta</label>
+            <select
+              id="member-modal-gender"
+              value={profile.gender || ""}
+              onChange={(event) => onChange("gender", event.target.value)}
+              aria-invalid={Boolean(errors.gender)}
+            >
+              <option value="">Selecione</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Feminino">Feminino</option>
+            </select>
+            {errors.gender ? <small className="unifiedMemberFieldError">{errors.gender}</small> : <small>Usado para validar categorias e duplas mistas.</small>}
+          </div>
+
+          <div className="formField">
             <label htmlFor="member-modal-dominant-hand">Mão dominante</label>
             <select id="member-modal-dominant-hand" value={profile.dominantHand || "Não informado"} onChange={(event) => onChange("dominantHand", event.target.value)}>
               <option>Não informado</option><option>Destro</option><option>Canhoto</option><option>Ambidestro</option>

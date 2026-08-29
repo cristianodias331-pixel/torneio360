@@ -375,7 +375,6 @@ export default function PublicTournamentScreenView({
         <section className="card publicAthletesCard" style={{ display: activePublicTab === "participantes" ? undefined : "none" }}>
           <div className="cardTitleRow">
             <h2>Participantes</h2>
-            <span className="readOnlyBadge">Somente visualização</span>
           </div>
           {config.type === "cearense" || config.type === "cearenseIndividual" || config.type === "playranking" || config.type === "sunset" ? (
             <div className="formatInfoPublicPlacement">
@@ -411,7 +410,6 @@ export default function PublicTournamentScreenView({
           <section className="card" style={{ display: activePublicTab === "grupos" ? undefined : "none" }}>
             <div className="cardTitleRow">
               <h2>Grupos</h2>
-              <span className="readOnlyBadge">Somente visualização</span>
             </div>
             {!publicRankingReady ? (
               <div className="publicRankingLocked">
@@ -440,7 +438,6 @@ export default function PublicTournamentScreenView({
         <section className="card" style={{ display: activePublicTab === "partidas" ? undefined : "none" }}>
           <div className="cardTitleRow">
             <h2>{isCup ? "Partidas" : "Rodadas"}</h2>
-            <span className="readOnlyBadge">Somente visualização</span>
           </div>
           {isCup ? (
             <div className="matchesSubTabs">
@@ -557,7 +554,6 @@ export default function PublicTournamentScreenView({
                 </p>
               ) : null}
             </div>
-            <span className="readOnlyBadge">Somente visualização</span>
           </div>
           <TournamentTimingSummary data={data} compact />
           {!publicRankingReady ? (

@@ -70,7 +70,6 @@ import {
   ConfirmRegenerationModal,
   ConfirmTrashPermanentDeleteModal,
   CopinhaTieBreakPanel,
-  CourtAssignmentModal,
   CourtBadge,
   CourtConfigPanel,
   CourtOccupancyModal,
@@ -206,6 +205,12 @@ import {
   normalizeCourtNumberValue,
   normalizeCourtNumbers,
 } from "./domain/courtNumbers.mjs";
+import {
+  assignBracketCourtNumbers,
+  assignGroupedBracketCourtNumbers,
+  assignScheduleCourtNumbers,
+  buildAutomaticCourtPool,
+} from "./domain/automaticCourtAssignments.mjs";
 import {
   formatDateBR,
   getBrazilDateISO,
@@ -6843,6 +6848,7 @@ setNewPublicInfo({
                 circuitMembershipCount={getTournamentCircuitMembership(selected).length}
                 arenaGenderRegistry={getArenaParticipantGenderRegistry()}
                 centralCourtNumbers={activeCourtCenter.numbers}
+                centralCourtsConfigured={activeCourtCenter.configured}
                 centralUnavailableCourtNumbers={activeCourtCenter.unavailableNumbers}
                 venueCourtUsages={activeVenueUsages}
                 preferredCourtNumbers={activeTournamentPreferredCourtNumbers}
@@ -9504,6 +9510,7 @@ function TournamentScreen({
   tournament,
   openTournaments = [],
   centralCourtNumbers = [],
+  centralCourtsConfigured = false,
   centralUnavailableCourtNumbers = [],
   venueCourtUsages = [],
   preferredCourtNumbers = [],
@@ -9602,23 +9609,35 @@ function TournamentScreen({
       .map(normalizeCourtNumberValue)
       .filter((number) => number && normalizedCentralCourtNumbers.includes(number))
   ));
-  const operationalCourtNumbers = normalizedCentralCourtNumbers.length
-    ? Array.from(new Set([...normalizedPreferredCourtNumbers, ...normalizedCentralCourtNumbers]))
-    : normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
-  const displayedCourtNumbers = normalizedPreferredCourtNumbers.length
-    ? normalizeCourtNumbers(
-        [...normalizedPreferredCourtNumbers, ...(data.courtNumbers || [])],
-        currentCourtCount
-      )
-    : normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
   const unavailableCentralCourtNumbers = new Set(
     (centralUnavailableCourtNumbers || []).map(normalizeCourtNumberValue).filter(Boolean)
+  );
+  const operationalCourtNumbers = buildAutomaticCourtPool({
+    configured: centralCourtsConfigured,
+    centralCourtNumbers: normalizedCentralCourtNumbers,
+    preferredCourtNumbers: normalizedPreferredCourtNumbers,
+    unavailableCourtNumbers: [...unavailableCentralCourtNumbers],
+    fallbackCount: currentCourtCount,
+  });
+  const externalOccupiedCourtNumbers = new Set(
+    (venueCourtUsages || [])
+      .filter((usage) => String(usage?.tournamentId) !== String(tournament.id))
+      .map((usage) => normalizeCourtNumberValue(usage?.courtNumber))
+      .filter(Boolean)
+  );
+  const displayedCourtNumbers = operationalCourtNumbers.filter(
+    (number) => !externalOccupiedCourtNumbers.has(number)
+  );
+  const displayedSchedule = assignScheduleCourtNumbers(
+    data.schedule || [],
+    displayedCourtNumbers,
+    getWinningScore(data)
   );
   const participantAttendanceEntries = getParticipantAttendanceEntries(config, data);
   const pendingParticipantEntries = participantAttendanceEntries.filter((entry) => !entry.confirmed);
 
   const [savingStatus, setSavingStatus] = useState(readOnly
-    ? "Somente visualização"
+    ? ""
     : initialTournamentState.recoveredDraft ? "Pendente de sincronização" : "Salvo na nuvem");
   const [shuffleOverlay, setShuffleOverlay] = useState(null);
   const [shuffleVideoSnapshot, setShuffleVideoSnapshot] = useState(null);
@@ -11042,9 +11061,7 @@ function TournamentScreen({
 
   function getAvailableCentralCourtNumbers(usages = getOpenCourtUsages()) {
     const occupied = new Set(usages.map((usage) => normalizeCourtNumberValue(usage.courtNumber)).filter(Boolean));
-    return normalizedCentralCourtNumbers.filter((number) => (
-      !occupied.has(number) && !unavailableCentralCourtNumbers.has(number)
-    ));
+    return operationalCourtNumbers.filter((number) => !occupied.has(number));
   }
 
   function getNextFreeCourtNumber(usages = getOpenCourtUsages()) {
@@ -11096,21 +11113,14 @@ function TournamentScreen({
       }
     }
 
-    const courtNumbers = normalizeCourtNumbers(data.courtNumbers, currentCourtCount);
-    const preferredCourtNumber = normalizedPreferredCourtNumbers[Math.max(0, Number(game?.court || 1) - 1)] || null;
-    const courtNumber = game?.courtNumberOverride
-      ? getGameCourtNumber(game, courtNumbers)
-      : preferredCourtNumber || getGameCourtNumber(game, courtNumbers);
-
-    if (!normalizedCentralCourtNumbers.includes(courtNumber)) {
-      if (typeof onRegisterCentralCourtNumber === "function") {
-        onRegisterCentralCourtNumber(courtNumber);
-      }
-      setOperationalGameState(target, true, courtNumber);
+    const courtNumber = getGameCourtNumber(game, displayedCourtNumbers);
+    if (!courtNumber) {
       showNotice(
-        "success",
-        "Quadra adicionada à Central",
-        `A Quadra ${courtNumber} ainda não estava prevista. Ela foi adicionada à Central e o jogo foi iniciado normalmente.`
+        "warning",
+        "Aguardando quadra",
+        centralCourtsConfigured
+          ? "Todas as quadras informadas na Central estão ocupadas ou indisponíveis. Este jogo receberá automaticamente o próximo número liberado."
+          : "As quadras padrão estão ocupadas. Finalize um jogo para liberar automaticamente a próxima quadra."
       );
       return;
     }
@@ -11123,17 +11133,6 @@ function TournamentScreen({
     });
     const freeCourtNumbers = getAvailableCentralCourtNumbers(usageScope);
 
-    if (unavailableCentralCourtNumbers.has(courtNumber)) {
-      setCourtOccupancyConflict({
-        kind: "start",
-        number: courtNumber,
-        usage: null,
-        markedUnavailable: true,
-        target,
-        freeCourtNumbers,
-      });
-      return;
-    }
     const usage = usageScope.find((item) => item.courtNumber === courtNumber);
 
     if (!usage) {
@@ -11143,13 +11142,22 @@ function TournamentScreen({
       return;
     }
 
-    setCourtOccupancyConflict({
-      kind: "start",
-      number: courtNumber,
-      usage,
-      target,
-      freeCourtNumbers,
-    });
+    const nextCourtNumber = freeCourtNumbers[0] || null;
+    if (nextCourtNumber) {
+      setOperationalGameState(target, true, nextCourtNumber);
+      showNotice(
+        "success",
+        "Quadra livre atribuída",
+        `A Quadra ${courtNumber} acabou de ser ocupada. O jogo foi iniciado automaticamente na Quadra ${nextCourtNumber}.`
+      );
+      return;
+    }
+
+    showNotice(
+      "warning",
+      "Aguardando quadra",
+      "Nenhuma quadra está livre neste momento. Ao finalizar um jogo, a fila receberá automaticamente o número liberado."
+    );
   }
 
   function resolveParticipantOccupancyConflict(choice) {
@@ -11755,7 +11763,7 @@ function prepareEditableBracketData(currentData) {
 }
 
 function toggleScheduleGameStatus(roundIndex, gameIndex) {
-  const game = data.schedule?.[roundIndex]?.[gameIndex];
+  const game = displayedSchedule?.[roundIndex]?.[gameIndex];
   if (!game || isGameFinished(game, getWinningScore(data))) return;
 
   const target = { scope: "schedule", roundIndex, gameIndex };
@@ -11766,9 +11774,12 @@ function toggleScheduleGameStatus(roundIndex, gameIndex) {
 function toggleBracketGameStatus(matchKey) {
   const preparedData = prepareEditableBracketData(data);
   const storedGame = preparedData.brackets?.find((game) => game.matchKey === matchKey);
-  const targetGame = storedGame
-    ? resolveBracketGame(storedGame, preparedData.brackets, preparedData)
-    : null;
+  const assignedBracketGames = assignBracketCourtNumbers(
+    (preparedData.brackets || []).map((game) => resolveBracketGame(game, preparedData.brackets, preparedData)),
+    displayedCourtNumbers,
+    getWinningScore(preparedData)
+  );
+  const targetGame = assignedBracketGames.find((game) => game.matchKey === matchKey) || null;
   if (!targetGame || !hasPlayableGameSides(targetGame) || isGameFinished(targetGame, getWinningScore(preparedData))) return;
 
   const target = { scope: "bracket", matchKey };
@@ -11860,6 +11871,11 @@ function clearTable() {
 }
 
 const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
+const displayedCurrentBrackets = assignGroupedBracketCourtNumbers(
+  currentBrackets,
+  displayedCourtNumbers,
+  getWinningScore(data)
+);
 const secondParallelVisible = isCearenseSecondParallelEnabled(data);
 const sunsetSecondParallelVisible = isSunsetData(data);
 const thirdParallelVisible = isCearenseThirdParallelEnabled(data);
@@ -11970,9 +11986,7 @@ const courtEditorUsedNumbers = courtEditor
   : [];
 
   function SavingStatusBadge() {
-    if (readOnly) {
-      return <span className="savingBadge readOnly">Somente visualização</span>;
-    }
+    if (readOnly) return null;
     const normalizedStatus = savingStatus.toLowerCase();
     const statusClass = /erro|revisão/.test(normalizedStatus)
       ? "error"
@@ -12005,19 +12019,6 @@ return (
         knownRegistry={arenaGenderRegistry}
         onClose={() => setParticipantImportOpen(false)}
         onApply={importParticipants}
-      />,
-      document.body
-    )}
-
-    {courtEditor && courtEditorGame && createPortal(
-      <CourtAssignmentModal
-        editor={{ ...courtEditor, game: courtEditorGame }}
-        courtNumbers={operationalCourtNumbers}
-        unavailableNumbers={[...unavailableCentralCourtNumbers]}
-        currentNumber={getGameCourtNumber(courtEditorGame, displayedCourtNumbers)}
-        usedNumbers={courtEditorUsedNumbers}
-        onSelect={requestGameCourtNumber}
-        onClose={() => setCourtEditor(null)}
       />,
       document.body
     )}
@@ -12334,7 +12335,7 @@ return (
             <>
              <ScheduleView
   key={`${tournament.id}:${activeTournamentTab}:${activeMatchesTab}`}
-  schedule={data.schedule}
+  schedule={displayedSchedule}
   statusData={data}
   updateScore={updateScore}
   onStatusToggle={toggleScheduleGameStatus}
@@ -12343,7 +12344,6 @@ return (
   setVoiceRepeat={setVoiceRepeat}
   winningScore={getWinningScore(data)}
   courtNumbers={displayedCourtNumbers}
-  onEditCourt={requestCourtAssignment}
   renderParticipant={renderApprovedParticipant}
 />
 
@@ -12415,7 +12415,7 @@ return (
               ) : (
             <>
   <CupBracketView
-    groupedBrackets={{ main: currentBrackets.main, repechage: [] }}
+    groupedBrackets={{ main: displayedCurrentBrackets.main, repechage: [] }}
     data={data}
     updateBracketScore={updateBracketScore}
     toggleBracketGameStatus={toggleBracketGameStatus}
@@ -12423,7 +12423,6 @@ return (
     setVoiceRepeat={setVoiceRepeat}
     winningScore={getWinningScore(data)}
     courtNumbers={displayedCourtNumbers}
-    onEditCourt={requestCourtAssignment}
   />
 
 </>
@@ -12541,8 +12540,8 @@ return (
                     </button>
                   </div>
                 </>
-              ) : currentBrackets.repechage?.length > 0 ? (
-                <CupBracketView groupedBrackets={{ main: [], repechage: currentBrackets.repechage }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} onEditCourt={requestCourtAssignment} />
+              ) : displayedCurrentBrackets.repechage?.length > 0 ? (
+                <CupBracketView groupedBrackets={{ main: [], repechage: displayedCurrentBrackets.repechage }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} />
               ) : (
                 <p>{isPlayRankingData(data)
                   ? "A Disputa Paralela será montada automaticamente quando todos os placares da primeira fase da Eliminatória Principal estiverem preenchidos."
@@ -12558,8 +12557,8 @@ return (
                 </div>
                 {!currentBrackets ? (
                   <p>Gere as chaves finais para visualizar a 2ª disputa paralela.</p>
-                ) : currentBrackets.secondParallel?.length > 0 ? (
-                  <CupBracketView groupedBrackets={{ main: [], repechage: [], secondParallel: currentBrackets.secondParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} onEditCourt={requestCourtAssignment} />
+                ) : displayedCurrentBrackets.secondParallel?.length > 0 ? (
+                  <CupBracketView groupedBrackets={{ main: [], repechage: [], secondParallel: displayedCurrentBrackets.secondParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} />
                 ) : (
                   <p>Sem eliminadas suficientes nas oitavas, a vice-campeã da Principal ocupará automaticamente esta vaga.</p>
                 )}
@@ -12574,8 +12573,8 @@ return (
                 </div>
                 {!currentBrackets ? (
                   <p>Gere as chaves finais para visualizar a {laterParallelOrdinal} disputa paralela.</p>
-                ) : currentBrackets.thirdParallel?.length > 0 ? (
-                  <CupBracketView groupedBrackets={{ main: [], repechage: [], thirdParallel: currentBrackets.thirdParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} onEditCourt={requestCourtAssignment} />
+                ) : displayedCurrentBrackets.thirdParallel?.length > 0 ? (
+                  <CupBracketView groupedBrackets={{ main: [], repechage: [], thirdParallel: displayedCurrentBrackets.thirdParallel }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} />
                 ) : (
                   <p>Nesta quantidade de grupos não há duplas elegíveis para a {laterParallelOrdinal} disputa paralela.</p>
                 )}
@@ -12590,8 +12589,8 @@ return (
                 </div>
                 {!currentBrackets ? (
                   <p>Gere as chaves finais para visualizar o encontro entre as campeãs.</p>
-                ) : currentBrackets.sunsetFinal?.length > 0 ? (
-                  <CupBracketView groupedBrackets={{ main: [], repechage: [], sunsetFinal: currentBrackets.sunsetFinal }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} onEditCourt={requestCourtAssignment} />
+                ) : displayedCurrentBrackets.sunsetFinal?.length > 0 ? (
+                  <CupBracketView groupedBrackets={{ main: [], repechage: [], sunsetFinal: displayedCurrentBrackets.sunsetFinal }} data={data} updateBracketScore={updateBracketScore} toggleBracketGameStatus={toggleBracketGameStatus} voiceRepeat={voiceRepeat} setVoiceRepeat={setVoiceRepeat} winningScore={getWinningScore(data)} courtNumbers={displayedCourtNumbers} />
                 ) : (
                   <p>A etapa Sunset aparecerá quando houver ao menos duas chaves capazes de produzir campeãs.</p>
                 )}

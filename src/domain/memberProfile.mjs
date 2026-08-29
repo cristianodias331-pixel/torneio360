@@ -14,8 +14,16 @@ const maximumLengths = {
 
 const dominantHandOptions = new Set(["Destro", "Canhoto", "Ambidestro", "Não informado"]);
 const shirtSizeOptions = new Set(["PP", "P", "M", "G", "GG", "XGG", "Não informado"]);
+const genderOptions = new Set(["Masculino", "Feminino"]);
 
 export const MAX_MEMBER_GALLERY_PHOTOS = 6;
+
+export function normalizeMemberGender(value) {
+  const normalized = String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
+  if (["masculino", "homem", "m"].includes(normalized)) return "Masculino";
+  if (["feminino", "mulher", "f"].includes(normalized)) return "Feminino";
+  return "";
+}
 
 function cleanText(value, maximumLength) {
   return String(value || "").trim().slice(0, maximumLength);
@@ -60,6 +68,7 @@ export function createMemberProfileFallback({ user, accessProfile } = {}) {
     city: "",
     state: "",
     sportsCategory: cleanText(user?.user_metadata?.sports_category || "", maximumLengths.sportsCategory),
+    gender: normalizeMemberGender(user?.user_metadata?.gender || user?.user_metadata?.sex),
     dominantHand: dominantHandOptions.has(user?.user_metadata?.dominant_hand) ? user.user_metadata.dominant_hand : "Não informado",
     shirtSize: shirtSizeOptions.has(user?.user_metadata?.shirt_size) ? user.user_metadata.shirt_size : "Não informado",
     whatsapp: "",
@@ -83,6 +92,7 @@ export function normalizeMemberProfile(row, fallback = {}) {
     city: cleanText(row?.city ?? fallback.city, maximumLengths.city),
     state: cleanText(row?.state ?? fallback.state, maximumLengths.state),
     sportsCategory: cleanText(row?.sports_category ?? row?.sportsCategory ?? fallback.sportsCategory, maximumLengths.sportsCategory),
+    gender: normalizeMemberGender(row?.gender ?? fallback.gender),
     dominantHand: dominantHandOptions.has(row?.dominant_hand ?? row?.dominantHand)
       ? (row?.dominant_hand ?? row?.dominantHand)
       : dominantHandOptions.has(fallback.dominantHand) ? fallback.dominantHand : "Não informado",
@@ -138,6 +148,9 @@ export function validateMemberProfile(profile) {
   if (!moderatePublicText(normalized.sportsCategory).allowed) {
     errors.sportsCategory = "A categoria contém conteúdo não permitido.";
   }
+  if (!genderOptions.has(normalized.gender)) {
+    errors.gender = "Selecione o gênero do atleta para validar inscrições e duplas mistas.";
+  }
 
   if (normalized.whatsapp && !/^\+?[0-9]{10,15}$/.test(normalized.whatsapp)) {
     errors.whatsapp = "Informe o WhatsApp com DDD e apenas números.";
@@ -163,6 +176,7 @@ export function toMemberProfileRpcPayload(profile) {
     p_city: normalized.city,
     p_state: normalized.state,
     p_sports_category: normalized.sportsCategory,
+    p_gender: normalized.gender,
     p_dominant_hand: normalized.dominantHand,
     p_shirt_size: normalized.shirtSize,
     p_whatsapp: normalized.whatsapp,

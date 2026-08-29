@@ -225,14 +225,13 @@ export default function PublicCircuitScreenView({
 
         <div className="publicTournamentHeaderActions">
           <button type="button" onClick={onBackToArena}>← Voltar ao perfil da arena</button>
-          <div className="publicBadge">Somente visualização</div>
         </div>
       </header> : (
         <section className="platformEntityHeader">
           <div>
             <span>CIRCUITO</span>
             <h1>{circuit?.name || "Circuito"}</h1>
-            <p>Ranking e torneios · Somente visualização</p>
+            <p>Ranking e torneios do circuito</p>
           </div>
           <button type="button" onClick={onBackToArena}>Voltar à organização</button>
         </section>

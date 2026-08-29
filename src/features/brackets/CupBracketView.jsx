@@ -11,7 +11,6 @@ export default function CupBracketView({
   setVoiceRepeat,
   winningScore = 4,
   courtNumbers = data.courtNumbers || [],
-  onEditCourt = null,
   speakGame,
   speakBracketRound,
   stopSpeech,
@@ -52,7 +51,6 @@ export default function CupBracketView({
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={courtNumbers}
-            onEditCourt={onEditCourt}
             attendanceData={data}
             speakGame={speakGame}
             speakBracketRound={speakBracketRound}
@@ -69,7 +67,6 @@ export default function CupBracketView({
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={courtNumbers}
-            onEditCourt={onEditCourt}
             attendanceData={data}
             speakGame={speakGame}
             speakBracketRound={speakBracketRound}
@@ -86,7 +83,6 @@ export default function CupBracketView({
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={courtNumbers}
-            onEditCourt={onEditCourt}
             attendanceData={data}
             speakGame={speakGame}
             speakBracketRound={speakBracketRound}
@@ -103,7 +99,6 @@ export default function CupBracketView({
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={courtNumbers}
-            onEditCourt={onEditCourt}
             attendanceData={data}
             speakGame={speakGame}
             speakBracketRound={speakBracketRound}
@@ -120,7 +115,6 @@ export default function CupBracketView({
             voiceRepeat={voiceRepeat}
             winningScore={winningScore}
             courtNumbers={courtNumbers}
-            onEditCourt={onEditCourt}
             attendanceData={data}
             speakGame={speakGame}
             speakBracketRound={speakBracketRound}
@@ -139,7 +133,6 @@ export function BracketColumn({
   voiceRepeat = 1,
   winningScore = 4,
   courtNumbers = [],
-  onEditCourt = null,
   attendanceData = null,
   speakGame,
   speakBracketRound,
@@ -171,7 +164,6 @@ export function BracketColumn({
         winningScore={winningScore}
         blocked={blocked}
         isBye={Boolean(game.isBye)}
-        onEditCourt={onEditCourt && !game.isBye ? () => onEditCourt({ scope: "bracket", matchKey: game.matchKey, game }) : null}
         onScoreChange={!game.isBye ? (field, value) => updateBracketScore(game.matchKey, field, value) : null}
         onStatusToggle={!game.isBye && toggleBracketGameStatus ? () => toggleBracketGameStatus(game.matchKey) : null}
         onCallGame={!game.isBye ? () => speakGame(game, {

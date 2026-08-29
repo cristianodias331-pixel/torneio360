@@ -17,6 +17,12 @@ import { formatDateBR } from "../../domain/dateTime.mjs";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
 import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import {
+  normalizeParticipantGender,
+  participantGenderValues,
+  tournamentGenderModes,
+} from "../../domain/participantGenderRegistry.mjs";
+import { getEffectiveTournamentGenderMode } from "../../domain/tournamentGenderConfig.mjs";
+import {
   cancelMyTournamentPartnership,
   cancelMyTournamentRegistration,
   loadMyTournamentRegistrationCheckout,
@@ -66,6 +72,7 @@ export default function TournamentRegistrationPanel({
     athleteName: getViewerName(viewer),
     athleteHandle: "",
     category: String(viewer?.user_metadata?.category || data?.category || "").trim(),
+    gender: String(viewer?.user_metadata?.gender || "").trim(),
     dominantHand: String(viewer?.user_metadata?.dominant_hand || "Não informado").trim(),
     partnerHandle: "",
     lookingForPartner: false,
@@ -88,6 +95,7 @@ export default function TournamentRegistrationPanel({
         athleteName: checkout?.athlete?.display_name || checkout?.registration?.athlete_name || current.athleteName,
         athleteHandle: checkout?.athlete?.handle || checkout?.registration?.athlete_handle || current.athleteHandle,
         category: checkout?.registration?.category || checkout?.athlete?.sports_category || current.category,
+        gender: checkout?.athlete?.gender || current.gender,
         dominantHand: checkout?.athlete?.dominant_hand || current.dominantHand,
         partnerHandle: checkout?.registration?.partner_handle || current.partnerHandle,
       }));
@@ -103,6 +111,45 @@ export default function TournamentRegistrationPanel({
   const registrationPartner = state.checkout?.partner || null;
   const workflowCopy = useMemo(() => getWorkflowCopy(registration), [registration]);
   const locked = viewerRole === "partner" || ["submitted", "approved"].includes(registration?.workflow_status);
+  const athleteGender = normalizeParticipantGender(form.gender);
+  const tournamentGenderMode = getEffectiveTournamentGenderMode(
+    tournament?.type,
+    data?.participantGenderMode || data?.genderMode || data?.gender
+  );
+
+  function getRegistrationEligibilityError() {
+    if (athleteGender === participantGenderValues.unknown) {
+      return "Preencha o gênero no seu perfil de atleta antes de se inscrever.";
+    }
+    if (tournamentGenderMode === tournamentGenderModes.masculine && athleteGender !== participantGenderValues.masculine) {
+      return "Este torneio aceita somente atletas com gênero masculino informado no perfil.";
+    }
+    if (tournamentGenderMode === tournamentGenderModes.feminine && athleteGender !== participantGenderValues.feminine) {
+      return "Este torneio aceita somente atletas com gênero feminino informado no perfil.";
+    }
+    if (!pairCompetition) return "";
+    if (!form.partnerHandle.trim() && !form.lookingForPartner) {
+      return "Em dupla fixa, escolha o outro atleta ou marque “Quero encontrar uma dupla”.";
+    }
+    if (!form.partnerHandle.trim()) return "";
+    if (partnerLookup.status !== "found" || !partnerLookup.partner) {
+      return partnerLookup.error || "Escolha um atleta nas sugestões para confirmar a dupla.";
+    }
+    const partnerGender = normalizeParticipantGender(partnerLookup.partner.gender);
+    if (partnerGender === participantGenderValues.unknown) {
+      return "O atleta convidado precisa preencher o gênero no perfil antes de formar a dupla.";
+    }
+    if (tournamentGenderMode === tournamentGenderModes.mixed && partnerGender === athleteGender) {
+      return "Em dupla mista, os dois atletas devem ter gêneros diferentes no perfil.";
+    }
+    if (tournamentGenderMode === tournamentGenderModes.masculine && partnerGender !== participantGenderValues.masculine) {
+      return "Este torneio aceita somente duplas masculinas.";
+    }
+    if (tournamentGenderMode === tournamentGenderModes.feminine && partnerGender !== participantGenderValues.feminine) {
+      return "Este torneio aceita somente duplas femininas.";
+    }
+    return "";
+  }
 
   useEffect(() => {
     if (!pairCompetition || form.partnerHandle.trim().length < 2 || locked) {
@@ -176,8 +223,9 @@ export default function TournamentRegistrationPanel({
       setNotice("Cadastre primeiro o endereço único (@) no seu perfil de atleta.");
       return;
     }
-    if (pairCompetition && form.partnerHandle.trim() && partnerLookup.status !== "found") {
-      setNotice(partnerLookup.error || "Confirme o endereço único do atleta antes de finalizar a inscrição.");
+    const eligibilityError = getRegistrationEligibilityError();
+    if (eligibilityError) {
+      setNotice(eligibilityError);
       return;
     }
     setBusy(true);
@@ -269,19 +317,20 @@ export default function TournamentRegistrationPanel({
             <div className="registrationAthleteFields">
               <label className="registrationOwnIdentityField"><span>Atleta que está se inscrevendo</span><div className="registrationHandleInput"><b>@</b><input value={form.athleteHandle} readOnly placeholder="Cadastre seu endereço único" /></div><small>{form.athleteHandle ? `${form.athleteName} · perfil de atleta identificado` : "Abra Meu perfil de atleta e escolha seu endereço único antes de se inscrever."}</small></label>
               <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
+              <label><span>Gênero</span><input value={form.gender || "Não informado"} readOnly /><small>Para alterar, edite o seu perfil de atleta.</small></label>
               <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
               {pairCompetition ? <label className="registrationPartnerHandleField"><span>Encontre o outro atleta da dupla</span><div className="registrationHandleInput"><Search aria-hidden="true" /><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Digite o nome ou @" autoComplete="off" /></div><small>As sugestões aparecem enquanto você digita. O atleta escolhido receberá a confirmação pelo seu @ único.</small></label> : null}
             </div>
             {pairCompetition && partnerCandidates.length && partnerLookup.status !== "found" ? <div className="registrationPartnerSuggestions" role="listbox" aria-label="Sugestões de atletas">
               {partnerCandidates.map((candidate) => <button type="button" role="option" key={candidate.user_id} onClick={() => choosePartner(candidate)}>
                 <span>{candidate.photo_url ? <img src={candidate.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
-                <span><strong>{candidate.display_name}</strong><small>@{candidate.handle}{candidate.city ? ` · ${candidate.city}${candidate.state ? `/${candidate.state}` : ""}` : ""}</small></span>
+                <span><strong>{candidate.display_name}</strong><small>@{candidate.handle}{candidate.gender ? ` · ${candidate.gender}` : ""}{candidate.city ? ` · ${candidate.city}${candidate.state ? `/${candidate.state}` : ""}` : ""}</small></span>
                 <BadgeCheck aria-hidden="true" />
               </button>)}
             </div> : null}
             {pairCompetition && form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
               {partnerLookup.status === "loading" ? <><RefreshCw className="spinning" aria-hidden="true" /><span>Verificando o perfil...</span></> : null}
-              {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · perfil identificado</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}
+              {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · {partnerLookup.partner.gender || "gênero não informado"}</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}
               {partnerLookup.error ? <><CircleAlert aria-hidden="true" /><span>{partnerLookup.error}</span></> : null}
             </div> : null}
             {pairCompetition && !form.partnerHandle ? (
@@ -291,6 +340,7 @@ export default function TournamentRegistrationPanel({
                 <span><strong>Quero encontrar uma dupla</strong><small>Após enviar a inscrição, atletas do mesmo torneio e categoria poderão encontrar seu perfil.</small></span>
               </label>
             ) : null}
+            {pairCompetition ? <p className="registrationPairRule"><ShieldCheck aria-hidden="true" /> Dupla fixa exige um convite confirmado ou a opção “Quero encontrar uma dupla”. Em torneios mistos, a plataforma aceita apenas parceiros de gêneros diferentes.</p> : null}
           </section>
 
           <TournamentPaymentPanel

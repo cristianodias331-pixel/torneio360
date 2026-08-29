@@ -2756,6 +2756,27 @@ html[data-theme="dark"] .trashSearchField input {
 
 .courtCenterAddRow button svg { width: 16px; height: 16px; }
 
+.courtCenterNumberMessage {
+  margin: 12px 24px 0;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.courtCenterNumberMessage.error {
+  border-color: #fca5a5;
+  color: #b42318;
+  background: #fff1f2;
+}
+
+.courtCenterNumberMessage.success {
+  border-color: #86efac;
+  color: #08733e;
+  background: #ecfdf3;
+}
+
 .courtCenterGrid {
   display: grid;
   min-height: 130px;
@@ -3229,6 +3250,20 @@ html[data-theme="dark"] .courtConfigCentralLink small,
   }
 }
 
+html[data-theme="dark"] .courtCenterNumberMessage.error,
+.theme-dark .courtCenterNumberMessage.error {
+  border-color: #7f1d1d;
+  color: #fecaca;
+  background: #34191d;
+}
+
+html[data-theme="dark"] .courtCenterNumberMessage.success,
+.theme-dark .courtCenterNumberMessage.success {
+  border-color: #166534;
+  color: #bbf7d0;
+  background: #132d22;
+}
+
 .approvePodiumAchievements {
   display: inline-flex;
   min-height: 38px;
@@ -3532,6 +3567,8 @@ html[data-theme="dark"] .courtConfigCentralLink small,
     gap: 9px;
     padding: 13px 14px 18px;
   }
+
+  .courtCenterNumberMessage { margin: 10px 14px 0; }
 
   .courtCenterSuggestion {
     align-items: stretch;

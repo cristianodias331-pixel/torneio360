@@ -93,18 +93,20 @@
   min-width: 0;
   min-height: 66px;
   align-items: center;
+  justify-content: flex-start !important;
   gap: 12px;
-  padding: 7px 11px !important;
-  border: 1px solid color-mix(in srgb, var(--ui-border, #d7e2ee) 84%, transparent) !important;
-  border-radius: 11px !important;
+  padding: 7px 5px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
   color: var(--ui-text-strong, #10243d) !important;
-  background: color-mix(in srgb, var(--ui-surface-raised, #fff) 94%, var(--ui-page, #eef4fb)) !important;
-  text-align: left;
+  background: transparent !important;
+  margin: 0 !important;
+  text-align: left !important;
 }
 
 .organizerLikeParticipants .publicAthleteEntry > .athleteIdentityLink:hover {
-  border-color: #2788d8 !important;
-  box-shadow: 0 6px 16px rgba(39, 136, 216, 0.11);
+  background: color-mix(in srgb, #2788d8 6%, transparent) !important;
+  box-shadow: none;
 }
 
 .organizerLikeParticipants .publicAthleteEntry :is(.athleteIdentityLink, .athleteIdentityText.hasAvatar) > span {
@@ -131,6 +133,7 @@
   min-width: 0;
   min-height: 52px;
   align-content: center;
+  justify-items: start;
   font-style: normal;
   line-height: 1.2;
 }

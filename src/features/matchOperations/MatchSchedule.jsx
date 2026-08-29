@@ -96,7 +96,6 @@ export function UniversalMatchCard({
   readOnly = false,
   blocked = false,
   isBye = false,
-  onEditCourt = null,
   onScoreChange = null,
   onCallGame = null,
   onStatusToggle = null,
@@ -265,8 +264,6 @@ export function UniversalMatchCard({
         <div className="matchCardControls">
           <CourtBadge
             label={getGameCourtLabel(game, courtNumbers)}
-            editable={!readOnly && Boolean(onEditCourt)}
-            onClick={onEditCourt || undefined}
           />
           {!readOnly && onCallGame ? (
             <button type="button" className="voiceBtn matchCallButton" onClick={onCallGame} disabled={blocked}>
@@ -303,7 +300,6 @@ export default function ScheduleView({
   winningScore = 4,
   readOnly = false,
   courtNumbers = [],
-  onEditCourt = null,
   speakGame,
   speakRound,
   stopSpeech,
@@ -410,7 +406,6 @@ export default function ScheduleView({
       courtNumbers={courtNumbers}
       winningScore={winningScore}
       readOnly={readOnly}
-      onEditCourt={!readOnly && onEditCourt ? () => onEditCourt({ scope: "schedule", roundIndex, gameIndex, game }) : null}
       onScoreChange={!readOnly ? (field, value) => updateScore(roundIndex, gameIndex, field, value) : null}
       onStatusToggle={!readOnly && onStatusToggle ? () => onStatusToggle(roundIndex, gameIndex) : null}
       onCallGame={!readOnly ? () => speakGame(game, {

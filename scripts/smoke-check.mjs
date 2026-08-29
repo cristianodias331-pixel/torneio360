@@ -33,6 +33,10 @@ import {
   normalizeCourtNumbers,
 } from "../src/domain/courtNumbers.mjs";
 import {
+  assignScheduleCourtNumbers,
+  buildAutomaticCourtPool,
+} from "../src/domain/automaticCourtAssignments.mjs";
+import {
   formatDateBR,
   getBrazilDateISO,
   getBrazilDateTimeKey,
@@ -4640,6 +4644,7 @@ assert.deepEqual(createDefaultCourtNumbers(3), ["1", "2", "3"], "A sequência pa
 assert.equal(normalizeCourtNumberValue("Quadra 0007"), "7", "O número visível da quadra não é normalizado.");
 assert.equal(getGameCourtNumber({ court: 2 }, ["4", "8"]), "8", "A exibição das quadras não possui uma fonte numérica única e segura.");
 assert.equal(getGameCourtLabel({ court: 2 }, ["4", "8"]), "Quadra 8", "A palavra Quadra não permanece fixa na apresentação.");
+assert.equal(getGameCourtLabel({ court: 2, courtAssignmentPending: true }, ["4", "8"]), "Aguardando quadra", "Jogos excedentes ainda inventam um número de quadra.");
 const courtOverrideGame = { court: 1, courtLabelOverride: "Quadra 3" };
 applyCourtNumberToGame(courtOverrideGame, "Quadra 9", ["1"]);
 assert.deepEqual(courtOverrideGame, { court: 1, courtNumberOverride: "9" }, "A troca rápida não preserva somente o número escolhido.");
@@ -4651,28 +4656,43 @@ assert.deepEqual(
   "Voltar ao número estrutural da quadra apagou a escolha operacional do jogo."
 );
 assert.ok(tournamentDataNormalizationSource.includes('courtNumbers: createDefaultCourtNumbers'), "Novos torneios não recebem os números padrão das quadras.");
-assert.ok(matchControlsSource.includes("function CourtConfigPanel"), "A configuração prévia das quadras está ausente.");
-assert.ok(matchControlsSource.includes("function CourtAssignmentModal"), "A troca rápida de quadra durante os jogos está ausente.");
-assert.ok(
-  matchControlsSource.includes(").filter((number) => number !== normalizedCurrent)"),
-  "A quadra atual voltou a ser repetida na lista de troca rápida."
+const configuredCourtPool = buildAutomaticCourtPool({
+  configured: true,
+  centralCourtNumbers: ["4", "7", "9"],
+  preferredCourtNumbers: ["7", "4"],
+  unavailableCourtNumbers: ["9"],
+  fallbackCount: 6,
+});
+assert.deepEqual(configuredCourtPool, ["7", "4"], "A Central não é a fonte exclusiva das quadras configuradas.");
+assert.deepEqual(
+  buildAutomaticCourtPool({ configured: false, fallbackCount: 3 }),
+  ["1", "2", "3"],
+  "Sem configuração na Central, o sistema não adota mais a sequência 1, 2, 3."
 );
-assert.ok(
-  matchControlsSource.includes("const freeOptions") && matchControlsSource.includes("const occupiedOptions"),
-  "A troca rápida não separa quadras livres das ocupadas."
+const waitingCourtSchedule = assignScheduleCourtNumbers([[
+  { court: 1, s1: "", s2: "" },
+  { court: 2, s1: "", s2: "" },
+  { court: 3, s1: "", s2: "" },
+]], ["4", "7"], 4);
+assert.deepEqual(
+  waitingCourtSchedule[0].map((game) => getGameCourtLabel(game, ["4", "7"])),
+  ["Quadra 4", "Quadra 7", "Aguardando quadra"],
+  "Jogos além da capacidade ainda recebem números inexistentes."
 );
-assert.ok(
-  matchControlsSource.includes("pendingSelection") && matchControlsSource.includes("{ confirmed: true }"),
-  "A confirmação de quadra livre ou ocupada não permanece na janela de troca rápida."
+const releasedCourtSchedule = assignScheduleCourtNumbers([[
+  { court: 1, courtNumberOverride: "4", s1: "4", s2: "1" },
+  { court: 2, s1: "", s2: "" },
+  { court: 3, s1: "", s2: "" },
+]], ["4", "7"], 4);
+assert.deepEqual(
+  releasedCourtSchedule[0].map((game) => getGameCourtLabel(game, ["4", "7"])),
+  ["Quadra 4", "Quadra 7", "Quadra 4"],
+  "A quadra finalizada não é reaproveitada automaticamente pelo próximo jogo da fila."
 );
-assert.ok(mainSource.includes("courtNumberOverride"), "O número escolhido para um jogo não é persistido.");
-assert.ok(
-  mainSource.includes("function requestGameCourtNumber(value, { confirmed = false } = {})"),
-  "A confirmação da troca rápida não chega ao fluxo persistente da quadra."
-);
-assert.ok(matchControlsSource.includes("function ConfirmDuplicateCourtModal"), "A confirmação de número de quadra repetido está ausente.");
-assert.ok(matchControlsSource.includes("Confirmar repetição"), "O usuário não consegue confirmar duas partidas na mesma quadra.");
-assert.ok(!mainSource.includes("Quadras trocadas"), "O sistema ainda troca automaticamente os números das quadras.");
+assert.ok(!mainSource.includes("onEditCourt={requestCourtAssignment}"), "A escolha de quadra ainda aparece dentro do torneio.");
+assert.ok(!matchScheduleSource.includes("onEditCourt"), "O cartão de jogo ainda oferece edição de quadra.");
+assert.ok(courtCenterModalSource.includes("já está cadastrada neste local"), "A Central não explica quando um número está repetido.");
+assert.ok(courtCenterModalSource.includes("courtCenterNumberMessage"), "A Central não apresenta confirmação ou erro ao editar o número.");
 assert.ok(speechAnnouncementsSource.includes("getGameCourtLabel(game, courtNumbers)"), "A chamada por voz não usa o número visível da quadra.");
 assert.ok(styleSource.includes("QUADRAS PERSONALIZADAS — AGOSTO 2026"), "O acabamento visual das quadras personalizadas está ausente.");
 assert.ok(styleSource.includes(".courtNameBadge"), "O selo visual da quadra está ausente.");
@@ -4845,7 +4865,7 @@ assert.ok(
     && courtCenterModalSource.includes("Quantas quadras estão disponíveis neste local?")
     && courtCenterModalSource.includes("A quadra será liberada automaticamente ao concluir o placar.")
     && courtCenterModalSource.includes("Distribuição inicial por torneio")
-    && courtCenterModalSource.includes("Os jogos e as rodadas não serão alterados.")
+    && courtCenterModalSource.includes("recebem automaticamente a próxima quadra liberada")
     && tournamentRuntimeAdaptersSource.includes("<CourtCenterModalView")
     && tournamentRuntimeAdaptersSource.includes("normalizeCourtCenterEntry={normalizeCourtCenterEntry}"),
   "A Central de Quadras perdeu capacidade, ocupação, preferências ou compatibilidade com o estado salvo."

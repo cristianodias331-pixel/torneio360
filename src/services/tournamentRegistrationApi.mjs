@@ -8,7 +8,10 @@ function isUnavailableWorkflowError(error) {
   return ["PGRST202", "42883", "42P01", "42703"].includes(code)
     || message.includes("registration_workflow")
     || message.includes("workflow_status")
-    || message.includes("registration-receipts");
+    || message.includes("registration-receipts")
+    || message.includes("get_my_tournament_registration_checkout_v2")
+    || message.includes("search_tournament_partner_candidates_v2")
+    || message.includes("validate_tournament_registration_eligibility");
 }
 
 function getReceiptExtension(file) {
@@ -33,9 +36,14 @@ export function validateRegistrationReceipt(file) {
 }
 
 export async function loadMyTournamentRegistrationCheckout({ supabase, tournamentId }) {
-  const { data, error } = await supabase.rpc("get_my_tournament_registration_checkout", {
+  let { data, error } = await supabase.rpc("get_my_tournament_registration_checkout_v2", {
     p_tournament_id: tournamentId,
   });
+  if (error && isUnavailableWorkflowError(error)) {
+    ({ data, error } = await supabase.rpc("get_my_tournament_registration_checkout", {
+      p_tournament_id: tournamentId,
+    }));
+  }
   if (error) {
     if (isUnavailableWorkflowError(error)) return { checkout: null, schemaAvailable: false };
     throw error;
@@ -56,6 +64,13 @@ export async function submitTournamentRegistrationWorkflow({
 }) {
   const receiptError = validateRegistrationReceipt(receipt);
   if (receiptError) throw new Error(receiptError);
+
+  const { error: eligibilityError } = await supabase.rpc("validate_tournament_registration_eligibility", {
+    p_tournament_id: tournamentId,
+    p_partner_handle: String(partnerHandle || "").replace(/^@/, "").trim(),
+    p_looking_for_partner: Boolean(lookingForPartner),
+  });
+  if (eligibilityError && !isUnavailableWorkflowError(eligibilityError)) throw eligibilityError;
 
   const { data: prepared, error: prepareError } = await supabase.rpc("prepare_my_tournament_registration", {
     p_tournament_id: tournamentId,
@@ -110,11 +125,18 @@ export async function findTournamentPartnerByHandle({ supabase, tournamentId, ha
 export async function searchTournamentPartnerCandidates({ supabase, tournamentId, query, limit = 8 }) {
   const normalizedQuery = String(query || "").replace(/^@/, "").trim();
   if (normalizedQuery.length < 2) return { candidates: [], schemaAvailable: true };
-  const { data, error } = await supabase.rpc("search_tournament_partner_candidates", {
+  let { data, error } = await supabase.rpc("search_tournament_partner_candidates_v2", {
     p_tournament_id: tournamentId,
     p_query: normalizedQuery,
     p_limit: Math.max(1, Math.min(Number(limit) || 8, 16)),
   });
+  if (error && isUnavailableWorkflowError(error)) {
+    ({ data, error } = await supabase.rpc("search_tournament_partner_candidates", {
+      p_tournament_id: tournamentId,
+      p_query: normalizedQuery,
+      p_limit: Math.max(1, Math.min(Number(limit) || 8, 16)),
+    }));
+  }
   if (error) {
     if (isUnavailableWorkflowError(error)) return { candidates: [], schemaAvailable: false };
     throw error;

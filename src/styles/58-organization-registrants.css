@@ -129,6 +129,25 @@
 }
 .organizationPairBuilder button:disabled { cursor: not-allowed; opacity: .5; }
 
+.organizationPairFloatingAction {
+  position: fixed;
+  z-index: 10020;
+  right: 24px;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 16px;
+  color: #fff;
+  background: #10283a;
+  box-shadow: 0 18px 46px rgba(2, 18, 31, .28);
+}
+.organizationPairFloatingAction > span { display: flex; align-items: center; gap: 8px; }
+.organizationPairFloatingAction svg { width: 18px; }
+.organizationPairFloatingAction button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 11px; color: #fff; background: #16a34a; font: inherit; font-weight: 900; }
+.organizationPairFloatingAction button:disabled { opacity: .5; cursor: not-allowed; }
+
 .organizationRegistrantMetrics article {
   gap: 11px;
   min-height: 64px;
@@ -169,10 +188,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
-  border: 1px solid var(--ui-border);
+  padding: 0;
+  border: 0;
   border-radius: 12px;
-  background: var(--ui-surface);
+  background: transparent;
 }
 
 .organizationRegistrantSearch svg {
@@ -183,11 +202,22 @@
 .organizationRegistrantSearch input {
   width: 100%;
   min-height: 44px;
-  border: 0;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 12px !important;
+  padding: 0 12px 0 38px !important;
   outline: 0;
   color: var(--ui-text);
   background: transparent;
 }
+
+.organizationRegistrantSearch > svg {
+  position: absolute;
+  z-index: 1;
+  margin-left: 12px;
+  pointer-events: none;
+}
+
+.organizationRegistrantSearch { position: relative; }
 
 .organizationRegistrantToolbar nav {
   display: grid;
@@ -206,12 +236,14 @@
   gap: 6px;
   min-height: 36px;
   padding: 0 10px;
-  border: 0;
+  border: 0 !important;
   border-radius: 9px;
   color: var(--ui-muted);
   background: transparent;
   font-weight: 800;
 }
+
+.organizationRegistrantToolbar nav button:not(.active) { box-shadow: none !important; }
 
 .organizationRegistrantToolbar nav button.active {
   color: #fff;
@@ -418,7 +450,7 @@
   gap: 10px;
   min-width: 0;
   padding: 7px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 12px;
   color: inherit;
   background: transparent;
@@ -426,7 +458,7 @@
 }
 
 .organizationRegistrantPerson:not(:disabled) { cursor: pointer; }
-.organizationRegistrantPerson:not(:disabled):hover { border-color: var(--ui-border); background: var(--ui-page); }
+.organizationRegistrantPerson:not(:disabled):hover { background: color-mix(in srgb, var(--ui-page) 74%, transparent); }
 .organizationRegistrantPerson > span:last-child { display: grid; min-width: 0; gap: 1px; }
 .organizationRegistrantPerson small { color: #16845a; font-size: .62rem; font-weight: 900; text-transform: uppercase; }
 .organizationRegistrantPerson strong,
@@ -687,7 +719,7 @@
   .organizationRegistrantTournament > header { align-items: flex-start; }
   .organizationRegistrantRow { padding: 9px; }
   .organizationRegistrantPeople { grid-template-columns: 1fr; gap: 5px; }
-  .organizationRegistrantPerson { grid-template-columns: 58px minmax(0, 1fr); padding: 8px; border-color: var(--ui-border); }
+  .organizationRegistrantPerson { grid-template-columns: 58px minmax(0, 1fr); padding: 8px; }
   .organizationRegistrantPerson .organizationRegistrantAvatar { width: 58px; height: 58px; }
   .organizationRegistrantPairConnector { display: none; }
   .organizationRegistrantSolo { grid-column: auto; padding: 4px 8px; }
@@ -699,4 +731,6 @@
   .organizationReceiptBackdrop { padding: 56px 0 0; }
   .organizationReceiptModal { width: 100%; height: calc(100vh - 56px); border-radius: 16px 16px 0 0; }
   .organizationReceiptModal > footer { align-items: flex-start; flex-direction: column; }
+  .organizationPairFloatingAction { right: 10px; bottom: 10px; left: 10px; justify-content: space-between; }
+  .organizationPairFloatingAction button { flex: 0 1 auto; }
 }

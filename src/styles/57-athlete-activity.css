@@ -209,14 +209,15 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
   gap: 10px;
 }
 
-.athleteChallengeSearch { position: relative; display: grid; gap: 6px; padding: 10px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 14px; background: var(--ui-surface-muted, #f3f7fb); }
+.athleteChallengeSearch { position: relative; display: grid; gap: 10px; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .athleteChallengeSearch > label { display: grid; grid-template-columns: 20px minmax(0, 1fr) 20px; align-items: center; gap: 8px; min-height: 44px; padding: 0 11px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 11px; background: var(--ui-surface-raised, #fff); }
 .athleteChallengeSearch > label > svg { width: 18px; color: #2563eb; }
-.athleteChallengeSearch input { width: 100%; height: 42px; border: 0; outline: 0; color: var(--ui-text-strong, #102038); background: transparent; }
+.athleteChallengeSearch input { width: 100%; height: 42px; padding: 0 !important; border: 0 !important; outline: 0; color: var(--ui-text-strong, #102038); background: transparent !important; box-shadow: none !important; }
 .athleteChallengeSearch > small { padding-inline: 3px; color: var(--ui-muted, #637189); font-size: .68rem; }
 .athleteChallengeSuggestions { display: grid; gap: 5px; }
 .athleteChallengeSuggestions > article { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px; border: 1px solid var(--ui-border, #c8d4e6); border-radius: 11px; background: var(--ui-surface-raised, #fff); }
 .athleteChallengeCandidate { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
+html body .proDashboard.playAppShell button.athleteChallengeCandidate { width: auto !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
 .athleteChallengeCandidate .athleteActivityAvatar { width: 46px; height: 46px; flex: 0 0 46px; }
 .athleteChallengeCandidate > span { display: grid; min-width: 0; gap: 2px; }
 .athleteChallengeCandidate strong,
@@ -227,7 +228,6 @@ html body .proDashboard.playAppShell .athleteActivityFilters button.active {
 .athleteChallengeSuggestions article > div button { display: inline-flex; min-height: 36px; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #3b82f6; border-radius: 9px; color: #1d5fac; background: color-mix(in srgb, #3b82f6 7%, var(--ui-surface-raised, #fff)); font-size: .68rem; font-weight: 850; }
 .athleteChallengeSuggestions article > div svg { width: 14px; }
 .athleteChallengeSuggestions > p { margin: 0; padding: 12px; color: var(--ui-muted, #637189); text-align: center; }
-.theme-dark .athleteChallengeSearch,
 .theme-dark .athleteChallengeSearch > label,
 .theme-dark .athleteChallengeSuggestions > article { border-color: #33485e; background: #172536; }
 

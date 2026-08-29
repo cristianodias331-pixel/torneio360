@@ -23,6 +23,9 @@ import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import {
   getTournamentGenderLabel,
   inferTournamentGenderMode,
+  normalizeParticipantGender,
+  participantGenderValues,
+  tournamentGenderModes,
 } from "../../domain/participantGenderRegistry.mjs";
 import {
   loadOrganizationRegistrants,
@@ -72,7 +75,30 @@ function formatRegistrationTimestamp(value) {
 function canOrganizerPairRegistration(registration) {
   const config = modalityConfig[registration.tournament?.type];
   const hasPartner = registration.partner?.user_id || registration.partner_user_id || registration.partner_handle || registration.partner_name;
-  return Boolean(requiresFixedDoubles(config) && registration.workflowStatus === "approved" && !hasPartner);
+  return Boolean(requiresFixedDoubles(config) && registration.workflowStatus === "approved" && registration.looking_for_partner && !hasPartner);
+}
+
+function getPairCompatibilityError(first, second) {
+  if (!first || !second) return "";
+  if (String(first.tournament?.id) !== String(second.tournament?.id) || first.categoryLabel !== second.categoryLabel) {
+    return "Para formar duplas, selecione atletas do mesmo torneio e da mesma categoria.";
+  }
+  const mode = inferTournamentGenderMode(first.tournament?.data || {});
+  const firstGender = normalizeParticipantGender(first.athlete?.gender);
+  const secondGender = normalizeParticipantGender(second.athlete?.gender);
+  if (firstGender === participantGenderValues.unknown || secondGender === participantGenderValues.unknown) {
+    return "Os dois atletas precisam ter o gênero preenchido no perfil antes de formar a dupla.";
+  }
+  if (mode === tournamentGenderModes.mixed && firstGender === secondGender) {
+    return "Em torneio misto, selecione atletas de gêneros diferentes.";
+  }
+  if (mode === tournamentGenderModes.masculine && (firstGender !== participantGenderValues.masculine || secondGender !== participantGenderValues.masculine)) {
+    return "Este torneio aceita somente uma dupla masculina.";
+  }
+  if (mode === tournamentGenderModes.feminine && (firstGender !== participantGenderValues.feminine || secondGender !== participantGenderValues.feminine)) {
+    return "Este torneio aceita somente uma dupla feminina.";
+  }
+  return "";
 }
 
 function canRegistrationLookForPartner(registration) {
@@ -235,12 +261,16 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     setPairSelection((current) => {
       if (current.includes(registration.id)) return current.filter((id) => id !== registration.id);
       const first = registrations.find((item) => item.id === current[0]);
-      const compatible = !first || (
-        String(first.tournament?.id) === String(registration.tournament?.id)
-        && first.categoryLabel === registration.categoryLabel
-      );
-      if (!compatible) {
+      if (first && (String(first.tournament?.id) !== String(registration.tournament?.id) || first.categoryLabel !== registration.categoryLabel)) {
         setNotice("Para formar duplas, selecione atletas do mesmo torneio e da mesma categoria.");
+        return current;
+      }
+      const pairMate = current.length % 2 === 1
+        ? registrations.find((item) => item.id === current[current.length - 1])
+        : null;
+      const pairCompatibilityError = getPairCompatibilityError(pairMate, registration);
+      if (pairCompatibilityError) {
+        setNotice(pairCompatibilityError);
         return current;
       }
       return current.length >= 32 ? current : [...current, registration.id];
@@ -327,6 +357,11 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
         <div><b>{pairSelection.length} selecionado(s)</b><button type="button" disabled={Boolean(busyId) || pairSelection.length < 2 || pairSelection.length % 2 !== 0} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione uma quantidade par"}</button></div>
       </div>
 
+      {pairSelection.length ? <div className="organizationPairFloatingAction" role="status">
+        <span><Users aria-hidden="true" /><strong>{pairSelection.length} selecionado(s)</strong></span>
+        <button type="button" disabled={Boolean(busyId) || pairSelection.length < 2 || pairSelection.length % 2 !== 0} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione mais um atleta"}</button>
+      </div> : null}
+
       <div className="organizationRegistrantMetrics">
         <article><Users aria-hidden="true" /><span><strong>{metrics.total}</strong><small>Inscritos</small></span></article>
         <article className="paid"><BadgeCheck aria-hidden="true" /><span><strong>{metrics.approved}</strong><small>Aprovados</small></span></article>
@@ -387,6 +422,11 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
                   <div className="organizationRegistrantActions">
                   {canOrganizerPairRegistration(registration) ? <button type="button" aria-pressed={pairSelection.includes(registration.id)} className={`pair${pairSelection.includes(registration.id) ? " selected" : ""}`} disabled={Boolean(busyId)} onClick={() => togglePairSelection(registration)}>{pairSelection.includes(registration.id) ? <Check aria-hidden="true" /> : <Users aria-hidden="true" />}{pairSelection.includes(registration.id) ? "Remover da seleção" : "Selecionar para dupla"}</button> : null}
                   {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Ver comprovante</button> : null}
+                  {registration.partner_registration?.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt({
+                    ...registration.partner_registration,
+                    athlete: registration.partner,
+                    athlete_name: registration.partner?.display_name || registration.partner_name,
+                  })}><ExternalLink aria-hidden="true" /> Comprovante da dupla</button> : null}
                   {registration.workflowStatus === "submitted" ? <><button type="button" className="approve" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "approved")}>Aprovar</button><button type="button" className="reject" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "rejected")}>Recusar</button></> : null}
                   <button type="button" className="remove" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => removeRegistration(registration)}><Trash2 aria-hidden="true" /> Remover</button>
                   </div>
@@ -401,7 +441,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
         <section className="organizationReceiptModal" role="dialog" aria-modal="true" aria-label={`Comprovante de ${receiptPreview.athleteName}`}>
           <header><span><ReceiptText aria-hidden="true" /><span><small>Comprovante de pagamento</small><strong>{receiptPreview.athleteName}</strong></span></span><button type="button" onClick={() => setReceiptPreview(null)} aria-label="Fechar comprovante"><X aria-hidden="true" /></button></header>
           <div className="organizationReceiptViewer">
-            {receiptPreview.mime.startsWith("image/") ? <img src={receiptPreview.url} alt={receiptPreview.name} /> : <iframe src={receiptPreview.url} title={receiptPreview.name} />}
+            {receiptPreview.mime.startsWith("image/") || /\.(?:jpe?g|png|webp)$/iu.test(receiptPreview.name) ? <img src={receiptPreview.url} alt={receiptPreview.name} /> : <iframe src={receiptPreview.url} title={receiptPreview.name} />}
           </div>
           <footer><span>{receiptPreview.name}</span><a href={receiptPreview.url} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" /> Abrir em nova aba</a></footer>
         </section>

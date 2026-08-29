@@ -49,6 +49,7 @@ export default function CourtCenterModal({
   }, [activeTournamentId, openTournaments, venueOptions]);
   const [selectedVenueKey, setSelectedVenueKey] = useState(activeVenueKey || venueOptions[0]?.key || "local-nao-informado");
   const [courtQuantity, setCourtQuantity] = useState("");
+  const [courtNumberMessage, setCourtNumberMessage] = useState(null);
 
   useEffect(() => {
     if (venueOptions.some((venue) => venue.key === selectedVenueKey)) return;
@@ -86,6 +87,7 @@ export default function CourtCenterModal({
 
   useEffect(() => {
     setCourtQuantity(center.numbers.length ? String(center.numbers.length) : "");
+    setCourtNumberMessage(null);
   }, [selectedVenue.key, center.numbers.length]);
 
   function commit(nextEntry) {
@@ -140,13 +142,33 @@ export default function CourtCenterModal({
 
   function renameCourt(currentNumber, value, input) {
     const nextNumber = normalizeCourtNumberValue(value);
-    if (
-      !nextNumber
-      || nextNumber === currentNumber
-      || center.numbers.includes(nextNumber)
-      || usageByNumber.has(currentNumber)
-    ) {
+    if (!nextNumber) {
       if (input) input.value = currentNumber;
+      setCourtNumberMessage({
+        type: "error",
+        text: "Informe um número de quadra maior que zero.",
+      });
+      return;
+    }
+    if (nextNumber === currentNumber) {
+      if (input) input.value = currentNumber;
+      setCourtNumberMessage(null);
+      return;
+    }
+    if (center.numbers.includes(nextNumber)) {
+      if (input) input.value = currentNumber;
+      setCourtNumberMessage({
+        type: "error",
+        text: `A Quadra ${nextNumber} já está cadastrada neste local. Escolha outro número.`,
+      });
+      return;
+    }
+    if (usageByNumber.has(currentNumber)) {
+      if (input) input.value = currentNumber;
+      setCourtNumberMessage({
+        type: "error",
+        text: `A Quadra ${currentNumber} está em uso. Finalize o jogo antes de alterar o número.`,
+      });
       return;
     }
     const replaceNumber = (number) => number === currentNumber ? nextNumber : number;
@@ -160,6 +182,10 @@ export default function CourtCenterModal({
           numbers.map(replaceNumber),
         ])
       ),
+    });
+    setCourtNumberMessage({
+      type: "success",
+      text: `Quadra ${currentNumber} alterada para Quadra ${nextNumber}.`,
     });
   }
 
@@ -213,7 +239,7 @@ export default function CourtCenterModal({
           <div>
             <span>Organização compartilhada</span>
             <h2 id="court-center-title">Central de Quadras</h2>
-            <p>Informe as quadras que você realmente tem disponíveis. Os jogos e as rodadas não serão alterados.</p>
+            <p>Informe aqui as quadras reais do local. Jogos excedentes aguardam e recebem automaticamente a próxima quadra liberada.</p>
           </div>
           <button type="button" className="courtCenterClose" onClick={onClose} aria-label="Fechar"><X aria-hidden="true" /></button>
         </header>
@@ -279,6 +305,16 @@ export default function CourtCenterModal({
           <small>Depois, confirme abaixo a numeração real de cada quadra.</small>
         </div>
 
+        {courtNumberMessage ? (
+          <div
+            className={`courtCenterNumberMessage ${courtNumberMessage.type}`}
+            role={courtNumberMessage.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+          >
+            {courtNumberMessage.text}
+          </div>
+        ) : null}
+
         <div className="courtCenterGrid">
           {center.numbers.length ? center.numbers.map((number) => {
             const usage = usageByNumber.get(number);
@@ -299,6 +335,10 @@ export default function CourtCenterModal({
                       aria-label={`Número atual da Quadra ${number}`}
                       onInput={(event) => {
                         event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 4);
+                        setCourtNumberMessage(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
                       }}
                       onBlur={(event) => renameCourt(number, event.currentTarget.value, event.currentTarget)}
                     />
@@ -339,7 +379,7 @@ export default function CourtCenterModal({
               <div>
                 <span>Opcional</span>
                 <h3 id="court-preferences-title">Distribuição inicial por torneio</h3>
-                <p>Escolha as quadras preferidas de cada torneio. Durante o evento, qualquer jogo ainda poderá ser movido para qualquer quadra livre.</p>
+                <p>Escolha apenas a prioridade inicial. Depois disso, a fila distribui automaticamente as quadras livres sem edição dentro do torneio.</p>
               </div>
             </div>
             <div className="courtCenterPreferenceList">

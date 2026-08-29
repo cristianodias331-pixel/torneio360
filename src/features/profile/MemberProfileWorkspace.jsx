@@ -40,6 +40,7 @@ function saveLocalAthleteDetails(userId, profile) {
   try {
     localStorage.setItem(`torneio360:athlete-details:${userId}`, JSON.stringify({
       sportsCategory: profile.sportsCategory || "",
+      gender: profile.gender || "",
       dominantHand: profile.dominantHand || "Não informado",
       shirtSize: profile.shirtSize || "Não informado",
     }));
@@ -438,6 +439,7 @@ export default function MemberProfileWorkspace({
                 user_metadata: {
                   ...user.user_metadata,
                   category: profile.sportsCategory,
+                  gender: profile.gender,
                   dominant_hand: profile.dominantHand,
                 },
               },

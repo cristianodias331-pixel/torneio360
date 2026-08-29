@@ -25,12 +25,13 @@ const athlete = createMemberProfileFallback({
   user: {
     id: "athlete-1",
     email: "atleta@teste.com",
-    user_metadata: { sports_category: "B", dominant_hand: "Canhoto", shirt_size: "M" },
+    user_metadata: { sports_category: "B", gender: "Feminino", dominant_hand: "Canhoto", shirt_size: "M" },
   },
 });
 const athleteValidation = validateMemberProfile(athlete);
 assert(athleteValidation.valid, "Os dados esportivos válidos do atleta devem passar.");
 assert(athleteValidation.profile.sportsCategory === "B", "A categoria deve aparecer no perfil do atleta.");
+assert(athleteValidation.profile.gender === "Feminino", "O gênero obrigatório deve ser preservado no perfil do atleta.");
 assert(athleteValidation.profile.dominantHand === "Canhoto", "A mão dominante deve ser preservada.");
 assert(athleteValidation.profile.shirtSize === "M", "O tamanho da camiseta deve ficar nos detalhes.");
 

@@ -78,7 +78,10 @@ export async function removeOrganizationRegistration({ supabase, registrationId,
 }
 
 export async function loadOrganizationRegistrants({ supabase, tournaments = [] }) {
-  const { data, error } = await supabase.rpc("get_my_organization_registrations");
+  let { data, error } = await supabase.rpc("get_my_organization_registrations_v2");
+  if (error && isUnavailableRegistrantsError(error)) {
+    ({ data, error } = await supabase.rpc("get_my_organization_registrations"));
+  }
   if (!error) {
     return { registrations: normalizeRegistrations(data), schemaAvailable: true };
   }

@@ -44,6 +44,8 @@
 .registrationPartnerChoice > span { display: grid; gap: 2px; }
 .registrationPartnerChoice strong { color: var(--ui-text-strong, #102038); font-size: .8rem; }
 .registrationPartnerChoice small { color: var(--ui-muted, #65758b); font-size: .68rem; }
+.registrationPairRule { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 11px 13px; border: 1px solid color-mix(in srgb, #2563eb 34%, var(--ui-border, #d5dfec)); border-radius: 12px; color: var(--ui-text, #263850); background: color-mix(in srgb, #2563eb 6%, var(--ui-surface-raised, #fff)); font-size: .7rem; line-height: 1.45; }
+.registrationPairRule svg { width: 17px; height: 17px; flex: 0 0 auto; color: #2563eb; }
 
 .registrationJourneyGuest { grid-template-columns: auto 1fr auto; align-items: center; border: 1px solid #79a9e4; border-radius: 18px; padding: 18px; background: color-mix(in srgb, #1769d2 7%, var(--ui-surface-raised, #fff)); }
 .registrationJourneyGuest > svg { width: 34px; height: 34px; color: #1769d2; }

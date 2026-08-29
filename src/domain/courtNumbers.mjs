@@ -21,6 +21,8 @@ export function normalizeCourtNumbers(values, count = 1) {
 }
 
 export function getGameCourtNumber(game, courtNumbers = []) {
+  if (game?.courtAssignmentPending === true) return "";
+
   const override = normalizeCourtNumberValue(game?.courtNumberOverride || game?.courtLabelOverride);
   if (override) return override;
 
@@ -29,7 +31,8 @@ export function getGameCourtNumber(game, courtNumbers = []) {
 }
 
 export function getGameCourtLabel(game, courtNumbers = []) {
-  return `Quadra ${getGameCourtNumber(game, courtNumbers)}`;
+  const number = getGameCourtNumber(game, courtNumbers);
+  return number ? `Quadra ${number}` : "Aguardando quadra";
 }
 
 export function applyCourtNumberToGame(game, value, courtNumbers = []) {
@@ -39,6 +42,7 @@ export function applyCourtNumberToGame(game, value, courtNumbers = []) {
 
   if (!normalizedNumber) {
     delete game.courtNumberOverride;
+    game.courtAssignmentPending = true;
     return;
   }
 
@@ -47,4 +51,5 @@ export function applyCourtNumberToGame(game, value, courtNumbers = []) {
   // apagar o override quando o número coincide com o padrão fazia a tela e a
   // Central passarem a enxergar quadras diferentes.
   game.courtNumberOverride = normalizedNumber;
+  delete game.courtAssignmentPending;
 }

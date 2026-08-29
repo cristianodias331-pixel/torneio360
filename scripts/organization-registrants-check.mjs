@@ -1,6 +1,8 @@
+import fs from "node:fs";
 import {
   loadOrganizationRegistrants,
   openOrganizationRegistrationReceipt,
+  pairApprovedOrganizationRegistrations,
   removeOrganizationRegistration,
   reviewOrganizationRegistration,
 } from "../src/services/organizationRegistrantsApi.mjs";
@@ -8,6 +10,18 @@ import {
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
+
+const registrationMigration = fs.readFileSync(new URL("../supabase/migrations/202608290002_registration_gender_and_fixed_pairs.sql", import.meta.url), "utf8");
+const registrantsPanelSource = fs.readFileSync(new URL("../src/features/profile/OrganizationRegistrantsPanel.jsx", import.meta.url), "utf8");
+
+assert(registrationMigration.includes("can_view_registration_receipt"), "A organização deve poder ler o comprovante privado do torneio que administra.");
+assert(registrationMigration.includes("registration_receipts_participant_read"), "A política privada do bucket deve autorizar atleta e organização responsável.");
+assert(registrationMigration.includes("pair_approved_tournament_registrations"), "O banco deve formar duplas entre inscrições individuais aprovadas.");
+assert(registrationMigration.includes("partner_search.active = true"), "Somente atletas realmente procurando dupla podem ser unidos pela organização.");
+assert(registrationMigration.includes("get_my_organization_registrations_v2"), "O painel deve carregar a versão que preserva os dois perfis e comprovantes.");
+assert(registrationMigration.includes("'partner_registration'"), "A inscrição principal deve trazer o comprovante do segundo atleta da dupla.");
+assert(registrantsPanelSource.includes("organizationPairFloatingAction"), "A ação de formar dupla deve continuar visível depois da seleção.");
+assert(registrantsPanelSource.includes("Comprovante da dupla"), "A organização deve conseguir abrir o comprovante dos dois atletas.");
 
 const rpcCalls = [];
 const richResult = await loadOrganizationRegistrants({
@@ -31,7 +45,7 @@ const richResult = await loadOrganizationRegistrants({
   tournaments: [],
 });
 
-assert(rpcCalls[0].name === "get_my_organization_registrations", "A organização deve carregar suas inscrições pelo RPC protegido.");
+assert(rpcCalls[0].name === "get_my_organization_registrations_v2", "A organização deve carregar inscrições, gêneros e comprovantes pelo RPC protegido atual.");
 assert(richResult.schemaAvailable === true, "O painel deve reconhecer a estrutura completa do banco.");
 assert(richResult.registrations[0].payment_status === "paid", "O pagamento confirmado deve chegar ao painel.");
 assert(richResult.registrations[0].looking_for_partner === true, "A procura por dupla deve chegar ao painel.");
@@ -95,6 +109,14 @@ const receiptUrl = await openOrganizationRegistrationReceipt({
   path: "athlete-1/registration-1/comprovante.pdf",
 });
 assert(receiptUrl.includes("registration-receipts"), "O comprovante deve ser aberto por URL privada e temporária.");
+
+const pairCalls = [];
+await pairApprovedOrganizationRegistrations({
+  supabase: { rpc: async (name, payload) => { pairCalls.push({ name, payload }); return { data: { paired_count: 1 }, error: null }; } },
+  registrationIds: ["registration-1", "registration-2"],
+});
+assert(pairCalls[0].name === "pair_approved_tournament_registrations", "A formação da dupla deve passar pelo RPC protegido da organização.");
+assert(pairCalls[0].payload.p_registration_ids.length === 2, "Os dois atletas selecionados devem chegar juntos ao banco.");
 
 const removeCalls = [];
 await removeOrganizationRegistration({
