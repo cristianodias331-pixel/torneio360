@@ -10749,7 +10749,7 @@ function toggleScheduleGameStatus(roundIndex, gameIndex) {
   else requestOperationalGameStart(target, game);
 }
 
-function toggleBracketGameStatus(matchKey) {
+function toggleBracketGameStatus(matchKey, { startOnly = false } = {}) {
   const preparedData = prepareEditableBracketData(data);
   const storedGame = preparedData.brackets?.find((game) => game.matchKey === matchKey);
   const targetGame = storedGame
@@ -10758,7 +10758,9 @@ function toggleBracketGameStatus(matchKey) {
   if (!targetGame || !hasPlayableGameSides(targetGame) || isGameFinished(targetGame, getWinningScore(preparedData))) return;
 
   const target = { scope: "bracket", matchKey };
-  if (storedGame.inProgress === true) setOperationalGameState(target, false);
+  if (storedGame.inProgress === true) {
+    if (!startOnly) setOperationalGameState(target, false);
+  }
   else requestOperationalGameStart(target, targetGame);
 }
 

@@ -4815,7 +4815,7 @@ assert.ok(
 );
 assert.ok(
   mainSource.includes('function toggleScheduleGameStatus(roundIndex, gameIndex)')
-    && mainSource.includes('function toggleBracketGameStatus(matchKey)')
+    && mainSource.includes('function toggleBracketGameStatus(matchKey,')
     && matchScheduleSource.includes('Em jogo')
     && matchScheduleSource.includes('is-in-progress'),
   "O status persistente de jogo em curso está ausente."
@@ -4910,6 +4910,18 @@ assert.ok(
     && cupBracketViewSource.includes("speakBracketRound")
     && tournamentRuntimeAdaptersSource.includes("<CupBracketViewComponent"),
   "A apresentação das chaves perdeu fases, resumo, chamadas ou a composição com a tela do torneio."
+);
+assert.equal(
+  tournamentRuntimeAdaptersSource.match(/void import\("\.\.\/matchOperations\/speechAnnouncements\.mjs"\)/g)?.length,
+  2,
+  "A voz precisa ser pré-carregada tanto na fase de grupos quanto nas chaves eliminatórias."
+);
+assert.ok(
+  cupBracketViewSource.includes("toggleBracketGameStatus?.(game.matchKey, { startOnly: true })")
+    && cupBracketViewSource.includes("courtNumbers,")
+    && mainSource.includes("function toggleBracketGameStatus(matchKey, { startOnly = false } = {})")
+    && mainSource.includes("if (!startOnly) setOperationalGameState(target, false)"),
+  "Chamar um jogo da chave deve iniciar o cronômetro sem parar uma partida que já está em andamento."
 );
 assert.ok(
   publicBracketViewSource.includes("export function PublicScheduleView")
