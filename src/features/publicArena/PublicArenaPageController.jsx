@@ -154,6 +154,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   const eventPagesRef = useRef(eventPages);
   const lastBundleLoadAtRef = useRef(0);
   const selectedPublicTournamentRef = useRef(null);
+  const initialTournamentRequestRef = useRef("");
   const initialCircuitRequestRef = useRef("");
   eventPagesRef.current = eventPages;
 
@@ -522,8 +523,16 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
   useEffect(() => {
     const targetPublicId = String(publicId || "").trim();
     if (!targetPublicId || !bundle?.profile || selectedTournament || openingPublicId) return;
+    const requestKey = `${String(bundle.profile.id || "").trim()}:${targetPublicId}`;
+    if (initialTournamentRequestRef.current === requestKey) return;
+    initialTournamentRequestRef.current = requestKey;
     const directoryItem = (bundle.tournaments || []).find((item) => String(item.public_id || "") === targetPublicId);
-    if (directoryItem) void openPublicTournament(directoryItem);
+    void openPublicTournament(directoryItem || {
+      public_id: targetPublicId,
+      directoryEntry: true,
+    }, {
+      initialTab: new URLSearchParams(window.location.search).get("inscricao") === "1" ? "inscricao" : "",
+    });
   }, [publicId, bundle?.profile?.id, bundle?.tournaments, selectedTournament, openingPublicId]);
 
   useEffect(() => {
