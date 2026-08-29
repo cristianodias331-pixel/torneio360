@@ -174,11 +174,17 @@ export function BracketColumn({
         onEditCourt={onEditCourt && !game.isBye ? () => onEditCourt({ scope: "bracket", matchKey: game.matchKey, game }) : null}
         onScoreChange={!game.isBye ? (field, value) => updateBracketScore(game.matchKey, field, value) : null}
         onStatusToggle={!game.isBye && toggleBracketGameStatus ? () => toggleBracketGameStatus(game.matchKey) : null}
-        onCallGame={!game.isBye ? () => speakGame(game, {
-          roundLabel: `${round.title} da chave ${title}`,
-          includeGroup: false,
-          repeat: voiceRepeat,
-        }) : null}
+        onCallGame={!game.isBye ? () => {
+          // Chamar o confronto também inicia sua operação de quadra. O modo
+          // startOnly impede que uma nova chamada pare um cronômetro ativo.
+          toggleBracketGameStatus?.(game.matchKey, { startOnly: true });
+          speakGame(game, {
+            roundLabel: `${round.title} da chave ${title}`,
+            includeGroup: false,
+            repeat: voiceRepeat,
+            courtNumbers,
+          });
+        } : null}
         attendanceData={attendanceData}
       />
     );

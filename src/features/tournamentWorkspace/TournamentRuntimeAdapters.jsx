@@ -200,6 +200,9 @@ export function createTournamentRuntimeAdapters({
   }
 
   function CupBracketView(props) {
+    // A voz precisa estar carregada antes do toque. Em celulares, aguardar o
+    // import depois do clique pode perder a ativação exigida pelo navegador.
+    void import("../matchOperations/speechAnnouncements.mjs");
     return (
       <CupBracketViewComponent
         {...props}
