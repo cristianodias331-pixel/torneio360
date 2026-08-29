@@ -547,7 +547,7 @@ export default function LoginScreen({
             <h1>Sua organização com torneios, rankings e experiência profissional</h1>
 
             <p>
-              Monte torneios de Beach Tennis com visual moderno, controle de jogos, rankings automáticos, chamada por voz e um perfil público pronto para atletas e organizadores.
+              Comece organizando torneios de Beach Tennis com visual moderno, controle de jogos, rankings automáticos, chamada por voz e perfis públicos. A identidade visual já nasce preparada para vôlei, futevôlei, tênis e, futuramente, pickleball.
             </p>
 
             <div className="heroActions">
