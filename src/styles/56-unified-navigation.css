@@ -587,6 +587,18 @@ html body .proDashboard.theme-dark.playAppShell .embeddedPublicTournament .publi
   box-shadow: none !important;
 }
 
+html body .proDashboard.playAppShell
+  .organizerLikeParticipants
+  .publicAthleteEntry
+  > :is(.athleteIdentityLink, .athleteIdentityText) {
+  justify-content: flex-start !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: left !important;
+}
+
 .proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyScoreRow,
 .proDashboard.theme-dark .embeddedPublicTournament .publicBracketScore,
 .proDashboard.theme-dark .embeddedPublicTournament .publicReadOnlyScoreRow > span:not(.publicScorePending),
