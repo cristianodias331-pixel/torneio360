@@ -7,7 +7,9 @@ import {
   Hand,
   MapPin,
   RefreshCw,
+  Search,
   ShieldCheck,
+  Trash2,
   UserRound,
   Users,
 } from "lucide-react";
@@ -15,8 +17,10 @@ import { formatDateBR } from "../../domain/dateTime.mjs";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
 import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
 import {
+  cancelMyTournamentPartnership,
+  cancelMyTournamentRegistration,
   loadMyTournamentRegistrationCheckout,
-  findTournamentPartnerByHandle,
+  searchTournamentPartnerCandidates,
   submitTournamentRegistrationWorkflow,
 } from "../../services/tournamentRegistrationApi.mjs";
 import TournamentPaymentPanel from "./TournamentPaymentPanel.jsx";
@@ -69,6 +73,7 @@ export default function TournamentRegistrationPanel({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [partnerLookup, setPartnerLookup] = useState({ status: "idle", partner: null, error: "" });
+  const [partnerCandidates, setPartnerCandidates] = useState([]);
   const pairCompetition = isPairCompetition(tournament?.type);
 
   async function loadCheckout() {
@@ -94,31 +99,76 @@ export default function TournamentRegistrationPanel({
   useEffect(() => { void loadCheckout(); }, [tournament?.id, viewer?.id]);
 
   const registration = state.checkout?.registration || null;
+  const viewerRole = state.checkout?.viewer_role || "owner";
+  const registrationPartner = state.checkout?.partner || null;
   const workflowCopy = useMemo(() => getWorkflowCopy(registration), [registration]);
-  const locked = ["submitted", "approved"].includes(registration?.workflow_status);
+  const locked = viewerRole === "partner" || ["submitted", "approved"].includes(registration?.workflow_status);
 
   useEffect(() => {
-    if (!pairCompetition || !form.partnerHandle.trim() || locked) {
+    if (!pairCompetition || form.partnerHandle.trim().length < 2 || locked) {
       setPartnerLookup({ status: "idle", partner: null, error: "" });
+      setPartnerCandidates([]);
       return undefined;
     }
     let active = true;
     setPartnerLookup({ status: "loading", partner: null, error: "" });
     const timer = window.setTimeout(async () => {
       try {
-        const result = await findTournamentPartnerByHandle({ supabase, tournamentId: tournament.id, handle: form.partnerHandle });
+        const result = await searchTournamentPartnerCandidates({ supabase, tournamentId: tournament.id, query: form.partnerHandle });
         if (!active) return;
-        setPartnerLookup(result.partner?.is_self
-          ? { status: "self", partner: null, error: "Esse é o seu próprio perfil. Informe o @ de outro atleta para formar a dupla." }
-          : result.partner
-          ? { status: "found", partner: result.partner, error: "" }
-          : { status: "not-found", partner: null, error: "Nenhum atleta encontrado com esse endereço único." });
+        const candidates = result.candidates || [];
+        const normalizedHandle = form.partnerHandle.replace(/^@/, "").trim().toLocaleLowerCase("pt-BR");
+        const exact = candidates.find((candidate) => String(candidate.handle || "").toLocaleLowerCase("pt-BR") === normalizedHandle) || null;
+        setPartnerCandidates(candidates);
+        setPartnerLookup(exact
+          ? { status: "found", partner: exact, error: "" }
+          : candidates.length
+            ? { status: "suggestions", partner: null, error: "Escolha um atleta nas sugestões para confirmar a dupla." }
+            : { status: "not-found", partner: null, error: "Nenhum atleta encontrado por nome ou @." });
       } catch (error) {
         if (active) setPartnerLookup({ status: "error", partner: null, error: error?.message || "Não foi possível verificar este atleta." });
       }
-    }, 380);
+    }, 280);
     return () => { active = false; window.clearTimeout(timer); };
   }, [form.partnerHandle, locked, pairCompetition, supabase, tournament.id]);
+
+  function choosePartner(candidate) {
+    setForm((current) => ({ ...current, partnerHandle: candidate.handle || "", lookingForPartner: false }));
+    setPartnerCandidates([]);
+    setPartnerLookup({ status: "found", partner: candidate, error: "" });
+  }
+
+  async function withdrawRegistration() {
+    if (!registration?.id || busy || viewerRole !== "owner") return;
+    if (!window.confirm("Desistir desta inscrição? O comprovante será desvinculado e a organização será avisada.")) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      await cancelMyTournamentRegistration({ supabase, registrationId: registration.id });
+      setNotice("Inscrição cancelada. A organização foi avisada.");
+      await loadCheckout();
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível cancelar a inscrição.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function withdrawPartnership() {
+    if (!registration?.id || busy) return;
+    if (!window.confirm("Desfazer esta parceria? O outro atleta e a organização serão avisados.")) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      await cancelMyTournamentPartnership({ supabase, registrationId: registration.id });
+      setNotice("Parceria desfeita. A inscrição principal continua e os envolvidos foram avisados.");
+      await loadCheckout();
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível desfazer a parceria.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitPayment({ receipt, paymentMethod }) {
     if (busy) return;
@@ -195,7 +245,24 @@ export default function TournamentRegistrationPanel({
       ) : null}
       {notice ? <p className="registrationJourneyNotice" role="status">{notice}</p> : null}
 
-      {!locked ? (
+      {registration ? <section className="registrationLinkedProfiles" aria-label="Perfis ligados à inscrição">
+        <div className="registrationLinkedPerson">
+          <span>{state.checkout?.athlete?.photo_url ? <img src={state.checkout.athlete.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
+          <div><small>Atleta inscrito</small><strong>{state.checkout?.athlete?.display_name || registration.athlete_name}</strong>{state.checkout?.athlete?.handle ? <em>@{state.checkout.athlete.handle}</em> : null}</div>
+        </div>
+        {registrationPartner ? <div className="registrationLinkedPerson">
+          <span>{registrationPartner.photo_url ? <img src={registrationPartner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
+          <div><small>{registration.partner_status === "accepted" ? "Dupla confirmada" : "Convite de dupla"}</small><strong>{registrationPartner.display_name}</strong>{registrationPartner.handle ? <em>@{registrationPartner.handle}</em> : null}</div>
+        </div> : null}
+        <div className="registrationWithdrawalActions">
+          {registration.partner_user_id && ["pending", "accepted"].includes(registration.partner_status) && registration.workflow_status !== "approved" ? <button type="button" disabled={busy} onClick={withdrawPartnership}><Users aria-hidden="true" /> Desfazer parceria</button> : null}
+          {viewerRole === "owner" && registration.workflow_status !== "approved" && registration.status !== "confirmed" ? <button type="button" className="danger" disabled={busy} onClick={withdrawRegistration}><Trash2 aria-hidden="true" /> Desistir da inscrição</button> : null}
+        </div>
+      </section> : null}
+
+      {viewerRole === "partner" ? <p className="registrationPartnerViewerNotice"><ShieldCheck aria-hidden="true" /> Você está vendo esta inscrição como atleta convidado da dupla. O pagamento e a edição pertencem ao atleta que iniciou a inscrição.</p> : null}
+
+      {!locked && viewerRole === "owner" ? (
         <>
           <section className="registrationAthleteData">
             <header><UserRound aria-hidden="true" /><div><strong>Dados aproveitados do seu perfil</strong><small>Você pode ajustar apenas o necessário para este torneio.</small></div></header>
@@ -203,8 +270,15 @@ export default function TournamentRegistrationPanel({
               <label className="registrationOwnIdentityField"><span>Atleta que está se inscrevendo</span><div className="registrationHandleInput"><b>@</b><input value={form.athleteHandle} readOnly placeholder="Cadastre seu endereço único" /></div><small>{form.athleteHandle ? `${form.athleteName} · perfil de atleta identificado` : "Abra Meu perfil de atleta e escolha seu endereço único antes de se inscrever."}</small></label>
               <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
               <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
-              {pairCompetition ? <label className="registrationPartnerHandleField"><span>Endereço único do outro atleta da dupla</span><div className="registrationHandleInput"><b>@</b><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="outro.atleta" /></div><small>Não use o seu próprio @. O outro atleta receberá uma notificação para aceitar ou recusar.</small></label> : null}
+              {pairCompetition ? <label className="registrationPartnerHandleField"><span>Encontre o outro atleta da dupla</span><div className="registrationHandleInput"><Search aria-hidden="true" /><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Digite o nome ou @" autoComplete="off" /></div><small>As sugestões aparecem enquanto você digita. O atleta escolhido receberá a confirmação pelo seu @ único.</small></label> : null}
             </div>
+            {pairCompetition && partnerCandidates.length && partnerLookup.status !== "found" ? <div className="registrationPartnerSuggestions" role="listbox" aria-label="Sugestões de atletas">
+              {partnerCandidates.map((candidate) => <button type="button" role="option" key={candidate.user_id} onClick={() => choosePartner(candidate)}>
+                <span>{candidate.photo_url ? <img src={candidate.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
+                <span><strong>{candidate.display_name}</strong><small>@{candidate.handle}{candidate.city ? ` · ${candidate.city}${candidate.state ? `/${candidate.state}` : ""}` : ""}</small></span>
+                <BadgeCheck aria-hidden="true" />
+              </button>)}
+            </div> : null}
             {pairCompetition && form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
               {partnerLookup.status === "loading" ? <><RefreshCw className="spinning" aria-hidden="true" /><span>Verificando o perfil...</span></> : null}
               {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · perfil identificado</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}

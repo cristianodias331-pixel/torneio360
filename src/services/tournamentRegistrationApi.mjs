@@ -107,6 +107,37 @@ export async function findTournamentPartnerByHandle({ supabase, tournamentId, ha
   return { partner: data || null, schemaAvailable: true };
 }
 
+export async function searchTournamentPartnerCandidates({ supabase, tournamentId, query, limit = 8 }) {
+  const normalizedQuery = String(query || "").replace(/^@/, "").trim();
+  if (normalizedQuery.length < 2) return { candidates: [], schemaAvailable: true };
+  const { data, error } = await supabase.rpc("search_tournament_partner_candidates", {
+    p_tournament_id: tournamentId,
+    p_query: normalizedQuery,
+    p_limit: Math.max(1, Math.min(Number(limit) || 8, 16)),
+  });
+  if (error) {
+    if (isUnavailableWorkflowError(error)) return { candidates: [], schemaAvailable: false };
+    throw error;
+  }
+  return { candidates: Array.isArray(data) ? data : [], schemaAvailable: true };
+}
+
+export async function cancelMyTournamentRegistration({ supabase, registrationId }) {
+  const { data, error } = await supabase.rpc("cancel_my_tournament_registration", {
+    p_registration_id: registrationId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelMyTournamentPartnership({ supabase, registrationId }) {
+  const { data, error } = await supabase.rpc("cancel_my_tournament_partnership", {
+    p_registration_id: registrationId,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function reviewTournamentRegistration({ supabase, registrationId, decision, reason = "" }) {
   const { data, error } = await supabase.rpc("review_tournament_registration_workflow", {
     p_registration_id: registrationId,

@@ -18,6 +18,7 @@ const migration = read("supabase/migrations/202608270006_registration_identity_n
 const unifiedRegistrationMigration = read("supabase/migrations/202608270007_unified_athlete_registration.sql");
 const achievementsMigration = read("supabase/migrations/202608280001_fixed_doubles_and_athlete_achievements.sql");
 const persistentAchievementsMigration = read("supabase/migrations/202608280006_persistent_athlete_achievements.sql");
+const registrationControlsMigration = read("supabase/migrations/202608290001_registration_controls_and_live_search.sql");
 const registrationStyles = read("src/styles/60-tournament-registration.css");
 const unifiedProfileStyles = read("src/styles/51-unified-profile.css");
 
@@ -33,8 +34,8 @@ assert.ok(
   registration.includes("requiresFixedDoubles(modalityConfig[type])")
     && registration.includes("Atleta que está se inscrevendo")
     && registration.includes("form.athleteHandle")
-    && registration.includes("Endereço único do outro atleta da dupla")
-    && registration.includes("findTournamentPartnerByHandle")
+    && registration.includes("Encontre o outro atleta da dupla")
+    && registration.includes("searchTournamentPartnerCandidates")
     && migration.includes("find_tournament_partner_by_handle")
     && migration.includes("partner_status")
     && achievementsMigration.includes("tournament_type_requires_fixed_doubles"),
@@ -46,7 +47,7 @@ assert.ok(
     && unifiedRegistrationMigration.includes("private.provision_member_profile(auth.uid())")
     && !unifiedRegistrationMigration.includes("current_account_role() <> 'athlete'")
     && unifiedRegistrationMigration.includes("'is_self', partner_row.user_id = auth.uid()")
-    && registration.includes("Esse é o seu próprio perfil")
+    && registrationControlsMigration.includes("member.display_name, member.handle")
     && registrationStyles.includes(".registrationPartnerLookup.found > span:first-of-type"),
   "A mesma conta deixou de usar o perfil de atleta ou a procura do próprio @ voltou a ser confusa."
 );
@@ -160,6 +161,17 @@ assert.ok(
     && registrants.includes("º inscrito")
     && registrants.includes("registrationOrder"),
   "A organização perdeu a hora exata ou a ordem cronológica das inscrições."
+);
+
+assert.ok(
+  registrants.includes("registration.partner")
+    && registrants.includes("organizationReceiptModal")
+    && registrants.includes("removeRegistration")
+    && registration.includes("withdrawRegistration")
+    && registration.includes("withdrawPartnership")
+    && registrationControlsMigration.includes("remove_organization_tournament_registration")
+    && registrationControlsMigration.includes("cancel_my_tournament_partnership"),
+  "Os dois perfis, o comprovante interno ou os controles de desistência/exclusão regrediram."
 );
 
 console.log("Inscrição conectada: PDF, dupla, notificações, identidade e galeria passaram.");

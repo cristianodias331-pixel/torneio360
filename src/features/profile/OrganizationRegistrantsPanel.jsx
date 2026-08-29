@@ -8,7 +8,9 @@ import {
   ExternalLink,
   Filter,
   RefreshCw,
+  ReceiptText,
   Search,
+  Trash2,
   UserRoundSearch,
   Users,
   X,
@@ -26,6 +28,7 @@ import {
   loadOrganizationRegistrants,
   openOrganizationRegistrationReceipt,
   pairApprovedOrganizationRegistrations,
+  removeOrganizationRegistration,
   reviewOrganizationRegistration,
 } from "../../services/organizationRegistrantsApi.mjs";
 import "../../styles/58-organization-registrants.css";
@@ -76,6 +79,19 @@ function canRegistrationLookForPartner(registration) {
   return requiresFixedDoubles(modalityConfig[registration.tournament?.type]);
 }
 
+function RegistrantPerson({ person, fallbackName, fallbackHandle = "", label, onOpen }) {
+  const displayName = person?.display_name || fallbackName || "Atleta";
+  const handle = person?.handle || fallbackHandle;
+  return (
+    <button type="button" className="organizationRegistrantPerson" onClick={onOpen} disabled={!onOpen} title={onOpen ? `Abrir perfil de ${displayName}` : undefined}>
+      <span className="organizationRegistrantAvatar">
+        {person?.photo_url ? <img src={person.photo_url} alt={`Foto de ${displayName}`} /> : getInitials(displayName)}
+      </span>
+      <span><small>{label}</small><strong>{displayName}</strong>{handle ? <em>@{handle}</em> : <em>Perfil não vinculado</em>}</span>
+    </button>
+  );
+}
+
 export default function OrganizationRegistrantsPanel({ supabase, tournaments = [] }) {
   const [state, setState] = useState({ status: "loading", registrations: [], schemaAvailable: true, error: "" });
   const [search, setSearch] = useState("");
@@ -87,6 +103,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
   const [pairSelection, setPairSelection] = useState([]);
+  const [receiptPreview, setReceiptPreview] = useState(null);
 
   const loadRegistrants = useCallback(async () => {
     setState((current) => ({ ...current, status: "loading", error: "" }));
@@ -253,7 +270,12 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     setNotice("");
     try {
       const url = await openOrganizationRegistrationReceipt({ supabase, path: registration.payment_proof_path });
-      window.open(url, "_blank", "noopener,noreferrer");
+      setReceiptPreview({
+        url,
+        name: registration.payment_proof_name || "Comprovante de pagamento",
+        mime: registration.payment_proof_mime || "",
+        athleteName: registration.athlete?.display_name || registration.athlete_name,
+      });
     } catch (error) {
       setNotice(error?.message || "Não foi possível abrir o comprovante.");
     } finally {
@@ -261,9 +283,26 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     }
   }
 
-  function openAthleteProfile(registration) {
-    const athleteAddress = registration.athlete?.handle || registration.athlete_user_id;
-    if (athleteAddress) navigatePlatform({ perfil: athleteAddress });
+  function openAthleteProfile(address) {
+    if (address) navigatePlatform({ perfil: address });
+  }
+
+  async function removeRegistration(registration) {
+    if (busyId) return;
+    const athleteName = registration.athlete?.display_name || registration.athlete_name || "este participante";
+    if (!window.confirm(`Remover ${athleteName} deste torneio? A pessoa será notificada.`)) return;
+    setBusyId(`remove-${registration.id}`);
+    setNotice("");
+    try {
+      await removeOrganizationRegistration({ supabase, registrationId: registration.id });
+      setPairSelection((current) => current.filter((id) => id !== registration.id));
+      setNotice("Participante removido. O atleta e a dupla, quando houver, foram notificados.");
+      await loadRegistrants();
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível remover o participante.");
+    } finally {
+      setBusyId("");
+    }
   }
 
   if (state.status === "loading") {
@@ -323,14 +362,33 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
             <div className="organizationRegistrantClassification"><span>{division.categoryLabel}</span><span>{division.genderLabel}</span><span>{division.modalityLabel}</span><strong>{division.registrations.length} {division.registrations.length === 1 ? "inscrito" : "inscritos"}</strong></div>
             <div className="organizationRegistrantList">{division.registrations.map((registration) => (
               <div className={`organizationRegistrantRow${pairSelection.includes(registration.id) ? " selectedForPair" : ""}`} key={registration.id}>
-                <button type="button" className="organizationRegistrantAvatar" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta">{registration.athlete?.photo_url ? <img src={registration.athlete.photo_url} alt={`Foto de ${registration.athlete?.display_name || registration.athlete_name}`} /> : getInitials(registration.athlete_name)}</button>
-                <div className="organizationRegistrantIdentity"><button type="button" onClick={() => openAthleteProfile(registration)} title="Abrir perfil do atleta"><strong>{registration.athlete?.display_name || registration.athlete_name}</strong>{registration.athlete?.handle ? <em>@{registration.athlete.handle}</em> : null}</button><small>{registration.partner_handle ? `Dupla convidada: @${registration.partner_handle}` : registration.partner_name ? `Dupla: ${registration.partner_name}` : "Inscrição individual"}</small><small className="organizationRegistrantChronology"><Clock3 aria-hidden="true" /> <strong>{registrationOrder.get(String(registration.id)) || "—"}º inscrito</strong> · {formatRegistrationTimestamp(registration.created_at)}</small></div>
+                <div className="organizationRegistrantPeople">
+                  <RegistrantPerson
+                    person={registration.athlete}
+                    fallbackName={registration.athlete_name}
+                    fallbackHandle={registration.athlete_handle}
+                    label="Atleta inscrito"
+                    onOpen={(registration.athlete?.handle || registration.athlete_user_id) ? () => openAthleteProfile(registration.athlete?.handle || registration.athlete_user_id) : null}
+                  />
+                  {(registration.partner || registration.partner_name || registration.partner_handle) ? <>
+                    <span className="organizationRegistrantPairConnector" aria-hidden="true">+</span>
+                    <RegistrantPerson
+                      person={registration.partner}
+                      fallbackName={registration.partner_name}
+                      fallbackHandle={registration.partner_handle}
+                      label={registration.partner_status === "accepted" ? "Dupla confirmada" : "Dupla convidada"}
+                      onOpen={(registration.partner?.handle || registration.partner?.user_id) ? () => openAthleteProfile(registration.partner?.handle || registration.partner?.user_id) : null}
+                    />
+                  </> : <span className="organizationRegistrantSolo">Inscrição individual</span>}
+                  <small className="organizationRegistrantChronology"><Clock3 aria-hidden="true" /> <strong>{registrationOrder.get(String(registration.id)) || "—"}º inscrito</strong> · {formatRegistrationTimestamp(registration.created_at)}</small>
+                </div>
                 <div className="organizationRegistrantControls">
                   <div className="organizationRegistrantBadges"><span className={registration.workflowStatus}>{registration.workflowStatus === "approved" ? "Aprovado" : registration.workflowStatus === "submitted" ? "Em análise" : registration.workflowStatus === "rejected" ? "Recusado" : "Sem comprovante"}</span>{registration.looking_for_partner && canRegistrationLookForPartner(registration) ? <span className="partner">Procura dupla</span> : null}<span>{registration.payment_method === "card" ? "Cartão" : registration.payment_method === "pix" ? "Pix" : "Pagamento não enviado"}</span></div>
                   <div className="organizationRegistrantActions">
                   {canOrganizerPairRegistration(registration) ? <button type="button" aria-pressed={pairSelection.includes(registration.id)} className={`pair${pairSelection.includes(registration.id) ? " selected" : ""}`} disabled={Boolean(busyId)} onClick={() => togglePairSelection(registration)}>{pairSelection.includes(registration.id) ? <Check aria-hidden="true" /> : <Users aria-hidden="true" />}{pairSelection.includes(registration.id) ? "Remover da seleção" : "Selecionar para dupla"}</button> : null}
                   {registration.payment_proof_path ? <button type="button" disabled={Boolean(busyId)} onClick={() => openReceipt(registration)}><ExternalLink aria-hidden="true" /> Ver comprovante</button> : null}
                   {registration.workflowStatus === "submitted" ? <><button type="button" className="approve" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "approved")}>Aprovar</button><button type="button" className="reject" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => reviewRegistration(registration, "rejected")}>Recusar</button></> : null}
+                  <button type="button" className="remove" disabled={!state.schemaAvailable || Boolean(busyId)} onClick={() => removeRegistration(registration)}><Trash2 aria-hidden="true" /> Remover</button>
                   </div>
                 </div>
               </div>
@@ -339,6 +397,15 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
           </article>
         );
       })}</div> : <div className="organizationRegistrantsEmpty"><Users aria-hidden="true" /><strong>Nenhum inscrito encontrado</strong><span>Altere os filtros ou aguarde novas inscrições nos torneios da organização.</span></div>}
+      {receiptPreview ? <div className="organizationReceiptBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceiptPreview(null); }}>
+        <section className="organizationReceiptModal" role="dialog" aria-modal="true" aria-label={`Comprovante de ${receiptPreview.athleteName}`}>
+          <header><span><ReceiptText aria-hidden="true" /><span><small>Comprovante de pagamento</small><strong>{receiptPreview.athleteName}</strong></span></span><button type="button" onClick={() => setReceiptPreview(null)} aria-label="Fechar comprovante"><X aria-hidden="true" /></button></header>
+          <div className="organizationReceiptViewer">
+            {receiptPreview.mime.startsWith("image/") ? <img src={receiptPreview.url} alt={receiptPreview.name} /> : <iframe src={receiptPreview.url} title={receiptPreview.name} />}
+          </div>
+          <footer><span>{receiptPreview.name}</span><a href={receiptPreview.url} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" /> Abrir em nova aba</a></footer>
+        </section>
+      </div> : null}
     </section>
   );
 }

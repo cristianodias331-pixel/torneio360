@@ -10,6 +10,7 @@ import {
   Heart,
   MessageCircle,
   RefreshCw,
+  Search,
   Send,
   ShieldCheck,
   Swords,
@@ -29,6 +30,7 @@ import {
   sendAthleteChallenge,
   setMyPartnerSearch,
 } from "../../services/athleteActivityApi.mjs";
+import { searchPublicPlatform } from "../../services/publicSocialApi.mjs";
 import "../../styles/57-athlete-activity.css";
 
 const activityFilters = [
@@ -267,6 +269,8 @@ export default function AthleteProfileActivity({
   const [activitySection, setActivitySection] = useState("tournaments");
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
+  const [challengeQuery, setChallengeQuery] = useState("");
+  const [challengeCandidates, setChallengeCandidates] = useState({ loading: false, items: [], error: "" });
 
   const loadActivity = useCallback(async () => {
     if (!supabase || !profile?.userId) return;
@@ -283,6 +287,31 @@ export default function AthleteProfileActivity({
   }, [owner, profile?.userId, supabase]);
 
   useEffect(() => { void loadActivity(); }, [loadActivity]);
+
+  useEffect(() => {
+    if (!owner || activeTab !== "desafios") return undefined;
+    const query = challengeQuery.trim();
+    if (query.length < 2) {
+      setChallengeCandidates({ loading: false, items: [], error: "" });
+      return undefined;
+    }
+    let active = true;
+    setChallengeCandidates((current) => ({ ...current, loading: true, error: "" }));
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await searchPublicPlatform({ supabase, query, limit: 10 });
+        if (!active) return;
+        setChallengeCandidates({
+          loading: false,
+          items: (result.accounts || []).filter((item) => item.account_kind === "athlete" && String(item.id) !== String(profile?.userId)),
+          error: result.error ? "Não foi possível pesquisar agora." : "",
+        });
+      } catch {
+        if (active) setChallengeCandidates({ loading: false, items: [], error: "Não foi possível pesquisar agora." });
+      }
+    }, 280);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [activeTab, challengeQuery, owner, profile?.userId, supabase]);
 
   const activity = state.activity || { registrations: [], circuits: [], myPartnerSearches: [], partnerMatches: [], challenges: [], achievements: [] };
   const visibleRegistrations = useMemo(() => activity.registrations.filter((item) => filter === "all" || item.bucket === filter), [activity.registrations, filter]);
@@ -338,6 +367,23 @@ export default function AthleteProfileActivity({
       setNotice("Desafio enviado. Nenhuma mensagem foi enviada; o atleta recebeu apenas o seu sinal.");
     } catch (error) {
       setNotice(error?.message || "Entre na plataforma para enviar este desafio.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function sendChallengeTo(athlete, type) {
+    if (busyId || !athlete?.id) return;
+    setBusyId(`challenge-${athlete.id}-${type}`);
+    setNotice("");
+    try {
+      await sendAthleteChallenge({ supabase, challengedUserId: athlete.id, challengeType: type });
+      setNotice(`Desafio enviado para ${athlete.name}. O atleta recebeu apenas o seu sinal esportivo.`);
+      setChallengeQuery("");
+      setChallengeCandidates({ loading: false, items: [], error: "" });
+      await loadActivity();
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível enviar este desafio.");
     } finally {
       setBusyId("");
     }
@@ -497,6 +543,20 @@ export default function AthleteProfileActivity({
         <header className="athleteActivityHeader"><div><Swords aria-hidden="true" /><span><h2>Desafios</h2><small>Sinais esportivos recebidos e enviados, sem troca de mensagens.</small></span></div><strong>{activity.challenges.filter((item) => item.direction === "incoming" && item.status === "pending").length}</strong></header>
         {schemaNotice}
         {notice ? <p className="athleteActivityNotice">{notice}</p> : null}
+        <div className="athleteChallengeSearch">
+          <label><Search aria-hidden="true" /><input type="search" value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Encontre um atleta pelo nome ou @" autoComplete="off" />{challengeCandidates.loading ? <RefreshCw className="spinning" aria-hidden="true" /> : null}</label>
+          {challengeQuery.trim().length >= 2 ? <div className="athleteChallengeSuggestions" aria-live="polite">
+            {challengeCandidates.items.map((athlete) => <article key={athlete.id}>
+              <button type="button" className="athleteChallengeCandidate" onClick={() => navigatePlatform({ perfil: athlete.handle || athlete.id })}>
+                <AthleteAvatar athlete={{ display_name: athlete.name, handle: athlete.handle, photo_url: athlete.photo_url }} />
+                <span><strong>{athlete.name}</strong><small>{athlete.handle ? `@${athlete.handle}` : "Perfil de atleta"}</small></span>
+              </button>
+              <div><button type="button" disabled={Boolean(busyId)} onClick={() => sendChallengeTo(athlete, "practice")}><Flame aria-hidden="true" /> Prática</button><button type="button" disabled={Boolean(busyId)} onClick={() => sendChallengeTo(athlete, "match")}><Swords aria-hidden="true" /> Partida</button></div>
+            </article>)}
+            {!challengeCandidates.loading && !challengeCandidates.items.length && !challengeCandidates.error ? <p>Nenhum atleta encontrado.</p> : null}
+            {challengeCandidates.error ? <p>{challengeCandidates.error}</p> : null}
+          </div> : <small>As sugestões aparecem enquanto você digita.</small>}
+        </div>
         {activity.challenges.length ? <div className="athleteChallengeList">{activity.challenges.map((challenge) => (
           <article key={challenge.id}>
             <AthleteAvatar athlete={challenge.athlete} />

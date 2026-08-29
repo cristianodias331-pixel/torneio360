@@ -1,4 +1,4 @@
-.registrationJourney { display: grid; gap: 16px; color: var(--ui-text, #263850); }
+.registrationJourney { display: grid; gap: 12px; color: var(--ui-text, #263850); }
 .registrationJourneyHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .registrationJourneyHeader > div { display: grid; gap: 4px; }
 .registrationJourneyHeader small { color: #1769d2; font-size: .68rem; font-weight: 900; letter-spacing: .09em; }
@@ -66,6 +66,7 @@
 .tournamentPaymentMethods article > .tournamentPaymentChoice[aria-pressed="true"] { color: #059669; }
 .registrationHandleInput { display: flex; min-height: 46px; align-items: stretch; box-sizing: border-box; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 12px; overflow: hidden; padding: 0 12px; background: var(--ui-surface-raised, #fff); }
 .registrationHandleInput b { display: grid; width: 18px; flex: 0 0 18px; place-items: center; align-self: stretch; padding: 0; color: #2563eb; font-size: 16px; line-height: 1; }
+.registrationHandleInput > svg { width: 18px; flex: 0 0 18px; align-self: center; color: #2563eb; }
 .registrationHandleInput input { min-width: 0; min-height: 44px !important; height: auto; flex: 1; align-self: stretch; margin: 0; border: 0 !important; border-radius: 0 !important; padding: 0 0 0 4px !important; background: transparent !important; box-shadow: none !important; line-height: normal; }
 .registrationPartnerHandleField > small,
 .registrationOwnIdentityField > small { color: var(--ui-muted, #64748b); line-height: 1.35; }
@@ -80,10 +81,72 @@
 .registrationPartnerLookup.self { border-color: #f59e0b; background: rgba(245,158,11,.08); color: #b45309; }
 .proDashboard.theme-dark .registrationPartnerLookup.self { color: #fbbf24; }
 
+.registrationPartnerSuggestions {
+  display: grid;
+  gap: 5px;
+  margin: -6px 0 4px;
+  padding: 6px;
+  border: 1px solid var(--ui-border, #cbd7e6);
+  border-radius: 14px;
+  background: var(--ui-surface-raised, #fff);
+  box-shadow: 0 16px 36px rgba(15, 35, 62, .12);
+}
+.registrationPartnerSuggestions > button {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+.registrationPartnerSuggestions > button:hover,
+.registrationPartnerSuggestions > button:focus-visible { border-color: #3b82f6; background: color-mix(in srgb, #3b82f6 7%, var(--ui-surface-raised, #fff)); }
+.registrationPartnerSuggestions > button > span:first-child { display: grid; width: 42px; height: 42px; place-items: center; overflow: hidden; border-radius: 50%; color: #2563eb; background: var(--ui-surface-muted, #eef4fa); }
+.registrationPartnerSuggestions img { width: 100%; height: 100%; object-fit: cover; }
+.registrationPartnerSuggestions > button > span:nth-child(2) { display: grid; min-width: 0; gap: 2px; }
+.registrationPartnerSuggestions strong,
+.registrationPartnerSuggestions small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.registrationPartnerSuggestions strong { color: var(--ui-text-strong, #102038); }
+.registrationPartnerSuggestions small { color: var(--ui-muted, #64748b); }
+.registrationPartnerSuggestions > button > svg { width: 18px; color: #10b981; }
+
+.registrationLinkedProfiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--ui-border, #cbd7e6);
+  border-radius: 14px;
+  background: var(--ui-surface-raised, #fff);
+}
+.registrationLinkedPerson { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 9px; min-width: 0; padding: 5px; }
+.registrationLinkedPerson > span { display: grid; width: 48px; height: 48px; place-items: center; overflow: hidden; border: 2px solid color-mix(in srgb, #2563eb 42%, var(--ui-border, #cbd7e6)); border-radius: 50%; color: #2563eb; background: var(--ui-surface-muted, #eef4fa); }
+.registrationLinkedPerson img { width: 100%; height: 100%; object-fit: cover; }
+.registrationLinkedPerson > div { display: grid; min-width: 0; gap: 1px; }
+.registrationLinkedPerson small { color: #2563eb; font-size: .62rem; font-weight: 900; text-transform: uppercase; }
+.registrationLinkedPerson strong,
+.registrationLinkedPerson em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.registrationLinkedPerson strong { color: var(--ui-text-strong, #102038); }
+.registrationLinkedPerson em { color: var(--ui-muted, #64748b); font-size: .7rem; font-style: normal; }
+.registrationWithdrawalActions { display: flex; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.registrationWithdrawalActions button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; border: 1px solid var(--ui-border, #cbd7e6); border-radius: 10px; color: var(--ui-text, #263850); background: var(--ui-surface-raised, #fff); font-weight: 850; }
+.registrationWithdrawalActions button.danger { border-color: color-mix(in srgb, #dc2626 55%, var(--ui-border, #cbd7e6)); color: #b42323; background: color-mix(in srgb, #dc2626 7%, var(--ui-surface-raised, #fff)); }
+.registrationWithdrawalActions svg { width: 15px; }
+.registrationPartnerViewerNotice { display: flex; align-items: center; gap: 8px; margin: 0; padding: 11px 13px; border: 1px solid color-mix(in srgb, #2563eb 38%, var(--ui-border, #cbd7e6)); border-radius: 12px; color: var(--ui-text, #263850); background: color-mix(in srgb, #2563eb 7%, var(--ui-surface-raised, #fff)); }
+.registrationPartnerViewerNotice svg { width: 18px; flex: 0 0 auto; color: #2563eb; }
+
 .proDashboard.theme-dark .registrationTournamentSummary,
 .proDashboard.theme-dark .registrationAthleteData { border-color: #33485e; background: #172536; }
 .proDashboard.theme-dark .registrationAthleteFields input { border-color: #40546a; color: #f1f5f9; background: #101d2c; }
 .proDashboard.theme-dark .registrationAthleteFields input[readonly] { color: #a9b8ca; background: #142131; }
+.proDashboard.theme-dark .registrationPartnerSuggestions,
+.proDashboard.theme-dark .registrationLinkedProfiles { border-color: #33485e; background: #172536; box-shadow: none; }
 .proDashboard.theme-dark .registrationWorkflowStatus.approved { color: #a7f3d0; background: #123328; }
 .proDashboard.theme-dark .registrationWorkflowStatus.submitted { color: #bfdbfe; background: #142d4b; }
 .proDashboard.theme-dark .registrationWorkflowStatus.rejected { color: #fecaca; background: #3b2022; }
@@ -95,4 +158,11 @@
   .registrationAthleteFields { grid-template-columns: 1fr; }
   .registrationJourneyGuest { grid-template-columns: auto 1fr; }
   .registrationJourneyGuest button { grid-column: 1 / -1; width: 100%; }
+  .registrationLinkedProfiles { grid-template-columns: 1fr; }
+  .registrationLinkedPerson { grid-template-columns: 58px minmax(0, 1fr); border: 1px solid var(--ui-border, #cbd7e6); border-radius: 12px; padding: 8px; }
+  .registrationLinkedPerson > span { width: 58px; height: 58px; }
+  .registrationWithdrawalActions { display: grid; grid-template-columns: 1fr; }
+  .registrationWithdrawalActions button { width: 100%; }
+  .registrationPartnerSuggestions > button { grid-template-columns: 48px minmax(0, 1fr) auto; min-height: 62px; }
+  .registrationPartnerSuggestions > button > span:first-child { width: 48px; height: 48px; }
 }

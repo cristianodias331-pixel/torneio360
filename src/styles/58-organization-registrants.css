@@ -1,7 +1,7 @@
 .organizationRegistrantsPanel {
   display: grid;
-  gap: 18px;
-  margin-top: 18px;
+  gap: 12px;
+  margin-top: 12px;
   padding: 4px 0 0;
   color: var(--ui-text);
 }
@@ -88,8 +88,8 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  margin: 14px 0;
-  padding: 14px;
+  margin: 4px 0;
+  padding: 12px;
   border: 1px solid var(--ui-border);
   border-radius: 16px;
   background: var(--ui-surface-muted);
@@ -131,8 +131,8 @@
 
 .organizationRegistrantMetrics article {
   gap: 11px;
-  min-height: 76px;
-  padding: 13px;
+  min-height: 64px;
+  padding: 11px 12px;
   border: 1px solid var(--ui-border);
   border-radius: 15px;
   background: var(--ui-surface);
@@ -371,9 +371,9 @@
 
 .organizationRegistrantRow {
   display: grid;
-  grid-template-columns: auto minmax(210px, 1fr) minmax(380px, auto);
-  gap: 14px;
-  padding: 14px;
+  grid-template-columns: minmax(360px, 1fr) minmax(340px, auto);
+  gap: 12px;
+  padding: 12px;
   border: 1px solid var(--ui-border);
   border-radius: 14px;
   background: var(--ui-surface);
@@ -402,6 +402,52 @@
   background: var(--ui-page);
   font-weight: 900;
 }
+
+.organizationRegistrantPeople {
+  display: grid;
+  grid-template-columns: minmax(145px, 1fr) auto minmax(145px, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.organizationRegistrantPerson {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.organizationRegistrantPerson:not(:disabled) { cursor: pointer; }
+.organizationRegistrantPerson:not(:disabled):hover { border-color: var(--ui-border); background: var(--ui-page); }
+.organizationRegistrantPerson > span:last-child { display: grid; min-width: 0; gap: 1px; }
+.organizationRegistrantPerson small { color: #16845a; font-size: .62rem; font-weight: 900; text-transform: uppercase; }
+.organizationRegistrantPerson strong,
+.organizationRegistrantPerson em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.organizationRegistrantPerson strong { color: var(--ui-heading); }
+.organizationRegistrantPerson em { color: var(--ui-muted); font-size: 11px; font-style: normal; }
+.organizationRegistrantPairConnector { color: #16a36a; font-size: 1.15rem; font-weight: 900; }
+.organizationRegistrantSolo { grid-column: 2 / 4; color: var(--ui-muted); font-size: .72rem; }
+
+.organizationRegistrantPeople .organizationRegistrantChronology {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 7px;
+  color: var(--ui-muted);
+  font-size: .7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.organizationRegistrantPeople .organizationRegistrantChronology strong { color: var(--ui-heading); }
 
 .organizationRegistrantAvatar img {
   width: 100%;
@@ -520,6 +566,7 @@
 .organizationRegistrantActions button svg { width: 14px; height: 14px; }
 .organizationRegistrantActions button.approve { border-color: #16a36a; color: #087a50; }
 .organizationRegistrantActions button.reject { border-color: #d85d5d; color: #b53838; background: color-mix(in srgb, #d85d5d 8%, var(--ui-surface)); }
+.organizationRegistrantActions button.remove { border-color: color-mix(in srgb, #dc2626 55%, var(--ui-border)); color: #b42323; background: color-mix(in srgb, #dc2626 7%, var(--ui-surface)); }
 .organizationRegistrantActions button.pair { border-color: #16a34a; color: #168044; }
 .organizationRegistrantActions button.pair.selected,
 .organizationRegistrantActions button.pair[aria-pressed="true"] {
@@ -570,6 +617,52 @@
   box-shadow: none;
 }
 
+.organizationReceiptBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: grid;
+  place-items: center;
+  padding: 76px 20px 20px;
+  background: rgba(2, 10, 23, .72);
+  backdrop-filter: blur(8px);
+}
+
+.organizationReceiptModal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(880px, 100%);
+  height: min(760px, calc(100vh - 104px));
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-surface);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .35);
+}
+
+.organizationReceiptModal > header,
+.organizationReceiptModal > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.organizationReceiptModal > header > span { display: flex; align-items: center; gap: 10px; }
+.organizationReceiptModal > header > span > svg { width: 22px; color: #16a36a; }
+.organizationReceiptModal > header > span > span { display: grid; }
+.organizationReceiptModal > header small { color: var(--ui-muted); font-size: .66rem; }
+.organizationReceiptModal > header strong { color: var(--ui-heading); }
+.organizationReceiptModal > header button { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--ui-border); border-radius: 10px; color: var(--ui-text); background: var(--ui-surface); }
+.organizationReceiptModal > header button svg { width: 18px; }
+.organizationReceiptViewer { display: grid; min-height: 0; place-items: center; overflow: auto; background: var(--ui-page); }
+.organizationReceiptViewer img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.organizationReceiptViewer iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+.organizationReceiptModal > footer { border-top: 1px solid var(--ui-border); border-bottom: 0; color: var(--ui-muted); font-size: .72rem; }
+.organizationReceiptModal > footer a { display: inline-flex; align-items: center; gap: 6px; color: #0b7550; font-weight: 900; text-decoration: none; }
+.organizationReceiptModal > footer svg { width: 15px; }
+
 @media (max-width: 900px) {
   .organizationPairBuilder { grid-template-columns: auto 1fr; }
   .organizationPairBuilder > div:last-child { grid-column: 1 / -1; justify-items: stretch; }
@@ -579,8 +672,8 @@
   .organizationRegistrantToolbar nav { overflow-x: auto; }
   .organizationRegistrantFilters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .organizationRegistrantFilters > header { grid-column: 1 / -1; }
-  .organizationRegistrantRow { grid-template-columns: auto 1fr; }
-  .organizationRegistrantControls { grid-column: 1 / -1; justify-items: start; padding-left: 66px; }
+  .organizationRegistrantRow { grid-template-columns: 1fr; }
+  .organizationRegistrantControls { grid-column: 1 / -1; justify-items: start; padding-left: 0; }
   .organizationRegistrantBadges,
   .organizationRegistrantActions { grid-column: auto; justify-self: start; }
 }
@@ -592,9 +685,18 @@
   .organizationRegistrantToolbar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
   .organizationRegistrantToolbar nav button:last-child { grid-column: 1 / -1; }
   .organizationRegistrantTournament > header { align-items: flex-start; }
-  .organizationRegistrantRow { padding: 12px; }
+  .organizationRegistrantRow { padding: 9px; }
+  .organizationRegistrantPeople { grid-template-columns: 1fr; gap: 5px; }
+  .organizationRegistrantPerson { grid-template-columns: 58px minmax(0, 1fr); padding: 8px; border-color: var(--ui-border); }
+  .organizationRegistrantPerson .organizationRegistrantAvatar { width: 58px; height: 58px; }
+  .organizationRegistrantPairConnector { display: none; }
+  .organizationRegistrantSolo { grid-column: auto; padding: 4px 8px; }
+  .organizationRegistrantPeople .organizationRegistrantChronology { grid-column: auto; padding: 5px 8px; border-top: 1px solid var(--ui-border); }
   .organizationRegistrantControls { grid-column: 1 / -1; padding-left: 0; }
   .organizationRegistrantBadges { grid-column: auto; }
   .organizationRegistrantActions { grid-column: auto; width: 100%; justify-content: stretch; }
   .organizationRegistrantActions button { flex: 1; justify-content: center; }
+  .organizationReceiptBackdrop { padding: 56px 0 0; }
+  .organizationReceiptModal { width: 100%; height: calc(100vh - 56px); border-radius: 16px 16px 0 0; }
+  .organizationReceiptModal > footer { align-items: flex-start; flex-direction: column; }
 }

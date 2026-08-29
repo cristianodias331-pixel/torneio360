@@ -1,5 +1,8 @@
 import {
+  cancelMyTournamentPartnership,
+  cancelMyTournamentRegistration,
   loadMyTournamentRegistrationCheckout,
+  searchTournamentPartnerCandidates,
   submitTournamentRegistrationWorkflow,
   validateRegistrationReceipt,
 } from "../src/services/tournamentRegistrationApi.mjs";
@@ -63,4 +66,17 @@ assert(submitCall.payload.p_payment_proof_path === uploadCall.path, "O banco dev
 assert(validateRegistrationReceipt({ name: "arquivo.exe", type: "application/octet-stream", size: 10 }), "Arquivos executáveis devem ser bloqueados.");
 assert(validateRegistrationReceipt({ name: "grande.pdf", type: "application/pdf", size: 11 * 1024 * 1024 }), "Arquivos acima de 10 MB devem ser bloqueados.");
 
-console.log("Inscrição: perfil reaproveitado, comprovante privado, procura de dupla e análise passaram.");
+const controlsCalls = [];
+const controlsSupabase = { rpc: async (name, payload) => {
+  controlsCalls.push({ name, payload });
+  if (name === "search_tournament_partner_candidates") return { data: [{ user_id: "athlete-2", display_name: "Dupla Teste", handle: "dupla.teste" }], error: null };
+  return { data: { registration_id: "registration-1" }, error: null };
+} };
+const candidates = await searchTournamentPartnerCandidates({ supabase: controlsSupabase, tournamentId: "tournament-1", query: "Dupla" });
+assert(candidates.candidates[0].handle === "dupla.teste", "A busca deve sugerir atletas pelo nome e devolver o @ único.");
+await cancelMyTournamentPartnership({ supabase: controlsSupabase, registrationId: "registration-1" });
+await cancelMyTournamentRegistration({ supabase: controlsSupabase, registrationId: "registration-1" });
+assert(controlsCalls.some((call) => call.name === "cancel_my_tournament_partnership"), "O atleta deve conseguir desfazer a parceria antes da aprovação.");
+assert(controlsCalls.some((call) => call.name === "cancel_my_tournament_registration"), "O atleta deve conseguir desistir antes da aprovação.");
+
+console.log("Inscrição: perfil reaproveitado, busca dinâmica, desistência, comprovante privado e análise passaram.");

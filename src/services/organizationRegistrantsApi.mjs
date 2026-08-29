@@ -68,6 +68,15 @@ export async function openOrganizationRegistrationReceipt({ supabase, path }) {
   return data.signedUrl;
 }
 
+export async function removeOrganizationRegistration({ supabase, registrationId, reason = "" }) {
+  const { data, error } = await supabase.rpc("remove_organization_tournament_registration", {
+    p_registration_id: registrationId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function loadOrganizationRegistrants({ supabase, tournaments = [] }) {
   const { data, error } = await supabase.rpc("get_my_organization_registrations");
   if (!error) {

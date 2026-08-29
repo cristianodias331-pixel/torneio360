@@ -1,6 +1,7 @@
 import {
   loadOrganizationRegistrants,
   openOrganizationRegistrationReceipt,
+  removeOrganizationRegistration,
   reviewOrganizationRegistration,
 } from "../src/services/organizationRegistrantsApi.mjs";
 
@@ -95,4 +96,12 @@ const receiptUrl = await openOrganizationRegistrationReceipt({
 });
 assert(receiptUrl.includes("registration-receipts"), "O comprovante deve ser aberto por URL privada e temporária.");
 
-console.log("Inscritos da organização: agrupamentos, comprovantes privados, aprovação, procura de dupla e fallback passaram.");
+const removeCalls = [];
+await removeOrganizationRegistration({
+  supabase: { rpc: async (name, payload) => { removeCalls.push({ name, payload }); return { data: { status: "cancelled" }, error: null }; } },
+  registrationId: "registration-1",
+});
+assert(removeCalls[0].name === "remove_organization_tournament_registration", "A exclusão deve passar pelo RPC protegido da organização.");
+assert(removeCalls[0].payload.p_registration_id === "registration-1", "A organização deve remover somente a inscrição selecionada.");
+
+console.log("Inscritos da organização: dois perfis, comprovante privado, aprovação, exclusão e fallback passaram.");

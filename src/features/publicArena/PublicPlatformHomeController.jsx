@@ -103,9 +103,9 @@ export function PlatformGlobalSearch({ runtime, onOpenTournament = null }) {
     else navigatePlatform({ public: item.public_id });
   };
 
-  async function runSearch(nextQuery = query, nextTab = "all") {
+  async function runSearch(nextQuery = query, nextTab = "all", syncInput = true) {
     const normalizedQuery = String(nextQuery || "").trim();
-    setQuery(normalizedQuery);
+    if (syncInput) setQuery(normalizedQuery);
     setActiveTab(nextTab);
     if (normalizeGlobalSearch(normalizedQuery).length < 2) {
       setSubmittedQuery("");
@@ -137,6 +137,19 @@ export function PlatformGlobalSearch({ runtime, onOpenTournament = null }) {
       }
     }
   }
+
+  useEffect(() => {
+    const normalizedQuery = String(query || "").trim();
+    if (normalizeGlobalSearch(normalizedQuery).length < 2) {
+      requestIdRef.current += 1;
+      setSubmittedQuery("");
+      setActiveTab("all");
+      setState(emptyGlobalSearchState);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => { void runSearch(normalizedQuery, "all", false); }, 280);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   function clearSearch() {
     requestIdRef.current += 1;
@@ -190,7 +203,7 @@ export function PlatformGlobalSearch({ runtime, onOpenTournament = null }) {
           {query ? <button className="platformGlobalSearchClear" type="button" onClick={clearSearch} aria-label="Limpar pesquisa"><X aria-hidden="true" /></button> : <span />}
           <button className="platformGlobalSearchSubmit" type="submit"><Search aria-hidden="true" /><span>Buscar</span></button>
         </div>
-        {!submittedQuery ? <p>Digite um nome, evento, local ou cidade e pressione <strong>Enter</strong>.</p> : null}
+        {!submittedQuery ? <p>Digite pelo menos duas letras. As sugestões aparecem enquanto você escreve.</p> : null}
       </form>
 
       {submittedQuery ? (
