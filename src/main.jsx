@@ -97,6 +97,25 @@ import {
 } from "./domain/cupPresentation.mjs";
 import "./style.css";
 
+function PlatformLoadingScreen({ message = "Carregando área do Torneio 360..." }) {
+  return (
+    <div className="loadingPage" role="status" aria-live="polite" aria-label={message}>
+      <div className="loadingCard">
+        <img className="loadingBrand" src="/marketing/torneio360-logo-clean-v1.png" alt="Torneio 360" />
+        <div className="loadingTrack" aria-hidden="true">
+          <div className="loadingBallRunner">
+            <span className="loadingFireball" />
+          </div>
+        </div>
+        <div className="loadingCopy">
+          <strong>Preparando sua experiência</strong>
+          <p>{message}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   || "https://dttutybojealkvuywszt.supabase.co";
 const MARKETING_LANDING_V2_ENABLED = (() => {
@@ -533,14 +552,7 @@ function App() {
   }
 
   if (loading) {
-    return (
-      <div className="loadingPage">
-        <div className="loadingCard">
-          <div className="loadingSpinner" aria-hidden="true" />
-          <p>Carregando Torneio 360...</p>
-        </div>
-      </div>
-    );
+    return <PlatformLoadingScreen message="Carregando Torneio 360..." />;
   }
 
   if (authFlow === "recovery") {
@@ -816,14 +828,7 @@ if (import.meta.env.DEV) globalThis.__torneio360ReactRoot = torneio360Root;
 torneio360Root.render(
   <>
     <React.Suspense
-      fallback={(
-        <div className="loadingPage" role="status" aria-label="Carregando área do Torneio 360">
-          <div className="loadingCard">
-            <div className="loadingSpinner" aria-hidden="true" />
-            <p>Carregando área do Torneio 360...</p>
-          </div>
-        </div>
-      )}
+      fallback={<PlatformLoadingScreen />}
     >
       <App />
     </React.Suspense>

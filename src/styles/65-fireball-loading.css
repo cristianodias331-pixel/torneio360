@@ -1,0 +1,241 @@
+/* Carregamento inicial alinhado à identidade visual da apresentação pública. */
+html body .loadingPage {
+  position: fixed;
+  z-index: 120000;
+  inset: 0;
+  width: 100%;
+  min-height: 100svh;
+  overflow: hidden;
+  padding: 24px;
+  color: #f8f8f5;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(19, 51, 91, .34), transparent 42%),
+    linear-gradient(145deg, #020a18 0%, #061426 56%, #08182c 100%) !important;
+}
+
+html body .loadingPage .loadingCard {
+  display: grid;
+  width: min(520px, 100%);
+  justify-items: center;
+  gap: 16px;
+  padding: 28px 22px;
+  border: 0 !important;
+  border-radius: 0;
+  color: #f8f8f5;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.loadingBrand {
+  display: block;
+  width: 190px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.loadingTrack {
+  position: relative;
+  width: min(390px, 82vw);
+  height: 86px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent);
+}
+
+.loadingTrack::after {
+  position: absolute;
+  top: 50%;
+  right: 4%;
+  left: 4%;
+  height: 1px;
+  content: "";
+  opacity: .34;
+  background: linear-gradient(90deg, transparent, rgba(255, 104, 22, .8), transparent);
+  box-shadow: 0 0 10px rgba(255, 91, 0, .24);
+}
+
+.loadingBallRunner {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: -66px;
+  width: 52px;
+  height: 52px;
+  transform: translateY(-50%);
+  animation: loadingBallPass 1.7s cubic-bezier(.46, .03, .52, .96) infinite;
+  animation-delay: -.8s;
+}
+
+.loadingBallRunner::before {
+  position: absolute;
+  z-index: -1;
+  top: 3px;
+  right: 38px;
+  width: 142px;
+  height: 46px;
+  border-radius: 70% 18% 18% 70%;
+  content: "";
+  background:
+    radial-gradient(ellipse at 92% 50%, #fff27a 0 14%, #ffba09 25%, #ff6a00 40%, rgba(235, 47, 0, .9) 57%, transparent 75%),
+    repeating-linear-gradient(96deg, transparent 0 10px, rgba(255, 92, 0, .72) 14px 21px, transparent 29px 39px);
+  filter: blur(3px) saturate(1.25) drop-shadow(0 0 14px rgba(255, 72, 0, .82));
+  transform-origin: right center;
+  animation: loadingFlameFlicker 310ms ease-in-out infinite alternate;
+}
+
+.loadingBallRunner::after {
+  position: absolute;
+  z-index: -1;
+  top: 23px;
+  right: 57px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  content: "";
+  background: #ffd34f;
+  box-shadow: -26px -14px 0 -1px #ff7a00, -49px 11px 0 -2px #ffae15, -74px -5px 0 -2px #ff4f00, -104px 13px 0 -3px #ffc13b;
+  animation: loadingSparkFlicker 420ms ease-in-out infinite alternate;
+}
+
+.loadingFireball {
+  position: relative;
+  display: block;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 246, 158, .72);
+  border-radius: 50%;
+  background: radial-gradient(circle at 31% 27%, #f7ffb1 0 7%, #dfff36 20%, #b9e824 46%, #78a90c 73%, #304d02 100%);
+  box-shadow:
+    inset -6px -8px 12px rgba(39, 75, 0, .46),
+    0 0 16px rgba(220, 255, 48, .88),
+    0 0 36px rgba(255, 117, 0, .78),
+    0 0 60px rgba(255, 57, 0, .38);
+  animation: loadingBallSpin 720ms linear infinite;
+}
+
+.loadingFireball::before,
+.loadingFireball::after {
+  position: absolute;
+  top: 1px;
+  width: 33px;
+  height: 50px;
+  content: "";
+  border: 2px solid rgba(255, 255, 221, .9);
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 2px rgba(85, 112, 0, .46));
+}
+
+.loadingFireball::before {
+  left: -11px;
+}
+
+.loadingFireball::after {
+  right: -11px;
+}
+
+.loadingCopy {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+html body .loadingPage .loadingCopy strong {
+  color: #f8fafc !important;
+  font-family: "Manrope", "Segoe UI Variable Display", "Aptos Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -.015em;
+}
+
+html body .loadingPage .loadingCopy p {
+  margin: 0;
+  color: #aeb9c9 !important;
+  font-family: "Manrope", "Segoe UI Variable Text", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  font-size: .84rem;
+  font-weight: 600;
+}
+
+@keyframes loadingBallPass {
+  0% { left: -66px; opacity: 0; }
+  10% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { left: calc(100% + 20px); opacity: 0; }
+}
+
+@keyframes loadingBallSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loadingFlameFlicker {
+  from { transform: scaleX(.82) scaleY(.86) skewX(-8deg); opacity: .72; }
+  to { transform: scaleX(1.08) scaleY(1.06) skewX(7deg); opacity: .98; }
+}
+
+@keyframes loadingSparkFlicker {
+  from { opacity: .42; transform: translateY(-50%) scale(.82); }
+  to { opacity: 1; transform: translateY(-50%) scale(1.16); }
+}
+
+@media (max-width: 560px) {
+  html body .loadingPage {
+    padding: 16px;
+  }
+
+  html body .loadingPage .loadingCard {
+    gap: 13px;
+    padding: 22px 12px;
+  }
+
+  .loadingBrand {
+    width: 164px;
+    height: 42px;
+  }
+
+  .loadingTrack {
+    width: min(300px, 88vw);
+    height: 76px;
+  }
+
+  .loadingBallRunner,
+  .loadingFireball {
+    width: 46px;
+    height: 46px;
+  }
+
+  .loadingBallRunner::before {
+    top: 2px;
+    right: 34px;
+    width: 118px;
+    height: 42px;
+  }
+
+  .loadingBallRunner::after {
+    top: 19px;
+    right: 50px;
+  }
+
+  .loadingFireball::before,
+  .loadingFireball::after {
+    width: 29px;
+    height: 44px;
+  }
+
+  .loadingFireball::before { left: -10px; }
+  .loadingFireball::after { right: -10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingBallRunner {
+    left: 50%;
+    opacity: 1;
+    transform: translate(-50%, -50%);
+    animation: none;
+  }
+
+  .loadingFireball,
+  .loadingBallRunner::after {
+    animation: none;
+  }
+}
