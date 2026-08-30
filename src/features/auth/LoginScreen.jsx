@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { MessageCircle } from "lucide-react";
-import "../../styles/54-public-auth-profiles.css";
-import { NoticeModal } from "../dialogs/ConfirmationDialogs.jsx";
 import {
-  BeachLogo,
-  Info,
-  PlanCard,
-  PlatformSupportLinks,
-} from "../appShell/EntryPresentation.jsx";
+  ArrowLeft,
+  CalendarCheck,
+  CalendarDays,
+  LockKeyhole,
+  Mail,
+  MessageCircle,
+  ShieldCheck,
+  Trophy,
+  UserRound,
+} from "lucide-react";
+import "../../styles/54-public-auth-profiles.css";
+import "../../styles/66-auth-experience.css";
+import { NoticeModal } from "../dialogs/ConfirmationDialogs.jsx";
+import { BeachLogo, Info, PlanCard, PlatformSupportLinks } from "../appShell/EntryPresentation.jsx";
 import { getBrazilTodayISO } from "../../domain/dateTime.mjs";
 import {
   getAuthErrorMessage,
@@ -29,6 +35,204 @@ async function resendEmailConfirmation(supabase, email) {
       emailRedirectTo: getAuthRedirectUrl("confirm"),
     },
   });
+}
+
+function AuthSignupFields({
+  firstName,
+  setFirstName,
+  lastName,
+  setLastName,
+  birthDate,
+  setBirthDate,
+  taxIdType,
+  setTaxIdType,
+  taxId,
+  setTaxId,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  confirmPassword,
+  setConfirmPassword,
+  communityGuidelinesAccepted,
+  setCommunityGuidelinesAccepted,
+  privacyNoticeAccepted,
+  setPrivacyNoticeAccepted,
+}) {
+  return (
+    <div className="authSignupGrid">
+      <section className="authSignupColumn" aria-labelledby="signup-personal-title">
+        <div className="authColumnTitle">
+          <UserRound aria-hidden="true" />
+          <div>
+            <strong id="signup-personal-title">Dados pessoais</strong>
+            <small>Informações para identificar sua conta.</small>
+          </div>
+        </div>
+
+        <div className="twoCols formTwoCols">
+          <div className="authFieldBlock">
+            <label htmlFor="signup-first-name">Nome</label>
+            <input
+              id="signup-first-name"
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              placeholder="Digite seu nome"
+            />
+          </div>
+
+          <div className="authFieldBlock">
+            <label htmlFor="signup-last-name">Sobrenome</label>
+            <input
+              id="signup-last-name"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              placeholder="Digite seu sobrenome"
+            />
+          </div>
+        </div>
+
+        <div className="authFieldBlock">
+          <label htmlFor="signup-birth-date">Data de nascimento</label>
+          <div className="authInputShell">
+            <CalendarDays aria-hidden="true" />
+            <input
+              id="signup-birth-date"
+              className="clickableDateInput"
+              type="date"
+              autoComplete="bday"
+              value={birthDate}
+              onClick={(event) => event.currentTarget.showPicker?.()}
+              onFocus={(event) => event.currentTarget.showPicker?.()}
+              onChange={(event) => setBirthDate(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="authDocumentGrid">
+          <div className="authFieldBlock">
+            <label htmlFor="signup-document-type">Documento</label>
+            <select
+              id="signup-document-type"
+              value={taxIdType}
+              onChange={(event) => {
+                setTaxIdType(event.target.value);
+                setTaxId("");
+              }}
+            >
+              <option value="cpf">CPF da pessoa</option>
+              <option value="cnpj">CNPJ da organização</option>
+            </select>
+          </div>
+
+          <div className="authFieldBlock">
+            <label htmlFor="signup-tax-id">{taxIdType === "cnpj" ? "CNPJ" : "CPF"}</label>
+            <input
+              id="signup-tax-id"
+              inputMode="numeric"
+              autoComplete="off"
+              value={taxId}
+              maxLength={taxIdType === "cnpj" ? 18 : 14}
+              onChange={(event) => setTaxId(event.target.value)}
+              placeholder={taxIdType === "cnpj" ? "00.000.000/0000-00" : "000.000.000-00"}
+            />
+          </div>
+        </div>
+
+        <small className="authSensitiveDataHint">
+          Seu documento é validado com segurança e não aparece no perfil público.
+        </small>
+      </section>
+
+      <section className="authSignupColumn" aria-labelledby="signup-security-title">
+        <div className="authColumnTitle">
+          <ShieldCheck aria-hidden="true" />
+          <div>
+            <strong id="signup-security-title">Segurança da conta</strong>
+            <small>Dados usados para entrar e proteger seu acesso.</small>
+          </div>
+        </div>
+
+        <div className="authFieldBlock">
+          <label htmlFor="signup-email">E-mail</label>
+          <div className="authInputShell">
+            <Mail aria-hidden="true" />
+            <input
+              id="signup-email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="seuemail@exemplo.com"
+            />
+          </div>
+        </div>
+
+        <div className="authFieldBlock">
+          <label htmlFor="signup-password">Senha</label>
+          <div className="authInputShell">
+            <LockKeyhole aria-hidden="true" />
+            <input
+              id="signup-password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mínimo de 8 caracteres"
+            />
+          </div>
+        </div>
+
+        <div className="authFieldBlock">
+          <label htmlFor="signup-confirm-password">Repita a senha</label>
+          <div className="authInputShell">
+            <LockKeyhole aria-hidden="true" />
+            <input
+              id="signup-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="Digite a senha novamente"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="authLegalAgreements" aria-label="Concordâncias para criar a conta">
+        <div className="authLegalItem">
+          <strong>Compromisso de convivência</strong>
+          <small>Respeito à dignidade humana e às regras de convivência da comunidade.</small>
+          <label>
+            <input
+              type="checkbox"
+              checked={communityGuidelinesAccepted}
+              onChange={(event) => setCommunityGuidelinesAccepted(event.target.checked)}
+            />
+            <span>Li e concordo com os Termos de uso e as Diretrizes da comunidade.</span>
+          </label>
+        </div>
+
+        <div className="authLegalItem">
+          <strong>Aviso de privacidade</strong>
+          <small>Seus dados têm acesso restrito e são usados apenas para as finalidades da plataforma.</small>
+          <label>
+            <input
+              type="checkbox"
+              checked={privacyNoticeAccepted}
+              onChange={(event) => setPrivacyNoticeAccepted(event.target.checked)}
+            />
+            <span>Estou ciente dos meus direitos de acesso, correção e solicitação de exclusão.</span>
+          </label>
+        </div>
+
+        <p>Textos de homologação sujeitos à revisão jurídica antes do lançamento oficial.</p>
+      </section>
+    </div>
+  );
 }
 
 export function EmailConfirmationPendingScreen({ email, onRefresh, supabase, onLogout }) {
@@ -142,6 +346,7 @@ export default function LoginScreen({
   recoverySession = null,
   onRecoveryFinished,
   onRecoveryExit,
+  onBack,
   embedded = false,
 } = {}) {
   const [firstName, setFirstName] = useState("");
@@ -463,15 +668,14 @@ export default function LoginScreen({
   }
 
   return (
-    <div className={`landingPage unifiedLoginPage${embedded ? " embeddedLoginPage" : ""}`}>
+    <div className={`landingPage unifiedLoginPage authExperiencePage${embedded ? " embeddedLoginPage" : ""}`}>
       <NoticeModal notice={notice} onClose={() => setNotice(null)} />
 
       <header className="landingHeader">
         <div className="landingBrand">
-          <BeachLogo />
-          <div className="brandTaglineOnly">
-            <span>{tagline}</span>
-          </div>
+          <button type="button" className="authLogoButton" onClick={onBack} aria-label="Voltar ao início">
+            <img src="/marketing/torneio360-logo-clean-v1.png" alt="Torneio 360" />
+          </button>
         </div>
 
         <nav className="landingNav">
@@ -506,6 +710,20 @@ export default function LoginScreen({
           >
             Criar conta
           </button>
+        </div>
+
+        <div className="authHeaderActions">
+          {mode === "signup" ? (
+            <>
+              <span>Já tenho conta</span>
+              <button type="button" onClick={() => changeMode("login")}>Entrar</button>
+            </>
+          ) : (
+            <button type="button" className="authBackButton" onClick={onBack}>
+              <ArrowLeft aria-hidden="true" />
+              Voltar para a apresentação
+            </button>
+          )}
         </div>
       </header>
 
@@ -864,30 +1082,89 @@ export default function LoginScreen({
           </div>
         </section>
 
-        <section id="acesso" className="landingAccessSection">
+        <section id="acesso" className={`landingAccessSection authExperienceSection authMode-${mode}`}>
           <div className="accessText">
-            <span>Acesso</span>
+            <span>{mode === "signup" ? "PERFIL GRATUITO" : "BEM-VINDO DE VOLTA"}</span>
             <h2>
               {mode === "login"
-                ? "Entre na sua conta"
+                ? "Entre e continue de onde parou."
                 : mode === "signup"
-                  ? "Crie sua conta"
+                  ? "Uma conta para toda a sua jornada esportiva."
                   : mode === "forgotPassword"
-                    ? "Redefinir senha"
-                    : "Criar nova senha"}
+                    ? "Recupere seu acesso com segurança."
+                    : "Crie uma senha nova e segura."}
             </h2>
             <p>
               {mode === "login"
                 ? "Acesse seu perfil, suas inscrições e os recursos liberados para sua conta."
                 : mode === "signup"
-                  ? "Confirme seu e-mail para ativar sua conta e seu perfil."
+                  ? "Participe gratuitamente e organize torneios quando quiser ativar uma assinatura."
                   : mode === "forgotPassword"
                     ? "Informe seu e-mail para receber o link de redefinição."
                     : "Crie uma nova senha com pelo menos 8 caracteres para voltar a acessar sua conta."}
             </p>
+
+            <div className={mode === "signup" ? "authStoryBenefits authStoryBenefitsStack" : "authStoryBenefits"}>
+              <article>
+                <UserRound aria-hidden="true" />
+                <div>
+                  <strong>Perfil de atleta</strong>
+                  {mode === "signup" ? <small>Gratuito para participar de torneios e eventos.</small> : null}
+                </div>
+              </article>
+              <article>
+                <CalendarCheck aria-hidden="true" />
+                <div>
+                  <strong>Inscrições e convites</strong>
+                  {mode === "signup" ? <small>Receba convites e acompanhe suas inscrições.</small> : null}
+                </div>
+              </article>
+              <article>
+                <Trophy aria-hidden="true" />
+                <div>
+                  <strong>{mode === "signup" ? "Organização por assinatura" : "Torneios e circuitos"}</strong>
+                  {mode === "signup" ? <small>Ative recursos profissionais somente quando precisar.</small> : null}
+                </div>
+              </article>
+            </div>
+
+            <div className="authCourtScene" aria-hidden="true">
+              <span className="authCourtLine authCourtLineOne" />
+              <span className="authCourtLine authCourtLineTwo" />
+              <span className="authCourtLine authCourtLineThree" />
+              <span className="authCourtBall"><i /></span>
+            </div>
           </div>
 
           <div className="accessCard">
+            <div className="authFormHeading">
+              {mode === "signup" ? (
+                <div className="authSignupSteps" aria-label="Etapas do cadastro">
+                  <span className="active"><b>1</b> Dados pessoais</span>
+                  <span><b>2</b> Segurança e termos</span>
+                </div>
+              ) : null}
+              <span>{mode === "signup" ? "Cadastro" : "Acesso"}</span>
+              <h1>
+                {mode === "login"
+                  ? "Entre na sua conta"
+                  : mode === "signup"
+                    ? "Crie sua conta"
+                    : mode === "forgotPassword"
+                      ? "Redefinir senha"
+                      : "Criar nova senha"}
+              </h1>
+              <p>
+                {mode === "login"
+                  ? "Use seu e-mail e sua senha para continuar."
+                  : mode === "signup"
+                    ? "Uma conta para participar gratuitamente e organizar quando quiser."
+                    : mode === "forgotPassword"
+                      ? "Enviaremos um link seguro para o seu e-mail."
+                      : "A nova senha deve ter pelo menos 8 caracteres."}
+              </p>
+            </div>
+
             <div className="accessToggle" aria-label="Escolha entre entrar ou criar uma conta">
               <button
                 type="button"
@@ -895,7 +1172,7 @@ export default function LoginScreen({
                 onClick={() => changeMode("login")}
                 aria-pressed={mode === "login"}
               >
-                Login
+                Entrar
               </button>
 
               <button
@@ -917,8 +1194,33 @@ export default function LoginScreen({
               </div>
             ) : null}
 
-            <form onSubmit={handleSubmit} noValidate>
-              {mode === "signup" && (
+            <form className={`authAccessForm authAccessForm-${mode}`} onSubmit={handleSubmit} noValidate>
+              {mode === "signup" ? (
+                <AuthSignupFields
+                  firstName={firstName}
+                  setFirstName={setFirstName}
+                  lastName={lastName}
+                  setLastName={setLastName}
+                  birthDate={birthDate}
+                  setBirthDate={setBirthDate}
+                  taxIdType={taxIdType}
+                  setTaxIdType={setTaxIdType}
+                  taxId={taxId}
+                  setTaxId={setTaxId}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  confirmPassword={confirmPassword}
+                  setConfirmPassword={setConfirmPassword}
+                  communityGuidelinesAccepted={communityGuidelinesAccepted}
+                  setCommunityGuidelinesAccepted={setCommunityGuidelinesAccepted}
+                  privacyNoticeAccepted={privacyNoticeAccepted}
+                  setPrivacyNoticeAccepted={setPrivacyNoticeAccepted}
+                />
+              ) : null}
+
+              {mode === "legacySignup" && (
                 <>
                   <div className="twoCols formTwoCols">
                     <div>
@@ -977,10 +1279,13 @@ export default function LoginScreen({
                 </>
               )}
 
-              {mode !== "resetPassword" && (
-                <>
-                  <label>E-mail</label>
+              {mode !== "resetPassword" && mode !== "signup" && (
+                <div className="authFieldBlock">
+                  <label htmlFor="auth-email">E-mail</label>
+                  <div className="authInputShell">
+                    <Mail aria-hidden="true" />
                   <input
+                    id="auth-email"
                     type="email"
                     autoComplete="email"
                     inputMode="email"
@@ -988,7 +1293,8 @@ export default function LoginScreen({
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seuemail@exemplo.com"
                   />
-                </>
+                  </div>
+                </div>
               )}
 
               {mode === "resetPassword" ? (
@@ -998,35 +1304,53 @@ export default function LoginScreen({
                       ? "A nova senha será aplicada somente à conta vinculada ao link de recuperação."
                       : "Este link não está mais válido. Volte ao login e peça um novo link de recuperação."}
                   </p>
-                  <label>Nova senha</label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo de 8 caracteres"
-                  />
+                  <div className="authFieldBlock">
+                    <label htmlFor="auth-new-password">Nova senha</label>
+                    <div className="authInputShell">
+                      <LockKeyhole aria-hidden="true" />
+                      <input
+                        id="auth-new-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Mínimo de 8 caracteres"
+                      />
+                    </div>
+                  </div>
 
-                  <label>Repita a nova senha</label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Digite a nova senha novamente"
-                  />
+                  <div className="authFieldBlock">
+                    <label htmlFor="auth-confirm-new-password">Repita a nova senha</label>
+                    <div className="authInputShell">
+                      <LockKeyhole aria-hidden="true" />
+                      <input
+                        id="auth-confirm-new-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Digite a nova senha novamente"
+                      />
+                    </div>
+                  </div>
                 </>
               ) : (
-                mode !== "forgotPassword" && (
+                mode !== "forgotPassword" && mode !== "signup" && (
                   <>
-                    <label>Senha</label>
-                    <input
-                      type="password"
-                      autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mode === "signup" ? "Mínimo de 8 caracteres" : "Digite sua senha"}
-                    />
+                    <div className="authFieldBlock">
+                      <label htmlFor="auth-password">Senha</label>
+                      <div className="authInputShell">
+                        <LockKeyhole aria-hidden="true" />
+                        <input
+                          id="auth-password"
+                          type="password"
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Digite sua senha"
+                        />
+                      </div>
+                    </div>
 
                     {mode === "signup" && (
                       <>
@@ -1066,6 +1390,7 @@ export default function LoginScreen({
 
               <button
                 type="submit"
+                className="authSubmitButton"
                 disabled={submitting || (mode === "resetPassword" && !recoverySession?.access_token)}
                 aria-busy={submitting}
               >
