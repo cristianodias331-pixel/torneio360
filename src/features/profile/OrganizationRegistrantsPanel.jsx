@@ -20,6 +20,7 @@ import { navigatePlatform } from "../../domain/platformNavigation.mjs";
 import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
 import { modalityConfig } from "../../domain/modalityConfig.mjs";
 import { requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
+import { arePairingCategoriesCompatible } from "../../domain/pairingCategory.mjs";
 import {
   getTournamentGenderLabel,
   inferTournamentGenderMode,
@@ -80,8 +81,8 @@ function canOrganizerPairRegistration(registration) {
 
 function getPairCompatibilityError(first, second) {
   if (!first || !second) return "";
-  if (String(first.tournament?.id) !== String(second.tournament?.id) || first.categoryLabel !== second.categoryLabel) {
-    return "Para formar duplas, selecione atletas do mesmo torneio e da mesma categoria.";
+  if (String(first.tournament?.id) !== String(second.tournament?.id) || !arePairingCategoriesCompatible(first.categoryLabel, second.categoryLabel)) {
+    return "Para formar duplas, selecione atletas do mesmo torneio e com nível técnico compatível.";
   }
   const mode = inferTournamentGenderMode(first.tournament?.data || {});
   const firstGender = normalizeParticipantGender(first.athlete?.gender);
@@ -275,8 +276,8 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     setPairSelection((current) => {
       if (current.includes(registration.id)) return current.filter((id) => id !== registration.id);
       const first = registrations.find((item) => item.id === current[0]);
-      if (first && (String(first.tournament?.id) !== String(registration.tournament?.id) || first.categoryLabel !== registration.categoryLabel)) {
-        setNotice("Para formar duplas, selecione atletas do mesmo torneio e da mesma categoria.");
+      if (first && (String(first.tournament?.id) !== String(registration.tournament?.id) || !arePairingCategoriesCompatible(first.categoryLabel, registration.categoryLabel))) {
+        setNotice("Para formar duplas, selecione atletas do mesmo torneio e com nível técnico compatível.");
         return current;
       }
       return current.length >= 32 ? current : [...current, registration.id];

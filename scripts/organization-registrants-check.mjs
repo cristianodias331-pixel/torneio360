@@ -6,6 +6,7 @@ import {
   removeOrganizationRegistration,
   reviewOrganizationRegistration,
 } from "../src/services/organizationRegistrantsApi.mjs";
+import { arePairingCategoriesCompatible } from "../src/domain/pairingCategory.mjs";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -13,6 +14,7 @@ function assert(condition, message) {
 
 const registrationMigration = fs.readFileSync(new URL("../supabase/migrations/202608290002_registration_gender_and_fixed_pairs.sql", import.meta.url), "utf8");
 const homologationPairMigration = fs.readFileSync(new URL("../supabase/migrations/202608300004_pair_partner_search_registrations.sql", import.meta.url), "utf8");
+const pairingAliasesMigration = fs.readFileSync(new URL("../supabase/migrations/202608300005_pairing_category_aliases.sql", import.meta.url), "utf8");
 const registrantsPanelSource = fs.readFileSync(new URL("../src/features/profile/OrganizationRegistrantsPanel.jsx", import.meta.url), "utf8");
 
 assert(registrationMigration.includes("can_view_registration_receipt"), "A organização deve poder ler o comprovante privado do torneio que administra.");
@@ -26,8 +28,12 @@ assert(registrantsPanelSource.includes("Comprovante da dupla"), "A organização
 assert(homologationPairMigration.includes("get_my_organization_registrations_v2"), "A homologação deve enviar a categoria esportiva dos atletas para a seleção da dupla.");
 assert(homologationPairMigration.includes("pair_approved_tournament_registrations"), "A homologação deve gravar a dupla formada pela organização.");
 assert(homologationPairMigration.includes("paired_into_registration_id is null"), "Depois de formada, a dupla deve aparecer uma única vez no painel.");
+assert(pairingAliasesMigration.includes("t360_pairing_category_key"), "O banco deve reconhecer rótulos equivalentes de nível técnico.");
+assert(pairingAliasesMigration.includes("'principiante', 'beginner'"), "Principiante e Iniciante devem ser compatíveis também no banco.");
 assert(!registrantsPanelSource.includes("getPairCompatibilityError(pairMate, registration)"), "O segundo atleta deve poder ser selecionado antes da validação final da dupla.");
 assert(registrantsPanelSource.includes("pairSelectionError"), "A incompatibilidade deve ser explicada junto à ação de formar dupla.");
+assert(arePairingCategoriesCompatible("Principiante", "Iniciante"), "Principiante e Iniciante devem representar o mesmo nível técnico na formação da dupla.");
+assert(!arePairingCategoriesCompatible("Iniciante", "Categoria C"), "Níveis técnicos realmente diferentes devem continuar protegidos.");
 
 const rpcCalls = [];
 const richResult = await loadOrganizationRegistrants({

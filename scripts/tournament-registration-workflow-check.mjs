@@ -53,6 +53,7 @@ const registrationPanelSource = readFileSync(new URL("../src/features/registrati
 assert(registrationPanelSource.includes('<select value={form.gender}') && registrationPanelSource.includes('<option value="Masculino">Masculino</option>') && registrationPanelSource.includes('<option value="Feminino">Feminino</option>'), "A categoria esportiva da inscrição deve ser selecionável, sem digitação livre.");
 assert(registrationPanelSource.includes("saveMyMemberProfile") && registrationPanelSource.includes("A escolha será salva no seu perfil ao finalizar a inscrição."), "A escolha feita na inscrição deve ser persistida no perfil do atleta.");
 assert(!registrationPanelSource.includes("Dados aproveitados do seu perfil") && !registrationPanelSource.includes("Atleta que está se inscrevendo") && !registrationPanelSource.includes("Mão dominante</span>"), "A inscrição não deve repetir os dados esportivos já conhecidos pelo atleta.");
+assert(!registrationPanelSource.includes("As sugestões aparecem enquanto você digita"), "A busca da dupla não deve exibir a explicação redundante sobre sugestões.");
 assert(registrationPanelSource.includes("Complete apenas o que falta no perfil") && registrationPanelSource.includes("Formação da dupla"), "Somente pendências do perfil e decisões próprias da inscrição devem aparecer.");
 
 const profileCalls = [];
