@@ -16,6 +16,7 @@ const registrationMigration = fs.readFileSync(new URL("../supabase/migrations/20
 const homologationPairMigration = fs.readFileSync(new URL("../supabase/migrations/202608300004_pair_partner_search_registrations.sql", import.meta.url), "utf8");
 const pairingAliasesMigration = fs.readFileSync(new URL("../supabase/migrations/202608300005_pairing_category_aliases.sql", import.meta.url), "utf8");
 const registrantsPanelSource = fs.readFileSync(new URL("../src/features/profile/OrganizationRegistrantsPanel.jsx", import.meta.url), "utf8");
+const registrantsStyles = fs.readFileSync(new URL("../src/styles/58-organization-registrants.css", import.meta.url), "utf8");
 
 assert(registrationMigration.includes("can_view_registration_receipt"), "A organização deve poder ler o comprovante privado do torneio que administra.");
 assert(registrationMigration.includes("registration_receipts_participant_read"), "A política privada do bucket deve autorizar atleta e organização responsável.");
@@ -32,6 +33,7 @@ assert(pairingAliasesMigration.includes("t360_pairing_category_key"), "O banco d
 assert(pairingAliasesMigration.includes("'principiante', 'beginner'"), "Principiante e Iniciante devem ser compatíveis também no banco.");
 assert(!registrantsPanelSource.includes("getPairCompatibilityError(pairMate, registration)"), "O segundo atleta deve poder ser selecionado antes da validação final da dupla.");
 assert(registrantsPanelSource.includes("pairSelectionError"), "A incompatibilidade deve ser explicada junto à ação de formar dupla.");
+assert(registrantsStyles.includes("justify-self: start") && registrantsStyles.includes("border: 0 !important"), "O perfil do inscrito deve ficar à esquerda e sem uma segunda moldura.");
 assert(arePairingCategoriesCompatible("Principiante", "Iniciante"), "Principiante e Iniciante devem representar o mesmo nível técnico na formação da dupla.");
 assert(!arePairingCategoriesCompatible("Iniciante", "Categoria C"), "Níveis técnicos realmente diferentes devem continuar protegidos.");
 
