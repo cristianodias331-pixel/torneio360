@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AtSign, ImagePlus, Images, MapPin, UserRound, X, ZoomIn } from "lucide-react";
+import { AtSign, Hand, ImagePlus, Images, MapPin, Shirt, Trophy, UserRound, X, ZoomIn } from "lucide-react";
 import { MAX_MEMBER_GALLERY_PHOTOS } from "../../domain/memberProfile.mjs";
 import AthleteProfileActivity from "./AthleteProfileActivity.jsx";
 import {
@@ -147,9 +147,9 @@ export default function AthleteProfileExperience({
             <MapPin aria-hidden="true" />
             <span><strong>Localização pública</strong><small>{[profile?.city, profile?.state].filter(Boolean).join("/") || "Não informada"}</small></span>
           </div>
-          <div><span aria-hidden="true">🎾</span><span><strong>Categoria</strong><small>{profile?.sportsCategory || "Não informada"}</small></span></div>
-          <div><span aria-hidden="true">✋</span><span><strong>Mão dominante</strong><small>{profile?.dominantHand || "Não informada"}</small></span></div>
-          <div><span aria-hidden="true">👕</span><span><strong>Tamanho da camiseta</strong><small>{profile?.shirtSize || "Não informado"}</small></span></div>
+          <div><Trophy aria-hidden="true" /><span><strong>Categoria</strong><small>{profile?.sportsCategory || "Não informada"}</small></span></div>
+          <div><Hand aria-hidden="true" /><span><strong>Mão dominante</strong><small>{profile?.dominantHand || "Não informada"}</small></span></div>
+          <div><Shirt aria-hidden="true" /><span><strong>Tamanho da camiseta</strong><small>{profile?.shirtSize || "Não informado"}</small></span></div>
           <p>{profile?.showContacts
             ? "Os contatos permanecem protegidos e só são liberados depois de uma combinação esportiva válida."
             : "Os contatos permanecem privados até a autorização para uma combinação esportiva."}</p>

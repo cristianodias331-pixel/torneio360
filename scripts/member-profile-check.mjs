@@ -120,6 +120,7 @@ assert(unavailableActivity.schemaAvailable === false, "A interface deve preserva
 
 const memberPresentationSource = await readFile(new URL("../src/features/profile/MemberProfilePresentation.jsx", import.meta.url), "utf8");
 const athleteActivitySource = await readFile(new URL("../src/features/profile/AthleteProfileActivity.jsx", import.meta.url), "utf8");
+const athleteExperienceSource = await readFile(new URL("../src/features/profile/AthleteProfileExperience.jsx", import.meta.url), "utf8");
 const organizationPresentationSource = await readFile(new URL("../src/features/profile/OrganizationProfilePresentation.jsx", import.meta.url), "utf8");
 const organizerWorkspaceSource = await readFile(new URL("../src/OrganizerWorkspace.jsx", import.meta.url), "utf8");
 const memberProfileWorkspaceSource = await readFile(new URL("../src/features/profile/MemberProfileWorkspace.jsx", import.meta.url), "utf8");
@@ -130,6 +131,8 @@ const athleteActivityStyles = await readFile(new URL("../src/styles/57-athlete-a
 assert(memberPresentationSource.includes("OWNER_MEMBER_PROFILE_TABS = MEMBER_PROFILE_TABS"), "A busca por dupla deve ficar dentro da atividade esportiva, sem criar uma sexta aba principal.");
 assert(memberPresentationSource.includes("publicMemberProfileTabs athleteProfileTabs"), "As abas do atleta devem ter uma grade responsiva própria.");
 assert(athleteActivitySource.includes("Torneios") && athleteActivitySource.includes("Circuitos") && athleteActivitySource.includes("Procurando dupla"), "Torneios, circuitos e busca por dupla devem ser contextos separados.");
+assert(athleteExperienceSource.includes("<Trophy aria-hidden=\"true\"") && athleteExperienceSource.includes("<Hand aria-hidden=\"true\"") && athleteExperienceSource.includes("<Shirt aria-hidden=\"true\""), "Os dados esportivos do perfil devem usar ícones neutros.");
+assert(!athleteExperienceSource.includes("🎾") && !athleteExperienceSource.includes("✋") && !athleteExperienceSource.includes("👕"), "O perfil não deve voltar a exibir emojis coloridos nos dados esportivos.");
 assert(athleteActivitySource.includes("Desempenho e conquistas") && athleteActivitySource.includes("Eventos por mês"), "Conquistas deve exibir gráficos simples baseados na atividade real.");
 assert(memberProfileStyles.includes("repeat(5, minmax(0, 1fr))"), "As cinco abas do atleta devem permanecer na mesma linha.");
 assert(organizationPresentationSource.includes("organizationProfileTabs") && organizationProfileStyles.includes("repeat(4, minmax(0, 1fr))"), "As quatro abas da organização devem permanecer na mesma linha.");

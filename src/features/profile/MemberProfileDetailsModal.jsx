@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { AtSign, CheckCircle2, Eye, LoaderCircle, MapPin, MessageCircle, Save, Send, X, XCircle } from "lucide-react";
+import { AtSign, CheckCircle2, Eye, LoaderCircle, MapPin, MessageCircle, Save, Send, Trophy, X, XCircle } from "lucide-react";
 import "../../styles/63-global-search-and-live-handle.css";
 
 export default function MemberProfileDetailsModal({
@@ -136,7 +136,7 @@ export default function MemberProfileDetailsModal({
 
           {profileKind === "athlete" ? <>
           <div className="profileFormSectionHeader fullField">
-            <span>🎾</span>
+            <span><Trophy aria-hidden="true" /></span>
             <div><strong>Dados esportivos do atleta</strong><small>Informe seu nível técnico e sua categoria esportiva para validar as inscrições.</small></div>
           </div>
 
