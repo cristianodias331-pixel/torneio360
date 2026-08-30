@@ -79,8 +79,18 @@ const rankingRows = [
   ["Bruno Farias / Thiago Oliveira", "650 pts"],
 ];
 
-function scrollToSection(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+function scrollToSection(id, { updateHash = true } = {}) {
+  const section = document.getElementById(id);
+  if (!section) return;
+
+  const header = document.querySelector("header");
+  const headerHeight = header?.getBoundingClientRect().height || 0;
+  const sectionTop = section.getBoundingClientRect().top + window.scrollY - headerHeight;
+
+  if (updateHash && window.location.hash !== `#${id}`) {
+    window.history.replaceState(null, "", `#${id}`);
+  }
+  window.scrollTo({ top: Math.max(0, sectionTop), behavior: "auto" });
 }
 
 function NavLink({ section, children, onNavigate, activeSection }) {
@@ -122,6 +132,8 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
 
   useEffect(() => {
     document.documentElement.dataset.marketingLandingV2 = "true";
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
     const sectionIds = ["como-funciona", "planos", "modalidades", "contato"];
     const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
     let frame = 0;
@@ -143,9 +155,23 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
     window.addEventListener("scroll", updateActiveSection, { passive: true });
     updateActiveSection();
 
+    const alignHashSection = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (!sectionIds.includes(id)) return;
+      window.requestAnimationFrame(() => scrollToSection(id, { updateHash: false }));
+    };
+    const alignmentTimers = [80, 320].map((delay) => window.setTimeout(alignHashSection, delay));
+    window.addEventListener("hashchange", alignHashSection);
+    window.addEventListener("load", alignHashSection);
+    alignHashSection();
+
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("hashchange", alignHashSection);
+      window.removeEventListener("load", alignHashSection);
+      alignmentTimers.forEach((timer) => window.clearTimeout(timer));
+      window.history.scrollRestoration = previousScrollRestoration;
       delete document.documentElement.dataset.marketingLandingV2;
     };
   }, []);
@@ -332,7 +358,8 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
               <label><span>E-mail</span><input name="email" type="email" placeholder="E-mail" required /></label>
               <label><span>Assunto</span><input name="subject" type="text" placeholder="Assunto" required /></label>
               <label><span>Mensagem</span><textarea name="message" placeholder="Mensagem" required /></label>
-              <button className={styles.primaryButton} type="submit">Enviar mensagem</button>
+              <button className={styles.primaryButton} type="submit">Abrir e-mail para enviar</button>
+              <p className={styles.contactDeliveryNote}><Mail aria-hidden="true" /> A mensagem será preparada para torneio360@gmail.com no seu aplicativo de e-mail.</p>
             </form>
           </div>
           <aside className={styles.supportPanel}>
