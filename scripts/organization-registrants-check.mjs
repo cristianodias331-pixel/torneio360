@@ -34,7 +34,8 @@ assert(pairingAliasesMigration.includes("'principiante', 'beginner'"), "Principi
 assert(!registrantsPanelSource.includes("getPairCompatibilityError(pairMate, registration)"), "O segundo atleta deve poder ser selecionado antes da validação final da dupla.");
 assert(registrantsPanelSource.includes("pairSelectionError"), "A incompatibilidade deve ser explicada junto à ação de formar dupla.");
 assert(registrantsStyles.includes("justify-self: start") && registrantsStyles.includes("border: 0 !important"), "O perfil do inscrito deve ficar à esquerda e sem uma segunda moldura.");
-assert(registrantsStyles.includes(".organizationRegistrantAvatar") && registrantsStyles.includes("border: 0 !important"), "A foto do perfil não deve receber uma moldura adicional.");
+assert(registrantsPanelSource.includes('<div\n      className="organizationRegistrantPerson"') && !registrantsPanelSource.includes('<button type="button" className="organizationRegistrantPerson"'), "O perfil não deve herdar a moldura visual padrão dos botões.");
+assert(registrantsStyles.includes("outline: 0 !important") && registrantsStyles.includes(":focus-visible strong"), "O foco do perfil deve aparecer no texto, sem desenhar uma caixa ao redor de todo o bloco.");
 assert(arePairingCategoriesCompatible("Principiante", "Iniciante"), "Principiante e Iniciante devem representar o mesmo nível técnico na formação da dupla.");
 assert(!arePairingCategoriesCompatible("Iniciante", "Categoria C"), "Níveis técnicos realmente diferentes devem continuar protegidos.");
 

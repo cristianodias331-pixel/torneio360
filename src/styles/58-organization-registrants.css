@@ -436,7 +436,7 @@
   height: 52px;
   place-items: center;
   overflow: hidden;
-  border: 0 !important;
+  border: 2px solid color-mix(in srgb, #167a54 45%, var(--ui-border));
   border-radius: 50%;
   color: var(--ui-heading);
   background: var(--ui-page);
@@ -468,11 +468,13 @@
   color: inherit;
   background: transparent !important;
   box-shadow: none !important;
+  outline: 0 !important;
   text-align: left !important;
 }
 
-.organizationRegistrantPerson:not(:disabled) { cursor: pointer; }
-.organizationRegistrantPerson:not(:disabled):hover { background: transparent !important; }
+.organizationRegistrantPerson[role="button"] { cursor: pointer; }
+.organizationRegistrantPerson[role="button"]:hover { background: transparent !important; }
+.organizationRegistrantPerson[role="button"]:focus-visible strong { text-decoration: underline; text-decoration-color: #16845a; text-underline-offset: 3px; }
 .organizationRegistrantPerson > span:last-child { display: grid; min-width: 0; gap: 1px; }
 .organizationRegistrantPerson small { color: #16845a; font-size: .62rem; font-weight: 900; text-transform: uppercase; }
 .organizationRegistrantPerson strong,

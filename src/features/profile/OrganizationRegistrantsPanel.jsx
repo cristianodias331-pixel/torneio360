@@ -110,12 +110,23 @@ function RegistrantPerson({ person, fallbackName, fallbackHandle = "", label, on
   const displayName = person?.display_name || fallbackName || "Atleta";
   const handle = person?.handle || fallbackHandle;
   return (
-    <button type="button" className="organizationRegistrantPerson" onClick={onOpen} disabled={!onOpen} title={onOpen ? `Abrir perfil de ${displayName}` : undefined}>
+    <div
+      className="organizationRegistrantPerson"
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={onOpen ? (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onOpen();
+      } : undefined}
+      title={onOpen ? `Abrir perfil de ${displayName}` : undefined}
+    >
       <span className="organizationRegistrantAvatar">
         {person?.photo_url ? <img src={person.photo_url} alt={`Foto de ${displayName}`} /> : getInitials(displayName)}
       </span>
       <span><small>{label}</small><strong>{displayName}</strong>{handle ? <em>@{handle}</em> : <em>Perfil não vinculado</em>}</span>
-    </button>
+    </div>
   );
 }
 
