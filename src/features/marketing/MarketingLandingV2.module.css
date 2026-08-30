@@ -2235,3 +2235,214 @@
     object-position: 78% center;
   }
 }
+
+/* Movimento, tipografia e formas da apresentação pública de homologação. */
+.root {
+  --mk-radius-sm: 16px;
+  --mk-radius-md: 24px;
+  --mk-radius-lg: 30px;
+  font-family: "Segoe UI Variable Text", "Aptos", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.root :where(h1, h2, h3, strong, button, .eyebrow) {
+  font-family: "Segoe UI Variable Display", "Aptos Display", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-variation-settings: "wght" 720, "opsz" 32;
+}
+
+.heroCopy h1,
+.sectionHeader h2,
+.sectionHeaderCentered h2,
+.contactCopy h2 {
+  letter-spacing: -0.042em;
+}
+
+.primaryButton,
+.secondaryButton,
+.menuButton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  isolation: isolate;
+}
+
+.primaryButton::before,
+.secondaryButton::before,
+.menuButton::before {
+  position: absolute;
+  z-index: 2;
+  inset: -2px;
+  padding: 2px;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+  opacity: 0;
+  background: conic-gradient(from 0deg, transparent 0 18%, #ffb21c 27%, #ff5a00 39%, transparent 50% 68%, #ff7a16 79%, #ffd35a 88%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: movingButtonBorder 1.7s linear infinite paused;
+  transition: opacity 180ms ease;
+}
+
+.primaryButton:hover::before,
+.secondaryButton:hover::before,
+.menuButton:hover::before {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  box-shadow: 0 0 0 1px rgba(255, 126, 30, 0.28), 0 14px 34px rgba(255, 90, 0, 0.26);
+}
+
+.liveMatch,
+.rankingPreview,
+.steps article,
+.workflowPreview > div,
+.planGrid article,
+.activeSport,
+.upcomingSports article,
+.contactCopy input,
+.contactCopy textarea,
+.mobileMenu,
+.supportPanel {
+  border-radius: var(--mk-radius-md);
+}
+
+.planGrid article,
+.activeSport {
+  border-radius: var(--mk-radius-lg);
+}
+
+.liveMatch,
+.rankingPreview,
+.workflowPreview > div,
+.planGrid article,
+.activeSport,
+.upcomingSports article {
+  transition: transform 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.planGrid article:hover,
+.activeSport:hover,
+.upcomingSports article:hover,
+.workflowPreview > div:hover {
+  border-color: rgba(255, 116, 23, 0.72);
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.28), 0 0 28px rgba(255, 90, 0, 0.1);
+  transform: translateY(-4px);
+}
+
+.heroPreview {
+  animation: previewIn 700ms ease both, previewFloat 6.5s ease-in-out 900ms infinite;
+}
+
+.fireball {
+  position: absolute;
+  z-index: 0;
+  bottom: 9%;
+  left: 1.5%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at 34% 30%, #fff7a3 0 8%, #ffd928 18%, #ff8a00 42%, #f04b00 68%, #8f1800 100%);
+  box-shadow: 0 0 18px rgba(255, 217, 40, 0.95), 0 0 46px rgba(255, 90, 0, 0.72), 0 0 86px rgba(255, 73, 0, 0.38);
+  animation: fireballFlight 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.fireball::before {
+  position: absolute;
+  top: 8px;
+  right: 38px;
+  width: 118px;
+  height: 42px;
+  border-radius: 70% 18% 18% 70%;
+  content: "";
+  background:
+    radial-gradient(ellipse at 92% 50%, #ffd43b 0 19%, #ff7900 34%, rgba(255, 76, 0, 0.82) 52%, transparent 72%),
+    linear-gradient(90deg, transparent, rgba(255, 76, 0, 0.74));
+  filter: blur(3px) drop-shadow(0 0 12px rgba(255, 90, 0, 0.82));
+  transform-origin: right center;
+  animation: flameFlicker 430ms ease-in-out infinite alternate;
+}
+
+.fireball::after {
+  position: absolute;
+  top: 21px;
+  right: 54px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  content: "";
+  background: #ffbd2e;
+  box-shadow: -28px -14px 0 -1px #ff6b00, -48px 10px 0 -2px #ff9b13, -74px -5px 0 -2px #ff4f00, -94px 15px 0 -3px #ffc13b;
+  animation: fireSparks 680ms linear infinite;
+}
+
+.fireball span {
+  position: absolute;
+  inset: 11px;
+  border: 2px solid rgba(255, 247, 171, 0.7);
+  border-right-color: transparent;
+  border-left-color: transparent;
+  border-radius: 50%;
+  animation: ballSpin 900ms linear infinite;
+}
+
+@keyframes movingButtonBorder {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes previewFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes fireballFlight {
+  0%, 100% { transform: translate3d(-30px, 12px, 0) scale(0.82) rotate(-8deg); opacity: 0; }
+  8% { opacity: 0.9; }
+  42% { transform: translate3d(210px, -38px, 0) scale(1) rotate(4deg); opacity: 0.92; }
+  72% { transform: translate3d(430px, 5px, 0) scale(0.9) rotate(-3deg); opacity: 0.72; }
+  88% { opacity: 0; }
+}
+
+@keyframes flameFlicker {
+  from { transform: scaleX(0.82) scaleY(0.86) skewX(-9deg); opacity: 0.72; }
+  to { transform: scaleX(1.1) scaleY(1.08) skewX(7deg); opacity: 1; }
+}
+
+@keyframes fireSparks {
+  from { transform: translateX(0) scale(1); opacity: 0.9; }
+  to { transform: translateX(-24px) scale(0.45); opacity: 0; }
+}
+
+@keyframes ballSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .fireball {
+    bottom: 43%;
+    left: 4%;
+    width: 42px;
+    height: 42px;
+    opacity: 0.68;
+  }
+
+  .fireball::before {
+    top: 7px;
+    right: 30px;
+    width: 78px;
+    height: 28px;
+  }
+
+  .fireball::after {
+    top: 17px;
+    right: 43px;
+  }
+
+  .fireball span {
+    inset: 8px;
+  }
+}

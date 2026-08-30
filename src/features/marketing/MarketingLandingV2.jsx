@@ -244,6 +244,7 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
       <main>
         <section className={styles.hero} aria-labelledby="marketing-hero-title">
           <img className={styles.heroAtmosphere} src="/marketing/hero-court-glow.png" alt="" aria-hidden="true" />
+          <div className={styles.fireball} aria-hidden="true"><span /></div>
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>Gestão de Beach Tennis</span>
             <h1 id="marketing-hero-title">Da inscrição ao pódio,<br />tudo em uma plataforma.</h1>
