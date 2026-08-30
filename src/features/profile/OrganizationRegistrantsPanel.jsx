@@ -236,6 +236,20 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
     }));
   }, [visibleRegistrations]);
 
+  const pairSelectionError = useMemo(() => {
+    for (let index = 0; index + 1 < pairSelection.length; index += 2) {
+      const first = registrations.find((item) => item.id === pairSelection[index]);
+      const second = registrations.find((item) => item.id === pairSelection[index + 1]);
+      const compatibilityError = getPairCompatibilityError(first, second);
+      if (compatibilityError) return compatibilityError;
+    }
+    return "";
+  }, [pairSelection, registrations]);
+
+  const pairSelectionReady = pairSelection.length >= 2
+    && pairSelection.length % 2 === 0
+    && !pairSelectionError;
+
   async function reviewRegistration(registration, decision) {
     if (!state.schemaAvailable || busyId) return;
     setBusyId(registration.id);
@@ -265,27 +279,23 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
         setNotice("Para formar duplas, selecione atletas do mesmo torneio e da mesma categoria.");
         return current;
       }
-      const pairMate = current.length % 2 === 1
-        ? registrations.find((item) => item.id === current[current.length - 1])
-        : null;
-      const pairCompatibilityError = getPairCompatibilityError(pairMate, registration);
-      if (pairCompatibilityError) {
-        setNotice(pairCompatibilityError);
-        return current;
-      }
       return current.length >= 32 ? current : [...current, registration.id];
     });
   }
 
   async function pairSelectedRegistrations() {
     if (busyId || pairSelection.length < 2 || pairSelection.length % 2 !== 0) return;
+    if (pairSelectionError) {
+      setNotice(pairSelectionError);
+      return;
+    }
     setBusyId("pairing");
     setNotice("");
     try {
       const result = await pairApprovedOrganizationRegistrations({ supabase, registrationIds: pairSelection });
       const pairedCount = Number(result?.paired_count || pairSelection.length / 2);
       setPairSelection([]);
-      setNotice(`${pairedCount} ${pairedCount === 1 ? "dupla foi formada" : "duplas foram formadas"}. Os atletas receberam uma notificação.`);
+      setNotice(`${pairedCount} ${pairedCount === 1 ? "dupla foi formada" : "duplas foram formadas"} com sucesso.`);
       await loadRegistrants();
     } catch (error) {
       setNotice(error?.message || "Não foi possível formar as duplas selecionadas.");
@@ -354,12 +364,12 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
       <div className={`organizationPairBuilder${pairSelection.length ? " active" : ""}`}>
         <span><Users aria-hidden="true" /></span>
         <div><strong>Formar duplas com inscritos individuais</strong><small>Selecione atletas aprovados, do mesmo torneio e categoria. A ordem da seleção define as duplas.</small></div>
-        <div><b>{pairSelection.length} selecionado(s)</b><button type="button" disabled={Boolean(busyId) || pairSelection.length < 2 || pairSelection.length % 2 !== 0} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione uma quantidade par"}</button></div>
+        <div><b>{pairSelection.length} selecionado(s)</b>{pairSelectionError ? <small className="organizationPairError" role="alert">{pairSelectionError}</small> : null}<button type="button" disabled={Boolean(busyId) || !pairSelectionReady} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione uma quantidade par"}</button></div>
       </div>
 
       {pairSelection.length ? <div className="organizationPairFloatingAction" role="status">
-        <span><Users aria-hidden="true" /><strong>{pairSelection.length} selecionado(s)</strong></span>
-        <button type="button" disabled={Boolean(busyId) || pairSelection.length < 2 || pairSelection.length % 2 !== 0} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione mais um atleta"}</button>
+        <span><Users aria-hidden="true" /><strong>{pairSelection.length} selecionado(s)</strong>{pairSelectionError ? <small>{pairSelectionError}</small> : null}</span>
+        <button type="button" disabled={Boolean(busyId) || !pairSelectionReady} onClick={pairSelectedRegistrations}>{pairSelection.length > 1 && pairSelection.length % 2 === 0 ? `Formar ${pairSelection.length / 2} dupla(s)` : "Selecione mais um atleta"}</button>
       </div> : null}
 
       <div className="organizationRegistrantMetrics">

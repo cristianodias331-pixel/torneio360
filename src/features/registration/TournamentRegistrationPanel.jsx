@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CircleAlert,
   Clock3,
-  Hand,
   MapPin,
   RefreshCw,
   Search,
@@ -138,7 +137,7 @@ export default function TournamentRegistrationPanel({
 
   function getRegistrationEligibilityError() {
     if (athleteGender === participantGenderValues.unknown) {
-      return "Preencha a categoria esportiva no seu perfil de atleta antes de se inscrever.";
+      return "Selecione sua categoria esportiva antes de finalizar a inscrição.";
     }
     if (tournamentGenderMode === tournamentGenderModes.masculine && athleteGender !== participantGenderValues.masculine) {
       return "Este torneio aceita somente atletas da categoria esportiva masculina.";
@@ -345,36 +344,41 @@ export default function TournamentRegistrationPanel({
 
       {!locked && viewerRole === "owner" ? (
         <>
-          <section className="registrationAthleteData">
-            <header><UserRound aria-hidden="true" /><div><strong>Dados aproveitados do seu perfil</strong><small>Você pode ajustar apenas o necessário para este torneio.</small></div></header>
-            <div className="registrationAthleteFields">
-              <label className="registrationOwnIdentityField"><span>Atleta que está se inscrevendo</span><div className="registrationHandleInput"><b>@</b><input value={form.athleteHandle} readOnly placeholder="Cadastre seu endereço único" /></div><small>{form.athleteHandle ? `${form.athleteName} · perfil de atleta identificado` : "Abra Meu perfil de atleta e escolha seu endereço único antes de se inscrever."}</small></label>
-              <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
-              <label><span>Categoria esportiva</span><select value={form.gender} onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value }))}><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select><small>A escolha será salva no seu perfil ao finalizar a inscrição.</small></label>
-              <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
-              {pairCompetition ? <label className="registrationPartnerHandleField"><span>Encontre o outro atleta da dupla</span><div className="registrationHandleInput"><Search aria-hidden="true" /><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Digite o nome ou @" autoComplete="off" /></div><small>As sugestões aparecem enquanto você digita. O atleta escolhido receberá a confirmação pelo seu @ único.</small></label> : null}
-            </div>
-            {pairCompetition && partnerCandidates.length && partnerLookup.status !== "found" ? <div className="registrationPartnerSuggestions" role="listbox" aria-label="Sugestões de atletas">
+          {!form.athleteHandle || athleteGender === participantGenderValues.unknown ? (
+            <section className="registrationProfileRequirements">
+              <CircleAlert aria-hidden="true" />
+              <div>
+                <strong>Complete apenas o que falta no perfil</strong>
+                {!form.athleteHandle ? <small>Abra “Meu perfil de atleta” e cadastre seu nome de usuário (@) antes de finalizar.</small> : null}
+                {athleteGender === participantGenderValues.unknown ? <label><span>Categoria esportiva</span><select value={form.gender} onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value }))}><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select><small>A escolha será salva no seu perfil ao finalizar a inscrição.</small></label> : null}
+              </div>
+            </section>
+          ) : null}
+
+          {pairCompetition ? <section className="registrationPairSetup">
+            <header><Users aria-hidden="true" /><div><strong>Formação da dupla</strong><small>Escolha um atleta ou informe que está procurando parceria.</small></div></header>
+            <label className="registrationPartnerHandleField"><span>Encontre o outro atleta da dupla</span><div className="registrationHandleInput"><Search aria-hidden="true" /><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Digite o nome ou @" autoComplete="off" /></div><small>As sugestões aparecem enquanto você digita. O atleta escolhido receberá a confirmação pelo seu @ único.</small></label>
+            {partnerCandidates.length && partnerLookup.status !== "found" ? <div className="registrationPartnerSuggestions" role="listbox" aria-label="Sugestões de atletas">
               {partnerCandidates.map((candidate) => <button type="button" role="option" key={candidate.user_id} onClick={() => choosePartner(candidate)}>
                 <span>{candidate.photo_url ? <img src={candidate.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span>
                 <span><strong>{candidate.display_name}</strong><small>@{candidate.handle}{candidate.gender ? ` · ${candidate.gender}` : ""}{candidate.city ? ` · ${candidate.city}${candidate.state ? `/${candidate.state}` : ""}` : ""}</small></span>
                 <BadgeCheck aria-hidden="true" />
               </button>)}
             </div> : null}
-            {pairCompetition && form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
+            {form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
               {partnerLookup.status === "loading" ? <><RefreshCw className="spinning" aria-hidden="true" /><span>Verificando o perfil...</span></> : null}
               {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · {partnerLookup.partner.gender || "categoria esportiva não informada"}</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}
               {partnerLookup.error ? <><CircleAlert aria-hidden="true" /><span>{partnerLookup.error}</span></> : null}
             </div> : null}
-            {pairCompetition && !form.partnerHandle ? (
+            {!form.partnerHandle ? (
               <label className={`registrationPartnerChoice${form.lookingForPartner ? " selected" : ""}`}>
                 <input type="checkbox" checked={form.lookingForPartner} onChange={(event) => setForm((current) => ({ ...current, lookingForPartner: event.target.checked }))} />
                 <Users aria-hidden="true" />
                 <span><strong>Quero encontrar uma dupla</strong><small>Após enviar a inscrição, atletas do mesmo torneio e categoria poderão encontrar seu perfil.</small></span>
               </label>
             ) : null}
-            {pairCompetition ? <p className="registrationPairRule"><ShieldCheck aria-hidden="true" /> Dupla fixa exige um convite confirmado ou a opção “Quero encontrar uma dupla”. Em torneios mistos, a plataforma aceita apenas parceiros de categorias esportivas diferentes.</p> : null}
-          </section>
+            <p className="registrationPairRule"><ShieldCheck aria-hidden="true" /> Dupla fixa exige um convite confirmado ou a opção “Quero encontrar uma dupla”. Em torneios mistos, a plataforma aceita apenas parceiros de categorias esportivas diferentes.</p>
+          </section> : null}
 
           <TournamentPaymentPanel
             tournament={tournament}

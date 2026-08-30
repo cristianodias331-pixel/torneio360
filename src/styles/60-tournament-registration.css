@@ -25,18 +25,22 @@
 .registrationWorkflowStatus.rejected { border-color: #e27d62; color: #a53d27; background: color-mix(in srgb, #ef6b4a 9%, var(--ui-surface-raised, #fff)); }
 .registrationJourneyNotice { margin: 0; border-radius: 10px; padding: 10px 12px; color: var(--ui-text, #263850); background: var(--ui-surface-muted, #eef4fa); font-size: .75rem; }
 
-.registrationAthleteData { display: grid; gap: 14px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 18px; padding: 17px; background: var(--ui-surface-raised, #fff); }
-.registrationAthleteData > header { display: flex; align-items: center; gap: 10px; }
-.registrationAthleteData > header > svg { width: 22px; height: 22px; color: #1769d2; }
-.registrationAthleteData > header > div { display: grid; gap: 2px; }
-.registrationAthleteData > header strong { color: var(--ui-text-strong, #102038); font-size: .86rem; }
-.registrationAthleteData > header small { color: var(--ui-muted, #65758b); font-size: .68rem; }
-.registrationAthleteFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
-.registrationAthleteFields label { display: grid; gap: 6px; }
-.registrationAthleteFields label > span { display: flex; align-items: center; gap: 5px; color: var(--ui-text-strong, #102038); font-size: .7rem; font-weight: 800; }
-.registrationAthleteFields label > span svg { width: 14px; height: 14px; }
-.registrationAthleteFields :is(input, select) { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid var(--ui-border, #c9d5e5); border-radius: 11px; padding: 10px 12px; color: var(--ui-text-strong, #102038); background: var(--ui-surface-raised, #fff); }
-.registrationAthleteFields input[readonly] { color: var(--ui-muted, #65758b); background: var(--ui-surface-muted, #f1f5f9); }
+.registrationProfileRequirements { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 11px; border: 1px solid #e9a33c; border-radius: 14px; padding: 13px; background: color-mix(in srgb, #f59e0b 8%, var(--ui-surface-raised, #fff)); }
+.registrationProfileRequirements > svg { width: 21px; height: 21px; color: #b86b08; }
+.registrationProfileRequirements > div { display: grid; gap: 7px; }
+.registrationProfileRequirements strong { color: var(--ui-text-strong, #102038); font-size: .78rem; }
+.registrationProfileRequirements small { color: var(--ui-muted, #65758b); font-size: .68rem; line-height: 1.4; }
+.registrationProfileRequirements label { display: grid; max-width: 360px; gap: 5px; }
+.registrationProfileRequirements label > span { color: var(--ui-text-strong, #102038); font-size: .7rem; font-weight: 850; }
+.registrationProfileRequirements select { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid var(--ui-border, #c9d5e5); border-radius: 11px; padding: 9px 11px; color: var(--ui-text-strong, #102038); background: var(--ui-surface-raised, #fff); }
+.registrationPairSetup { display: grid; gap: 14px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 18px; padding: 17px; background: var(--ui-surface-raised, #fff); }
+.registrationPairSetup > header { display: flex; align-items: center; gap: 10px; }
+.registrationPairSetup > header > svg { width: 22px; height: 22px; color: #1769d2; }
+.registrationPairSetup > header > div { display: grid; gap: 2px; }
+.registrationPairSetup > header strong { color: var(--ui-text-strong, #102038); font-size: .86rem; }
+.registrationPairSetup > header small { color: var(--ui-muted, #65758b); font-size: .68rem; }
+.registrationPairSetup > .registrationPartnerHandleField { display: grid; gap: 6px; }
+.registrationPairSetup > .registrationPartnerHandleField > span { color: var(--ui-text-strong, #102038); font-size: .7rem; font-weight: 800; }
 .registrationPartnerChoice { display: flex; align-items: center; gap: 11px; border: 1px solid var(--ui-border, #d5dfec); border-radius: 13px; padding: 13px; cursor: pointer; }
 .registrationPartnerChoice.selected { border-color: #1769d2; background: color-mix(in srgb, #1769d2 7%, var(--ui-surface-raised, #fff)); }
 .registrationPartnerChoice > input { width: 17px; height: 17px; }
@@ -144,9 +148,9 @@
 .registrationPartnerViewerNotice svg { width: 18px; flex: 0 0 auto; color: #2563eb; }
 
 .proDashboard.theme-dark .registrationTournamentSummary,
-.proDashboard.theme-dark .registrationAthleteData { border-color: #33485e; background: #172536; }
-.proDashboard.theme-dark .registrationAthleteFields :is(input, select) { border-color: #40546a; color: #f1f5f9; background: #101d2c; }
-.proDashboard.theme-dark .registrationAthleteFields input[readonly] { color: #a9b8ca; background: #142131; }
+.proDashboard.theme-dark .registrationPairSetup { border-color: #33485e; background: #172536; }
+.proDashboard.theme-dark .registrationProfileRequirements { border-color: #8b621e; background: #2f2617; }
+.proDashboard.theme-dark .registrationProfileRequirements select { border-color: #40546a; color: #f1f5f9; background: #101d2c; }
 .proDashboard.theme-dark .registrationPartnerSuggestions,
 .proDashboard.theme-dark .registrationLinkedProfiles { border-color: #33485e; background: #172536; box-shadow: none; }
 .proDashboard.theme-dark .registrationWorkflowStatus.approved { color: #a7f3d0; background: #123328; }
@@ -157,7 +161,8 @@
   .registrationJourneyHeader { display: grid; }
   .registrationJourneyHeader ol { width: 100%; }
   .registrationJourneyHeader li { min-width: 0; flex: 1; }
-  .registrationAthleteFields { grid-template-columns: 1fr; }
+  .registrationProfileRequirements { grid-template-columns: 1fr; }
+  .registrationProfileRequirements label { max-width: none; }
   .registrationJourneyGuest { grid-template-columns: auto 1fr; }
   .registrationJourneyGuest button { grid-column: 1 / -1; width: 100%; }
   .registrationLinkedProfiles { grid-template-columns: 1fr; }

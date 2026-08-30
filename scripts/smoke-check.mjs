@@ -5157,7 +5157,8 @@ assert.ok(
     && memberProfileDetailsSource.includes("Nível técnico")
     && memberProfileDetailsSource.includes("Esta informação não será exibida publicamente")
     && !memberProfileDetailsSource.includes("Gênero do atleta")
-    && tournamentRegistrationPanelSource.includes("categoria esportiva no seu perfil de atleta")
+    && tournamentRegistrationPanelSource.includes("Selecione sua categoria esportiva")
+    && tournamentRegistrationPanelSource.includes("Complete apenas o que falta no perfil")
     && tournamentRegistrationPanelSource.includes("categorias esportivas diferentes"),
   "O cadastro e a inscrição voltaram a confundir categoria esportiva com gênero ou nível técnico."
 );

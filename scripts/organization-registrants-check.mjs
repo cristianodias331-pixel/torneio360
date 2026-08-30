@@ -12,6 +12,7 @@ function assert(condition, message) {
 }
 
 const registrationMigration = fs.readFileSync(new URL("../supabase/migrations/202608290002_registration_gender_and_fixed_pairs.sql", import.meta.url), "utf8");
+const homologationPairMigration = fs.readFileSync(new URL("../supabase/migrations/202608300004_pair_partner_search_registrations.sql", import.meta.url), "utf8");
 const registrantsPanelSource = fs.readFileSync(new URL("../src/features/profile/OrganizationRegistrantsPanel.jsx", import.meta.url), "utf8");
 
 assert(registrationMigration.includes("can_view_registration_receipt"), "A organização deve poder ler o comprovante privado do torneio que administra.");
@@ -22,6 +23,11 @@ assert(registrationMigration.includes("get_my_organization_registrations_v2"), "
 assert(registrationMigration.includes("'partner_registration'"), "A inscrição principal deve trazer o comprovante do segundo atleta da dupla.");
 assert(registrantsPanelSource.includes("organizationPairFloatingAction"), "A ação de formar dupla deve continuar visível depois da seleção.");
 assert(registrantsPanelSource.includes("Comprovante da dupla"), "A organização deve conseguir abrir o comprovante dos dois atletas.");
+assert(homologationPairMigration.includes("get_my_organization_registrations_v2"), "A homologação deve enviar a categoria esportiva dos atletas para a seleção da dupla.");
+assert(homologationPairMigration.includes("pair_approved_tournament_registrations"), "A homologação deve gravar a dupla formada pela organização.");
+assert(homologationPairMigration.includes("paired_into_registration_id is null"), "Depois de formada, a dupla deve aparecer uma única vez no painel.");
+assert(!registrantsPanelSource.includes("getPairCompatibilityError(pairMate, registration)"), "O segundo atleta deve poder ser selecionado antes da validação final da dupla.");
+assert(registrantsPanelSource.includes("pairSelectionError"), "A incompatibilidade deve ser explicada junto à ação de formar dupla.");
 
 const rpcCalls = [];
 const richResult = await loadOrganizationRegistrants({
