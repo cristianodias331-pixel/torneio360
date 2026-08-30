@@ -23,6 +23,10 @@ import {
 } from "../../domain/participantGenderRegistry.mjs";
 import { getEffectiveTournamentGenderMode } from "../../domain/tournamentGenderConfig.mjs";
 import {
+  loadMyMemberProfile,
+  saveMyMemberProfile,
+} from "../../services/memberProfileApi.mjs";
+import {
   cancelMyTournamentPartnership,
   cancelMyTournamentRegistration,
   loadMyTournamentRegistrationCheckout,
@@ -79,6 +83,7 @@ export default function TournamentRegistrationPanel({
   }));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [memberProfileSnapshot, setMemberProfileSnapshot] = useState(null);
   const [partnerLookup, setPartnerLookup] = useState({ status: "idle", partner: null, error: "" });
   const [partnerCandidates, setPartnerCandidates] = useState([]);
   const pairCompetition = isPairCompetition(tournament?.type);
@@ -89,13 +94,27 @@ export default function TournamentRegistrationPanel({
     try {
       const result = await loadMyTournamentRegistrationCheckout({ supabase, tournamentId: tournament.id });
       const checkout = result.checkout || null;
+      let personalProfile = null;
+      try {
+        const memberResult = await loadMyMemberProfile({
+          supabase,
+          fallback: {
+            userId: viewer.id,
+            displayName: getViewerName(viewer),
+          },
+        });
+        if (memberResult.schemaAvailable) personalProfile = memberResult.profile;
+      } catch (profileError) {
+        console.warn("Não foi possível reaproveitar a categoria esportiva do perfil.", profileError);
+      }
+      setMemberProfileSnapshot(personalProfile);
       setState({ status: "ready", checkout, schemaAvailable: result.schemaAvailable, error: "" });
       setForm((current) => ({
         ...current,
         athleteName: checkout?.athlete?.display_name || checkout?.registration?.athlete_name || current.athleteName,
         athleteHandle: checkout?.athlete?.handle || checkout?.registration?.athlete_handle || current.athleteHandle,
         category: checkout?.registration?.category || checkout?.athlete?.sports_category || current.category,
-        gender: checkout?.athlete?.gender || current.gender,
+        gender: personalProfile?.gender || checkout?.athlete?.gender || current.gender,
         dominantHand: checkout?.athlete?.dominant_hand || current.dominantHand,
         partnerHandle: checkout?.registration?.partner_handle || current.partnerHandle,
       }));
@@ -231,6 +250,20 @@ export default function TournamentRegistrationPanel({
     setBusy(true);
     setNotice("");
     try {
+      if (!memberProfileSnapshot) {
+        throw new Error("Não foi possível carregar seu perfil para salvar a categoria esportiva. Atualize a página e tente novamente.");
+      }
+      if (memberProfileSnapshot.gender !== form.gender) {
+        const savedProfile = await saveMyMemberProfile({
+          supabase,
+          profile: { ...memberProfileSnapshot, gender: form.gender },
+          fallback: memberProfileSnapshot,
+        });
+        if (!savedProfile.schemaAvailable) {
+          throw new Error("A categoria esportiva ainda não pôde ser salva no perfil.");
+        }
+        setMemberProfileSnapshot(savedProfile.profile);
+      }
       await submitTournamentRegistrationWorkflow({
         supabase,
         tournamentId: tournament.id,
@@ -317,7 +350,7 @@ export default function TournamentRegistrationPanel({
             <div className="registrationAthleteFields">
               <label className="registrationOwnIdentityField"><span>Atleta que está se inscrevendo</span><div className="registrationHandleInput"><b>@</b><input value={form.athleteHandle} readOnly placeholder="Cadastre seu endereço único" /></div><small>{form.athleteHandle ? `${form.athleteName} · perfil de atleta identificado` : "Abra Meu perfil de atleta e escolha seu endereço único antes de se inscrever."}</small></label>
               <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
-              <label><span>Categoria esportiva</span><input value={form.gender || "Não informada"} readOnly /><small>Para alterar, edite o seu perfil de atleta.</small></label>
+              <label><span>Categoria esportiva</span><select value={form.gender} onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value }))}><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select><small>A escolha será salva no seu perfil ao finalizar a inscrição.</small></label>
               <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
               {pairCompetition ? <label className="registrationPartnerHandleField"><span>Encontre o outro atleta da dupla</span><div className="registrationHandleInput"><Search aria-hidden="true" /><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Digite o nome ou @" autoComplete="off" /></div><small>As sugestões aparecem enquanto você digita. O atleta escolhido receberá a confirmação pelo seu @ único.</small></label> : null}
             </div>

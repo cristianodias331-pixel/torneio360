@@ -6,6 +6,8 @@ import {
   submitTournamentRegistrationWorkflow,
   validateRegistrationReceipt,
 } from "../src/services/tournamentRegistrationApi.mjs";
+import { saveMyMemberProfile } from "../src/services/memberProfileApi.mjs";
+import { readFileSync } from "node:fs";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -46,6 +48,24 @@ const checkout = await loadMyTournamentRegistrationCheckout({ supabase, tourname
 assert(checkout.schemaAvailable === true, "A jornada deve reconhecer a estrutura aplicada.");
 assert(checkout.checkout.athlete.display_name === "Atleta Teste", "Os dados do perfil devem preencher a inscrição.");
 assert(checkout.checkout.athlete.gender === "Masculino", "A inscrição deve usar a categoria esportiva obrigatória do perfil.");
+
+const registrationPanelSource = readFileSync(new URL("../src/features/registration/TournamentRegistrationPanel.jsx", import.meta.url), "utf8");
+assert(registrationPanelSource.includes('<select value={form.gender}') && registrationPanelSource.includes('<option value="Masculino">Masculino</option>') && registrationPanelSource.includes('<option value="Feminino">Feminino</option>'), "A categoria esportiva da inscrição deve ser selecionável, sem digitação livre.");
+assert(registrationPanelSource.includes("saveMyMemberProfile") && registrationPanelSource.includes("A escolha será salva no seu perfil ao finalizar a inscrição."), "A escolha feita na inscrição deve ser persistida no perfil do atleta.");
+
+const profileCalls = [];
+const profileSupabase = { rpc: async (name, payload) => {
+  profileCalls.push({ name, payload });
+  if (name === "upsert_my_member_profile_v3") return { data: { ...payload, gender: payload.p_gender }, error: null };
+  if (name === "replace_my_member_profile_photos") return { data: [], error: null };
+  return { data: null, error: { message: `RPC inesperado: ${name}` } };
+} };
+await saveMyMemberProfile({
+  supabase: profileSupabase,
+  profile: { userId: "athlete-1", displayName: "Atleta Teste", gender: "Feminino", galleryPhotos: [] },
+  fallback: { userId: "athlete-1", displayName: "Atleta Teste" },
+});
+assert(profileCalls.find((call) => call.name === "upsert_my_member_profile_v3")?.payload.p_gender === "Feminino", "A seleção da inscrição deve chegar ao perfil como categoria esportiva válida.");
 
 const receipt = { name: "pix.pdf", type: "application/pdf", size: 2048 };
 const submitted = await submitTournamentRegistrationWorkflow({
