@@ -41,6 +41,7 @@ import {
 } from "./features/publicArena/PublicArenaPresentation.jsx";
 import LazyArenaPhotoView from "./features/publicArena/LazyArenaPhoto.jsx";
 import UnifiedPlatformFrame from "./features/appShell/UnifiedPlatformFrame.jsx";
+import MarketingLandingV2 from "./features/marketing/MarketingLandingV2.jsx";
 import {
   formatDateBR,
   getBrazilTodayISO,
@@ -98,6 +99,16 @@ import "./style.css";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   || "https://dttutybojealkvuywszt.supabase.co";
+const MARKETING_LANDING_V2_ENABLED = (() => {
+  const configured = String(import.meta.env.VITE_MARKETING_LANDING_V2 || "").toLowerCase();
+  if (configured === "true") return true;
+  if (configured === "false") return false;
+
+  const configuredSupabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || "");
+  const hostname = String(globalThis.location?.hostname || "").toLowerCase();
+  return configuredSupabaseUrl.includes("vcixhzvytkrautotinpi")
+    || hostname.startsWith("torneio360-homologacao");
+})();
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
   || "sb_publishable_Tr5qiUea-p42UknVoWwPKg_6K_b1EX_";
 const supabase = globalThis.__torneio360Supabase || createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -545,6 +556,15 @@ function App() {
   }
 
   if (!session && !wantsLogin && !signupType && !authCallbackError && !authNotice) {
+    if (MARKETING_LANDING_V2_ENABLED) {
+      return (
+        <MarketingLandingV2
+          onLogin={() => navigatePlatform({ entrar: "1" })}
+          onSignup={() => navigatePlatform({ cadastro: "conta" })}
+          onExplore={() => navigatePlatform({ publico: "1" })}
+        />
+      );
+    }
     return <PublicPlatformHome />;
   }
 
