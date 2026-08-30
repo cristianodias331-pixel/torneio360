@@ -741,6 +741,10 @@
   gap: 24px;
 }
 
+.sportsSection {
+  padding-top: 24px;
+}
+
 .activeSport {
   position: relative;
   min-height: 530px;
@@ -1511,5 +1515,488 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Refinamento visual da apresentação de homologação. */
+:global(html[data-marketing-landing-v2="true"] .installAppBanner) {
+  display: none !important;
+}
+
+.header {
+  position: fixed;
+  right: 0;
+  left: 0;
+  grid-template-columns: minmax(190px, 250px) 1fr auto;
+  min-height: 88px;
+  padding: 12px max(26px, calc((100vw - var(--mk-max)) / 2));
+}
+
+.brand {
+  width: 190px;
+  height: 54px;
+}
+
+.desktopNav {
+  gap: clamp(28px, 4vw, 62px);
+}
+
+.desktopNav a,
+.footer a,
+.mobileMenu a {
+  position: relative;
+  padding-block: 10px;
+}
+
+.desktopNav a::after,
+.mobileMenu a::after {
+  position: absolute;
+  right: 50%;
+  bottom: 3px;
+  left: 50%;
+  height: 2px;
+  border-radius: 2px;
+  content: "";
+  background: var(--mk-orange-bright);
+  transition: right 160ms ease, left 160ms ease;
+}
+
+.desktopNav a:hover::after,
+.desktopNav .activeNavLink::after,
+.mobileMenu .activeNavLink::after {
+  right: 0;
+  left: 0;
+}
+
+.desktopNav a:focus-visible,
+.footer a:focus-visible,
+.mobileMenu a:focus-visible {
+  outline: 0;
+  color: var(--mk-orange-bright);
+  box-shadow: 0 2px 0 var(--mk-orange-bright);
+}
+
+.accountStrip {
+  min-height: 38px;
+  margin-top: 88px;
+  padding-block: 7px;
+  font-size: 0.82rem;
+}
+
+.hero,
+.section,
+.contactSection,
+.footer {
+  width: min(var(--mk-max), calc(100% - clamp(44px, 5vw, 86px)));
+}
+
+.hero {
+  min-height: max(610px, calc(100vh - 126px));
+  grid-template-columns: minmax(500px, 0.92fr) minmax(540px, 1.08fr);
+  gap: clamp(38px, 4vw, 72px);
+  padding: 46px 0 54px;
+}
+
+.hero::after {
+  display: none;
+}
+
+.heroAtmosphere {
+  position: absolute;
+  z-index: -2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 72%;
+  object-fit: cover;
+  object-position: center bottom;
+  opacity: 0.38;
+  filter: saturate(0.9) contrast(1.05);
+  mask-image: linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.74) 24%, #000 100%);
+}
+
+.hero::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(3, 12, 27, 0.92) 0 34%, rgba(3, 12, 27, 0.42) 59%, rgba(3, 12, 27, 0.18));
+}
+
+.heroCopy {
+  position: relative;
+  z-index: 1;
+}
+
+.heroCopy h1 {
+  max-width: 660px;
+  font-size: clamp(3.45rem, 4.45vw, 4.75rem);
+  font-weight: 790;
+  line-height: 1.01;
+  letter-spacing: -0.052em;
+}
+
+.heroCopy > p {
+  max-width: 630px;
+  margin-top: 20px;
+  font-size: clamp(1rem, 1.2vw, 1.16rem);
+  line-height: 1.48;
+}
+
+.heroActions {
+  margin-top: 25px;
+}
+
+.heroActions button {
+  min-width: 220px;
+}
+
+.heroHighlights {
+  gap: clamp(18px, 2.2vw, 34px);
+  margin-top: 28px;
+}
+
+.heroHighlights span {
+  font-size: 0.88rem;
+}
+
+.heroHighlights svg {
+  width: 24px;
+  height: 24px;
+}
+
+.heroPreview {
+  position: relative;
+  z-index: 1;
+  gap: 14px;
+}
+
+.liveMatch {
+  padding: 20px 22px 22px;
+}
+
+.scoreboard {
+  padding-top: 20px;
+}
+
+.rankingPreview {
+  padding: 16px 18px;
+}
+
+.rankingPreview li {
+  padding-block: 9px;
+}
+
+.section,
+.contactSection {
+  scroll-margin-top: 88px;
+  padding: 76px 0 82px;
+}
+
+.sectionHeader,
+.sectionHeaderCentered {
+  margin-bottom: 40px;
+}
+
+.sectionHeader h2,
+.sectionHeaderCentered h2,
+.contactCopy h2 {
+  font-size: clamp(2.65rem, 3.7vw, 3.8rem);
+  font-weight: 790;
+  line-height: 1.06;
+  letter-spacing: -0.045em;
+}
+
+.sectionHeaderCentered p,
+.contactCopy > p {
+  margin-top: 12px;
+  font-size: 1.06rem;
+}
+
+.steps article {
+  min-height: 190px;
+  padding: 6px 32px 20px;
+}
+
+.stepIcon {
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.stepIcon b {
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+}
+
+.stepIcon svg {
+  width: 46px;
+  height: 46px;
+}
+
+.steps h3 {
+  font-size: 1.03rem;
+}
+
+.steps p {
+  margin-top: 11px;
+  font-size: 0.92rem;
+}
+
+.stepArrow {
+  top: 63px;
+}
+
+.workflowPreview {
+  max-width: 1030px;
+  margin-top: 10px;
+  margin-bottom: 28px;
+}
+
+.workflowPreview > div {
+  min-height: 114px;
+  padding: 18px;
+}
+
+.planGrid {
+  max-width: 1080px;
+  gap: 26px;
+}
+
+.planGrid article {
+  min-height: 372px;
+  padding: 34px;
+}
+
+.planTitle > span {
+  width: 68px;
+  height: 68px;
+}
+
+.planTitle h3 {
+  font-size: 1.85rem;
+}
+
+.sportsGrid {
+  grid-template-columns: 1.18fr 1fr;
+  gap: 20px;
+}
+
+.activeSport {
+  min-height: 478px;
+  background: #071426;
+}
+
+.sportImage {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.activeSport::after,
+.upcomingSports article::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.activeSport::after {
+  background: linear-gradient(180deg, rgba(2, 8, 18, 0.04) 10%, rgba(2, 8, 18, 0.3) 48%, rgba(2, 8, 18, 0.96) 88%);
+}
+
+.activeSport > div:last-of-type,
+.activeSport .primaryButton,
+.upcomingSports h3,
+.availableBadge,
+.upcomingSports article > span {
+  z-index: 2;
+}
+
+.activeSport > div:last-of-type {
+  bottom: 96px;
+}
+
+.upcomingSports {
+  gap: 20px;
+}
+
+.upcomingSports article {
+  min-height: 229px;
+  filter: none;
+  background: #101723;
+}
+
+.upcomingSports article::after {
+  background: linear-gradient(180deg, rgba(2, 8, 18, 0.18), rgba(2, 8, 18, 0.88));
+  backdrop-filter: grayscale(1) saturate(0.2);
+}
+
+.upcomingSports .sportImage {
+  opacity: 0.72;
+}
+
+.activeSport h3,
+.upcomingSports h3 {
+  font-size: 1.95rem;
+}
+
+.contactSection {
+  grid-template-columns: 1.28fr 0.72fr;
+  gap: 64px;
+}
+
+.contactCopy form {
+  margin-top: 26px;
+}
+
+.contactCopy input {
+  min-height: 54px;
+}
+
+.contactCopy textarea {
+  min-height: 134px;
+}
+
+@media (max-width: 1180px) {
+  .hero {
+    grid-template-columns: minmax(0, 0.94fr) minmax(470px, 1.06fr);
+  }
+
+  .heroCopy h1 {
+    font-size: clamp(3.1rem, 5vw, 4.1rem);
+  }
+
+  .heroActions button {
+    min-width: 190px;
+  }
+
+  .sportsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .header {
+    grid-template-columns: 1fr auto;
+    min-height: 72px;
+    padding: 9px 20px;
+  }
+
+  .brand {
+    width: 164px;
+    height: 48px;
+  }
+
+  .accountStrip {
+    margin-top: 72px;
+  }
+
+  .hero,
+  .section,
+  .contactSection,
+  .footer {
+    width: min(100% - 32px, 720px);
+  }
+
+  .hero {
+    min-height: auto;
+    grid-template-columns: 1fr;
+    padding: 46px 0 66px;
+  }
+
+  .heroAtmosphere {
+    height: 58%;
+    opacity: 0.26;
+  }
+
+  .hero::before {
+    background: linear-gradient(180deg, rgba(3, 12, 27, 0.58), rgba(3, 12, 27, 0.82));
+  }
+
+  .section,
+  .contactSection {
+    scroll-margin-top: 72px;
+  }
+
+  .sportsSection {
+    padding-top: 52px;
+  }
+}
+
+@media (max-width: 560px) {
+  .header {
+    padding-inline: 14px;
+  }
+
+  .brand {
+    width: 150px;
+  }
+
+  .hero,
+  .section,
+  .contactSection,
+  .footer {
+    width: calc(100% - 28px);
+  }
+
+  .hero {
+    padding-top: 34px;
+  }
+
+  .heroCopy h1 {
+    font-size: clamp(2.45rem, 11.4vw, 3.25rem);
+  }
+
+  .heroHighlights {
+    margin-top: 24px;
+  }
+
+  .section,
+  .contactSection {
+    scroll-margin-top: 72px;
+    padding: 58px 0 64px;
+  }
+
+  .sectionHeader h2,
+  .sectionHeaderCentered h2,
+  .contactCopy h2 {
+    font-size: 2.2rem;
+  }
+
+  .activeSport {
+    min-height: 410px;
+  }
+
+  .upcomingSports article {
+    min-height: 164px;
+  }
+}
+
+.section.sportsSection {
+  padding-top: 24px;
+}
+
+@media (max-width: 900px) {
+  .section.sportsSection {
+    padding-top: 52px;
+  }
+
+  .contactSection {
+    grid-template-columns: 1fr;
+    gap: 42px;
+  }
+}
+
+@media (max-width: 560px) {
+  .activeSport .sportImage {
+    object-position: 78% center;
   }
 }

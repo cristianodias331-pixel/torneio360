@@ -1,12 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowRight,
-  AtSign,
   BarChart3,
   CalendarCheck2,
   Check,
   ChevronRight,
-  CircleDot,
   ClipboardCheck,
   Mail,
   Menu,
@@ -66,7 +64,12 @@ const plans = [
   },
 ];
 
-const upcomingSports = ["Vôlei", "Futevôlei", "Tênis", "Pickleball"];
+const upcomingSports = [
+  { name: "Vôlei", image: "/marketing/sport-volleyball.png" },
+  { name: "Futevôlei", image: "/marketing/sport-footvolley.png" },
+  { name: "Tênis", image: "/marketing/sport-tennis.png" },
+  { name: "Pickleball", image: "/marketing/sport-pickleball.png" },
+];
 
 const rankingRows = [
   ["João Pedro / Lucas Lima", "1.250 pts"],
@@ -80,14 +83,18 @@ function scrollToSection(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function NavLink({ section, children, onNavigate }) {
+function NavLink({ section, children, onNavigate, activeSection }) {
+  const active = activeSection === section;
   return (
     <a
       href={'#' + section}
+      className={active ? styles.activeNavLink : undefined}
+      aria-current={active ? "location" : undefined}
       onClick={(event) => {
         event.preventDefault();
         scrollToSection(section);
         onNavigate?.();
+        event.currentTarget.blur();
       }}
     >
       {children}
@@ -111,6 +118,37 @@ function SupportLink({ id }) {
 
 export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
+
+  useEffect(() => {
+    document.documentElement.dataset.marketingLandingV2 = "true";
+    const sectionIds = ["como-funciona", "planos", "modalidades", "contato"];
+    const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
+    let frame = 0;
+
+    const updateActiveSection = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (window.scrollY < 160) {
+          setActiveSection("");
+          return;
+        }
+
+        const current = sections.reduce((selected, section) => (
+          section.getBoundingClientRect().top <= 190 ? section.id : selected
+        ), sectionIds[0]);
+        setActiveSection(current);
+      });
+    };
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    updateActiveSection();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateActiveSection);
+      delete document.documentElement.dataset.marketingLandingV2;
+    };
+  }, []);
 
   function closeMenu() {
     setMenuOpen(false);
@@ -132,15 +170,15 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
   return (
     <div className={styles.root}>
       <header className={styles.header}>
-        <button className={styles.brand} type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Voltar ao início">
+        <button className={styles.brand} type="button" onClick={(event) => { window.scrollTo({ top: 0, behavior: "smooth" }); event.currentTarget.blur(); }} aria-label="Voltar ao início">
           <BeachLogo layout="horizontal" />
         </button>
 
         <nav className={styles.desktopNav} aria-label="Navegação da apresentação">
-          <NavLink section="como-funciona">Como funciona</NavLink>
-          <NavLink section="planos">Planos</NavLink>
-          <NavLink section="modalidades">Modalidades</NavLink>
-          <NavLink section="contato">Contato</NavLink>
+          <NavLink section="como-funciona" activeSection={activeSection}>Como funciona</NavLink>
+          <NavLink section="planos" activeSection={activeSection}>Planos</NavLink>
+          <NavLink section="modalidades" activeSection={activeSection}>Modalidades</NavLink>
+          <NavLink section="contato" activeSection={activeSection}>Contato</NavLink>
         </nav>
 
         <div className={styles.headerActions}>
@@ -148,17 +186,17 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
           <button className={styles.primaryButton} type="button" onClick={onSignup}>Criar conta</button>
         </div>
 
-        <button className={styles.menuButton} type="button" onClick={() => setMenuOpen((current) => !current)} aria-expanded={menuOpen} aria-controls="marketing-mobile-menu" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}>
+        <button className={styles.menuButton} type="button" onClick={(event) => { setMenuOpen((current) => !current); event.currentTarget.blur(); }} aria-expanded={menuOpen} aria-controls="marketing-mobile-menu" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}>
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
 
         {menuOpen ? (
           <div className={styles.mobileMenu} id="marketing-mobile-menu">
             <nav aria-label="Navegação móvel da apresentação">
-              <NavLink section="como-funciona" onNavigate={closeMenu}>Como funciona</NavLink>
-              <NavLink section="planos" onNavigate={closeMenu}>Planos</NavLink>
-              <NavLink section="modalidades" onNavigate={closeMenu}>Modalidades</NavLink>
-              <NavLink section="contato" onNavigate={closeMenu}>Contato</NavLink>
+              <NavLink section="como-funciona" onNavigate={closeMenu} activeSection={activeSection}>Como funciona</NavLink>
+              <NavLink section="planos" onNavigate={closeMenu} activeSection={activeSection}>Planos</NavLink>
+              <NavLink section="modalidades" onNavigate={closeMenu} activeSection={activeSection}>Modalidades</NavLink>
+              <NavLink section="contato" onNavigate={closeMenu} activeSection={activeSection}>Contato</NavLink>
             </nav>
             <div>
               <button className={styles.secondaryButton} type="button" onClick={onLogin}>Login</button>
@@ -179,7 +217,7 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
 
       <main>
         <section className={styles.hero} aria-labelledby="marketing-hero-title">
-          <div className={styles.heroGlow} aria-hidden="true"><span /></div>
+          <img className={styles.heroAtmosphere} src="/marketing/hero-court-glow.png" alt="" aria-hidden="true" />
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>Gestão de Beach Tennis</span>
             <h1 id="marketing-hero-title">Da inscrição ao pódio,<br />tudo em uma plataforma.</h1>
@@ -259,7 +297,7 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
           <p className={styles.planNote}><Check aria-hidden="true" /> Os detalhes da assinatura são apresentados antes da contratação.</p>
         </section>
 
-        <section className={styles.section} id="modalidades" aria-labelledby="sports-title">
+        <section className={`${styles.section} ${styles.sportsSection}`} id="modalidades" aria-labelledby="sports-title">
           <div className={styles.sectionHeaderCentered}>
             <span className={styles.eyebrow}>Modalidades</span>
             <h2 id="sports-title">Uma plataforma para esportes de rede e areia</h2>
@@ -267,17 +305,17 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
           </div>
           <div className={styles.sportsGrid}>
             <article className={styles.activeSport}>
+              <img className={styles.sportImage} src="/marketing/sport-beach-tennis.png" alt="" aria-hidden="true" />
               <span className={styles.availableBadge}>Disponível</span>
-              <div className={styles.sportArtwork} aria-hidden="true"><span /><b /></div>
               <div><h3>Beach Tennis</h3><p>Torneios <i /> Duplas <i /> Quadras <i /> Partidas <i /> Ranking</p></div>
               <button className={styles.primaryButton} type="button" onClick={onExplore}>Explorar Beach Tennis <ArrowRight aria-hidden="true" /></button>
             </article>
             <div className={styles.upcomingSports}>
-              {upcomingSports.map((sport, index) => (
-                <article key={sport}>
+              {upcomingSports.map((sport) => (
+                <article key={sport.name}>
+                  <img className={styles.sportImage} src={sport.image} alt="" aria-hidden="true" loading="lazy" />
                   <span>Em breve</span>
-                  <div className={styles.upcomingArtwork} data-index={index} aria-hidden="true"><CircleDot /></div>
-                  <h3>{sport}</h3>
+                  <h3>{sport.name}</h3>
                 </article>
               ))}
             </div>
@@ -310,10 +348,10 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
       <footer className={styles.footer}>
         <div className={styles.footerBrand}><BeachLogo layout="horizontal" /></div>
         <nav aria-label="Navegação do rodapé">
-          <NavLink section="como-funciona">Como funciona</NavLink>
-          <NavLink section="planos">Planos</NavLink>
-          <NavLink section="modalidades">Modalidades</NavLink>
-          <NavLink section="contato">Contato</NavLink>
+          <NavLink section="como-funciona" activeSection={activeSection}>Como funciona</NavLink>
+          <NavLink section="planos" activeSection={activeSection}>Planos</NavLink>
+          <NavLink section="modalidades" activeSection={activeSection}>Modalidades</NavLink>
+          <NavLink section="contato" activeSection={activeSection}>Contato</NavLink>
         </nav>
         <p>© 2026 Torneio 360. Todos os direitos reservados.</p>
       </footer>
