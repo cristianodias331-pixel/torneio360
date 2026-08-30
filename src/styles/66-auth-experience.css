@@ -735,6 +735,19 @@ html body .authExperiencePage .authLegalAgreements {
   font-size: .78rem !important;
 }
 
+.authExperiencePage .authLegalDocumentLink {
+  color: #edf2f7 !important;
+  font-weight: 760;
+  text-decoration-color: rgba(255, 116, 23, .78);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.authExperiencePage .authLegalDocumentLink:hover,
+.authExperiencePage .authLegalDocumentLink:focus-visible {
+  color: var(--auth-orange-bright) !important;
+}
+
 .authExperiencePage .authLegalItem > small {
   color: #8897aa !important;
   font-size: .65rem !important;
@@ -1008,6 +1021,241 @@ html body .authExperiencePage .authVerificationHint .linkBtn {
 
   html body .authExperiencePage .authMode-signup .accessCard button.authSubmitButton[type="submit"] {
     min-height: 44px;
+  }
+}
+
+/* Janela comum com barras do navegador e do Windows. A altura útil pode ficar
+   perto de 600px mesmo em um monitor de 768px; por isso este ajuste é guiado
+   pela altura real do viewport, não pela resolução física da tela. */
+@media (min-width: 901px) and (max-height: 700px) {
+  html body .authExperiencePage .landingHeader {
+    min-height: 64px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .authExperiencePage .authLogoButton img {
+    width: 158px;
+    height: 44px;
+  }
+
+  html body .authExperiencePage > main,
+  html body .authExperiencePage .authExperienceSection,
+  html body .authExperiencePage .authExperienceSection.authMode-signup {
+    min-height: calc(100dvh - 64px) !important;
+    height: calc(100dvh - 64px);
+  }
+
+  .authExperiencePage .accessText {
+    padding-top: 30px !important;
+    padding-right: 42px !important;
+    padding-bottom: 132px !important;
+    padding-left: 42px !important;
+  }
+
+  .authExperiencePage .accessText h2 {
+    font-size: clamp(2.55rem, 4.15vw, 3.7rem);
+  }
+
+  .authExperiencePage .accessText > p {
+    margin-top: 13px;
+    font-size: .9rem;
+  }
+
+  .authExperiencePage .authStoryBenefits:not(.authStoryBenefitsStack) {
+    margin-top: 22px;
+  }
+
+  .authExperiencePage .authCourtScene {
+    height: 142px;
+  }
+
+  .authExperiencePage .authCourtBall {
+    bottom: 25px;
+    width: 64px;
+    height: 64px;
+  }
+
+  .authExperiencePage .authCourtBall::before {
+    top: 3px;
+    right: 48px;
+    width: 132px;
+    height: 58px;
+  }
+
+  .authExperiencePage .authCourtBall i::before,
+  .authExperiencePage .authCourtBall i::after {
+    top: 2px;
+    width: 40px;
+    height: 60px;
+    border-width: 2px;
+  }
+
+  .authExperiencePage .authCourtBall i::before { left: -13px; }
+  .authExperiencePage .authCourtBall i::after { right: -13px; }
+
+  html body .authExperiencePage .accessCard {
+    max-height: 100%;
+    padding-top: 22px !important;
+    padding-bottom: 22px !important;
+  }
+
+  .authExperiencePage .authFormHeading > span {
+    margin-bottom: 4px;
+    font-size: .66rem;
+  }
+
+  .authExperiencePage .authFormHeading h1 {
+    font-size: 1.95rem;
+  }
+
+  .authExperiencePage .authFormHeading p {
+    margin-top: 5px;
+    font-size: .76rem;
+  }
+
+  html body .authExperiencePage .accessToggle {
+    margin: 10px 0 11px;
+  }
+
+  html body .authExperiencePage .accessToggle button {
+    min-height: 36px;
+  }
+
+  .authExperiencePage .authAccessForm {
+    gap: 10px;
+  }
+
+  html body .authExperiencePage .accessCard :is(input:not([type="checkbox"]), select) {
+    min-height: 42px;
+  }
+
+  html body .authExperiencePage .accessCard button.authSubmitButton[type="submit"] {
+    min-height: 44px;
+  }
+
+  html body .authExperiencePage .authMode-signup .accessCard {
+    align-self: stretch;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px clamp(24px, 3.2vw, 46px) 12px !important;
+    scrollbar-color: rgba(255, 116, 23, .72) transparent;
+    scrollbar-width: thin;
+  }
+
+  .authExperiencePage .authMode-signup .authSignupSteps {
+    margin-bottom: 5px;
+  }
+
+  .authExperiencePage .authMode-signup .authSignupSteps span {
+    padding-bottom: 5px;
+    font-size: .7rem;
+  }
+
+  .authExperiencePage .authMode-signup .authSignupSteps b {
+    width: 21px;
+    height: 21px;
+    font-size: .66rem;
+  }
+
+  .authExperiencePage .authMode-signup .authFormHeading h1 {
+    font-size: 1.6rem;
+  }
+
+  .authExperiencePage .authMode-signup .authFormHeading p {
+    display: none;
+  }
+
+  html body .authExperiencePage .authMode-signup .accessToggle {
+    margin: 5px 0 6px;
+  }
+
+  html body .authExperiencePage .authMode-signup .accessToggle button {
+    min-height: 31px;
+  }
+
+  .authExperiencePage .authAccessForm-signup,
+  .authExperiencePage .authMode-signup .authSignupGrid {
+    gap: 6px 14px;
+  }
+
+  .authExperiencePage .authMode-signup .authSignupColumn {
+    gap: 5px;
+  }
+
+  .authExperiencePage .authMode-signup .authColumnTitle > svg {
+    width: 26px;
+    height: 26px;
+    padding: 6px;
+  }
+
+  .authExperiencePage .authMode-signup .authColumnTitle strong {
+    font-size: .73rem;
+  }
+
+  .authExperiencePage .authMode-signup .authColumnTitle small {
+    display: none;
+  }
+
+  html body .authExperiencePage .authMode-signup .accessCard label {
+    font-size: .64rem;
+  }
+
+  html body .authExperiencePage .authMode-signup .accessCard :is(input:not([type="checkbox"]), select) {
+    min-height: 34px;
+    border-radius: 10px !important;
+    font-size: .72rem;
+  }
+
+  .authExperiencePage .authMode-signup .authInputShell > svg {
+    left: 12px;
+    width: 16px;
+    height: 16px;
+  }
+
+  html body .authExperiencePage .authMode-signup .authInputShell input {
+    padding-left: 36px;
+  }
+
+  .authExperiencePage .authMode-signup .authSensitiveDataHint {
+    display: none;
+  }
+
+  .authExperiencePage .authMode-signup .authLegalItem {
+    gap: 1px;
+    padding: 6px 9px;
+  }
+
+  .authExperiencePage .authMode-signup .authLegalItem > strong {
+    font-size: .64rem !important;
+  }
+
+  .authExperiencePage .authMode-signup .authLegalItem > small {
+    display: none;
+  }
+
+  html body .authExperiencePage .authMode-signup .authLegalItem > label {
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 5px;
+    margin-top: 1px;
+    font-size: .56rem;
+  }
+
+  html body .authExperiencePage .authMode-signup .authLegalItem input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+  }
+
+  .authExperiencePage .authMode-signup .authLegalAgreements > p {
+    display: none;
+  }
+
+  html body .authExperiencePage .authMode-signup .accessCard button.authSubmitButton[type="submit"] {
+    position: sticky;
+    z-index: 3;
+    bottom: 0;
+    min-height: 38px;
+    font-size: .78rem;
   }
 }
 
