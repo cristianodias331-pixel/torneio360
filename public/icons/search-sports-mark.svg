@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" role="img" aria-label="Bola e raquete">
+  <defs>
+    <linearGradient id="ball" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4ff6a"/>
+      <stop offset="1" stop-color="#9fd900"/>
+    </linearGradient>
+    <linearGradient id="racket" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff795d"/>
+      <stop offset="1" stop-color="#d92f3f"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(5 6)">
+    <circle cx="8" cy="8" r="7" fill="url(#ball)" stroke="#f1ff9b" stroke-width="1"/>
+    <path d="M2.8 4.1c3.2 1.2 6.4 4.7 8.1 8.5M5.1 1.8c1.8 2.8 5.4 5 9.7 5.5" fill="none" stroke="#fffbd4" stroke-width="1.15" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(24 1) rotate(-13 10 13)">
+    <ellipse cx="10" cy="9" rx="7.5" ry="9" fill="none" stroke="url(#racket)" stroke-width="2.3"/>
+    <path d="M5 3.7l10 10.6M3.5 7.6l11 8.1M7.1 1.2l9.1 9.5M3.1 11.4l8.1-9.8M5.4 15.5l10.8-11" fill="none" stroke="#ffb1a5" stroke-width=".55" opacity=".92"/>
+    <path d="M14.8 15.5l4.3 7.3" fill="none" stroke="#ffb43b" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M17.3 20.1l2.8 4.6" fill="none" stroke="#e73d36" stroke-width="2.3" stroke-linecap="round"/>
+  </g>
+</svg>

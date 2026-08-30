@@ -429,7 +429,7 @@ export default function ScheduleView({
               value={scheduleStatusFilter}
               onChange={selectScheduleStatusFilter}
             />
-            <label className="scheduleSearch">
+            <label className="scheduleSearch platformUnifiedSearch">
               <Search aria-hidden="true" />
               <input
                 type="search"

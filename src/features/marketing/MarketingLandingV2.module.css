@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/manrope-variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 .root {
   --mk-bg: #030c1b;
   --mk-bg-deep: #010714;
@@ -77,6 +85,14 @@
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.cleanLogo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .desktopNav {
@@ -2241,12 +2257,11 @@
   --mk-radius-sm: 16px;
   --mk-radius-md: 24px;
   --mk-radius-lg: 30px;
-  font-family: "Segoe UI Variable Text", "Aptos", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Manrope", "Segoe UI Variable Text", "Aptos", ui-sans-serif, system-ui, sans-serif;
 }
 
 .root :where(h1, h2, h3, strong, button, .eyebrow) {
-  font-family: "Segoe UI Variable Display", "Aptos Display", "Inter", ui-sans-serif, system-ui, sans-serif;
-  font-variation-settings: "wght" 720, "opsz" 32;
+  font-family: "Manrope", "Segoe UI Variable Display", "Aptos Display", ui-sans-serif, system-ui, sans-serif;
 }
 
 .heroCopy h1,
@@ -2260,7 +2275,7 @@
 .secondaryButton,
 .menuButton {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 999px;
   isolation: isolate;
 }
@@ -2292,8 +2307,41 @@
 }
 
 .primaryButton:hover,
-.secondaryButton:hover {
-  box-shadow: 0 0 0 1px rgba(255, 126, 30, 0.28), 0 14px 34px rgba(255, 90, 0, 0.26);
+.secondaryButton:hover,
+.menuButton:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 215, 70, 0.5),
+    0 0 22px rgba(255, 117, 0, 0.72),
+    0 18px 42px rgba(255, 66, 0, 0.38);
+}
+
+.primaryButton::after,
+.secondaryButton::after,
+.menuButton::after {
+  position: absolute;
+  z-index: -1;
+  inset: -16px -11px;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse at 8% 92%, #fff078 0 7%, #ffae00 17%, #ff5100 34%, transparent 58%),
+    radial-gradient(ellipse at 28% 100%, #ffe25a 0 8%, #ff8700 20%, #f63b00 38%, transparent 62%),
+    radial-gradient(ellipse at 50% 88%, #fff18a 0 7%, #ff9c00 19%, #ff4700 36%, transparent 59%),
+    radial-gradient(ellipse at 72% 100%, #ffe35c 0 8%, #ff7a00 20%, #f33a00 39%, transparent 62%),
+    radial-gradient(ellipse at 94% 90%, #fff18a 0 7%, #ff9a00 18%, #ff4d00 35%, transparent 58%);
+  filter: blur(3px) saturate(1.25) drop-shadow(0 0 12px rgba(255, 81, 0, 0.9));
+  transform: translateY(10px) scale(0.94, 0.78);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.primaryButton:hover::after,
+.secondaryButton:hover::after,
+.menuButton:hover::after {
+  opacity: 0.96;
+  transform: translateY(0) scale(1, 1);
+  animation: buttonFlameDance 480ms ease-in-out infinite alternate;
 }
 
 .liveMatch,
@@ -2338,60 +2386,85 @@
 }
 
 .fireball {
+  --ball-flight-mid: min(30vw, 380px);
+  --ball-flight-end: min(58vw, 720px);
   position: absolute;
   z-index: 0;
-  bottom: 9%;
-  left: 1.5%;
-  width: 56px;
-  height: 56px;
+  bottom: 10%;
+  left: 3%;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(circle at 34% 30%, #fff7a3 0 8%, #ffd928 18%, #ff8a00 42%, #f04b00 68%, #8f1800 100%);
-  box-shadow: 0 0 18px rgba(255, 217, 40, 0.95), 0 0 46px rgba(255, 90, 0, 0.72), 0 0 86px rgba(255, 73, 0, 0.38);
-  animation: fireballFlight 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  background: radial-gradient(circle at 31% 27%, #f7ffb1 0 7%, #dfff36 20%, #b9e824 46%, #78a90c 73%, #304d02 100%);
+  box-shadow:
+    inset -9px -11px 16px rgba(39, 75, 0, 0.48),
+    0 0 22px rgba(220, 255, 48, 0.9),
+    0 0 56px rgba(255, 117, 0, 0.92),
+    0 0 104px rgba(255, 57, 0, 0.54);
+  animation: fireballFlight 6.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .fireball::before {
   position: absolute;
-  top: 8px;
-  right: 38px;
-  width: 118px;
-  height: 42px;
+  top: 4px;
+  right: 51px;
+  width: 190px;
+  height: 64px;
   border-radius: 70% 18% 18% 70%;
   content: "";
   background:
-    radial-gradient(ellipse at 92% 50%, #ffd43b 0 19%, #ff7900 34%, rgba(255, 76, 0, 0.82) 52%, transparent 72%),
-    linear-gradient(90deg, transparent, rgba(255, 76, 0, 0.74));
-  filter: blur(3px) drop-shadow(0 0 12px rgba(255, 90, 0, 0.82));
+    radial-gradient(ellipse at 92% 50%, #fff27a 0 14%, #ffba09 25%, #ff6a00 40%, rgba(235, 47, 0, 0.9) 57%, transparent 75%),
+    repeating-linear-gradient(96deg, transparent 0 12px, rgba(255, 92, 0, 0.78) 16px 25px, transparent 34px 46px);
+  filter: blur(3px) saturate(1.3) drop-shadow(0 0 18px rgba(255, 72, 0, 0.95));
   transform-origin: right center;
-  animation: flameFlicker 430ms ease-in-out infinite alternate;
+  animation: flameFlicker 310ms ease-in-out infinite alternate;
 }
 
 .fireball::after {
   position: absolute;
-  top: 21px;
-  right: 54px;
-  width: 7px;
-  height: 7px;
+  top: 28px;
+  right: 75px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   content: "";
-  background: #ffbd2e;
-  box-shadow: -28px -14px 0 -1px #ff6b00, -48px 10px 0 -2px #ff9b13, -74px -5px 0 -2px #ff4f00, -94px 15px 0 -3px #ffc13b;
-  animation: fireSparks 680ms linear infinite;
+  background: #ffe36b;
+  box-shadow: -34px -18px 0 -1px #ff7a00, -62px 15px 0 -2px #ffae15, -94px -7px 0 -2px #ff4f00, -128px 18px 0 -3px #ffc13b, -154px -14px 0 -3px #ff5a00;
+  animation: fireSparks 520ms linear infinite;
 }
 
 .fireball span {
   position: absolute;
-  inset: 11px;
-  border: 2px solid rgba(255, 247, 171, 0.7);
-  border-right-color: transparent;
-  border-left-color: transparent;
+  inset: 0;
   border-radius: 50%;
   animation: ballSpin 900ms linear infinite;
 }
 
+.fireball span::before,
+.fireball span::after {
+  position: absolute;
+  top: 2px;
+  width: 45px;
+  height: 67px;
+  border: 3px solid rgba(255, 255, 221, 0.92);
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  content: "";
+  filter: drop-shadow(0 0 2px rgba(85, 112, 0, 0.5));
+}
+
+.fireball span::before { left: -15px; }
+.fireball span::after { right: -15px; }
+
 @keyframes movingButtonBorder {
   to { transform: rotate(360deg); }
+}
+
+@keyframes buttonFlameDance {
+  0% { background-position: 0 2px, 0 -2px, 0 1px, 0 -3px, 0 2px; filter: blur(3px) saturate(1.2) drop-shadow(0 0 10px rgba(255, 72, 0, 0.82)); }
+  100% { background-position: -5px -7px, 4px 5px, -3px -6px, 5px 4px, -4px -8px; filter: blur(2px) saturate(1.5) drop-shadow(0 0 18px rgba(255, 72, 0, 1)); }
 }
 
 @keyframes previewFloat {
@@ -2400,11 +2473,11 @@
 }
 
 @keyframes fireballFlight {
-  0%, 100% { transform: translate3d(-30px, 12px, 0) scale(0.82) rotate(-8deg); opacity: 0; }
-  8% { opacity: 0.9; }
-  42% { transform: translate3d(210px, -38px, 0) scale(1) rotate(4deg); opacity: 0.92; }
-  72% { transform: translate3d(430px, 5px, 0) scale(0.9) rotate(-3deg); opacity: 0.72; }
-  88% { opacity: 0; }
+  0% { transform: translate3d(-80px, 28px, 0) scale(0.78) rotate(-10deg); opacity: 0; }
+  4% { opacity: 1; }
+  46% { transform: translate3d(var(--ball-flight-mid), -78px, 0) scale(1.08) rotate(5deg); opacity: 1; }
+  82% { transform: translate3d(var(--ball-flight-end), -18px, 0) scale(0.94) rotate(-4deg); opacity: 0.96; }
+  96%, 100% { transform: translate3d(calc(var(--ball-flight-end) + 120px), -45px, 0) scale(0.75) rotate(3deg); opacity: 0; }
 }
 
 @keyframes flameFlicker {
@@ -2423,26 +2496,272 @@
 
 @media (max-width: 900px) {
   .fireball {
-    bottom: 43%;
-    left: 4%;
-    width: 42px;
-    height: 42px;
-    opacity: 0.68;
+    --ball-flight-mid: 145px;
+    --ball-flight-end: 310px;
+    bottom: 42%;
+    left: 5%;
+    width: 50px;
+    height: 50px;
   }
 
   .fireball::before {
-    top: 7px;
-    right: 30px;
-    width: 78px;
-    height: 28px;
+    top: 2px;
+    right: 35px;
+    width: 118px;
+    height: 45px;
   }
 
   .fireball::after {
-    top: 17px;
-    right: 43px;
+    top: 19px;
+    right: 51px;
   }
 
-  .fireball span {
-    inset: 8px;
+  .fireball span::before,
+  .fireball span::after {
+    top: 1px;
+    width: 32px;
+    height: 47px;
+    border-width: 2px;
+  }
+
+  .fireball span::before { left: -11px; }
+  .fireball span::after { right: -11px; }
+}
+
+/* Fotos fictícias de atletas, recortadas de uma única imagem leve. */
+.avatarPair .athletePhoto {
+  display: block;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  border: 2px solid #eef5ff;
+  border-radius: 50%;
+  background-image: url("/marketing/scoreboard-athletes-v1.jpg");
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32), 0 0 0 2px rgba(255, 103, 13, 0.16);
+}
+
+.avatarPair .athletePhoto + .athletePhoto { margin-left: -14px; }
+.athleteOne { background-position: 0 0; }
+.athleteTwo { background-position: 100% 0; }
+.athleteThree { background-position: 0 100%; }
+.athleteFour { background-position: 100% 100%; }
+
+/* Chamas ambientes no fundo de cada aba da apresentação. */
+.section,
+.contactSection {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.section > *,
+.contactSection > * {
+  position: relative;
+  z-index: 2;
+}
+
+.section::before,
+.contactSection::before {
+  position: absolute;
+  z-index: 0;
+  right: -8%;
+  bottom: -105px;
+  left: -8%;
+  height: 360px;
+  content: "";
+  pointer-events: none;
+  opacity: 0.48;
+  background:
+    radial-gradient(ellipse 10% 72% at 7% 100%, #ffe56a 0 5%, rgba(255, 142, 0, .95) 25%, rgba(255, 58, 0, .72) 52%, transparent 73%),
+    radial-gradient(ellipse 12% 96% at 26% 100%, #fff08a 0 4%, rgba(255, 166, 0, .96) 23%, rgba(255, 68, 0, .76) 52%, transparent 72%),
+    radial-gradient(ellipse 10% 78% at 49% 100%, #ffe66d 0 5%, rgba(255, 128, 0, .95) 24%, rgba(246, 48, 0, .72) 51%, transparent 73%),
+    radial-gradient(ellipse 13% 100% at 72% 100%, #fff28c 0 4%, rgba(255, 174, 0, .94) 22%, rgba(255, 70, 0, .74) 52%, transparent 72%),
+    radial-gradient(ellipse 10% 82% at 94% 100%, #ffe166 0 5%, rgba(255, 134, 0, .94) 24%, rgba(246, 54, 0, .72) 52%, transparent 73%);
+  filter: blur(12px) saturate(1.2);
+  transform-origin: center bottom;
+  animation: sectionFlameBreath 4.8s ease-in-out infinite alternate;
+}
+
+.section::after,
+.contactSection::after {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 2%;
+  left: 0;
+  height: 50%;
+  content: "";
+  pointer-events: none;
+  opacity: 0.4;
+  background:
+    radial-gradient(circle at 9% 82%, #ffb11b 0 2px, transparent 3px),
+    radial-gradient(circle at 23% 48%, #ff6a00 0 2px, transparent 3px),
+    radial-gradient(circle at 41% 73%, #ffd45e 0 1px, transparent 3px),
+    radial-gradient(circle at 64% 45%, #ff7800 0 2px, transparent 3px),
+    radial-gradient(circle at 83% 70%, #ffc031 0 2px, transparent 3px),
+    radial-gradient(circle at 94% 36%, #ff5a00 0 1px, transparent 3px);
+  animation: sectionEmbers 5.6s linear infinite;
+}
+
+.sportsSection::before { animation-delay: -1.9s; }
+.contactSection::before { animation-delay: -3.1s; }
+
+@keyframes sectionFlameBreath {
+  0% { transform: translateY(34px) scale(1.02, 0.84); opacity: 0.34; }
+  55% { transform: translateY(-8px) scale(1.05, 1.1); opacity: 0.58; }
+  100% { transform: translateY(10px) scale(0.98, 0.96); opacity: 0.46; }
+}
+
+@keyframes sectionEmbers {
+  0% { transform: translateY(48px); opacity: 0; }
+  20% { opacity: 0.44; }
+  100% { transform: translateY(-170px); opacity: 0; }
+}
+
+/* Escolha de webmail: nunca aciona o aplicativo de e-mail do computador. */
+.supportPanel > button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 36px 1fr 22px;
+  align-items: center;
+  gap: 14px;
+  padding: 17px 4px;
+  border-bottom: 1px solid rgba(143, 164, 193, 0.2);
+  cursor: pointer;
+  color: #f1f3f7;
+  background: transparent;
+  text-align: left;
+}
+
+.supportPanel > button > svg:first-child { color: #f8f9fb; }
+.supportPanel > button > svg:last-child { color: var(--mk-orange-bright); }
+.supportPanel > button span { display: grid; }
+.supportPanel > button small { margin-top: 3px; color: var(--mk-muted); }
+.supportPanel > button:hover,
+.supportPanel > button:focus-visible { color: var(--mk-orange-bright); }
+
+.webmailOverlay {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 5, 15, 0.78);
+  backdrop-filter: blur(14px);
+  animation: webmailFadeIn 180ms ease both;
+}
+
+.webmailDialog {
+  position: relative;
+  width: min(600px, 100%);
+  padding: 38px;
+  border: 1px solid rgba(255, 119, 24, 0.5);
+  border-radius: 30px;
+  background: linear-gradient(145deg, rgba(11, 29, 53, 0.98), rgba(2, 10, 24, 0.99));
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.58), 0 0 42px rgba(255, 85, 0, 0.14);
+}
+
+.webmailDialog h2 {
+  margin-top: 8px;
+  font-size: clamp(1.8rem, 4vw, 2.65rem);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+}
+
+.webmailDialog > p {
+  margin-top: 12px;
+  color: var(--mk-muted);
+  line-height: 1.55;
+}
+
+.webmailClose {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--mk-border-strong) !important;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(5, 18, 35, 0.86);
+}
+
+.webmailClose svg { width: 20px; }
+
+.webmailChoices {
+  display: grid;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.webmailChoices button {
+  display: grid;
+  min-height: 76px;
+  grid-template-columns: 46px 1fr 24px;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 14px;
+  padding: 13px 16px;
+  border: 1px solid var(--mk-border-strong) !important;
+  border-radius: 18px;
+  cursor: pointer;
+  color: #f8fafc;
+  background: rgba(7, 23, 44, 0.9);
+  text-align: left;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.webmailChoices button > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  grid-row: 1 / 3;
+  place-items: center;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(145deg, #ff7a17, #e64500);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.webmailChoices button strong { align-self: end; }
+.webmailChoices button small { align-self: start; color: var(--mk-muted); }
+.webmailChoices button svg { grid-column: 3; grid-row: 1 / 3; color: var(--mk-orange-bright); }
+.webmailChoices button:hover,
+.webmailChoices button:focus-visible {
+  border-color: rgba(255, 116, 23, 0.8) !important;
+  background: rgba(16, 39, 68, 0.98);
+  transform: translateY(-2px);
+}
+
+@keyframes webmailFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  .section::before,
+  .contactSection::before {
+    bottom: -135px;
+    height: 330px;
+    opacity: 0.4;
+  }
+
+  .webmailDialog {
+    max-height: calc(100svh - 28px);
+    overflow-y: auto;
+    padding: 30px 18px 20px;
+    border-radius: 24px;
+  }
+
+  .webmailChoices button {
+    grid-template-columns: 42px 1fr 20px;
+    padding-inline: 12px;
   }
 }

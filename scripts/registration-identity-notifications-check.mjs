@@ -32,7 +32,7 @@ assert.ok(
 
 assert.ok(
   registration.includes("requiresFixedDoubles(modalityConfig[type])")
-    && registration.includes("Atleta que está se inscrevendo")
+    && registration.includes("Complete apenas o que falta no perfil")
     && registration.includes("form.athleteHandle")
     && registration.includes("Encontre o outro atleta da dupla")
     && registration.includes("searchTournamentPartnerCandidates")

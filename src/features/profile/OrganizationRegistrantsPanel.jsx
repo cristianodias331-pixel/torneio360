@@ -392,7 +392,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
       </div>
 
       <div className="organizationRegistrantToolbar">
-        <label className="organizationRegistrantSearch"><Search aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar atleta, dupla ou torneio" /></label>
+        <label className="organizationRegistrantSearch platformUnifiedSearch"><Search aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar atleta, dupla ou torneio" /></label>
         <nav aria-label="Filtrar situação dos inscritos">
           {statusFilters.map((item) => <button type="button" key={item.id} aria-pressed={statusFilter === item.id} className={statusFilter === item.id ? "active" : ""} onClick={() => setStatusFilter(item.id)}><span>{item.label}</span><b>{metrics[item.id] ?? metrics.total}</b></button>)}
         </nav>

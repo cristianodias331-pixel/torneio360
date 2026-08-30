@@ -4964,7 +4964,7 @@ assert.ok(
   "A fase de grupos ou o resumo isolado da chave aberta está ausente."
 );
 assert.ok(
-  matchScheduleSource.includes('className="scheduleSearch"')
+  matchScheduleSource.includes('className="scheduleSearch platformUnifiedSearch"')
     && matchScheduleSource.includes('className="scheduleOverviewPrimary"')
     && matchScheduleSource.includes('const SCHEDULE_STATUS_FILTERS = [')
     && matchScheduleSource.includes('aria-pressed={value === filter.value}')

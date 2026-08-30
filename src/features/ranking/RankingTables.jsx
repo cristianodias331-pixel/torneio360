@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { isMixedType } from "../../domain/modalityClassification.mjs";
 import {
@@ -146,7 +147,8 @@ export function RankingTable({
 
       {showProgressiveControls ? (
         <div className="rankingProgressiveToolbar">
-          <label className="rankingProgressiveSearch">
+          <label className="rankingProgressiveSearch platformUnifiedSearch">
+            <Search aria-hidden="true" />
             <span className="srOnly">Pesquisar em {title}</span>
             <input
               type="search"

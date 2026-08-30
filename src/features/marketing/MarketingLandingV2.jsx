@@ -15,7 +15,7 @@ import {
   Volume2,
   X,
 } from "lucide-react";
-import { BeachLogo, PLATFORM_SUPPORT } from "../appShell/EntryPresentation.jsx";
+import { PLATFORM_SUPPORT } from "../appShell/EntryPresentation.jsx";
 import styles from "./MarketingLandingV2.module.css";
 
 const steps = [
@@ -72,12 +72,33 @@ const upcomingSports = [
 ];
 
 const rankingRows = [
-  ["João Pedro / Lucas Lima", "1.250 pts"],
-  ["Rafael Nunes / Gabriel Souza", "980 pts"],
+  ["João Pedro / Larissa Lima", "1.250 pts"],
+  ["Rafael Nunes / Gabriela Souza", "980 pts"],
   ["André Barros / Felipe Cunha", "870 pts"],
   ["Gustavo Melo / Matheus Prado", "760 pts"],
   ["Bruno Farias / Thiago Oliveira", "650 pts"],
 ];
+
+const SUPPORT_EMAIL = "torneio360@gmail.com";
+const WEBMAIL_PROVIDERS = [
+  { id: "gmail", label: "Gmail", detail: "Abrir no Gmail pelo navegador" },
+  { id: "outlook", label: "Outlook Web", detail: "Abrir no Outlook pelo navegador" },
+  { id: "yahoo", label: "Yahoo Mail", detail: "Abrir no Yahoo pelo navegador" },
+];
+
+function buildWebmailUrl(provider, draft) {
+  const to = encodeURIComponent(draft.to || SUPPORT_EMAIL);
+  const subject = encodeURIComponent(draft.subject || "Contato pelo site Torneio 360");
+  const body = encodeURIComponent(draft.body || "");
+
+  if (provider === "outlook") {
+    return `https://outlook.live.com/mail/0/deeplink/compose?to=${to}&subject=${subject}&body=${body}`;
+  }
+  if (provider === "yahoo") {
+    return `https://compose.mail.yahoo.com/?to=${to}&subject=${subject}&body=${body}`;
+  }
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
+}
 
 function scrollToSection(id, { updateHash = true } = {}) {
   const section = document.getElementById(id);
@@ -112,10 +133,20 @@ function NavLink({ section, children, onNavigate, activeSection }) {
   );
 }
 
-function SupportLink({ id }) {
+function SupportLink({ id, onEmail }) {
   const support = PLATFORM_SUPPORT.find((item) => item.id === id);
   if (!support) return null;
   const { Icon, label, value, href, external } = support;
+
+  if (id === "email") {
+    return (
+      <button type="button" onClick={onEmail}>
+        <Icon aria-hidden="true" />
+        <span><strong>{label}</strong><small>{value}</small></span>
+        <ChevronRight aria-hidden="true" />
+      </button>
+    );
+  }
 
   return (
     <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined}>
@@ -129,6 +160,7 @@ function SupportLink({ id }) {
 export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
+  const [webmailDraft, setWebmailDraft] = useState(null);
 
   useEffect(() => {
     document.documentElement.dataset.marketingLandingV2 = "true";
@@ -176,6 +208,15 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!webmailDraft) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setWebmailDraft(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [webmailDraft]);
+
   function closeMenu() {
     setMenuOpen(false);
   }
@@ -190,14 +231,28 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
       "",
       String(data.get("message") || "").trim(),
     ].join("\n");
-    window.location.href = "mailto:torneio360@gmail.com?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    setWebmailDraft({ to: SUPPORT_EMAIL, subject, body });
+  }
+
+  function openSupportEmail() {
+    setWebmailDraft({
+      to: SUPPORT_EMAIL,
+      subject: "Contato pelo site Torneio 360",
+      body: "Olá, equipe Torneio 360!\n\n",
+    });
+  }
+
+  function openWebmail(provider) {
+    if (!webmailDraft) return;
+    window.open(buildWebmailUrl(provider, webmailDraft), "_blank", "noopener,noreferrer");
+    setWebmailDraft(null);
   }
 
   return (
     <div className={styles.root}>
       <header className={styles.header}>
         <button className={styles.brand} type="button" onClick={(event) => { window.scrollTo({ top: 0, behavior: "smooth" }); event.currentTarget.blur(); }} aria-label="Voltar ao início">
-          <BeachLogo layout="horizontal" />
+          <img className={styles.cleanLogo} src="/marketing/torneio360-logo-clean-v1.png" alt="Torneio 360" />
         </button>
 
         <nav className={styles.desktopNav} aria-label="Navegação da apresentação">
@@ -267,9 +322,9 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
                 <strong>Quadra 3</strong>
               </div>
               <div className={styles.scoreboard}>
-                <div className={styles.team}><span className={styles.avatarPair}><b>JP</b><b>LL</b></span><small>João Pedro<br />Lucas Lima</small></div>
+                <div className={styles.team}><span className={styles.avatarPair}><span className={`${styles.athletePhoto} ${styles.athleteOne}`} aria-hidden="true" /><span className={`${styles.athletePhoto} ${styles.athleteThree}`} aria-hidden="true" /></span><small>João Pedro<br />Larissa Lima</small></div>
                 <strong>4</strong><em>×</em><strong>2</strong>
-                <div className={styles.team}><span className={styles.avatarPair}><b>RN</b><b>GS</b></span><small>Rafael Nunes<br />Gabriel Souza</small></div>
+                <div className={styles.team}><span className={styles.avatarPair}><span className={`${styles.athletePhoto} ${styles.athleteTwo}`} aria-hidden="true" /><span className={`${styles.athletePhoto} ${styles.athleteFour}`} aria-hidden="true" /></span><small>Rafael Nunes<br />Gabriela Souza</small></div>
               </div>
             </div>
             <div className={styles.rankingPreview}>
@@ -359,22 +414,43 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
               <label><span>E-mail</span><input name="email" type="email" placeholder="E-mail" required /></label>
               <label><span>Assunto</span><input name="subject" type="text" placeholder="Assunto" required /></label>
               <label><span>Mensagem</span><textarea name="message" placeholder="Mensagem" required /></label>
-              <button className={styles.primaryButton} type="submit">Abrir e-mail para enviar</button>
-              <p className={styles.contactDeliveryNote}><Mail aria-hidden="true" /> A mensagem será preparada para torneio360@gmail.com no seu aplicativo de e-mail.</p>
+              <button className={styles.primaryButton} type="submit">Escolher e-mail na web</button>
+              <p className={styles.contactDeliveryNote}><Mail aria-hidden="true" /> Abra pelo Gmail, Outlook Web ou Yahoo Mail, sem usar aplicativos instalados.</p>
             </form>
           </div>
           <aside className={styles.supportPanel}>
             <h3><MessageCircle aria-hidden="true" /> Precisa de ajuda?</h3>
             <SupportLink id="whatsapp" />
             <SupportLink id="instagram" />
-            <SupportLink id="email" />
+            <SupportLink id="email" onEmail={openSupportEmail} />
             <p><Mail aria-hidden="true" /> Responderemos pelo canal informado.</p>
           </aside>
         </section>
       </main>
 
+      {webmailDraft ? (
+        <div className={styles.webmailOverlay} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setWebmailDraft(null); }}>
+          <section className={styles.webmailDialog} role="dialog" aria-modal="true" aria-labelledby="webmail-title">
+            <button className={styles.webmailClose} type="button" onClick={() => setWebmailDraft(null)} aria-label="Fechar escolha de e-mail"><X aria-hidden="true" /></button>
+            <span className={styles.eyebrow}>E-mail pelo navegador</span>
+            <h2 id="webmail-title">Escolha seu e-mail na web</h2>
+            <p>A mensagem será aberta pronta para envio. Nenhum aplicativo instalado será usado.</p>
+            <div className={styles.webmailChoices}>
+              {WEBMAIL_PROVIDERS.map((provider) => (
+                <button key={provider.id} type="button" onClick={() => openWebmail(provider.id)}>
+                  <span aria-hidden="true">{provider.label.slice(0, 1)}</span>
+                  <strong>{provider.label}</strong>
+                  <small>{provider.detail}</small>
+                  <ArrowRight aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       <footer className={styles.footer}>
-        <div className={styles.footerBrand}><BeachLogo layout="horizontal" /></div>
+        <div className={styles.footerBrand}><img className={styles.cleanLogo} src="/marketing/torneio360-logo-clean-v1.png" alt="Torneio 360" /></div>
         <nav aria-label="Navegação do rodapé">
           <NavLink section="como-funciona" activeSection={activeSection}>Como funciona</NavLink>
           <NavLink section="planos" activeSection={activeSection}>Planos</NavLink>

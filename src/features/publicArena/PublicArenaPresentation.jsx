@@ -706,7 +706,7 @@ export function PublicTournamentFeedView({
       </div>
 
       {discoveryMode ? (
-        <label className="publicTournamentDiscoverySearch">
+        <label className="publicTournamentDiscoverySearch platformUnifiedSearch">
           <Search aria-hidden="true" />
           <input
             type="search"

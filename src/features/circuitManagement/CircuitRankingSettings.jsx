@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import {
   circuitTieBreakOrderOptions,
@@ -88,7 +89,8 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
             </button>
           </div>
           <div className="circuitGenderRegistryTools">
-            <label>
+            <label className="platformUnifiedSearch">
+              <Search aria-hidden="true" />
               <span className="srOnly">Pesquisar atleta</span>
               <input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setVisibleLimit(genderCandidatesPageSize); }} placeholder="Pesquisar atleta..." />
             </label>

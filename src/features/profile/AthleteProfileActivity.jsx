@@ -544,7 +544,7 @@ export default function AthleteProfileActivity({
         {schemaNotice}
         {notice ? <p className="athleteActivityNotice">{notice}</p> : null}
         <div className="athleteChallengeSearch">
-          <label><Search aria-hidden="true" /><input type="search" value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Encontre um atleta pelo nome ou @" autoComplete="off" />{challengeCandidates.loading ? <RefreshCw className="spinning" aria-hidden="true" /> : null}</label>
+          <label className="platformUnifiedSearch"><Search aria-hidden="true" /><input type="search" value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Encontre um atleta pelo nome ou @" autoComplete="off" />{challengeCandidates.loading ? <RefreshCw className="spinning" aria-hidden="true" /> : null}</label>
           {challengeQuery.trim().length >= 2 ? <div className="athleteChallengeSuggestions" aria-live="polite">
             {challengeCandidates.items.map((athlete) => <article key={athlete.id}>
               <button type="button" className="athleteChallengeCandidate" onClick={() => navigatePlatform({ perfil: athlete.handle || athlete.id })}>
