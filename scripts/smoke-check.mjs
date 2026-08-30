@@ -478,6 +478,14 @@ const memberProfileWorkspaceSource = readFileSync(
   new URL("src/features/profile/MemberProfileWorkspace.jsx", root),
   "utf8"
 );
+const memberProfileDetailsSource = readFileSync(
+  new URL("src/features/profile/MemberProfileDetailsModal.jsx", root),
+  "utf8"
+);
+const tournamentRegistrationPanelSource = readFileSync(
+  new URL("src/features/registration/TournamentRegistrationPanel.jsx", root),
+  "utf8"
+);
 const athleteProfileActivitySource = readFileSync(
   new URL("src/features/profile/AthleteProfileActivity.jsx", root),
   "utf8"
@@ -4477,7 +4485,7 @@ assert.deepEqual(
 );
 assert.ok(
   !participantManagementSource.includes("orderFixedMixedPair")
-    && participantManagementSource.includes("o parceiro receberá automaticamente o gênero oposto")
+    && participantManagementSource.includes("o parceiro receberá automaticamente a categoria oposta")
     && participantManagementSource.includes("orderConfirmedMixedTeams"),
   "O importador misto deve vincular os gêneros da dupla e colocar o homem na primeira posição."
 );
@@ -4521,7 +4529,7 @@ const tournamentGenderSelectorSource = readFileSync(
   "utf8"
 );
 assert.ok(
-  tournamentGenderSelectorSource.includes('<option value="" disabled>Escolha o gênero</option>')
+  tournamentGenderSelectorSource.includes('<option value="" disabled>Escolha a composição</option>')
     && tournamentGenderSelectorSource.includes("required={!fixedByModality}"),
   "A criação deve iniciar sem gênero selecionado e exigir uma escolha do organizador."
 );
@@ -5145,6 +5153,15 @@ assert.ok(
   "A conta gratuita voltou a usar uma área separada ou perdeu o bloqueio de assinatura."
 );
 assert.ok(
+  memberProfileDetailsSource.includes("Categoria esportiva")
+    && memberProfileDetailsSource.includes("Nível técnico")
+    && memberProfileDetailsSource.includes("Esta informação não será exibida publicamente")
+    && !memberProfileDetailsSource.includes("Gênero do atleta")
+    && tournamentRegistrationPanelSource.includes("categoria esportiva no seu perfil de atleta")
+    && tournamentRegistrationPanelSource.includes("categorias esportivas diferentes"),
+  "O cadastro e a inscrição voltaram a confundir categoria esportiva com gênero ou nível técnico."
+);
+assert.ok(
   organizerWorkspaceSource.includes("<PlatformSidebar")
     && organizerWorkspaceSource.includes("<PlatformTopbar")
     && unifiedPlatformFrameSource.includes("<PlatformSidebar")
@@ -5200,7 +5217,7 @@ assert.ok(
     && organizationRegistrantsPanelSource.includes("Em análise")
     && organizationRegistrantsPanelSource.includes("Procuram dupla")
     && organizationRegistrantsPanelSource.includes("Categoria")
-    && organizationRegistrantsPanelSource.includes("Gênero")
+    && organizationRegistrantsPanelSource.includes("Categoria esportiva")
     && organizationRegistrantsPanelSource.includes("Modalidade")
     && organizationRegistrantsApiSource.includes("get_my_organization_registrations")
     && organizationRegistrantsApiSource.includes("review_tournament_registration_workflow")

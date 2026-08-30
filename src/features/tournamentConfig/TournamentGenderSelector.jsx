@@ -32,9 +32,9 @@ export default function TournamentGenderSelector({
         required={!fixedByModality}
         aria-required={!fixedByModality}
         onChange={(event) => onChange(event.target.value)}
-        aria-label="Gênero do torneio"
+        aria-label="Composição da competição"
       >
-        {!fixedByModality ? <option value="" disabled>Escolha o gênero</option> : null}
+        {!fixedByModality ? <option value="" disabled>Escolha a composição</option> : null}
         {tournamentGenderOptions.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
@@ -45,8 +45,8 @@ export default function TournamentGenderSelector({
           className="tournamentGenderOtherInput"
           value={customValue}
           onChange={(event) => onCustomChange(event.target.value)}
-          placeholder="Escreva o gênero"
-          aria-label="Outro gênero"
+          placeholder="Descreva a composição"
+          aria-label="Outra composição"
         />
       ) : null}
     </div>

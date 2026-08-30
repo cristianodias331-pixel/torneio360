@@ -803,7 +803,7 @@ export default function LoginScreen({
 
             <Info
               title="Super 12"
-              text="Formato individual com 12 participantes escolhidos livremente pelo organizador, sem exigência de gênero. São 11 rodadas em 3 quadras, sem descanso: cada atleta forma dupla uma vez com cada um dos outros participantes e enfrenta cada adversário exatamente duas vezes. Todos aparecem juntos em um único ranking geral."
+              text="Formato individual com 12 participantes escolhidos livremente pelo organizador, sem separação por categoria esportiva. São 11 rodadas em 3 quadras, sem descanso: cada atleta forma dupla uma vez com cada um dos outros participantes e enfrenta cada adversário exatamente duas vezes. Todos aparecem juntos em um único ranking geral."
             />
 
             <Info

@@ -67,7 +67,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
 
       {candidates.length ? (
         <>
-          <div className="circuitGenderTabs" role="tablist" aria-label="Situação dos gêneros dos atletas">
+          <div className="circuitGenderTabs" role="tablist" aria-label="Situação das categorias esportivas dos atletas">
             <button
               type="button"
               role="tab"
@@ -75,7 +75,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
               className={`pending ${activeTab === "pending" ? "selected" : ""}`}
               onClick={() => { setActiveTab("pending"); setVisibleLimit(genderCandidatesPageSize); }}
             >
-              Gêneros a confirmar <span>{pendingCount}</span>
+              Categorias a confirmar <span>{pendingCount}</span>
             </button>
             <button
               type="button"
@@ -84,7 +84,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
               className={`confirmed ${activeTab === "confirmed" ? "selected" : ""}`}
               onClick={() => { setActiveTab("confirmed"); setVisibleLimit(genderCandidatesPageSize); }}
             >
-              Gêneros confirmados <span>{confirmedCount}</span>
+              Categorias confirmadas <span>{confirmedCount}</span>
             </button>
           </div>
           <div className="circuitGenderRegistryTools">
@@ -124,7 +124,7 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
                         Usar sugestão
                       </button>
                     ) : null}
-                    <div className="circuitGenderChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
+                    <div className="circuitGenderChoices" role="radiogroup" aria-label={`Categoria esportiva de ${candidate.name}`}>
                       <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.masculine} className={selectedGender === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.masculine)}><span aria-hidden="true">{selectedGender === participantGenderValues.masculine ? "✓" : ""}</span>Masculino</button>
                       <button type="button" role="radio" aria-checked={selectedGender === participantGenderValues.feminine} className={selectedGender === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => chooseGender(candidate, participantGenderValues.feminine)}><span aria-hidden="true">{selectedGender === participantGenderValues.feminine ? "✓" : ""}</span>Feminino</button>
                     </div>
@@ -135,8 +135,8 @@ function CircuitGenderRegistryEditor({ candidates = [], registry, onChange }) {
             {!visibleCandidates.length ? (
               <p className="circuitGenderEmpty circuitGenderTabEmpty">
                 {activeTab === "pending"
-                  ? "Nenhum gênero pendente nesta pesquisa."
-                  : "Nenhum gênero confirmado nesta pesquisa."}
+                  ? "Nenhuma categoria esportiva pendente nesta pesquisa."
+                  : "Nenhuma categoria esportiva confirmada nesta pesquisa."}
               </p>
             ) : null}
             {visibleLimit < candidateSummary.filtered.length ? (
@@ -162,12 +162,12 @@ export function CircuitGenderRegistryPanel({ candidates = [], value = {}, knownR
       <div className="circuitStandaloneGenderHeader">
         <div>
           <span>Cadastro da arena</span>
-          <strong>Gravar gênero dos atletas</strong>
+          <strong>Gravar categoria esportiva dos atletas</strong>
           <small>Confirme os nomes uma vez para reutilizar a identificação nos circuitos desta arena. É opcional e não interfere nos torneios.</small>
         </div>
         <FormatExplanationButton
           iconOnly
-          ariaLabel="Entenda o cadastro de gênero dos atletas"
+          ariaLabel="Entenda o cadastro da categoria esportiva dos atletas"
           eyebrow="Cadastro da arena"
           title="Identificação reutilizável"
           intro="Esta função ajuda a separar rankings masculinos e femininos sem alterar participantes, confrontos ou placares."
@@ -208,7 +208,7 @@ export function CircuitRankingSettingsEditor({
   function renderGenderDivision() {
     return (
       <div className="circuitGenderDivision">
-        <div className="circuitSettingsTitleRow"><div><strong>Como exibir campeonatos de duplas mistas?</strong><span>O organizador confirma cada atleta; a ordem dos nomes não interfere.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os rankings masculino e feminino" eyebrow="Duplas mistas" title="Rankings separados por gênero" intro="A separação é opcional e não interfere nos jogos ou nos dados já salvos." sections={[{ title: "Ranking geral", content: <p>Todos os atletas aparecem em uma única tabela.</p> }, { title: "Masculino e feminino", content: <p>Cada atleta recebe integralmente seus resultados ou pontos, mas aparece no ranking confirmado pelo organizador.</p> }, { title: "Sistema em dúvida", content: <p>A plataforma pode sugerir uma opção usando a modalidade e confirmações anteriores da própria arena. Quando não houver segurança, mostrará “A confirmar”.</p> }, { title: "Sem bloqueio", content: <p>Não informar o gênero nunca impede cadastro, sorteio, jogos ou placares. O atleta permanece no ranking geral até a confirmação.</p> }]} /></div>
+        <div className="circuitSettingsTitleRow"><div><strong>Como exibir campeonatos de duplas mistas?</strong><span>O organizador confirma cada atleta; a ordem dos nomes não interfere.</span></div><FormatExplanationButton iconOnly ariaLabel="Entenda os rankings masculino e feminino" eyebrow="Duplas mistas" title="Rankings separados por categoria esportiva" intro="A separação é opcional e não interfere nos jogos ou nos dados já salvos." sections={[{ title: "Ranking geral", content: <p>Todos os atletas aparecem em uma única tabela.</p> }, { title: "Masculino e feminino", content: <p>Cada atleta recebe integralmente seus resultados ou pontos, mas aparece no ranking confirmado pelo organizador.</p> }, { title: "Sistema em dúvida", content: <p>A plataforma pode sugerir uma opção usando a modalidade e confirmações anteriores da própria arena. Quando não houver segurança, mostrará “A confirmar”.</p> }, { title: "Sem bloqueio", content: <p>Não informar a categoria esportiva nunca impede cadastro, sorteio, jogos ou placares. O atleta permanece no ranking geral até a confirmação.</p> }]} /></div>
         <div className="circuitCompactChoices" role="radiogroup" aria-label="Divisão do ranking individual">
           <button type="button" role="radio" aria-checked={settings.rankingDivision === "general"} className={settings.rankingDivision === "general" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "general" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "general" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Ranking geral</strong></span></button>
           <button type="button" role="radio" aria-checked={settings.rankingDivision === "gender"} className={settings.rankingDivision === "gender" ? "selected" : ""} onClick={() => updateSettings({ rankingDivision: "gender" })}><span className="circuitChoiceCheck" aria-hidden="true">{settings.rankingDivision === "gender" ? "✓" : ""}</span><span className="circuitChoiceText"><strong>Masculino e feminino</strong></span></button>

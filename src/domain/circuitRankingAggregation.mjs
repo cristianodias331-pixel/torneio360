@@ -263,7 +263,7 @@ export function buildCircuitRankingGroupsFromRecords({
   const groups = {
     geral: {
       title: rankingSettings.rankingDivision === "gender"
-        ? "Gênero a confirmar"
+        ? "Categoria esportiva a confirmar"
         : placementMode ? "Ranking geral por pontos" : "Ranking geral acumulado",
       rows: new Map(),
     },

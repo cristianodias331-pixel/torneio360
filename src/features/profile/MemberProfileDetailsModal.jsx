@@ -137,11 +137,11 @@ export default function MemberProfileDetailsModal({
           {profileKind === "athlete" ? <>
           <div className="profileFormSectionHeader fullField">
             <span>🎾</span>
-            <div><strong>Dados esportivos do atleta</strong><small>A categoria aparece no resumo; mão dominante e camiseta ficam nas informações detalhadas.</small></div>
+            <div><strong>Dados esportivos do atleta</strong><small>Informe seu nível técnico e sua categoria esportiva para validar as inscrições.</small></div>
           </div>
 
           <div className="formField">
-            <label htmlFor="member-modal-category">Categoria</label>
+            <label htmlFor="member-modal-category">Nível técnico</label>
             <input
               id="member-modal-category"
               value={profile.sportsCategory || ""}
@@ -154,7 +154,7 @@ export default function MemberProfileDetailsModal({
           </div>
 
           <div className="formField">
-            <label htmlFor="member-modal-gender">Gênero do atleta</label>
+            <label htmlFor="member-modal-gender">Categoria esportiva</label>
             <select
               id="member-modal-gender"
               value={profile.gender || ""}
@@ -165,7 +165,7 @@ export default function MemberProfileDetailsModal({
               <option value="Masculino">Masculino</option>
               <option value="Feminino">Feminino</option>
             </select>
-            {errors.gender ? <small className="unifiedMemberFieldError">{errors.gender}</small> : <small>Usado para validar categorias e duplas mistas.</small>}
+            {errors.gender ? <small className="unifiedMemberFieldError">{errors.gender}</small> : <small>Utilizada para validar inscrições e formação de duplas conforme o regulamento da competição. Esta informação não será exibida publicamente.</small>}
           </div>
 
           <div className="formField">

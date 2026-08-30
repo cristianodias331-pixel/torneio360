@@ -45,7 +45,7 @@ const supabase = {
 const checkout = await loadMyTournamentRegistrationCheckout({ supabase, tournamentId: "tournament-1" });
 assert(checkout.schemaAvailable === true, "A jornada deve reconhecer a estrutura aplicada.");
 assert(checkout.checkout.athlete.display_name === "Atleta Teste", "Os dados do perfil devem preencher a inscrição.");
-assert(checkout.checkout.athlete.gender === "Masculino", "A inscrição deve usar o gênero obrigatório do perfil.");
+assert(checkout.checkout.athlete.gender === "Masculino", "A inscrição deve usar a categoria esportiva obrigatória do perfil.");
 
 const receipt = { name: "pix.pdf", type: "application/pdf", size: 2048 };
 const submitted = await submitTournamentRegistrationWorkflow({
@@ -65,7 +65,7 @@ assert(uploadCall.path === "athlete-1/registration-1/comprovante.pdf", "O caminh
 assert(uploadCall.options.upsert === true && uploadCall.options.contentType === "application/pdf", "O envio deve preservar o tipo e permitir reenvio controlado.");
 const submitCall = calls.find((call) => call.name === "submit_my_tournament_registration_proof_v2");
 const eligibilityCall = calls.find((call) => call.name === "validate_tournament_registration_eligibility");
-assert(eligibilityCall?.payload.p_looking_for_partner === true, "O banco deve validar dupla fixa e gênero antes de preparar a inscrição.");
+assert(eligibilityCall?.payload.p_looking_for_partner === true, "O banco deve validar dupla fixa e categoria esportiva antes de preparar a inscrição.");
 assert(submitCall.payload.p_looking_for_partner === true, "A procura de dupla deve ser conectada à mesma inscrição.");
 assert(submitCall.payload.p_payment_proof_path === uploadCall.path, "O banco deve receber somente o caminho privado do arquivo.");
 

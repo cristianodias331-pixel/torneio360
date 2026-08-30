@@ -149,7 +149,7 @@ export function validateMemberProfile(profile) {
     errors.sportsCategory = "A categoria contém conteúdo não permitido.";
   }
   if (!genderOptions.has(normalized.gender)) {
-    errors.gender = "Selecione o gênero do atleta para validar inscrições e duplas mistas.";
+    errors.gender = "Selecione a categoria esportiva do atleta para validar inscrições e duplas mistas.";
   }
 
   if (normalized.whatsapp && !/^\+?[0-9]{10,15}$/.test(normalized.whatsapp)) {

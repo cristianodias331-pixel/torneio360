@@ -5069,11 +5069,11 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const effectiveNewGenderMode = getEffectiveTournamentGenderMode(newType, newGenderMode);
     if (!isMultiCategory && !effectiveNewGenderMode) {
-      showNotice("warning", "Gênero obrigatório", "Escolha Masculino, Feminino, Mista, Livre ou Outro.");
+      showNotice("warning", "Composição obrigatória", "Escolha Masculina, Feminina, Mista, Livre ou Outra.");
       return;
     }
     if (!isMultiCategory && effectiveNewGenderMode === tournamentGenderModes.other && !newGenderOther.trim()) {
-      showNotice("warning", "Informe o gênero", "Escreva o gênero escolhido na opção Outro.");
+      showNotice("warning", "Informe a composição", "Descreva a composição escolhida na opção Outra.");
       return;
     }
 
@@ -5128,7 +5128,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         || Boolean(item.registrationDeadline && item.registrationDeadline > item.date)
       ));
       if (incompleteCategory) {
-        showNotice("warning", "Categoria incompleta", `Revise gênero, modalidade, data e critério de ${incompleteCategory.category}.`);
+        showNotice("warning", "Categoria incompleta", `Revise composição, modalidade, data e critério de ${incompleteCategory.category}.`);
         return;
       }
     }
@@ -5876,11 +5876,11 @@ setNewPublicInfo({
 
     const effectiveEditGenderMode = getEffectiveTournamentGenderMode(editForm.type, editForm.participantGenderMode);
     if (!effectiveEditGenderMode) {
-      showNotice("warning", "Gênero obrigatório", "Escolha Masculino, Feminino, Mista, Livre ou Outro.");
+      showNotice("warning", "Composição obrigatória", "Escolha Masculina, Feminina, Mista, Livre ou Outra.");
       return;
     }
     if (effectiveEditGenderMode === tournamentGenderModes.other && !editForm.genderOther.trim()) {
-      showNotice("warning", "Informe o gênero", "Escreva o gênero escolhido na opção Outro.");
+      showNotice("warning", "Informe a composição", "Descreva a composição escolhida na opção Outra.");
       return;
     }
 
@@ -6253,7 +6253,7 @@ setNewPublicInfo({
       showNotice(
         "warning",
         "Categoria incompleta",
-        `Revise nome, gênero, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
+        `Revise nome, composição, modalidade, data, games e critério de ${invalidCategory.name || "uma categoria"}.`
       );
       return;
     }
@@ -6961,7 +6961,7 @@ setNewPublicInfo({
               </div>
 
               <div className="formField fullField tournamentGenderField">
-                <label>Gênero</label>
+                <label>Composição</label>
                 <TournamentGenderSelector
                   type={editForm.type}
                   value={editForm.participantGenderMode}
@@ -7170,7 +7170,7 @@ setNewPublicInfo({
                         {category.hasGeneratedGames ? <small>Ao trocar a modalidade, a confirmação explicará quais dados esportivos serão reiniciados.</small> : null}
                       </div>
                       <div className="formField fullField tournamentGenderField">
-                        <label>Gênero</label>
+                        <label>Composição</label>
                         <TournamentGenderSelector
                           compact
                           type={category.type}
@@ -7510,7 +7510,7 @@ setNewPublicInfo({
       />
     </div>
     <div className="formField fullField tournamentGenderField">
-      <label>Gênero</label>
+      <label>Composição</label>
       <TournamentGenderSelector
         type={newType}
         value={newGenderMode}
@@ -7546,7 +7546,7 @@ setNewPublicInfo({
           </div>
 
           <div className="formField compactField categoryWideField tournamentGenderField">
-            <label>Gênero</label>
+            <label>Composição</label>
             <TournamentGenderSelector
               compact
               type={item.type}
@@ -7856,8 +7856,8 @@ setNewPublicInfo({
       {tournamentSearch ? <button type="button" aria-label="Limpar pesquisa de torneios" onClick={() => setTournamentSearch("")}><X aria-hidden="true" /></button> : null}
     </label>
   </div>
-  <div className="tournamentGenderSubtabs" aria-label="Filtrar torneios por gênero">
-    <span className="tournamentGenderSubtabsLabel">Gênero</span>
+  <div className="tournamentGenderSubtabs" aria-label="Filtrar torneios por composição">
+    <span className="tournamentGenderSubtabsLabel">Composição</span>
     {[
       { value: tournamentListGenderFilters.all, label: "Todos" },
       { value: tournamentListGenderFilters.masculine, label: "Masculino" },
@@ -8568,7 +8568,7 @@ setNewPublicInfo({
     {allowedTypes.includes("Super 12") && (
       <Info
         title="Super 12"
-        text="Formato individual com 12 participantes definidos livremente pelo organizador, sem exigência de gênero. São 11 rodadas em 3 quadras, sem descanso. Cada atleta joga uma vez com cada parceiro, enfrenta cada adversário duas vezes e participa de um único ranking geral."
+        text="Formato individual com 12 participantes definidos livremente pelo organizador, sem separação por categoria esportiva. São 11 rodadas em 3 quadras, sem descanso. Cada atleta joga uma vez com cada parceiro, enfrenta cada adversário duas vezes e participa de um único ranking geral."
       />
     )}
 
@@ -8981,8 +8981,8 @@ setNewPublicInfo({
         {tournamentSearch ? <button type="button" aria-label="Limpar pesquisa de torneios do perfil" onClick={() => setTournamentSearch("")}><X aria-hidden="true" /></button> : null}
       </label>
     </div>
-    <div className="tournamentGenderSubtabs profileTournamentGenderFilters" aria-label="Filtrar torneios do perfil por gênero">
-      <span className="tournamentGenderSubtabsLabel">Gênero</span>
+    <div className="tournamentGenderSubtabs profileTournamentGenderFilters" aria-label="Filtrar torneios do perfil por composição">
+      <span className="tournamentGenderSubtabsLabel">Composição</span>
       {[
         { value: tournamentListGenderFilters.all, label: "Todos" },
         { value: tournamentListGenderFilters.masculine, label: "Masculino" },

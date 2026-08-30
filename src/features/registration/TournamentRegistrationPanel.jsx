@@ -119,13 +119,13 @@ export default function TournamentRegistrationPanel({
 
   function getRegistrationEligibilityError() {
     if (athleteGender === participantGenderValues.unknown) {
-      return "Preencha o gênero no seu perfil de atleta antes de se inscrever.";
+      return "Preencha a categoria esportiva no seu perfil de atleta antes de se inscrever.";
     }
     if (tournamentGenderMode === tournamentGenderModes.masculine && athleteGender !== participantGenderValues.masculine) {
-      return "Este torneio aceita somente atletas com gênero masculino informado no perfil.";
+      return "Este torneio aceita somente atletas da categoria esportiva masculina.";
     }
     if (tournamentGenderMode === tournamentGenderModes.feminine && athleteGender !== participantGenderValues.feminine) {
-      return "Este torneio aceita somente atletas com gênero feminino informado no perfil.";
+      return "Este torneio aceita somente atletas da categoria esportiva feminina.";
     }
     if (!pairCompetition) return "";
     if (!form.partnerHandle.trim() && !form.lookingForPartner) {
@@ -137,10 +137,10 @@ export default function TournamentRegistrationPanel({
     }
     const partnerGender = normalizeParticipantGender(partnerLookup.partner.gender);
     if (partnerGender === participantGenderValues.unknown) {
-      return "O atleta convidado precisa preencher o gênero no perfil antes de formar a dupla.";
+      return "O atleta convidado precisa preencher a categoria esportiva no perfil antes de formar a dupla.";
     }
     if (tournamentGenderMode === tournamentGenderModes.mixed && partnerGender === athleteGender) {
-      return "Em dupla mista, os dois atletas devem ter gêneros diferentes no perfil.";
+      return "Em dupla mista, os dois atletas devem pertencer a categorias esportivas diferentes.";
     }
     if (tournamentGenderMode === tournamentGenderModes.masculine && partnerGender !== participantGenderValues.masculine) {
       return "Este torneio aceita somente duplas masculinas.";
@@ -317,7 +317,7 @@ export default function TournamentRegistrationPanel({
             <div className="registrationAthleteFields">
               <label className="registrationOwnIdentityField"><span>Atleta que está se inscrevendo</span><div className="registrationHandleInput"><b>@</b><input value={form.athleteHandle} readOnly placeholder="Cadastre seu endereço único" /></div><small>{form.athleteHandle ? `${form.athleteName} · perfil de atleta identificado` : "Abra Meu perfil de atleta e escolha seu endereço único antes de se inscrever."}</small></label>
               <label><span>Categoria</span><input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Ex.: Iniciante, C ou Open" /></label>
-              <label><span>Gênero</span><input value={form.gender || "Não informado"} readOnly /><small>Para alterar, edite o seu perfil de atleta.</small></label>
+              <label><span>Categoria esportiva</span><input value={form.gender || "Não informada"} readOnly /><small>Para alterar, edite o seu perfil de atleta.</small></label>
               <label><span><Hand aria-hidden="true" /> Mão dominante</span><input value={form.dominantHand} readOnly /></label>
               {pairCompetition ? <label className="registrationPartnerHandleField"><span>Encontre o outro atleta da dupla</span><div className="registrationHandleInput"><Search aria-hidden="true" /><input value={form.partnerHandle} onChange={(event) => setForm((current) => ({ ...current, partnerHandle: event.target.value.replace(/^@/, ""), lookingForPartner: event.target.value ? false : current.lookingForPartner }))} placeholder="Digite o nome ou @" autoComplete="off" /></div><small>As sugestões aparecem enquanto você digita. O atleta escolhido receberá a confirmação pelo seu @ único.</small></label> : null}
             </div>
@@ -330,7 +330,7 @@ export default function TournamentRegistrationPanel({
             </div> : null}
             {pairCompetition && form.partnerHandle ? <div className={`registrationPartnerLookup ${partnerLookup.status}`}>
               {partnerLookup.status === "loading" ? <><RefreshCw className="spinning" aria-hidden="true" /><span>Verificando o perfil...</span></> : null}
-              {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · {partnerLookup.partner.gender || "gênero não informado"}</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}
+              {partnerLookup.partner ? <><span>{partnerLookup.partner.photo_url ? <img src={partnerLookup.partner.photo_url} alt="" /> : <UserRound aria-hidden="true" />}</span><div><strong>{partnerLookup.partner.display_name}</strong><small>@{partnerLookup.partner.handle} · {partnerLookup.partner.gender || "categoria esportiva não informada"}</small></div><BadgeCheck aria-label="Perfil localizado" /></> : null}
               {partnerLookup.error ? <><CircleAlert aria-hidden="true" /><span>{partnerLookup.error}</span></> : null}
             </div> : null}
             {pairCompetition && !form.partnerHandle ? (
@@ -340,7 +340,7 @@ export default function TournamentRegistrationPanel({
                 <span><strong>Quero encontrar uma dupla</strong><small>Após enviar a inscrição, atletas do mesmo torneio e categoria poderão encontrar seu perfil.</small></span>
               </label>
             ) : null}
-            {pairCompetition ? <p className="registrationPairRule"><ShieldCheck aria-hidden="true" /> Dupla fixa exige um convite confirmado ou a opção “Quero encontrar uma dupla”. Em torneios mistos, a plataforma aceita apenas parceiros de gêneros diferentes.</p> : null}
+            {pairCompetition ? <p className="registrationPairRule"><ShieldCheck aria-hidden="true" /> Dupla fixa exige um convite confirmado ou a opção “Quero encontrar uma dupla”. Em torneios mistos, a plataforma aceita apenas parceiros de categorias esportivas diferentes.</p> : null}
           </section>
 
           <TournamentPaymentPanel

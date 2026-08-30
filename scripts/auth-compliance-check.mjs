@@ -31,7 +31,7 @@ const athlete = createMemberProfileFallback({
 const athleteValidation = validateMemberProfile(athlete);
 assert(athleteValidation.valid, "Os dados esportivos válidos do atleta devem passar.");
 assert(athleteValidation.profile.sportsCategory === "B", "A categoria deve aparecer no perfil do atleta.");
-assert(athleteValidation.profile.gender === "Feminino", "O gênero obrigatório deve ser preservado no perfil do atleta.");
+assert(athleteValidation.profile.gender === "Feminino", "A categoria esportiva obrigatória deve ser preservada no perfil do atleta.");
 assert(athleteValidation.profile.dominantHand === "Canhoto", "A mão dominante deve ser preservada.");
 assert(athleteValidation.profile.shirtSize === "M", "O tamanho da camiseta deve ficar nos detalhes.");
 

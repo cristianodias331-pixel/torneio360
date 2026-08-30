@@ -424,7 +424,7 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
             <h2 id="participant-import-title">Colar lista de nomes</h2>
             <p>
               {isFixedMixedTeams
-                ? "Uma dupla por linha. Ao confirmar o gênero de uma pessoa, o parceiro receberá automaticamente o gênero oposto. O homem ficará na primeira posição e a mulher na segunda. Separe os nomes por +, /, -, e ou &. Símbolos e emojis serão ignorados. Use nome e sobrenome."
+                ? "Uma dupla por linha. Ao confirmar a categoria esportiva de uma pessoa, o parceiro receberá automaticamente a categoria oposta. A categoria masculina ficará na primeira posição e a feminina na segunda. Separe os nomes por +, /, -, e ou &. Símbolos e emojis serão ignorados. Use nome e sobrenome."
                 : isTeams
                 ? "Uma dupla por linha. Separe os dois nomes por +, /, -, e ou &. Espaços dentro do nome continuam sendo nome e sobrenome. Símbolos e emojis em qualquer posição serão ignorados. Use nome e sobrenome."
                 : "Numeração, marcadores e emojis em qualquer posição serão retirados automaticamente. Use nome e sobrenome."}
@@ -502,8 +502,8 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
             <div className="participantImportGenderHeader">
               <div>
                 <span>Etapa opcional</span>
-                <strong id="participant-import-gender-title">Confirmar gênero para os rankings</strong>
-                <small>{isFixedMixedTeams ? "Confirme uma pessoa da dupla; o parceiro recebe o gênero oposto e a ordem homem + mulher é ajustada automaticamente." : "Confirme os gêneros dos nomes desta lista. Isso não interfere nos jogos e nunca impede continuar."}</small>
+                <strong id="participant-import-gender-title">Confirmar categoria esportiva para os rankings</strong>
+                <small>{isFixedMixedTeams ? "Confirme uma pessoa da dupla; o parceiro recebe a categoria oposta e a ordem masculina + feminina é ajustada automaticamente." : "Confirme as categorias esportivas dos nomes desta lista. Isso não interfere nos jogos e nunca impede continuar."}</small>
               </div>
               <b>{confirmedGenderCount} de {genderCandidates.length} confirmados</b>
             </div>
@@ -527,7 +527,7 @@ export default function ParticipantImportModal({ type, data, knownRegistry = {},
                       <strong>{candidate.name}</strong>
                       <small><span>Sugestão</span><b>{suggestion}</b></small>
                     </div>
-                    <div className="participantGenderPanelChoices" role="radiogroup" aria-label={`Gênero de ${candidate.name}`}>
+                    <div className="participantGenderPanelChoices" role="radiogroup" aria-label={`Categoria esportiva de ${candidate.name}`}>
                       <button type="button" role="radio" aria-checked={selected === participantGenderValues.masculine} className={selected === participantGenderValues.masculine ? "selected masculine" : ""} onClick={() => chooseParticipantGender(candidate, participantGenderValues.masculine)}>Masculino</button>
                       <button type="button" role="radio" aria-checked={selected === participantGenderValues.feminine} className={selected === participantGenderValues.feminine ? "selected feminine" : ""} onClick={() => chooseParticipantGender(candidate, participantGenderValues.feminine)}>Feminino</button>
                     </div>

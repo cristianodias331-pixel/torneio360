@@ -338,8 +338,8 @@ export default function OrganizationProfileContentPresentation({
               {search ? <button type="button" aria-label="Limpar pesquisa de torneios do perfil" onClick={() => setSearch("")}><X aria-hidden="true" /></button> : null}
             </label>
           </div>
-          <div className="tournamentGenderSubtabs profileTournamentGenderFilters" aria-label="Filtrar torneios do perfil por gênero">
-            <span className="tournamentGenderSubtabsLabel">Gênero</span>
+          <div className="tournamentGenderSubtabs profileTournamentGenderFilters" aria-label="Filtrar torneios do perfil por composição">
+            <span className="tournamentGenderSubtabsLabel">Composição</span>
             {[
               { value: tournamentListGenderFilters.all, label: "Todos" },
               { value: tournamentListGenderFilters.masculine, label: "Masculino" },

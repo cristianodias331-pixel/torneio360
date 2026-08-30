@@ -87,10 +87,10 @@ function getPairCompatibilityError(first, second) {
   const firstGender = normalizeParticipantGender(first.athlete?.gender);
   const secondGender = normalizeParticipantGender(second.athlete?.gender);
   if (firstGender === participantGenderValues.unknown || secondGender === participantGenderValues.unknown) {
-    return "Os dois atletas precisam ter o gênero preenchido no perfil antes de formar a dupla.";
+    return "Os dois atletas precisam ter a categoria esportiva preenchida no perfil antes de formar a dupla.";
   }
   if (mode === tournamentGenderModes.mixed && firstGender === secondGender) {
-    return "Em torneio misto, selecione atletas de gêneros diferentes.";
+    return "Em torneio misto, selecione atletas de categorias esportivas diferentes.";
   }
   if (mode === tournamentGenderModes.masculine && (firstGender !== participantGenderValues.masculine || secondGender !== participantGenderValues.masculine)) {
     return "Este torneio aceita somente uma dupla masculina.";
@@ -152,7 +152,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
       ...registration,
       tournament,
       categoryLabel: normalizeOption(registration.category || details.category, "Sem categoria"),
-      genderLabel: normalizeOption(getTournamentGenderLabel(genderMode, details.genderOther) || details.gender, "Gênero livre"),
+      genderLabel: normalizeOption(getTournamentGenderLabel(genderMode, details.genderOther) || details.gender, "Participação livre"),
       modalityLabel: normalizeOption(getModalityDisplayName(tournament.type), "Modalidade não informada"),
       paymentStatus: registration.payment_status === "paid" ? "paid" : "pending",
       workflowStatus: ["submitted", "approved", "rejected"].includes(registration.workflow_status)
@@ -345,7 +345,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
   return (
     <section className="organizationRegistrantsPanel">
       <header className="organizationRegistrantsHeader">
-        <div><span><Users aria-hidden="true" /></span><div><small>Gestão da organização</small><h2>Inscritos</h2><p>Atletas organizados por torneio, categoria, gênero e modalidade.</p></div></div>
+        <div><span><Users aria-hidden="true" /></span><div><small>Gestão da organização</small><h2>Inscritos</h2><p>Atletas organizados por torneio, nível, categoria esportiva e modalidade.</p></div></div>
       </header>
 
       {!state.schemaAvailable ? <p className="organizationRegistrantsNotice"><Clock3 aria-hidden="true" /> Os inscritos atuais já aparecem, mas pagamento e procura de dupla serão sincronizados quando a migração do banco teste for aplicada.</p> : null}
@@ -380,7 +380,7 @@ export default function OrganizationRegistrantsPanel({ supabase, tournaments = [
         <header><span><Filter aria-hidden="true" /></span><div><strong>Organizar inscritos</strong><small>Refine a lista por torneio e divisão esportiva.</small></div></header>
         <label><small>Torneio</small><select value={tournamentFilter} onChange={(event) => setTournamentFilter(event.target.value)}><option value="all">Todos</option>{options.tournaments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
         <label><small>Categoria</small><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">Todas</option>{options.categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-        <label><small>Gênero</small><select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)}><option value="all">Todos</option>{options.genders.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label><small>Categoria esportiva</small><select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)}><option value="all">Todas</option>{options.genders.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label><small>Modalidade</small><select value={modalityFilter} onChange={(event) => setModalityFilter(event.target.value)}><option value="all">Todas</option>{options.modalities.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
       </div>
 

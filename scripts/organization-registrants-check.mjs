@@ -45,7 +45,7 @@ const richResult = await loadOrganizationRegistrants({
   tournaments: [],
 });
 
-assert(rpcCalls[0].name === "get_my_organization_registrations_v2", "A organização deve carregar inscrições, gêneros e comprovantes pelo RPC protegido atual.");
+assert(rpcCalls[0].name === "get_my_organization_registrations_v2", "A organização deve carregar inscrições, categorias esportivas e comprovantes pelo RPC protegido atual.");
 assert(richResult.schemaAvailable === true, "O painel deve reconhecer a estrutura completa do banco.");
 assert(richResult.registrations[0].payment_status === "paid", "O pagamento confirmado deve chegar ao painel.");
 assert(richResult.registrations[0].looking_for_partner === true, "A procura por dupla deve chegar ao painel.");
