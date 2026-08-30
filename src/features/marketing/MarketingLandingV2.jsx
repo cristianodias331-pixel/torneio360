@@ -322,9 +322,9 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
                 <strong>Quadra 3</strong>
               </div>
               <div className={styles.scoreboard}>
-                <div className={styles.team}><span className={styles.avatarPair}><span className={`${styles.athletePhoto} ${styles.athleteOne}`} aria-hidden="true" /><span className={`${styles.athletePhoto} ${styles.athleteThree}`} aria-hidden="true" /></span><small>João Pedro<br />Larissa Lima</small></div>
+                <div className={styles.team}><span className={styles.avatarPair}><span className={`${styles.athletePhoto} ${styles.athleteOne}`} aria-hidden="true" /><span className={`${styles.athletePhoto} ${styles.athleteFour}`} aria-hidden="true" /></span><small>João Pedro<br />Larissa Lima</small></div>
                 <strong>4</strong><em>×</em><strong>2</strong>
-                <div className={styles.team}><span className={styles.avatarPair}><span className={`${styles.athletePhoto} ${styles.athleteTwo}`} aria-hidden="true" /><span className={`${styles.athletePhoto} ${styles.athleteFour}`} aria-hidden="true" /></span><small>Rafael Nunes<br />Gabriela Souza</small></div>
+                <div className={styles.team}><span className={styles.avatarPair}><span className={`${styles.athletePhoto} ${styles.athleteTwo}`} aria-hidden="true" /><span className={`${styles.athletePhoto} ${styles.athleteThree}`} aria-hidden="true" /></span><small>Rafael Nunes<br />Gabriela Souza</small></div>
               </div>
             </div>
             <div className={styles.rankingPreview}>

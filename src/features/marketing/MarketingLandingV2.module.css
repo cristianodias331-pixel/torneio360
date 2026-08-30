@@ -2280,32 +2280,6 @@
   isolation: isolate;
 }
 
-.primaryButton::before,
-.secondaryButton::before,
-.menuButton::before {
-  position: absolute;
-  z-index: 2;
-  inset: -2px;
-  padding: 2px;
-  border-radius: inherit;
-  content: "";
-  pointer-events: none;
-  opacity: 0;
-  background: conic-gradient(from 0deg, transparent 0 18%, #ffb21c 27%, #ff5a00 39%, transparent 50% 68%, #ff7a16 79%, #ffd35a 88%, transparent 100%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: movingButtonBorder 1.7s linear infinite paused;
-  transition: opacity 180ms ease;
-}
-
-.primaryButton:hover::before,
-.secondaryButton:hover::before,
-.menuButton:hover::before {
-  opacity: 1;
-  animation-play-state: running;
-}
-
 .primaryButton:hover,
 .secondaryButton:hover,
 .menuButton:hover {
@@ -2458,10 +2432,6 @@
 .fireball span::before { left: -15px; }
 .fireball span::after { right: -15px; }
 
-@keyframes movingButtonBorder {
-  to { transform: rotate(360deg); }
-}
-
 @keyframes buttonFlameDance {
   0% { background-position: 0 2px, 0 -2px, 0 1px, 0 -3px, 0 2px; filter: blur(3px) saturate(1.2) drop-shadow(0 0 10px rgba(255, 72, 0, 0.82)); }
   100% { background-position: -5px -7px, 4px 5px, -3px -6px, 5px 4px, -4px -8px; filter: blur(2px) saturate(1.5) drop-shadow(0 0 18px rgba(255, 72, 0, 1)); }
@@ -2548,7 +2518,7 @@
 .athleteThree { background-position: 0 100%; }
 .athleteFour { background-position: 100% 100%; }
 
-/* Chamas ambientes no fundo de cada aba da apresentação. */
+/* Luz ambiente integrada ao fundo, sem uma faixa sobreposta ou bordas aparentes. */
 .section,
 .contactSection {
   position: relative;
@@ -2566,22 +2536,17 @@
 .contactSection::before {
   position: absolute;
   z-index: 0;
-  right: -8%;
-  bottom: -105px;
-  left: -8%;
-  height: 360px;
+  inset: -22% -14%;
   content: "";
   pointer-events: none;
-  opacity: 0.48;
+  opacity: 0.34;
   background:
-    radial-gradient(ellipse 10% 72% at 7% 100%, #ffe56a 0 5%, rgba(255, 142, 0, .95) 25%, rgba(255, 58, 0, .72) 52%, transparent 73%),
-    radial-gradient(ellipse 12% 96% at 26% 100%, #fff08a 0 4%, rgba(255, 166, 0, .96) 23%, rgba(255, 68, 0, .76) 52%, transparent 72%),
-    radial-gradient(ellipse 10% 78% at 49% 100%, #ffe66d 0 5%, rgba(255, 128, 0, .95) 24%, rgba(246, 48, 0, .72) 51%, transparent 73%),
-    radial-gradient(ellipse 13% 100% at 72% 100%, #fff28c 0 4%, rgba(255, 174, 0, .94) 22%, rgba(255, 70, 0, .74) 52%, transparent 72%),
-    radial-gradient(ellipse 10% 82% at 94% 100%, #ffe166 0 5%, rgba(255, 134, 0, .94) 24%, rgba(246, 54, 0, .72) 52%, transparent 73%);
-  filter: blur(12px) saturate(1.2);
-  transform-origin: center bottom;
-  animation: sectionFlameBreath 4.8s ease-in-out infinite alternate;
+    radial-gradient(ellipse 32% 28% at 6% 78%, rgba(255, 119, 0, .28) 0%, rgba(255, 66, 0, .1) 44%, transparent 75%),
+    radial-gradient(ellipse 28% 24% at 48% 92%, rgba(255, 87, 0, .22) 0%, rgba(255, 52, 0, .08) 46%, transparent 76%),
+    radial-gradient(ellipse 30% 27% at 95% 72%, rgba(255, 132, 0, .24) 0%, rgba(255, 64, 0, .08) 45%, transparent 74%);
+  filter: blur(32px) saturate(1.08);
+  transform-origin: center;
+  animation: sectionAmbientDrift 9s ease-in-out infinite alternate;
 }
 
 .section::after,
@@ -2589,12 +2554,12 @@
   position: absolute;
   z-index: 1;
   right: 0;
-  bottom: 2%;
+  bottom: -8%;
   left: 0;
-  height: 50%;
+  height: 64%;
   content: "";
   pointer-events: none;
-  opacity: 0.4;
+  opacity: 0.16;
   background:
     radial-gradient(circle at 9% 82%, #ffb11b 0 2px, transparent 3px),
     radial-gradient(circle at 23% 48%, #ff6a00 0 2px, transparent 3px),
@@ -2605,13 +2570,13 @@
   animation: sectionEmbers 5.6s linear infinite;
 }
 
-.sportsSection::before { animation-delay: -1.9s; }
-.contactSection::before { animation-delay: -3.1s; }
+.sportsSection::before { animation-delay: -2.8s; }
+.contactSection::before { animation-delay: -5.1s; }
 
-@keyframes sectionFlameBreath {
-  0% { transform: translateY(34px) scale(1.02, 0.84); opacity: 0.34; }
-  55% { transform: translateY(-8px) scale(1.05, 1.1); opacity: 0.58; }
-  100% { transform: translateY(10px) scale(0.98, 0.96); opacity: 0.46; }
+@keyframes sectionAmbientDrift {
+  0% { transform: translate3d(-1.5%, 1%, 0) scale(1); opacity: 0.26; }
+  55% { transform: translate3d(1.5%, -1.2%, 0) scale(1.035); opacity: 0.38; }
+  100% { transform: translate3d(-0.5%, 0, 0) scale(1.015); opacity: 0.31; }
 }
 
 @keyframes sectionEmbers {
@@ -2748,9 +2713,8 @@
 @media (max-width: 600px) {
   .section::before,
   .contactSection::before {
-    bottom: -135px;
-    height: 330px;
-    opacity: 0.4;
+    inset: -18% -28%;
+    opacity: 0.24;
   }
 
   .webmailDialog {
