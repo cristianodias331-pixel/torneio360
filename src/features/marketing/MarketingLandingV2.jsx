@@ -167,6 +167,11 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
     const sectionIds = ["como-funciona", "planos", "modalidades", "contato"];
+    if (sectionIds.includes(decodeURIComponent(window.location.hash.slice(1)))) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+    const initialTopFrame = window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
     let frame = 0;
 
@@ -187,22 +192,10 @@ export default function MarketingLandingV2({ onLogin, onSignup, onExplore }) {
     window.addEventListener("scroll", updateActiveSection, { passive: true });
     updateActiveSection();
 
-    const alignHashSection = () => {
-      const id = decodeURIComponent(window.location.hash.slice(1));
-      if (!sectionIds.includes(id)) return;
-      window.requestAnimationFrame(() => scrollToSection(id, { updateHash: false }));
-    };
-    const alignmentTimers = [80, 320].map((delay) => window.setTimeout(alignHashSection, delay));
-    window.addEventListener("hashchange", alignHashSection);
-    window.addEventListener("load", alignHashSection);
-    alignHashSection();
-
     return () => {
+      window.cancelAnimationFrame(initialTopFrame);
       window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", updateActiveSection);
-      window.removeEventListener("hashchange", alignHashSection);
-      window.removeEventListener("load", alignHashSection);
-      alignmentTimers.forEach((timer) => window.clearTimeout(timer));
       window.history.scrollRestoration = previousScrollRestoration;
       delete document.documentElement.dataset.marketingLandingV2;
     };
