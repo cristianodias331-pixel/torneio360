@@ -550,23 +550,11 @@ function App() {
 
   if (!session) {
     return (
-      <UnifiedPlatformFrame
-        activePanel="overview"
-        hasSession={false}
-        title={signupType ? "Criar conta" : "Entrar"}
-        eyebrow="Conta única"
-        description="Acesse a mesma plataforma para acompanhar eventos, participar e organizar."
-        onNavigate={(panel) => navigateFromPublicProfile(panel, false)}
-        onSignup={signupType ? undefined : () => navigatePlatform({ cadastro: "conta" })}
-        onAccountAction={signupType ? () => navigatePlatform({ entrar: "1" }) : undefined}
-      >
-        <Login
-          key={`guest-${signupType ? "signup" : "login"}`}
-          embedded
-          initialMode={authCallbackError ? "forgotPassword" : signupType ? "signup" : "login"}
-          initialNotice={authCallbackError || authNotice}
-        />
-      </UnifiedPlatformFrame>
+      <Login
+        key={`guest-${signupType ? "signup" : "login"}`}
+        initialMode={authCallbackError ? "forgotPassword" : signupType ? "signup" : "login"}
+        initialNotice={authCallbackError || authNotice}
+      />
     );
   }
 
