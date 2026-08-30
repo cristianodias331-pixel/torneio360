@@ -414,17 +414,18 @@
   grid-template-columns: minmax(360px, 1fr) minmax(340px, auto);
   gap: 12px;
   padding: 12px;
-  border: 1px solid var(--ui-border);
-  border-radius: 14px;
-  background: var(--ui-surface);
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
-.organizationRegistrantRow:last-child { border-bottom: 1px solid var(--ui-border); }
-.organizationRegistrantRow:hover { border-color: color-mix(in srgb, #16845a 36%, var(--ui-border)); }
+.organizationRegistrantRow:last-child { border-bottom: 0 !important; }
+.organizationRegistrantRow:hover { background: color-mix(in srgb, var(--ui-page) 44%, transparent) !important; }
 .organizationRegistrantRow.selectedForPair {
-  border-color: #16a36a;
-  box-shadow: inset 4px 0 #16a36a, 0 8px 22px rgba(22, 163, 106, 0.1);
+  background: color-mix(in srgb, #16a36a 7%, transparent) !important;
+  box-shadow: inset 4px 0 #16a36a;
 }
 
 .organizationRegistrantAvatar {
