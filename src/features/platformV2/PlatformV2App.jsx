@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Award,
   Bell,
@@ -252,7 +252,8 @@ function ComingSoon({ tab }) {
 
 export default function PlatformV2App({ runtime, supabase, user = null, profile = null, onLogin, onLogout }) {
   const [activeTab, setActiveTab] = useState("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.matchMedia?.("(min-width: 1000px)").matches ?? true);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [quickFilter, setQuickFilter] = useState("all");
@@ -263,6 +264,8 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState("");
   const [posterRatios, setPosterRatios] = useState({});
+  const sidebarHoverTimer = useRef(null);
+  const sidebarOpen = sidebarPinned || sidebarHovered;
   const hasSession = Boolean(user?.id);
   const profileName = getProfileName(user, profile);
   const profilePhoto = getProfilePhoto(user, profile);
@@ -309,12 +312,16 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   }, [hasSession, supabase, user?.id]);
 
   useEffect(() => {
-    const mobile = window.matchMedia?.("(max-width: 999px)").matches;
+    const mobile = window.matchMedia?.("(max-width: 1080px)").matches;
     if (!mobile || !sidebarOpen) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
   }, [sidebarOpen]);
+
+  useEffect(() => () => {
+    if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
+  }, []);
 
   const organizers = useMemo(() => {
     const values = new Map();
@@ -372,8 +379,39 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   function selectTab(tab) {
     setActiveTab(tab);
     setAccountOpen(false);
-    if (window.matchMedia?.("(max-width: 999px)").matches) setSidebarOpen(false);
+    if (window.matchMedia?.("(max-width: 1080px)").matches) {
+      setSidebarPinned(false);
+      setSidebarHovered(false);
+    }
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+
+  function openSidebarOnHover() {
+    if (!window.matchMedia?.("(min-width: 1081px)").matches) return;
+    if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
+    setSidebarHovered(true);
+  }
+
+  function closeSidebarOnHover() {
+    if (!window.matchMedia?.("(min-width: 1081px)").matches) return;
+    if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
+    sidebarHoverTimer.current = window.setTimeout(() => setSidebarHovered(false), 140);
+  }
+
+  function closeSidebar() {
+    if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
+    setSidebarPinned(false);
+    setSidebarHovered(false);
+  }
+
+  function toggleSidebarPin() {
+    if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
+    if (sidebarPinned) {
+      setSidebarPinned(false);
+      setSidebarHovered(false);
+      return;
+    }
+    setSidebarPinned(true);
   }
 
   function openDetails(item, registrationIntent = false) {
@@ -412,7 +450,7 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
     <div className={`${styles.app} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
       <header className={styles.topbar}>
         <div className={styles.topbarBrand}>
-          <button type="button" className={styles.menuButton} onClick={() => setSidebarOpen((current) => !current)} aria-label={sidebarOpen ? "Recolher menu" : "Abrir menu"} aria-expanded={sidebarOpen}><Menu /></button>
+          <button type="button" className={styles.menuButton} onClick={toggleSidebarPin} onMouseEnter={openSidebarOnHover} onMouseLeave={closeSidebarOnHover} aria-label={sidebarPinned ? "Recolher menu" : sidebarHovered ? "Fixar menu aberto" : "Abrir menu"} aria-expanded={sidebarOpen}><Menu /></button>
           <Brand />
         </div>
 
@@ -439,12 +477,12 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
         </div>
       </header>
 
-      <button type="button" className={styles.mobileBackdrop} onClick={() => setSidebarOpen(false)} aria-label="Fechar menu" />
-      <aside className={styles.sidebar} aria-label="Navegação da plataforma V2">
+      <button type="button" className={styles.mobileBackdrop} onClick={closeSidebar} aria-label="Fechar menu" />
+      <aside className={styles.sidebar} aria-label="Navegação da plataforma V2" onMouseEnter={openSidebarOnHover} onMouseLeave={closeSidebarOnHover}>
         <nav>
-          {NAVIGATION.map(({ id, label, Icon, ready }) => (
+          {NAVIGATION.filter(({ id }) => id !== "notifications").map(({ id, label, Icon, ready }) => (
             <button type="button" key={id} className={activeTab === id ? styles.activeNav : ""} onClick={() => selectTab(id)} aria-current={activeTab === id ? "page" : undefined} title={label}>
-              <span><Icon />{id === "notifications" ? <i /> : null}</span>
+              <span><Icon /></span>
               <strong>{label}</strong>
               {!ready && sidebarOpen ? <small>Em construção</small> : null}
             </button>
