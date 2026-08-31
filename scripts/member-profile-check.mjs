@@ -140,6 +140,7 @@ const organizationProfileStyles = await readFile(new URL("../src/styles/51-unifi
 const athleteActivityStyles = await readFile(new URL("../src/styles/57-athlete-activity.css", import.meta.url), "utf8");
 const platformV2ProfileSource = await readFile(new URL("../src/features/platformV2/PlatformV2Profile.jsx", import.meta.url), "utf8");
 const platformV2Styles = await readFile(new URL("../src/features/platformV2/PlatformV2App.module.css", import.meta.url), "utf8");
+const profileImageEditorSource = await readFile(new URL("../src/features/profile/ProfileImageEditor.jsx", import.meta.url), "utf8");
 
 assert(memberPresentationSource.includes("OWNER_MEMBER_PROFILE_TABS = MEMBER_PROFILE_TABS"), "A busca por dupla deve ficar dentro da atividade esportiva, sem criar uma sexta aba principal.");
 assert(memberPresentationSource.includes("publicMemberProfileTabs athleteProfileTabs"), "As abas do atleta devem ter uma grade responsiva própria.");
@@ -158,5 +159,8 @@ assert(organizerWorkspaceSource.includes('const returnPanel = ["inicio", "explor
 assert(platformV2ProfileSource.includes("Pódios em torneios") && platformV2ProfileSource.includes("Pódios em circuitos") && platformV2ProfileSource.includes("Histórico oficial"), "A V2 deve separar conquistas de torneios, circuitos e histórico oficial.");
 assert(platformV2ProfileSource.includes("Partida direta") && platformV2ProfileSource.includes("Meta esportiva") && platformV2ProfileSource.includes("searchPublicPlatform"), "A V2 deve permitir criar desafios suportados e localizar atletas reais.");
 assert(platformV2Styles.includes("profileAchievementSummaryGrid") && platformV2Styles.includes("profileChallengeLayout"), "Conquistas e desafios da V2 devem preservar o novo layout responsivo.");
+assert(profileImageEditorSource.includes("galleryPortrait") && profileImageEditorSource.includes("4:5 vertical") && profileImageEditorSource.includes("1:1 quadrado"), "A galeria deve permitir ajustar a publicação nos dois formatos de post do Instagram.");
+assert(platformV2ProfileSource.includes("profileGalleryPreview") && platformV2ProfileSource.includes("PhotoLightbox"), "As fotos dos perfis de atleta e organização devem abrir ampliadas.");
+assert(platformV2ProfileSource.includes("excludeOrganizationCoverFromGallery"), "A capa da organização não deve ocupar uma posição na galeria.");
 
 console.log("Perfil unificado: dados esportivos, contatos protegidos, atividades, duplas e desafios passaram.");

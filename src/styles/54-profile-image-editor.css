@@ -119,6 +119,18 @@
   border-radius: 18px;
 }
 
+.profileImageEditorFrameGalleryPortrait {
+  width: min(100%, 350px);
+  aspect-ratio: 4 / 5;
+  border-radius: 18px;
+}
+
+.profileImageEditorFrameGallerySquare {
+  width: min(100%, 390px);
+  aspect-ratio: 1;
+  border-radius: 18px;
+}
+
 .profileImageEditorFrame canvas {
   display: block;
   width: 100%;
@@ -175,6 +187,50 @@
 .profileImageEditorBody > aside {
   display: grid;
   gap: 14px;
+}
+
+.profileImageEditorFormats {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 14px;
+  background: var(--ui-surface, #fff);
+}
+
+.profileImageEditorFormats > span {
+  color: var(--ui-text-strong, #102038);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.profileImageEditorFormats > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.profileImageEditorFormats button {
+  min-height: 38px;
+  border: 1px solid var(--ui-border, #c8d4e6);
+  border-radius: 10px;
+  color: var(--ui-text, #253247);
+  background: transparent;
+  font: inherit;
+  font-size: .7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profileImageEditorFormats button.active {
+  border-color: #ff6719;
+  color: #fff;
+  background: #ff5d0d;
+}
+
+.profileImageEditorFormats > small {
+  color: var(--ui-muted, #637189);
+  font-size: .68rem;
 }
 
 .profileImageEditorOutput {
@@ -389,11 +445,17 @@
 }
 
 .platformV2ImageEditor .profileImageEditorOutput,
-.platformV2ImageEditor .profileImageEditorZoom {
+.platformV2ImageEditor .profileImageEditorZoom,
+.platformV2ImageEditor .profileImageEditorFormats {
   border-color: #294763;
   color: #f4f7fb;
   background: #091b2f;
 }
+
+.platformV2ImageEditor .profileImageEditorFormats > span { color: #f4f7fb; }
+.platformV2ImageEditor .profileImageEditorFormats button { border-color: #304d69; color: #cbd8e5; }
+.platformV2ImageEditor .profileImageEditorFormats button.active { border-color: #ff5d0d; color: #fff; background: #ff5d0d; }
+.platformV2ImageEditor .profileImageEditorFormats > small { color: #8297ad; }
 
 .platformV2ImageEditor .profileImageEditorOutput,
 .platformV2ImageEditor .profileImageEditorZoom > span,
@@ -462,6 +524,9 @@
   .platformV2ImageEditor .profileImageEditorFramePhoto {
     width: min(58vw, 220px);
   }
+
+  .platformV2ImageEditor .profileImageEditorFrameGalleryPortrait { width: min(54vw, 205px); }
+  .platformV2ImageEditor .profileImageEditorFrameGallerySquare { width: min(62vw, 230px); }
 
   .platformV2ImageEditor .profileImageEditorBody > aside {
     gap: 8px;

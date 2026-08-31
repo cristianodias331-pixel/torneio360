@@ -30,6 +30,7 @@ import {
   Users,
   UsersRound,
   X,
+  ZoomIn,
 } from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
@@ -43,7 +44,7 @@ import {
   loadBrazilianCities,
   normalizeBrazilianState,
 } from "../../domain/brazilLocations.mjs";
-import { prepareSocialPostImageFile } from "../media/imageResize.mjs";
+import { excludeOrganizationCoverFromGallery } from "../media/organizationGalleryCover.mjs";
 import {
   uploadMemberProfileCover,
   uploadMemberProfileGalleryPhoto,
@@ -205,31 +206,59 @@ function SportBadges({ sports = [], editable = false, onToggle }) {
   );
 }
 
-function PhotoGallery({ title, photos, busy, onAdd, onRemove }) {
+export function PhotoLightbox({ photo, onClose }) {
+  useEffect(() => {
+    if (!photo) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => { if (event.key === "Escape") onClose?.(); };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, photo]);
+
+  if (!photo?.src) return null;
+  return (
+    <div className={styles.profilePhotoLightbox} role="dialog" aria-modal="true" aria-label="Foto ampliada" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>
+      <section>
+        <button type="button" onClick={onClose} aria-label="Fechar foto ampliada"><X /></button>
+        <img src={photo.src} alt={photo.alt || "Foto ampliada do perfil"} />
+        <footer><span>{photo.title}</span><small>Pressione Esc ou toque fora da foto para fechar</small></footer>
+      </section>
+    </div>
+  );
+}
+
+export function PhotoGallery({ title, photos, busy, onAdd, onRemove, onPreview }) {
   const remaining = MAX_MEMBER_GALLERY_PHOTOS - photos.length;
   return (
     <section className={styles.profilePanel} aria-labelledby={`${title.replace(/\s+/g, "-")}-title`}>
       <header className={styles.profilePanelHeader}>
-        <div><Images aria-hidden="true" /><span><h2 id={`${title.replace(/\s+/g, "-")}-title`}>{title}</h2><p>Momentos, jogos e bastidores escolhidos para o perfil.</p></span></div>
+        <div><Images aria-hidden="true" /><span><h2 id={`${title.replace(/\s+/g, "-")}-title`}>{title}</h2><p>Publicações em 4:5 ou 1:1. Ajuste cada foto antes de salvar.</p></span></div>
         <strong>{photos.length}/{MAX_MEMBER_GALLERY_PHOTOS}</strong>
       </header>
       <div className={styles.profileGalleryGrid}>
         {photos.map((photoUrl, index) => (
           <figure key={`${photoUrl}-${index}`}>
-            <img src={photoUrl} alt={`Foto ${index + 1} de ${title.toLocaleLowerCase("pt-BR")}`} />
-            <button type="button" onClick={() => onRemove(index)} disabled={busy} aria-label={`Remover foto ${index + 1}`}><X /></button>
+            <button type="button" className={styles.profileGalleryPreview} onClick={() => onPreview?.({ src: photoUrl, alt: `Foto ${index + 1} de ${title.toLocaleLowerCase("pt-BR")}`, title: `${title} · foto ${index + 1}` })} aria-label={`Ampliar foto ${index + 1}`}>
+              <img src={photoUrl} alt={`Foto ${index + 1} de ${title.toLocaleLowerCase("pt-BR")}`} />
+              <span><ZoomIn /></span>
+            </button>
+            <button type="button" className={styles.profileGalleryRemove} onClick={() => onRemove(index)} disabled={busy} aria-label={`Remover foto ${index + 1}`}><X /></button>
           </figure>
         ))}
         {remaining > 0 ? (
           <label className={styles.profileGalleryAdd}>
-            <input type="file" accept="image/*" multiple disabled={busy} onChange={(event) => { onAdd(Array.from(event.target.files || [])); event.target.value = ""; }} />
+            <input type="file" accept="image/*" disabled={busy} onChange={(event) => { onAdd(Array.from(event.target.files || [])); event.target.value = ""; }} />
             <ImagePlus aria-hidden="true" />
-            <strong>{photos.length ? "Adicionar fotos" : "Criar galeria"}</strong>
+            <strong>{photos.length ? "Adicionar foto" : "Criar galeria"}</strong>
             <small>{remaining === 1 ? "Resta 1 foto" : `Restam ${remaining} fotos`}</small>
           </label>
         ) : null}
       </div>
-      {!photos.length ? <p className={styles.galleryHint}>Você pode selecionar várias imagens de uma vez. O limite total é de 10.</p> : null}
+      {!photos.length ? <p className={styles.galleryHint}>Cada foto será enquadrada antes da publicação. O limite total é de 10.</p> : null}
     </section>
   );
 }
@@ -509,6 +538,7 @@ export default function PlatformV2Profile({
   const [activeSection, setActiveSection] = useState("activity");
   const [busy, setBusy] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
   const [detailsDraft, setDetailsDraft] = useState(null);
   const [detailsErrors, setDetailsErrors] = useState({});
   const [profileCityOptions, setProfileCityOptions] = useState([]);
@@ -521,11 +551,20 @@ export default function PlatformV2Profile({
     if (!user?.id) return undefined;
     let active = true;
     setAthleteStatus("loading");
-    loadMyMemberProfile({ supabase, fallback }).then((result) => {
+    loadMyMemberProfile({ supabase, fallback }).then(async (result) => {
       if (!active) return;
-      setAthlete(result.profile);
-      setAthleteGallery(result.profile.galleryPhotos || []);
+      const storedGallery = result.profile.galleryPhotos || [];
+      const cleanGallery = await excludeOrganizationCoverFromGallery(storedGallery, result.profile.coverUrl || "");
+      if (!active) return;
+      const cleanProfile = { ...result.profile, galleryPhotos: cleanGallery };
+      setAthlete(cleanProfile);
+      setAthleteGallery(cleanGallery);
       setAthleteStatus(result.schemaAvailable ? "ready" : "unavailable");
+      if (result.schemaAvailable && cleanGallery.length !== storedGallery.length) {
+        void saveMyMemberProfile({ supabase, profile: cleanProfile, fallback })
+          .then(() => onNotice?.("A foto de capa foi separada da galeria do atleta."))
+          .catch(() => undefined);
+      }
     }).catch(() => {
       if (!active) return;
       setAthlete(fallback);
@@ -552,15 +591,22 @@ export default function PlatformV2Profile({
           cardPaymentLink: accessProfile?.card_payment_link || "",
         },
       }),
-    ]).then(([photos, cover, paymentSettings]) => {
+    ]).then(async ([photos, cover, paymentSettings]) => {
       if (!active) return;
-      setOrganizationGallery(photos || []);
+      const cleanGallery = await excludeOrganizationCoverFromGallery(photos || [], cover.coverUrl || accessProfile?.cover_url || "");
+      if (!active) return;
+      setOrganizationGallery(cleanGallery);
       setOrganization((current) => ({
         ...current,
         coverUrl: cover.coverUrl || current.coverUrl,
         pixKey: paymentSettings.pixKey || "",
         cardPaymentLink: paymentSettings.cardPaymentLink || "",
       }));
+      if (cleanGallery.length !== (photos || []).length) {
+        void saveMyOrganizationGallery({ supabase, photoUrls: cleanGallery })
+          .then(() => onNotice?.("A foto de capa foi separada da galeria da organização."))
+          .catch(() => undefined);
+      }
     }).catch(() => {
       if (active) onNotice?.("Não foi possível carregar todas as fotos da organização agora.");
     });
@@ -867,7 +913,17 @@ export default function PlatformV2Profile({
     if (!user?.id || busy) return false;
     setBusy(true);
     try {
-      if (imageEditor.identity === "athlete") {
+      if (imageEditor.kind === "gallery") {
+        if (imageEditor.identity === "organization") {
+          const uploaded = await uploadOrganizationProfileGalleryPhoto({ supabase, userId: user.id, photoUrl: imageUrl, position: organizationGallery.length + 1 });
+          const saved = await saveMyOrganizationGallery({ supabase, photoUrls: [...organizationGallery, uploaded].slice(0, MAX_MEMBER_GALLERY_PHOTOS) });
+          setOrganizationGallery(saved);
+        } else {
+          const uploaded = await uploadMemberProfileGalleryPhoto({ supabase, userId: user.id, photoUrl: imageUrl, position: athleteGallery.length + 1 });
+          await saveAthlete({ ...athlete, galleryPhotos: [...athleteGallery, uploaded].slice(0, MAX_MEMBER_GALLERY_PHOTOS) });
+        }
+        onNotice?.("Foto ajustada e publicada na galeria.");
+      } else if (imageEditor.identity === "athlete") {
         const field = imageEditor.kind === "cover" ? "coverUrl" : "photoUrl";
         const uploaded = imageEditor.kind === "cover"
           ? await uploadMemberProfileCover({ supabase, userId: user.id, coverUrl: imageUrl })
@@ -877,13 +933,18 @@ export default function PlatformV2Profile({
         const uploaded = await uploadOrganizationProfileCover({ supabase, userId: user.id, coverUrl: imageUrl });
         const saved = await saveMyOrganizationCover({ supabase, coverUrl: uploaded });
         setOrganization((currentValue) => ({ ...currentValue, coverUrl: saved.coverUrl || uploaded }));
+        const cleanGallery = await excludeOrganizationCoverFromGallery(organizationGallery, saved.coverUrl || uploaded);
+        if (cleanGallery.length !== organizationGallery.length) {
+          const savedGallery = await saveMyOrganizationGallery({ supabase, photoUrls: cleanGallery });
+          setOrganizationGallery(savedGallery);
+        }
       } else {
         const uploaded = await uploadProfilePhoto({ supabase, userId: user.id, photoUrl: imageUrl });
         const { error } = await supabase.from("profiles").update({ photo_url: uploaded }).eq("id", user.id);
         if (error) throw error;
         setOrganization((currentValue) => ({ ...currentValue, photoUrl: uploaded }));
       }
-      onNotice?.(imageEditor.kind === "cover" ? "Capa atualizada com sucesso." : "Foto do perfil atualizada com sucesso.");
+      if (imageEditor.kind !== "gallery") onNotice?.(imageEditor.kind === "cover" ? "Capa atualizada com sucesso." : "Foto do perfil atualizada com sucesso.");
       closeEditor();
       return true;
     } catch (error) {
@@ -894,31 +955,13 @@ export default function PlatformV2Profile({
     }
   }
 
-  async function addGalleryPhotos(files) {
+  function addGalleryPhotos(files) {
     if (!files?.length || busy) return;
-    const available = MAX_MEMBER_GALLERY_PHOTOS - currentGallery.length;
-    const selected = files.slice(0, available);
-    if (!selected.length) {
+    if (currentGallery.length >= MAX_MEMBER_GALLERY_PHOTOS) {
       onNotice?.("A galeria já atingiu o limite de 10 fotos.");
       return;
     }
-    setBusy(true);
-    try {
-      const prepared = await Promise.all(selected.map((file) => prepareSocialPostImageFile(file)));
-      if (identityMode === "organization") {
-        const uploaded = await Promise.all(prepared.map((entry, index) => uploadOrganizationProfileGalleryPhoto({ supabase, userId: user.id, photoUrl: entry.imageUrl, position: organizationGallery.length + index + 1 })));
-        const saved = await saveMyOrganizationGallery({ supabase, photoUrls: [...organizationGallery, ...uploaded].slice(0, MAX_MEMBER_GALLERY_PHOTOS) });
-        setOrganizationGallery(saved);
-      } else {
-        const uploaded = await Promise.all(prepared.map((entry, index) => uploadMemberProfileGalleryPhoto({ supabase, userId: user.id, photoUrl: entry.imageUrl, position: athleteGallery.length + index + 1 })));
-        await saveAthlete({ ...athlete, galleryPhotos: [...athleteGallery, ...uploaded].slice(0, MAX_MEMBER_GALLERY_PHOTOS) });
-      }
-      onNotice?.(`${selected.length} ${selected.length === 1 ? "foto adicionada" : "fotos adicionadas"} à galeria.`);
-    } catch (error) {
-      onNotice?.(error?.message || "Não foi possível salvar as fotos agora.");
-    } finally {
-      setBusy(false);
-    }
+    openEditor(files[0], "gallery");
   }
 
   async function removeGalleryPhoto(index) {
@@ -985,7 +1028,7 @@ export default function PlatformV2Profile({
         </> : null}
       </nav>
 
-      {activeSection === "photos" ? <PhotoGallery title={identityMode === "organization" ? "Galeria da organização" : "Galeria do atleta"} photos={currentGallery} busy={busy} onAdd={addGalleryPhotos} onRemove={removeGalleryPhoto} /> : null}
+      {activeSection === "photos" ? <PhotoGallery title={identityMode === "organization" ? "Galeria da organização" : "Galeria do atleta"} photos={currentGallery} busy={busy} onAdd={addGalleryPhotos} onRemove={removeGalleryPhoto} onPreview={setPreviewPhoto} /> : null}
       {activeSection === "activity" ? <ActivityPanel activity={profileActivity} events={organizationEvents} identityMode={identityMode} /> : null}
       {identityMode === "athlete" && activeSection === "challenges" ? <ChallengesPanel supabase={supabase} userId={user?.id} challenges={profileActivity.challenges || []} busy={busy} onRespond={respondToChallenge} onSend={sendNewChallenge} /> : null}
       {identityMode === "athlete" && activeSection === "achievements" ? <AchievementsPanel achievements={[...(profileActivity.achievements || []), ...(profileActivity.circuitAchievements || [])]} /> : null}
@@ -1063,6 +1106,7 @@ export default function PlatformV2Profile({
         </section>
       </div> : null}
       {imageEditor ? <ProfileImageEditor variant="platform-v2" kind={imageEditor.kind} sourceUrl={imageEditor.sourceUrl} fileName={imageEditor.fileName} onCancel={closeEditor} onApply={applyEditedImage} /> : null}
+      <PhotoLightbox photo={previewPhoto} onClose={() => setPreviewPhoto(null)} />
     </div>
   );
 }

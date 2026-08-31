@@ -22,6 +22,24 @@ const IMAGE_PRESETS = {
     frameClass: "profileImageEditorFrameCover",
     fit: "contain",
   },
+  galleryPortrait: {
+    title: "Ajustar foto da publicação",
+    eyebrow: "Foto da galeria",
+    description: "Escolha o formato do post e posicione a imagem antes de publicar.",
+    outputWidth: 1080,
+    outputHeight: 1350,
+    outputLabel: "1080 × 1350 px · post 4:5",
+    frameClass: "profileImageEditorFrameGalleryPortrait",
+  },
+  gallerySquare: {
+    title: "Ajustar foto da publicação",
+    eyebrow: "Foto da galeria",
+    description: "Escolha o formato do post e posicione a imagem antes de publicar.",
+    outputWidth: 1080,
+    outputHeight: 1080,
+    outputLabel: "1080 × 1080 px · post 1:1",
+    frameClass: "profileImageEditorFrameGallerySquare",
+  },
 };
 
 function getBaseScale(imageSize, preset) {
@@ -59,7 +77,11 @@ export default function ProfileImageEditor({
   onCancel,
   onApply,
 }) {
-  const preset = IMAGE_PRESETS[kind] || IMAGE_PRESETS.photo;
+  const [galleryFormat, setGalleryFormat] = useState("portrait");
+  const presetKey = kind === "gallery"
+    ? (galleryFormat === "square" ? "gallerySquare" : "galleryPortrait")
+    : kind;
+  const preset = IMAGE_PRESETS[presetKey] || IMAGE_PRESETS.photo;
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
   const frameRef = useRef(null);
@@ -94,6 +116,11 @@ export default function ProfileImageEditor({
       if (sourceUrl?.startsWith("blob:")) URL.revokeObjectURL(sourceUrl);
     };
   }, [sourceUrl]);
+
+  useEffect(() => {
+    if (kind !== "gallery") return;
+    setTransform({ zoom: 1, x: 0, y: 0 });
+  }, [galleryFormat, kind]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -258,6 +285,16 @@ export default function ProfileImageEditor({
           </div>
 
           <aside>
+            {kind === "gallery" ? (
+              <div className="profileImageEditorFormats" aria-label="Formato da publicação">
+                <span>Formato do post</span>
+                <div>
+                  <button type="button" className={galleryFormat === "portrait" ? "active" : ""} onClick={() => setGalleryFormat("portrait")} disabled={processing}>4:5 vertical</button>
+                  <button type="button" className={galleryFormat === "square" ? "active" : ""} onClick={() => setGalleryFormat("square")} disabled={processing}>1:1 quadrado</button>
+                </div>
+                <small>A imagem preencherá todo o quadro, sem faixas vazias.</small>
+              </div>
+            ) : null}
             <div className="profileImageEditorOutput"><ImageIcon aria-hidden="true" /><span><strong>Saída preparada</strong><small>{preset.outputLabel}</small></span></div>
             {imageSize ? <p>Original: {imageSize.width} × {imageSize.height} px</p> : null}
             <div className="profileImageEditorZoom" aria-label="Nível de aproximação">
