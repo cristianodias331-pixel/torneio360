@@ -350,6 +350,14 @@
 .postFacts svg { width: 15px; height: 15px; margin-top: 1px; color: #ff762c; }
 .postFacts strong { min-width: 0; overflow-wrap: anywhere; font-size: .69rem; line-height: 1.35; }
 
+.postContent[data-poster-shape="square"] .postBody { padding-bottom: 9px; }
+.postContent[data-poster-shape="square"] .postFacts { grid-template-columns: 1fr 1fr; gap: 0 12px; padding-top: 1px; padding-bottom: 9px; }
+.postContent[data-poster-shape="square"] .postFacts > span { padding: 7px 0; }
+.postContent[data-poster-shape="square"] .postFacts > span:last-child { grid-column: 1 / -1; }
+.postContent[data-poster-shape="square"] .postActions { grid-template-columns: 1fr 1fr; padding-top: 9px; padding-bottom: 10px; }
+.postContent[data-poster-shape="square"] .postActions .primaryAction { grid-column: 1 / -1; }
+.postContent[data-poster-shape="square"] .postActions button { min-height: 36px; padding-inline: 9px; font-size: .62rem; }
+
 .postActions { display: grid; gap: 8px; margin-top: auto; border-top: 1px solid #1d344e; padding: 11px 12px 13px; }
 .postActions button,
 .loadMore,

@@ -6543,13 +6543,18 @@ assert.ok(
     && mainSource.includes("StoryCoverEditor")
     && mainSource.includes("createPortal(")
     && mainSource.includes("document.body")
-    && mainSource.includes("1080 × 1920 px (9:16)")
+    && mainSource.includes("1080 × 1350 (4:5, recomendado)")
+    && mainSource.includes("1080 × 1080 (1:1)")
     && mainSource.includes("Foto do circuito")
     && !mainSource.includes('className="photoZoomButtons"')
     && storyCoverEditorSource.includes('canvas.toDataURL("image/jpeg", 0.88)')
     && storyCoverEditorSource.includes('thumbnailCanvas.toDataURL("image/jpeg", 0.8)')
-    && storyCoverEditorSource.includes("getStoryCoverBackgroundRect")
-    && storyCoverEditorSource.includes("context.filter")
+    && storyCoverEditorSource.includes("POST_COVER_FORMATS")
+    && storyCoverEditorSource.includes('width: 1080, height: 1350')
+    && storyCoverEditorSource.includes('width: 1080, height: 1080')
+    && storyCoverEditorSource.includes("getCoverBaseScale")
+    && storyCoverEditorSource.includes("formatId")
+    && !storyCoverEditorSource.includes("context.filter")
     && storyCoverEditorSource.includes("handlePointerMove")
     && storyCoverEditorSource.includes("handleWheel")
     && storyCoverEditorSource.includes('document.querySelectorAll(\'[aria-modal="true"]\')')
@@ -6580,11 +6585,12 @@ assert.ok(
     && styleSource.includes("box-sizing: border-box !important")
     && styleSource.includes(".publicCoverPreviewButton.publicTournamentCover")
     && styleSource.includes(".storyCoverEditorFrame")
-    && styleSource.includes("aspect-ratio: 9 / 16")
+    && styleSource.includes("aspect-ratio: 4 / 5")
+    && styleSource.includes(".storyCoverFormatPicker")
     && styleSource.includes("z-index: 110000")
     && styleSource.includes(".storyCoverUnderlyingModalLocked")
     && styleSource.includes('html[data-theme="dark"] .tournamentCoverDropzone'),
-  "As imagens públicas perderam o editor Stories, a moldura circular, o contraste noturno ou a ampliação."
+  "As imagens públicas perderam o editor de post 4:5/1:1, a moldura circular, o contraste noturno ou a ampliação."
 );
 
 for (const logoPath of ["public/torneio360-logo.png", "public/torneio360-logo-blue.png"]) {

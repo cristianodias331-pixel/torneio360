@@ -6987,7 +6987,7 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto do torneio</strong>
-                    <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
+                    <span>Post do Instagram: vertical 1080 × 1350 (4:5, recomendado) ou quadrado 1080 × 1080 (1:1). Stories 9:16 não é usado como capa principal.</span>
                   </div>
                   {editForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setEditForm((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
                 </div>
@@ -7117,7 +7117,7 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto geral do evento</strong>
-                    <span>Padrão Stories: 1080 × 1920 px (9:16). As categorias configuradas para usar esta foto serão atualizadas juntas.</span>
+                    <span>Post do Instagram: 4:5 recomendado ou 1:1 quadrado. As categorias configuradas para usar esta foto serão atualizadas juntas.</span>
                   </div>
                   {editEventGroup.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setEditEventGroup((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
                 </div>
@@ -7285,7 +7285,7 @@ setNewPublicInfo({
                 <div className="tournamentCoverIntro">
                   <div>
                     <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
-                    <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
+                    <span>Post do Instagram: vertical 1080 × 1350 (4:5, recomendado) ou quadrado 1080 × 1080 (1:1).</span>
                   </div>
                   {circuitEditForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitEditForm((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
                 </div>
@@ -7774,7 +7774,7 @@ setNewPublicInfo({
     <div className="tournamentCoverIntro">
       <div>
         <strong><Camera aria-hidden="true" /> {newMultiCategoryEvent === "sim" ? "Foto geral do evento" : "Foto do torneio"}</strong>
-        <span>{newMultiCategoryEvent === "sim" ? "Padrão Stories: 1080 × 1920 px (9:16). As categorias sem foto própria usarão esta imagem." : "Padrão Stories: 1080 × 1920 px (9:16). Se não escolher, a foto redonda da arena será usada no cartão."}</span>
+        <span>{newMultiCategoryEvent === "sim" ? "Post do Instagram: 4:5 recomendado ou 1:1 quadrado. As categorias sem foto própria usarão esta imagem." : "Post do Instagram: vertical 4:5 recomendado ou quadrado 1:1. Stories 9:16 ficará separado da capa principal."}</span>
       </div>
       {newCoverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => { setNewCoverImageUrl(""); setNewCoverImageThumbnailUrl(""); }}>Remover foto</button> : null}
     </div>
@@ -8123,7 +8123,7 @@ setNewPublicInfo({
         <div className="tournamentCoverIntro">
           <div>
             <strong><Camera aria-hidden="true" /> Foto do circuito</strong>
-            <span>Padrão Stories: 1080 × 1920 px (9:16). Escolha qualquer foto e ajuste o enquadramento na tela seguinte.</span>
+            <span>Post do Instagram: vertical 1080 × 1350 (4:5, recomendado) ou quadrado 1080 × 1080 (1:1).</span>
           </div>
           {circuitForm.coverImageUrl ? <button type="button" className="removePhotoBtn" onClick={() => setCircuitForm((prev) => ({ ...prev, coverImageUrl: "", coverImageThumbnailUrl: "" }))}>Remover foto</button> : null}
         </div>

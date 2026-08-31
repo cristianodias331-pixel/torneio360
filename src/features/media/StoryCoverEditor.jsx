@@ -1,16 +1,47 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../../styles/41-responsive-public-covers.css";
-import {
-  STORY_COVER_HEIGHT,
-  STORY_COVER_WIDTH,
-  clampStoryCoverTransform,
-  getStoryCoverBackgroundRect,
-  getStoryCoverRenderRect,
-  storyCoverHasNativeResolution,
-} from "./storyCoverCrop.mjs";
 
-const PREVIEW_WIDTH = 270;
-const PREVIEW_HEIGHT = 480;
+const POST_COVER_FORMATS = Object.freeze({
+  portrait: Object.freeze({ id: "portrait", width: 1080, height: 1350, previewWidth: 280, previewHeight: 350, label: "Vertical 4:5", note: "Recomendado" }),
+  square: Object.freeze({ id: "square", width: 1080, height: 1080, previewWidth: 280, previewHeight: 280, label: "Quadrado 1:1", note: "Alternativo" }),
+});
+const MAX_ZOOM = 4;
+
+function clamp(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, Number(value) || 0));
+}
+
+function getCoverBaseScale(sourceWidth, sourceHeight, format) {
+  const width = Math.max(1, Number(sourceWidth) || 1);
+  const height = Math.max(1, Number(sourceHeight) || 1);
+  return Math.max(format.width / width, format.height / height);
+}
+
+function clampCoverTransform({ sourceWidth, sourceHeight, format, zoom = 1, x = 0, y = 0 }) {
+  const safeZoom = clamp(zoom, 1, MAX_ZOOM);
+  const baseScale = getCoverBaseScale(sourceWidth, sourceHeight, format);
+  const renderedWidth = Math.max(1, Number(sourceWidth) || 1) * baseScale * safeZoom;
+  const renderedHeight = Math.max(1, Number(sourceHeight) || 1) * baseScale * safeZoom;
+  return {
+    zoom: safeZoom,
+    x: clamp(x, -(renderedWidth - format.width) / 2, (renderedWidth - format.width) / 2),
+    y: clamp(y, -(renderedHeight - format.height) / 2, (renderedHeight - format.height) / 2),
+  };
+}
+
+function getCoverRenderRect({ sourceWidth, sourceHeight, format, zoom = 1, x = 0, y = 0 }) {
+  const transform = clampCoverTransform({ sourceWidth, sourceHeight, format, zoom, x, y });
+  const scale = getCoverBaseScale(sourceWidth, sourceHeight, format) * transform.zoom;
+  const width = Math.max(1, Number(sourceWidth) || 1) * scale;
+  const height = Math.max(1, Number(sourceHeight) || 1) * scale;
+  return {
+    ...transform,
+    width,
+    height,
+    left: (format.width - width) / 2 + transform.x,
+    top: (format.height - height) / 2 + transform.y,
+  };
+}
 
 function getPointerDistance(points) {
   return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
@@ -25,6 +56,7 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
   const lastDragRef = useRef(null);
   const lastPinchRef = useRef(null);
   const [imageSize, setImageSize] = useState(null);
+  const [formatId, setFormatId] = useState("portrait");
   const [transform, setTransform] = useState({ zoom: 1, x: 0, y: 0 });
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
@@ -38,7 +70,10 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
     };
     image.onload = () => {
       imageRef.current = image;
-      setImageSize({ width: image.naturalWidth || image.width, height: image.naturalHeight || image.height });
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      setImageSize({ width, height });
+      setFormatId(width / Math.max(1, height) >= 0.92 ? "square" : "portrait");
       setTransform({ zoom: 1, x: 0, y: 0 });
       setError("");
     };
@@ -125,38 +160,26 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
     };
   }, []);
 
+  const format = POST_COVER_FORMATS[formatId];
+
   function drawCover(canvas, width, height) {
     const image = imageRef.current;
     if (!canvas || !image || !imageSize) return false;
     const context = canvas.getContext("2d");
     if (!context) return false;
 
-    const rect = getStoryCoverRenderRect({
+    const rect = getCoverRenderRect({
       sourceWidth: imageSize.width,
       sourceHeight: imageSize.height,
+      format,
       ...transform,
     });
-    const backgroundRect = getStoryCoverBackgroundRect(imageSize.width, imageSize.height);
-    const outputScale = width / STORY_COVER_WIDTH;
-    const backgroundBlur = Math.max(9, Math.round(34 * outputScale));
-    const backgroundBleed = backgroundBlur * 2;
+    const outputScale = width / format.width;
     canvas.width = width;
     canvas.height = height;
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
     context.fillStyle = "#071524";
-    context.fillRect(0, 0, width, height);
-    context.save();
-    context.filter = `blur(${backgroundBlur}px) brightness(0.5) saturate(0.85)`;
-    context.drawImage(
-      image,
-      backgroundRect.left * outputScale - backgroundBleed,
-      backgroundRect.top * outputScale - backgroundBleed,
-      backgroundRect.width * outputScale + (backgroundBleed * 2),
-      backgroundRect.height * outputScale + (backgroundBleed * 2)
-    );
-    context.restore();
-    context.fillStyle = "rgba(3, 12, 24, 0.18)";
     context.fillRect(0, 0, width, height);
     context.drawImage(
       image,
@@ -169,16 +192,23 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
   }
 
   useEffect(() => {
-    drawCover(canvasRef.current, PREVIEW_WIDTH, PREVIEW_HEIGHT);
-  }, [imageSize, transform]);
+    drawCover(canvasRef.current, format.previewWidth, format.previewHeight);
+  }, [formatId, imageSize, transform]);
+
+  function chooseFormat(nextFormatId) {
+    if (!POST_COVER_FORMATS[nextFormatId] || nextFormatId === formatId) return;
+    setFormatId(nextFormatId);
+    setTransform({ zoom: 1, x: 0, y: 0 });
+  }
 
   function updateTransform(updater) {
     if (!imageSize) return;
     setTransform((current) => {
       const next = typeof updater === "function" ? updater(current) : updater;
-      return clampStoryCoverTransform({
+      return clampCoverTransform({
         sourceWidth: imageSize.width,
         sourceHeight: imageSize.height,
+        format,
         ...next,
       });
     });
@@ -205,8 +235,8 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pointersRef.current.size === 1 && lastDragRef.current) {
-      const frameWidth = frameRef.current?.getBoundingClientRect().width || PREVIEW_WIDTH;
-      const outputPerPreviewPixel = STORY_COVER_WIDTH / frameWidth;
+      const frameWidth = frameRef.current?.getBoundingClientRect().width || format.previewWidth;
+      const outputPerPreviewPixel = format.width / frameWidth;
       const dx = (event.clientX - lastDragRef.current.x) * outputPerPreviewPixel;
       const dy = (event.clientY - lastDragRef.current.y) * outputPerPreviewPixel;
       lastDragRef.current = { x: event.clientX, y: event.clientY };
@@ -243,16 +273,16 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
 
     try {
       const canvas = document.createElement("canvas");
-      if (!drawCover(canvas, STORY_COVER_WIDTH, STORY_COVER_HEIGHT)) {
+      if (!drawCover(canvas, format.width, format.height)) {
         throw new Error("Não foi possível preparar a imagem.");
       }
       const thumbnailCanvas = document.createElement("canvas");
-      if (!drawCover(thumbnailCanvas, PREVIEW_WIDTH, PREVIEW_HEIGHT)) {
+      if (!drawCover(thumbnailCanvas, format.previewWidth, format.previewHeight)) {
         throw new Error("Não foi possível preparar a miniatura.");
       }
       const imageUrl = canvas.toDataURL("image/jpeg", 0.88);
       const thumbnailUrl = thumbnailCanvas.toDataURL("image/jpeg", 0.8);
-      await onApply?.({ imageUrl, thumbnailUrl });
+      await onApply?.({ imageUrl, thumbnailUrl, format: format.id, width: format.width, height: format.height });
     } catch (applyError) {
       setError(applyError?.message || "Não foi possível preparar a imagem.");
       setProcessing(false);
@@ -260,7 +290,7 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
   }
 
   const nativeResolution = imageSize
-    ? storyCoverHasNativeResolution(imageSize.width, imageSize.height)
+    ? getCoverBaseScale(imageSize.width, imageSize.height, format) <= 1
     : false;
 
   return (
@@ -276,9 +306,9 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
       <section className="storyCoverEditorModal">
         <header>
           <div>
-            <span className="storyCoverEditorEyebrow">Capa vertical 9:16</span>
-            <h2 id="story-cover-editor-title">Enquadrar foto</h2>
-            <p>A foto inteira aparece por padrão. O fundo desfocado completa o formato 9:16.</p>
+            <span className="storyCoverEditorEyebrow">Capa do post</span>
+            <h2 id="story-cover-editor-title">Escolher formato e enquadrar</h2>
+            <p>Use 4:5 para aproveitar melhor o feed ou 1:1 para uma publicação quadrada.</p>
           </div>
           <button type="button" className="secondaryBtn" onClick={onCancel} disabled={processing}>Fechar</button>
         </header>
@@ -287,20 +317,29 @@ export default function StoryCoverEditor({ sourceUrl, fileName = "", onCancel, o
           <div
             ref={frameRef}
             className={`storyCoverEditorFrame ${imageSize ? "ready" : "loading"}`}
+            style={{ aspectRatio: `${format.width} / ${format.height}` }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerEnd}
             onPointerCancel={handlePointerEnd}
             onWheel={handleWheel}
           >
-            <canvas ref={canvasRef} aria-label="Prévia da capa vertical enquadrada" />
+            <canvas ref={canvasRef} aria-label={`Prévia da capa ${format.label} enquadrada`} />
             {!imageSize && !error ? <span>Carregando foto...</span> : null}
             <div className="storyCoverSafeArea" aria-hidden="true" />
           </div>
 
           <aside className="storyCoverEditorInfo">
-            <strong>Saída: 1080 × 1920 px</strong>
-            <span>Formato Stories do Instagram, proporção 9:16.</span>
+            <div className="storyCoverFormatPicker" role="group" aria-label="Formato da capa do post">
+              {Object.values(POST_COVER_FORMATS).map((option) => (
+                <button type="button" key={option.id} className={formatId === option.id ? "selected" : ""} onClick={() => chooseFormat(option.id)} disabled={processing}>
+                  <strong>{option.label}</strong>
+                  <small>{option.width} × {option.height} · {option.note}</small>
+                </button>
+              ))}
+            </div>
+            <strong>Saída: {format.width} × {format.height} px</strong>
+            <span>Formato de post do Instagram. A imagem preencherá todo o quadro, sem faixas vazias.</span>
             {imageSize ? (
               <div className={`storyCoverQuality ${nativeResolution ? "good" : "warning"}`}>
                 <strong>{nativeResolution ? "Boa resolução" : "Resolução limitada"}</strong>

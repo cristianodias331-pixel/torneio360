@@ -931,7 +931,7 @@ html[data-theme="dark"] .trashItemMeta .trashExpiry { color: #fdba74; }
   }
 }
 
-/* Editor das capas 9:16 — homologação */
+/* Editor das capas de post 4:5 e 1:1 — homologação */
 .storyCoverEditorOverlay {
   position: fixed;
   inset: 0;
@@ -1026,7 +1026,7 @@ body.storyCoverScrollLocked {
 .storyCoverEditorFrame {
   position: relative;
   width: min(290px, 34vw, 33.75dvh);
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 4 / 5;
   justify-self: center;
   overflow: hidden;
   border: 3px solid #38bdf8;
@@ -1072,6 +1072,38 @@ body.storyCoverScrollLocked {
   gap: 9px;
   align-content: center;
 }
+
+.storyCoverFormatPicker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-bottom: 5px;
+}
+
+.storyCoverFormatPicker button {
+  display: grid;
+  min-height: 68px;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid var(--ui-border, #dbe4ef);
+  border-radius: 15px;
+  padding: 10px 12px;
+  background: var(--ui-surface-muted, #f1f5f9);
+  color: var(--ui-text, #334155);
+  text-align: left;
+  cursor: pointer;
+}
+
+.storyCoverFormatPicker button.selected {
+  border-color: #ff6819;
+  background: rgba(255, 104, 25, 0.1);
+  color: #ff6819;
+  box-shadow: inset 0 0 0 1px rgba(255, 104, 25, 0.18);
+}
+
+.storyCoverFormatPicker strong { font-size: 0.82rem; }
+.storyCoverFormatPicker small { color: var(--ui-muted, #64748b); font-size: 0.68rem; line-height: 1.25; }
+.storyCoverFormatPicker button.selected small { color: inherit; }
 
 .storyCoverEditorInfo > strong {
   font-size: 1.02rem;
@@ -1205,6 +1237,9 @@ html[data-theme="dark"] .storyCoverQuality.warning,
   .storyCoverEditorInfo {
     gap: 5px;
   }
+
+  .storyCoverFormatPicker { width: min(100%, 370px); margin: 0 auto 4px; }
+  .storyCoverFormatPicker button { min-height: 58px; padding: 8px 10px; }
 
   .storyCoverEditorInfo > strong,
   .storyCoverEditorInfo > span,

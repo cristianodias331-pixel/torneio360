@@ -509,7 +509,7 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
                         <button type="button" className={styles.organizerIdentity} onClick={() => setOrganizationFilter(getOrganizationId(item))}><OrganizerAvatar item={item} /><span><strong>{getOrganizationName(item)}</strong><small>{getLocation(item)}</small></span></button>
                         <span className={registrationOpen ? styles.openBadge : styles.closedBadge}>{registrationOpen ? "Inscrições abertas" : "Encerrado"}</span>
                       </header>
-                      <div className={styles.postContent} style={posterLayout}>
+                      <div className={styles.postContent} style={posterLayout} data-poster-shape={posterRatio >= 0.92 ? "square" : "portrait"}>
                         <button type="button" className={styles.posterButton} onClick={() => openDetails(item)} aria-label={`Ver detalhes de ${name}`}>
                           <Poster
                             item={item}
