@@ -179,13 +179,23 @@ function EmptyPoster({ name }) {
   );
 }
 
-function Poster({ item, alt }) {
+function Poster({ item, alt, onMediaReady }) {
   const cover = getCover(item);
   if (!cover) return <EmptyPoster name={getEventName(item)} />;
   return (
     <span className={styles.posterStage}>
       <img className={styles.posterBackdrop} src={cover} alt="" aria-hidden="true" />
-      <img className={styles.posterImage} src={cover} alt={alt} loading="lazy" decoding="async" />
+      <img
+        className={styles.posterImage}
+        src={cover}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onLoad={(event) => {
+          const { naturalWidth, naturalHeight } = event.currentTarget;
+          if (naturalWidth > 0 && naturalHeight > 0) onMediaReady?.(naturalWidth / naturalHeight);
+        }}
+      />
     </span>
   );
 }
@@ -252,6 +262,7 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   const [loadingMore, setLoadingMore] = useState(false);
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState("");
+  const [posterRatios, setPosterRatios] = useState({});
   const hasSession = Boolean(user?.id);
   const profileName = getProfileName(user, profile);
   const profilePhoto = getProfilePhoto(user, profile);
@@ -477,20 +488,35 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
                 {feed.status !== "loading" && !visibleItems.length ? <div className={styles.feedState}><Search /><strong>Nenhum evento encontrado.</strong><button type="button" onClick={() => { setQuickFilter("all"); setOrganizationFilter(""); setQuery(""); }}>Limpar filtros</button></div> : null}
 
                 {visibleItems.map((item) => {
+                  const itemKey = String(item.id || item.public_id);
                   const name = getEventName(item);
                   const details = getDetails(item);
                   const category = String(details.category || "").trim();
                   const gender = getTournamentGenderLabel(item);
                   const startTime = String(details.eventStartTime || details.startTime || "").trim();
                   const registrationOpen = runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item));
+                  const posterRatio = posterRatios[itemKey];
+                  const posterColumn = posterRatio ? Math.min(382, Math.max(250, Math.round(466 * posterRatio))) : null;
+                  const posterHeight = posterRatio ? Math.round(posterColumn / posterRatio) : null;
+                  const posterLayout = posterRatio ? {
+                    "--v2-poster-ratio": String(posterRatio),
+                    "--v2-poster-column": `${posterColumn}px`,
+                    "--v2-poster-height": `${posterHeight}px`,
+                  } : undefined;
                   return (
-                    <article className={styles.post} key={item.id || item.public_id}>
+                    <article className={styles.post} key={itemKey}>
                       <header className={styles.postHeader}>
                         <button type="button" className={styles.organizerIdentity} onClick={() => setOrganizationFilter(getOrganizationId(item))}><OrganizerAvatar item={item} /><span><strong>{getOrganizationName(item)}</strong><small>{getLocation(item)}</small></span></button>
                         <span className={registrationOpen ? styles.openBadge : styles.closedBadge}>{registrationOpen ? "Inscrições abertas" : "Encerrado"}</span>
                       </header>
-                      <div className={styles.postContent}>
-                        <button type="button" className={styles.posterButton} onClick={() => openDetails(item)} aria-label={`Ver detalhes de ${name}`}><Poster item={item} alt={`Arte de ${name}`} /></button>
+                      <div className={styles.postContent} style={posterLayout}>
+                        <button type="button" className={styles.posterButton} onClick={() => openDetails(item)} aria-label={`Ver detalhes de ${name}`}>
+                          <Poster
+                            item={item}
+                            alt={`Arte de ${name}`}
+                            onMediaReady={(ratio) => setPosterRatios((current) => current[itemKey] === ratio ? current : { ...current, [itemKey]: ratio })}
+                          />
+                        </button>
                         <div className={styles.postSummary}>
                           <div className={styles.postBody}>
                             <span className={styles.postModality}>{runtime.getModalityName(item.type)}</span>
