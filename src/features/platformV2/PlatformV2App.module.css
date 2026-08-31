@@ -867,6 +867,20 @@
 .profileDetailsModal > footer button:last-child { border-color: #ff5a0a; background: #ff5a0a; color: #fff; }
 .profileDetailsModal > footer button svg { width: 15px; }
 .profileDetailsModal button:disabled { opacity: .58; cursor: wait; }
+.profileConfirmBackdrop { position: fixed; z-index: 260; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(0, 5, 14, .84); backdrop-filter: blur(14px); }
+.profileConfirmModal { display: grid; width: min(100%, 430px); grid-template-columns: 50px minmax(0, 1fr); align-items: start; gap: 16px; border: 1px solid #2b4967; border-radius: 22px; padding: 22px; background: linear-gradient(145deg, #0a1c31, #061425); box-shadow: 0 30px 90px rgba(0, 0, 0, .64), 0 0 0 1px rgba(255, 91, 26, .05); }
+.profileConfirmIcon { display: grid; width: 50px; height: 50px; place-items: center; border: 1px solid rgba(255, 103, 35, .48); border-radius: 16px; background: rgba(255, 87, 19, .12); color: #ff722d; }
+.profileConfirmIcon svg { width: 22px; height: 22px; }
+.profileConfirmModal > div { display: grid; gap: 4px; }
+.profileConfirmModal small { color: #ff762f; font-size: .55rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.profileConfirmModal h2 { margin: 0; color: #fff; font-size: 1.25rem; letter-spacing: -.03em; }
+.profileConfirmModal p { margin: 3px 0 0; color: #91a5ba; font-size: .68rem; line-height: 1.55; }
+.profileConfirmModal footer { display: flex; grid-column: 1 / -1; justify-content: flex-end; gap: 9px; border-top: 1px solid #203a54; margin-top: 3px; padding-top: 16px; }
+.profileConfirmModal footer button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; border: 1px solid #304c67; border-radius: 13px; padding: 0 16px; background: #0a1d31; color: #dce7f2; font-size: .65rem; font-weight: 850; cursor: pointer; }
+.profileConfirmModal footer button:hover { border-color: #55738f; color: #fff; }
+.profileConfirmModal footer .profileConfirmDelete { border-color: #ff5d16; background: linear-gradient(135deg, #ff671c, #e74408); color: #fff; box-shadow: 0 10px 28px rgba(230, 66, 8, .22); }
+.profileConfirmDelete svg { width: 15px; height: 15px; }
+.profileConfirmModal button:disabled { opacity: .62; cursor: wait; }
 
 .detailBackdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(0, 5, 12, .78); backdrop-filter: blur(12px); }
 .detailPanel { position: relative; display: grid; width: min(100%, 900px); max-height: min(760px, calc(100dvh - 48px)); grid-template-columns: minmax(300px, 390px) minmax(0, 1fr); overflow: hidden; border: 1px solid #2a4868; border-radius: 26px; background: #061426; box-shadow: 0 30px 90px rgba(0, 0, 0, .54); }
@@ -1072,6 +1086,10 @@
   .profileEditorSection > header { align-items: flex-start; }
   .profileEditorSection > header p { line-height: 1.45; }
   .profileDetailsModal > footer button { flex: 1; }
+  .profileConfirmBackdrop { align-items: end; padding: 10px; }
+  .profileConfirmModal { width: 100%; grid-template-columns: 44px minmax(0, 1fr); gap: 13px; border-radius: 20px; padding: 18px; }
+  .profileConfirmIcon { width: 44px; height: 44px; border-radius: 14px; }
+  .profileConfirmModal footer button { flex: 1; padding: 0 12px; }
   .detailBackdrop { align-items: end; padding: 0; }
   .detailPanel { width: 100%; max-height: 92dvh; grid-template-columns: 1fr; overflow-y: auto; border-width: 1px 0 0; border-radius: 24px 24px 0 0; }
   .detailPoster { min-height: 0; aspect-ratio: 4 / 3; }

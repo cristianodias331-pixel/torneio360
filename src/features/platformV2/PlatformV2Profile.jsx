@@ -26,6 +26,7 @@ import {
   Swords,
   Target,
   Trophy,
+  Trash2,
   UserRound,
   Users,
   UsersRound,
@@ -623,6 +624,7 @@ export default function PlatformV2Profile({
   const [busy, setBusy] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [pendingGalleryRemoval, setPendingGalleryRemoval] = useState(null);
   const [detailsDraft, setDetailsDraft] = useState(null);
   const [detailsErrors, setDetailsErrors] = useState({});
   const [profileCityOptions, setProfileCityOptions] = useState([]);
@@ -1069,18 +1071,23 @@ export default function PlatformV2Profile({
     openEditor(files[0], "gallery");
   }
 
-  async function removeGalleryPhoto(index) {
+  function removeGalleryPhoto(index) {
     if (busy) return;
-    const profileLabel = identityMode === "organization" ? "organização" : "atleta";
-    if (!window.confirm(`Deseja realmente apagar esta foto da galeria do ${profileLabel}? Esta ação não poderá ser desfeita.`)) return;
+    setPendingGalleryRemoval({ index, identity: identityMode });
+  }
+
+  async function confirmGalleryPhotoRemoval() {
+    if (busy || !pendingGalleryRemoval) return;
+    const { index, identity } = pendingGalleryRemoval;
     setBusy(true);
     try {
-      if (identityMode === "organization") {
+      if (identity === "organization") {
         const saved = await saveMyOrganizationGallery({ supabase, photoUrls: organizationGallery.filter((_, photoIndex) => photoIndex !== index) });
         setOrganizationGallery(saved);
       } else {
         await saveAthlete({ ...athlete, galleryPhotos: athleteGallery.filter((_, photoIndex) => photoIndex !== index) });
       }
+      setPendingGalleryRemoval(null);
       onNotice?.("Foto removida da galeria.");
     } catch (error) {
       onNotice?.(error?.message || "Não foi possível remover a foto agora.");
@@ -1225,6 +1232,13 @@ export default function PlatformV2Profile({
             )}
           </div>
           <footer><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy}>Cancelar</button><button type="button" onClick={saveDetails} disabled={busy}><Check /> {busy ? "Salvando..." : "Salvar alterações"}</button></footer>
+        </section>
+      </div> : null}
+      {pendingGalleryRemoval ? <div className={styles.profileConfirmBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setPendingGalleryRemoval(null); }}>
+        <section className={styles.profileConfirmModal} role="alertdialog" aria-modal="true" aria-labelledby="v2-remove-photo-title" aria-describedby="v2-remove-photo-description">
+          <span className={styles.profileConfirmIcon}><Trash2 /></span>
+          <div><small>Excluir da galeria</small><h2 id="v2-remove-photo-title">Apagar esta foto?</h2><p id="v2-remove-photo-description">A foto será removida da galeria do {pendingGalleryRemoval.identity === "organization" ? "perfil da organização" : "perfil do atleta"}. Esta ação não poderá ser desfeita.</p></div>
+          <footer><button type="button" autoFocus onClick={() => setPendingGalleryRemoval(null)} disabled={busy}>Cancelar</button><button type="button" className={styles.profileConfirmDelete} onClick={() => void confirmGalleryPhotoRemoval()} disabled={busy}><Trash2 /> {busy ? "Apagando..." : "Apagar foto"}</button></footer>
         </section>
       </div> : null}
       {imageEditor ? <ProfileImageEditor variant="platform-v2" kind={imageEditor.kind} sourceUrl={imageEditor.sourceUrl} fileName={imageEditor.fileName} onCancel={closeEditor} onApply={applyEditedImage} /> : null}
