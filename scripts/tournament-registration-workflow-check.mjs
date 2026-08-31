@@ -59,16 +59,16 @@ assert(registrationPanelSource.includes("Complete apenas o que falta no perfil")
 const profileCalls = [];
 const profileSupabase = { rpc: async (name, payload) => {
   profileCalls.push({ name, payload });
-  if (name === "upsert_my_member_profile_v3") return { data: { ...payload, gender: payload.p_gender }, error: null };
+  if (name === "upsert_my_member_profile_v4") return { data: { ...payload, gender: payload.p_gender, sports: payload.p_sports }, error: null };
   if (name === "replace_my_member_profile_photos") return { data: [], error: null };
   return { data: null, error: { message: `RPC inesperado: ${name}` } };
 } };
 await saveMyMemberProfile({
   supabase: profileSupabase,
-  profile: { userId: "athlete-1", displayName: "Atleta Teste", gender: "Feminino", galleryPhotos: [] },
+  profile: { userId: "athlete-1", displayName: "Atleta Teste", gender: "Feminino", sports: ["Beach Tennis"], galleryPhotos: [] },
   fallback: { userId: "athlete-1", displayName: "Atleta Teste" },
 });
-assert(profileCalls.find((call) => call.name === "upsert_my_member_profile_v3")?.payload.p_gender === "Feminino", "A seleção da inscrição deve chegar ao perfil como categoria esportiva válida.");
+assert(profileCalls.find((call) => call.name === "upsert_my_member_profile_v4")?.payload.p_gender === "Feminino", "A seleção da inscrição deve chegar ao perfil como categoria esportiva válida.");
 
 const receipt = { name: "pix.pdf", type: "application/pdf", size: 2048 };
 const submitted = await submitTournamentRegistrationWorkflow({

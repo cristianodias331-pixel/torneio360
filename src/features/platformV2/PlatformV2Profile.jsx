@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  AtSign,
   Building2,
   CalendarDays,
   Camera,
   Check,
   CircleUserRound,
+  CreditCard,
   ImagePlus,
   Images,
   MapPin,
+  MessageCircle,
   Plus,
   Settings,
   Trophy,
@@ -17,9 +20,16 @@ import {
 } from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
+  MEMBER_SPORT_OPTIONS,
   createMemberProfileFallback,
   normalizeMemberHandle,
+  validateMemberProfile,
 } from "../../domain/memberProfile.mjs";
+import {
+  BRAZILIAN_STATES,
+  loadBrazilianCities,
+  normalizeBrazilianState,
+} from "../../domain/brazilLocations.mjs";
 import { prepareSocialPostImageFile } from "../media/imageResize.mjs";
 import {
   uploadMemberProfileCover,
@@ -38,6 +48,11 @@ import {
   loadMyOrganizationCover,
   saveMyOrganizationCover,
 } from "../../services/organizationCoverApi.mjs";
+import {
+  getSafePaymentLink,
+  loadMyOrganizationPaymentSettings,
+  saveMyOrganizationPaymentSettings,
+} from "../../services/organizationPaymentApi.mjs";
 import ProfileImageEditor from "../profile/ProfileImageEditor.jsx";
 import styles from "./PlatformV2App.module.css";
 
@@ -54,13 +69,94 @@ function getInitials(value, fallback = "T3") {
 function normalizeOrganization(profile) {
   return {
     name: profile?.arena_name || profile?.name || "Minha organização",
+    organizerName: profile?.name || "",
     photoUrl: profile?.photo_url || profile?.avatar_url || "",
     coverUrl: profile?.cover_url || "",
     city: profile?.city || "",
     state: profile?.state || "",
     bio: profile?.description || profile?.bio || "Organização esportiva no Torneio 360.",
     handle: profile?.instagram_handle || profile?.instagram || "",
+    whatsapp: profile?.phone || "",
+    instagramLink: profile?.instagram_link || "",
+    whatsappGroupLink: profile?.whatsapp_group_link || "",
+    address: profile?.address || "",
+    mapsLink: profile?.maps_link || "",
+    pixKey: profile?.pix_key || "",
+    cardPaymentLink: profile?.card_payment_link || "",
   };
+}
+
+function normalizeOptionalWebLink(value) {
+  const source = String(value || "").trim();
+  if (!source) return "";
+  return getSafePaymentLink(source);
+}
+
+function isForeignLocation(state) {
+  return Boolean(String(state || "").trim() && !normalizeBrazilianState(state));
+}
+
+function EditorSection({ Icon, title, description, children }) {
+  return (
+    <section className={styles.profileEditorSection}>
+      <header>
+        <span><Icon aria-hidden="true" /></span>
+        <div><h3>{title}</h3><p>{description}</p></div>
+      </header>
+      <div className={styles.profileFormGrid}>{children}</div>
+    </section>
+  );
+}
+
+function FieldError({ message }) {
+  return message ? <small className={styles.profileFieldError}>{message}</small> : null;
+}
+
+function LocationEditor({ draft, errors = {}, cityOptions, citiesLoading, citiesError, onChange }) {
+  const foreignLocation = Boolean(draft.foreignLocation);
+  const stateCode = normalizeBrazilianState(draft.state);
+  const availableCities = draft.city && !cityOptions.includes(draft.city)
+    ? [draft.city, ...cityOptions]
+    : cityOptions;
+
+  return (
+    <>
+      <label className={styles.profileForeignToggle}>
+        <input
+          type="checkbox"
+          checked={foreignLocation}
+          onChange={(event) => onChange("foreignLocation", event.target.checked)}
+        />
+        <span><strong>Local no exterior</strong><small>Marque para escrever o estado, a região e a cidade livremente.</small></span>
+      </label>
+      {foreignLocation ? (
+        <>
+          <label><span>Estado, província ou região</span><input value={draft.state || ""} maxLength={80} placeholder="Ex.: Flórida" onChange={(event) => onChange("state", event.target.value)} /><FieldError message={errors.state} /></label>
+          <label><span>Cidade ou localidade</span><input value={draft.city || ""} maxLength={80} placeholder="Ex.: Miami" onChange={(event) => onChange("city", event.target.value)} /><FieldError message={errors.city} /></label>
+        </>
+      ) : (
+        <>
+          <label>
+            <span>Estado</span>
+            <select value={stateCode} onChange={(event) => { onChange("state", event.target.value); onChange("city", ""); }}>
+              <option value="">Selecione o estado</option>
+              {BRAZILIAN_STATES.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}
+            </select>
+            <FieldError message={errors.state} />
+          </label>
+          <label>
+            <span>Município</span>
+            <select value={draft.city || ""} disabled={!stateCode || citiesLoading} onChange={(event) => onChange("city", event.target.value)}>
+              <option value="">{citiesLoading ? "Carregando municípios..." : stateCode ? "Selecione o município" : "Selecione primeiro o estado"}</option>
+              {availableCities.map((city) => <option key={city} value={city}>{city}</option>)}
+            </select>
+            {citiesError ? <small className={styles.profileFieldError}>{citiesError}</small> : null}
+            <FieldError message={errors.city} />
+          </label>
+        </>
+      )}
+    </>
+  );
 }
 
 function IdentityAvatar({ name, photoUrl, Icon = UserRound, className = "" }) {
@@ -68,6 +164,30 @@ function IdentityAvatar({ name, photoUrl, Icon = UserRound, className = "" }) {
     <span className={`${styles.profileAvatar} ${className}`.trim()}>
       {photoUrl ? <img src={photoUrl} alt={`Foto de ${name}`} /> : <span>{getInitials(name)}<Icon aria-hidden="true" /></span>}
     </span>
+  );
+}
+
+function SportBadges({ sports = [], editable = false, onToggle }) {
+  const entries = editable ? MEMBER_SPORT_OPTIONS : MEMBER_SPORT_OPTIONS.filter((sport) => sports.includes(sport.value));
+  if (!entries.length && !editable) return null;
+  return (
+    <div className={`${styles.profileSportBadges} ${editable ? styles.editableSportBadges : ""}`.trim()}>
+      {entries.map((sport) => {
+        const selected = sports.includes(sport.value);
+        return editable ? (
+          <button
+            key={sport.value}
+            type="button"
+            className={selected ? styles.selectedSportBadge : ""}
+            style={{ "--sport-color": sport.color }}
+            aria-pressed={selected}
+            onClick={() => onToggle?.(sport.value)}
+          >
+            {selected ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}{sport.value}
+          </button>
+        ) : <span key={sport.value} style={{ "--sport-color": sport.color }}>{sport.value}</span>;
+      })}
+    </div>
   );
 }
 
@@ -154,6 +274,10 @@ export default function PlatformV2Profile({
   const [busy, setBusy] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
   const [detailsDraft, setDetailsDraft] = useState(null);
+  const [detailsErrors, setDetailsErrors] = useState({});
+  const [profileCityOptions, setProfileCityOptions] = useState([]);
+  const [profileCitiesLoading, setProfileCitiesLoading] = useState(false);
+  const [profileCitiesError, setProfileCitiesError] = useState("");
   const hasOrganization = Boolean(accessProfile?.arena_name || accessProfile?.organization_name);
 
   useEffect(() => {
@@ -184,10 +308,22 @@ export default function PlatformV2Profile({
     Promise.all([
       loadMyOrganizationGallery({ supabase }),
       loadMyOrganizationCover({ supabase, fallback: accessProfile?.cover_url || "" }),
-    ]).then(([photos, cover]) => {
+      loadMyOrganizationPaymentSettings({
+        supabase,
+        fallback: {
+          pixKey: accessProfile?.pix_key || "",
+          cardPaymentLink: accessProfile?.card_payment_link || "",
+        },
+      }),
+    ]).then(([photos, cover, paymentSettings]) => {
       if (!active) return;
       setOrganizationGallery(photos || []);
-      setOrganization((current) => ({ ...current, coverUrl: cover.coverUrl || current.coverUrl }));
+      setOrganization((current) => ({
+        ...current,
+        coverUrl: cover.coverUrl || current.coverUrl,
+        pixKey: paymentSettings.pixKey || "",
+        cardPaymentLink: paymentSettings.cardPaymentLink || "",
+      }));
     }).catch(() => {
       if (active) onNotice?.("Não foi possível carregar todas as fotos da organização agora.");
     });
@@ -204,6 +340,37 @@ export default function PlatformV2Profile({
   }, [hasOrganization, onIdentitySummaryChange, organization.name, organization.photoUrl]);
 
   useEffect(() => { setActiveSection("activity"); }, [identityMode]);
+
+  useEffect(() => {
+    if (!detailsDraft || detailsDraft.foreignLocation) {
+      setProfileCityOptions([]);
+      setProfileCitiesLoading(false);
+      setProfileCitiesError("");
+      return undefined;
+    }
+    const stateCode = normalizeBrazilianState(detailsDraft.state);
+    if (!stateCode) {
+      setProfileCityOptions([]);
+      setProfileCitiesLoading(false);
+      setProfileCitiesError("");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setProfileCitiesLoading(true);
+    setProfileCitiesError("");
+    loadBrazilianCities(stateCode, { signal: controller.signal })
+      .then((cities) => setProfileCityOptions(cities))
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        setProfileCityOptions([]);
+        setProfileCitiesError(error?.message || "Não foi possível carregar os municípios deste estado.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setProfileCitiesLoading(false);
+      });
+    return () => controller.abort();
+  }, [detailsDraft?.foreignLocation, detailsDraft?.state]);
 
   const current = identityMode === "organization" && hasOrganization ? organization : athlete;
   const currentGallery = identityMode === "organization" && hasOrganization ? organizationGallery : athleteGallery;
@@ -223,60 +390,162 @@ export default function PlatformV2Profile({
   }
 
   function openDetailsEditor() {
+    setDetailsErrors({});
     setDetailsDraft(identityMode === "organization" ? {
-      name: organization.name,
-      handle: organization.handle,
+      arenaName: organization.name,
+      organizerName: organization.organizerName,
+      whatsapp: organization.whatsapp,
+      instagramHandle: organization.handle,
+      instagramLink: organization.instagramLink,
+      whatsappGroupLink: organization.whatsappGroupLink,
+      address: organization.address,
+      mapsLink: organization.mapsLink,
       city: organization.city,
       state: organization.state,
+      foreignLocation: isForeignLocation(organization.state),
+      pixKey: organization.pixKey,
+      cardPaymentLink: organization.cardPaymentLink,
     } : {
       name: athlete.displayName,
       handle: athlete.handle,
       city: athlete.city,
       state: athlete.state,
-      category: athlete.sportsCategory,
+      foreignLocation: isForeignLocation(athlete.state),
+      sportsCategory: athlete.sportsCategory,
+      sports: athlete.sports || [],
+      gender: athlete.gender,
+      dominantHand: athlete.dominantHand,
+      shirtSize: athlete.shirtSize,
       bio: athlete.bio,
+      whatsapp: athlete.whatsapp,
+      telegram: athlete.telegram,
+      instagram: athlete.instagram,
+      showContacts: athlete.showContacts,
     });
   }
 
   function updateDetailsDraft(field, value) {
     setDetailsDraft((currentValue) => ({ ...currentValue, [field]: value }));
+    setDetailsErrors((currentValue) => {
+      if (!currentValue[field]) return currentValue;
+      const nextValue = { ...currentValue };
+      delete nextValue[field];
+      return nextValue;
+    });
+  }
+
+  function toggleDraftSport(sport) {
+    setDetailsDraft((currentValue) => {
+      const selected = currentValue?.sports || [];
+      return {
+        ...currentValue,
+        sports: selected.includes(sport)
+          ? selected.filter((entry) => entry !== sport)
+          : [...selected, sport],
+      };
+    });
+    setDetailsErrors((currentValue) => {
+      if (!currentValue.sports) return currentValue;
+      const nextValue = { ...currentValue };
+      delete nextValue.sports;
+      return nextValue;
+    });
   }
 
   async function saveDetails() {
     if (!detailsDraft || busy) return;
-    if (String(detailsDraft.name || "").trim().length < 2) {
-      onNotice?.("Informe um nome com pelo menos 2 caracteres.");
+    const normalizedState = detailsDraft.foreignLocation
+      ? String(detailsDraft.state || "").trim()
+      : normalizeBrazilianState(detailsDraft.state);
+    const normalizedCity = String(detailsDraft.city || "").trim();
+
+    let athleteValidation = null;
+    const nextErrors = {};
+    if (identityMode === "organization") {
+      if (String(detailsDraft.arenaName || "").trim().length < 2) nextErrors.arenaName = "Informe o nome da organização.";
+      if (String(detailsDraft.organizerName || "").trim().length < 2) nextErrors.organizerName = "Informe o nome do organizador.";
+      if (!normalizedState) nextErrors.state = detailsDraft.foreignLocation ? "Informe o estado, a província ou a região." : "Selecione o estado.";
+      if (!normalizedCity) nextErrors.city = detailsDraft.foreignLocation ? "Informe a cidade ou localidade." : "Selecione o município.";
+      const normalizedWhatsapp = String(detailsDraft.whatsapp || "").replace(/[^0-9+]/g, "");
+      if (normalizedWhatsapp && !/^\+?[0-9]{10,15}$/.test(normalizedWhatsapp)) nextErrors.whatsapp = "Informe o WhatsApp com DDD e apenas números.";
+      [
+        ["instagramLink", "Link do Instagram"],
+        ["whatsappGroupLink", "Link do grupo de WhatsApp"],
+        ["mapsLink", "Link do endereço"],
+        ["cardPaymentLink", "Link de pagamento"],
+      ].forEach(([field, label]) => {
+        if (String(detailsDraft[field] || "").trim() && !normalizeOptionalWebLink(detailsDraft[field])) nextErrors[field] = `${label} deve começar com http:// ou https://.`;
+      });
+    } else {
+      athleteValidation = validateMemberProfile({
+        ...athlete,
+        displayName: String(detailsDraft.name || "").trim(),
+        handle: normalizeMemberHandle(detailsDraft.handle),
+        city: normalizedCity,
+        state: normalizedState,
+        sportsCategory: String(detailsDraft.sportsCategory || "").trim(),
+        sports: detailsDraft.sports || [],
+        gender: detailsDraft.gender,
+        dominantHand: detailsDraft.dominantHand,
+        shirtSize: detailsDraft.shirtSize,
+        bio: String(detailsDraft.bio || "").trim(),
+        whatsapp: detailsDraft.whatsapp,
+        telegram: detailsDraft.telegram,
+        instagram: detailsDraft.instagram,
+        showContacts: Boolean(detailsDraft.showContacts),
+        galleryPhotos: athleteGallery,
+      });
+      Object.assign(nextErrors, athleteValidation.errors);
+      if (!normalizedState) nextErrors.state = detailsDraft.foreignLocation ? "Informe o estado, a província ou a região." : "Selecione o estado.";
+      if (!normalizedCity) nextErrors.city = detailsDraft.foreignLocation ? "Informe a cidade ou localidade." : "Selecione o município.";
+    }
+
+    if (Object.keys(nextErrors).length) {
+      setDetailsErrors(nextErrors);
+      onNotice?.(Object.values(nextErrors)[0]);
       return;
     }
+
     setBusy(true);
     try {
       if (identityMode === "organization") {
         const payload = {
-          arena_name: String(detailsDraft.name || "").trim(),
-          instagram_handle: String(detailsDraft.handle || "").trim().replace(/^@+/, ""),
-          city: String(detailsDraft.city || "").trim(),
-          state: String(detailsDraft.state || "").trim().toLocaleUpperCase("pt-BR").slice(0, 2),
+          arena_name: String(detailsDraft.arenaName || "").trim(),
+          name: String(detailsDraft.organizerName || "").trim(),
+          phone: String(detailsDraft.whatsapp || "").replace(/[^0-9+]/g, ""),
+          instagram_handle: String(detailsDraft.instagramHandle || "").trim().replace(/^@+/, ""),
+          instagram_link: normalizeOptionalWebLink(detailsDraft.instagramLink),
+          whatsapp_group_link: normalizeOptionalWebLink(detailsDraft.whatsappGroupLink),
+          address: String(detailsDraft.address || "").trim(),
+          maps_link: normalizeOptionalWebLink(detailsDraft.mapsLink),
+          city: normalizedCity,
+          state: normalizedState,
+          is_public: true,
         };
         const { data, error } = await supabase.from("profiles").update(payload).eq("id", user.id).select("*").maybeSingle();
         if (error) throw error;
+        const paymentSettings = await saveMyOrganizationPaymentSettings({
+          supabase,
+          pixKey: String(detailsDraft.pixKey || "").trim(),
+          cardPaymentLink: normalizeOptionalWebLink(detailsDraft.cardPaymentLink),
+        });
         setOrganization((currentValue) => ({
           ...currentValue,
           name: data?.arena_name || payload.arena_name,
-          handle: data?.instagram_handle || payload.instagram_handle,
+          organizerName: data?.name || payload.name,
+          whatsapp: data?.phone || payload.phone,
+          handle: data?.instagram_handle ?? payload.instagram_handle,
+          instagramLink: data?.instagram_link ?? payload.instagram_link,
+          whatsappGroupLink: data?.whatsapp_group_link ?? payload.whatsapp_group_link,
+          address: data?.address ?? payload.address,
+          mapsLink: data?.maps_link ?? payload.maps_link,
           city: data?.city || payload.city,
           state: data?.state || payload.state,
+          pixKey: paymentSettings.pixKey,
+          cardPaymentLink: paymentSettings.cardPaymentLink,
         }));
       } else {
-        await saveAthlete({
-          ...athlete,
-          displayName: String(detailsDraft.name || "").trim(),
-          handle: normalizeMemberHandle(detailsDraft.handle),
-          city: String(detailsDraft.city || "").trim(),
-          state: String(detailsDraft.state || "").trim().toLocaleUpperCase("pt-BR").slice(0, 2),
-          sportsCategory: String(detailsDraft.category || "").trim(),
-          bio: String(detailsDraft.bio || "").trim(),
-          galleryPhotos: athleteGallery,
-        });
+        await saveAthlete(athleteValidation.profile);
       }
       setDetailsDraft(null);
       onNotice?.("Informações do perfil atualizadas com sucesso.");
@@ -399,6 +668,7 @@ export default function PlatformV2Profile({
             <span className={styles.profileType}>{identityMode === "organization" ? <><Building2 /> Perfil da organização</> : <><UserRound /> Perfil do atleta</>}</span>
             <h1>{name}</h1>
             <p>{current.handle ? `@${String(current.handle).replace(/^@/, "")}` : location || (identityMode === "organization" ? "Organização esportiva" : "Atleta Torneio 360")}</p>
+            {identityMode === "athlete" ? <SportBadges sports={athlete.sports || []} /> : null}
           </div>
           <div className={styles.profileStats}>
             <span><strong>{currentGallery.length}</strong><small>Fotos</small></span>
@@ -429,12 +699,52 @@ export default function PlatformV2Profile({
       {detailsDraft ? <div className={styles.profileModalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDetailsDraft(null); }}>
         <section className={styles.profileDetailsModal} role="dialog" aria-modal="true" aria-labelledby="v2-profile-editor-title">
           <header><div><span>{identityMode === "organization" ? "Perfil da organização" : "Perfil do atleta"}</span><h2 id="v2-profile-editor-title">Editar informações</h2><p>Os dados permanecem separados entre as duas identidades.</p></div><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy} aria-label="Fechar edição"><X /></button></header>
-          <div className={styles.profileFormGrid}>
-            <label className={styles.profileFormWide}><span>{identityMode === "organization" ? "Nome da organização" : "Nome do atleta"}</span><input value={detailsDraft.name || ""} maxLength={80} onChange={(event) => updateDetailsDraft("name", event.target.value)} /></label>
-            <label><span>{identityMode === "organization" ? "Instagram" : "Nome de usuário"}</span><input value={detailsDraft.handle || ""} maxLength={64} placeholder="@nome" onChange={(event) => updateDetailsDraft("handle", event.target.value)} /></label>
-            <label><span>Estado</span><input value={detailsDraft.state || ""} maxLength={2} placeholder="CE" onChange={(event) => updateDetailsDraft("state", event.target.value)} /></label>
-            <label className={styles.profileFormWide}><span>Cidade</span><input value={detailsDraft.city || ""} maxLength={80} onChange={(event) => updateDetailsDraft("city", event.target.value)} /></label>
-            {identityMode === "athlete" ? <><label className={styles.profileFormWide}><span>Categoria esportiva</span><input value={detailsDraft.category || ""} maxLength={40} placeholder="Ex.: Categoria B" onChange={(event) => updateDetailsDraft("category", event.target.value)} /></label><label className={styles.profileFormWide}><span>Apresentação</span><textarea value={detailsDraft.bio || ""} maxLength={240} rows={4} onChange={(event) => updateDetailsDraft("bio", event.target.value)} /></label></> : null}
+          <div className={styles.profileEditorBody}>
+            {identityMode === "organization" ? (
+              <>
+                <EditorSection Icon={Building2} title="Identidade da organização" description="Dados que identificam a arena e a pessoa responsável.">
+                  <label><span>Organização</span><input value={detailsDraft.arenaName || ""} maxLength={80} placeholder="Nome da arena" onChange={(event) => updateDetailsDraft("arenaName", event.target.value)} /><FieldError message={detailsErrors.arenaName} /></label>
+                  <label><span>Nome do organizador</span><input value={detailsDraft.organizerName || ""} maxLength={80} placeholder="Pessoa responsável" onChange={(event) => updateDetailsDraft("organizerName", event.target.value)} /><FieldError message={detailsErrors.organizerName} /></label>
+                </EditorSection>
+                <EditorSection Icon={MessageCircle} title="Contato público" description="Canais usados pelos atletas para falar com a organização.">
+                  <label><span>WhatsApp</span><input inputMode="tel" value={detailsDraft.whatsapp || ""} maxLength={20} placeholder="DDD + número" onChange={(event) => updateDetailsDraft("whatsapp", event.target.value)} /><FieldError message={detailsErrors.whatsapp} /></label>
+                  <label><span>@ do Instagram</span><input value={detailsDraft.instagramHandle || ""} maxLength={64} placeholder="@suaarena" onChange={(event) => updateDetailsDraft("instagramHandle", event.target.value)} /></label>
+                  <label><span>Link do Instagram</span><input type="url" value={detailsDraft.instagramLink || ""} placeholder="https://instagram.com/suaarena" onChange={(event) => updateDetailsDraft("instagramLink", event.target.value)} /><FieldError message={detailsErrors.instagramLink} /></label>
+                  <label><span>Link do grupo de WhatsApp</span><input type="url" value={detailsDraft.whatsappGroupLink || ""} placeholder="https://chat.whatsapp.com/..." onChange={(event) => updateDetailsDraft("whatsappGroupLink", event.target.value)} /><FieldError message={detailsErrors.whatsappGroupLink} /></label>
+                </EditorSection>
+                <EditorSection Icon={MapPin} title="Localização" description="No Brasil, o município aparece depois da escolha do estado.">
+                  <label className={styles.profileFormWide}><span>Endereço da organização</span><input value={detailsDraft.address || ""} maxLength={180} placeholder="Rua, número e bairro" onChange={(event) => updateDetailsDraft("address", event.target.value)} /></label>
+                  <label className={styles.profileFormWide}><span>Link do endereço</span><input type="url" value={detailsDraft.mapsLink || ""} placeholder="Link do Google Maps" onChange={(event) => updateDetailsDraft("mapsLink", event.target.value)} /><FieldError message={detailsErrors.mapsLink} /></label>
+                  <LocationEditor draft={detailsDraft} errors={detailsErrors} cityOptions={profileCityOptions} citiesLoading={profileCitiesLoading} citiesError={profileCitiesError} onChange={updateDetailsDraft} />
+                </EditorSection>
+                <EditorSection Icon={CreditCard} title="Recebimentos públicos" description="Esses meios de pagamento poderão aparecer na inscrição e no perfil público.">
+                  <label><span>Chave Pix da organização</span><input value={detailsDraft.pixKey || ""} maxLength={180} placeholder="Chave aleatória ou empresarial" onChange={(event) => updateDetailsDraft("pixKey", event.target.value)} /></label>
+                  <label><span>Link para pagamento com cartão</span><input type="url" value={detailsDraft.cardPaymentLink || ""} placeholder="https://..." onChange={(event) => updateDetailsDraft("cardPaymentLink", event.target.value)} /><FieldError message={detailsErrors.cardPaymentLink} /></label>
+                </EditorSection>
+              </>
+            ) : (
+              <>
+                <EditorSection Icon={CircleUserRound} title="Seu perfil público" description="Informações que aparecem para atletas e organizações.">
+                  <label><span>Nome de exibição</span><input value={detailsDraft.name || ""} maxLength={80} onChange={(event) => updateDetailsDraft("name", event.target.value)} /><FieldError message={detailsErrors.displayName} /></label>
+                  <label><span>Nome de usuário</span><span className={styles.profileInputPrefix}><AtSign aria-hidden="true" /><input value={detailsDraft.handle || ""} maxLength={30} placeholder="seunome" onChange={(event) => updateDetailsDraft("handle", event.target.value)} /></span><FieldError message={detailsErrors.handle} /></label>
+                  <label className={styles.profileFormWide}><span>Apresentação</span><textarea value={detailsDraft.bio || ""} maxLength={240} rows={4} onChange={(event) => updateDetailsDraft("bio", event.target.value)} /><small className={styles.profileCharCount}>{String(detailsDraft.bio || "").length}/240</small><FieldError message={detailsErrors.bio} /></label>
+                  <LocationEditor draft={detailsDraft} errors={detailsErrors} cityOptions={profileCityOptions} citiesLoading={profileCitiesLoading} citiesError={profileCitiesError} onChange={updateDetailsDraft} />
+                </EditorSection>
+                <EditorSection Icon={Trophy} title="Dados esportivos do atleta" description="Modalidades, nível e categoria usados para inscrições e formação de duplas.">
+                  <div className={styles.profileSportPicker}><span>Modalidades praticadas</span><SportBadges sports={detailsDraft.sports || []} editable onToggle={toggleDraftSport} /><FieldError message={detailsErrors.sports} /></div>
+                  <label><span>Nível técnico</span><input value={detailsDraft.sportsCategory || ""} maxLength={40} placeholder="Ex.: Iniciante ou Categoria B" onChange={(event) => updateDetailsDraft("sportsCategory", event.target.value)} /><FieldError message={detailsErrors.sportsCategory} /></label>
+                  <label><span>Categoria esportiva</span><select value={detailsDraft.gender || ""} onChange={(event) => updateDetailsDraft("gender", event.target.value)}><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select><FieldError message={detailsErrors.gender} /></label>
+                  <label><span>Mão dominante</span><select value={detailsDraft.dominantHand || "Não informado"} onChange={(event) => updateDetailsDraft("dominantHand", event.target.value)}><option>Destro</option><option>Canhoto</option><option>Ambidestro</option><option>Não informado</option></select></label>
+                  <label><span>Tamanho da camiseta</span><select value={detailsDraft.shirtSize || "Não informado"} onChange={(event) => updateDetailsDraft("shirtSize", event.target.value)}>{["PP", "P", "M", "G", "GG", "XGG", "Não informado"].map((size) => <option key={size}>{size}</option>)}</select></label>
+                </EditorSection>
+                <EditorSection Icon={UsersRound} title="Contato para dupla e desafios" description="Você controla se esses canais podem aparecer após uma combinação esportiva.">
+                  <label><span>WhatsApp</span><input inputMode="tel" value={detailsDraft.whatsapp || ""} maxLength={20} placeholder="DDD + número" onChange={(event) => updateDetailsDraft("whatsapp", event.target.value)} /><FieldError message={detailsErrors.whatsapp} /></label>
+                  <label><span>Telegram</span><input value={detailsDraft.telegram || ""} maxLength={64} placeholder="seuusuario" onChange={(event) => updateDetailsDraft("telegram", event.target.value)} /><FieldError message={detailsErrors.telegram} /></label>
+                  <label><span>Instagram</span><input value={detailsDraft.instagram || ""} maxLength={64} placeholder="seuusuario" onChange={(event) => updateDetailsDraft("instagram", event.target.value)} /><FieldError message={detailsErrors.instagram} /></label>
+                  <label className={styles.profileContactToggle}><input type="checkbox" checked={Boolean(detailsDraft.showContacts)} onChange={(event) => updateDetailsDraft("showContacts", event.target.checked)} /><span><strong>Permitir contato após uma combinação</strong><small>WhatsApp, Telegram ou Instagram só aparecem quando você habilitar.</small></span></label>
+                </EditorSection>
+              </>
+            )}
           </div>
           <footer><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy}>Cancelar</button><button type="button" onClick={saveDetails} disabled={busy}><Check /> {busy ? "Salvando..." : "Salvar alterações"}</button></footer>
         </section>

@@ -16,6 +16,15 @@ const dominantHandOptions = new Set(["Destro", "Canhoto", "Ambidestro", "Não in
 const shirtSizeOptions = new Set(["PP", "P", "M", "G", "GG", "XGG", "Não informado"]);
 const genderOptions = new Set(["Masculino", "Feminino"]);
 
+export const MEMBER_SPORT_OPTIONS = Object.freeze([
+  { value: "Beach Tennis", color: "#ff6b1a" },
+  { value: "Vôlei", color: "#2f9dff" },
+  { value: "Futevôlei", color: "#22c983" },
+  { value: "Tênis", color: "#e6c91e" },
+  { value: "Pickleball", color: "#a875ff" },
+]);
+const memberSports = new Set(MEMBER_SPORT_OPTIONS.map((sport) => sport.value));
+
 export const MAX_MEMBER_GALLERY_PHOTOS = 10;
 
 export function normalizeMemberGender(value) {
@@ -54,6 +63,15 @@ export function normalizeMemberGalleryPhotos(value) {
     .slice(0, MAX_MEMBER_GALLERY_PHOTOS);
 }
 
+export function normalizeMemberSports(value) {
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "").split(",");
+  return [...new Set(source.map((entry) => String(entry || "").trim()))]
+    .filter((entry) => memberSports.has(entry))
+    .slice(0, MEMBER_SPORT_OPTIONS.length);
+}
+
 export function createMemberProfileFallback({ user, accessProfile } = {}) {
   const emailName = String(user?.email || "").split("@")[0];
   const metadataName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
@@ -68,6 +86,9 @@ export function createMemberProfileFallback({ user, accessProfile } = {}) {
     city: "",
     state: "",
     sportsCategory: cleanText(user?.user_metadata?.sports_category || "", maximumLengths.sportsCategory),
+    sports: normalizeMemberSports(user?.user_metadata?.sports).length
+      ? normalizeMemberSports(user?.user_metadata?.sports)
+      : ["Beach Tennis"],
     gender: normalizeMemberGender(user?.user_metadata?.gender || user?.user_metadata?.sex),
     dominantHand: dominantHandOptions.has(user?.user_metadata?.dominant_hand) ? user.user_metadata.dominant_hand : "Não informado",
     shirtSize: shirtSizeOptions.has(user?.user_metadata?.shirt_size) ? user.user_metadata.shirt_size : "Não informado",
@@ -92,6 +113,9 @@ export function normalizeMemberProfile(row, fallback = {}) {
     city: cleanText(row?.city ?? fallback.city, maximumLengths.city),
     state: cleanText(row?.state ?? fallback.state, maximumLengths.state),
     sportsCategory: cleanText(row?.sports_category ?? row?.sportsCategory ?? fallback.sportsCategory, maximumLengths.sportsCategory),
+    sports: normalizeMemberSports(row?.sports ?? fallback.sports).length
+      ? normalizeMemberSports(row?.sports ?? fallback.sports)
+      : ["Beach Tennis"],
     gender: normalizeMemberGender(row?.gender ?? fallback.gender),
     dominantHand: dominantHandOptions.has(row?.dominant_hand ?? row?.dominantHand)
       ? (row?.dominant_hand ?? row?.dominantHand)
@@ -123,6 +147,7 @@ export function getMemberProfileInitials(profile) {
 export function validateMemberProfile(profile) {
   const normalized = normalizeMemberProfile(profile);
   const errors = {};
+  const requestedSports = Array.isArray(profile?.sports) ? normalizeMemberSports(profile.sports) : normalized.sports;
   const requestedGalleryPhotos = Array.isArray(profile?.galleryPhotos)
     ? profile.galleryPhotos.filter((entry) => String(entry || "").trim())
     : [];
@@ -147,6 +172,9 @@ export function validateMemberProfile(profile) {
 
   if (!moderatePublicText(normalized.sportsCategory).allowed) {
     errors.sportsCategory = "A categoria contém conteúdo não permitido.";
+  }
+  if (!requestedSports.length) {
+    errors.sports = "Escolha pelo menos uma modalidade esportiva.";
   }
   if (!genderOptions.has(normalized.gender)) {
     errors.gender = "Selecione a categoria esportiva do atleta para validar inscrições e duplas mistas.";
@@ -176,6 +204,7 @@ export function toMemberProfileRpcPayload(profile) {
     p_city: normalized.city,
     p_state: normalized.state,
     p_sports_category: normalized.sportsCategory,
+    p_sports: normalized.sports,
     p_gender: normalized.gender,
     p_dominant_hand: normalized.dominantHand,
     p_shirt_size: normalized.shirtSize,

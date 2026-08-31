@@ -13,6 +13,7 @@ function isUnavailableSchemaError(error) {
     || message.includes("upsert_my_member_profile")
     || message.includes("upsert_my_member_profile_v2")
     || message.includes("upsert_my_member_profile_v3")
+    || message.includes("upsert_my_member_profile_v4")
     || message.includes("replace_my_member_profile_photos")
     || message.includes("get_public_member_profile")
     || message.includes("member_profiles");
@@ -45,7 +46,7 @@ export async function loadMyMemberProfile({ supabase, fallback }) {
 
 export async function saveMyMemberProfile({ supabase, profile, fallback }) {
   const { data, error } = await supabase.rpc(
-    "upsert_my_member_profile_v3",
+    "upsert_my_member_profile_v4",
     toMemberProfileRpcPayload(profile)
   );
 

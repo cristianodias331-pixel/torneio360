@@ -34,6 +34,7 @@ const validation = validateMemberProfile({
   handle: "pessoa.teste",
   coverUrl: "https://example.test/capa.webp",
   sportsCategory: "Iniciante",
+  sports: ["Beach Tennis", "Vôlei"],
   gender: "Masculino",
   dominantHand: "Destro",
   whatsapp: "85999999999",
@@ -46,11 +47,15 @@ const validation = validateMemberProfile({
 assert(validation.valid, "O perfil válido deve passar pela validação.");
 assert(validation.profile.isPublic === true, "O perfil esportivo deve permanecer público.");
 
+const missingSports = validateMemberProfile({ ...fallback, gender: "Feminino", sports: [] });
+assert(!missingSports.valid && missingSports.errors.sports, "O atleta deve escolher pelo menos uma modalidade.");
+
 const rpcPayload = toMemberProfileRpcPayload(validation.profile);
 assert(rpcPayload.p_display_name === "Pessoa Teste", "O nome deve chegar ao RPC.");
 assert(rpcPayload.p_handle === "pessoa.teste", "O identificador deve chegar ao RPC.");
 assert(rpcPayload.p_cover_url.endsWith("capa.webp"), "A capa deve chegar ao RPC.");
 assert(rpcPayload.p_sports_category === "Iniciante", "A categoria deve chegar ao RPC.");
+assert(rpcPayload.p_sports.join(",") === "Beach Tennis,Vôlei", "As modalidades escolhidas devem chegar ao RPC.");
 assert(rpcPayload.p_gender === "Masculino", "A categoria esportiva obrigatória deve chegar ao RPC.");
 assert(rpcPayload.p_dominant_hand === "Destro", "A mão dominante deve chegar ao RPC.");
 assert(rpcPayload.p_whatsapp === "85999999999", "O contato autorizado deve chegar ao RPC privado.");
@@ -64,6 +69,7 @@ const databaseProfile = normalizeMemberProfile({
   gallery_photos: ["foto-1.webp", "foto-2.webp"],
   followers_count: 32,
   sports_category: "Iniciante",
+  sports: ["Tênis", "Pickleball"],
   gender: "Feminino",
   dominant_hand: "Destro",
   show_contacts: true,
@@ -74,6 +80,7 @@ assert(databaseProfile.isPublic === true, "O perfil armazenado deve ser tratado 
 assert(databaseProfile.galleryPhotos.length === 2, "As fotos públicas devem ser normalizadas.");
 assert(databaseProfile.followersCount === 32, "A contagem de seguidores deve ser normalizada.");
 assert(databaseProfile.sportsCategory === "Iniciante", "A categoria armazenada deve ser normalizada.");
+assert(databaseProfile.sports.join(",") === "Tênis,Pickleball", "As modalidades armazenadas devem ser normalizadas.");
 assert(databaseProfile.gender === "Feminino", "A categoria esportiva armazenada deve ser normalizada.");
 assert(databaseProfile.dominantHand === "Destro", "A mão dominante armazenada deve ser normalizada.");
 
