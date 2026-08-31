@@ -118,7 +118,7 @@
 
 .topbarPageName { overflow: hidden; color: #f4f7fb; font-size: .9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
-.topActions { min-width: 0; justify-content: flex-end; gap: 10px; }
+.topActions { min-width: 0; flex-wrap: nowrap; justify-content: flex-end; gap: 10px; }
 .notificationButton { width: 44px; height: 44px; border-radius: 14px; }
 .notificationButton svg { width: 18px; height: 18px; }
 

@@ -19,6 +19,7 @@ import {
   MapPin,
   Menu,
   Plus,
+  RefreshCw,
   Search,
   Share2,
   Sparkles,
@@ -612,7 +613,8 @@ export default function PlatformV2App({
           </label>
         ) : <strong className={styles.topbarPageName}>{activeTab === "profile" ? (identityMode === "organization" ? "Perfil da organização" : "Perfil do atleta") : NAVIGATION.find((entry) => entry.id === activeTab)?.label}</strong>}
 
-        <div className={styles.topActions}>
+        <div className={styles.topActions} role="toolbar" aria-label="Ações fixas da plataforma">
+          <button type="button" className={styles.notificationButton} onClick={() => window.location.reload()} aria-label="Recarregar página" title="Recarregar página"><RefreshCw /></button>
           <button type="button" className={styles.notificationButton} onClick={() => selectTab("notifications")} aria-label="Abrir notificações"><Bell /></button>
           {hasSession ? (
             <div className={styles.accountWrap}>
