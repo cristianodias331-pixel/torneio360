@@ -18,6 +18,7 @@ import {
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
+  normalizeMemberHandle,
 } from "../../domain/memberProfile.mjs";
 import { prepareSocialPostImageFile } from "../media/imageResize.mjs";
 import {
@@ -152,6 +153,7 @@ export default function PlatformV2Profile({
   const [activeSection, setActiveSection] = useState("activity");
   const [busy, setBusy] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
+  const [detailsDraft, setDetailsDraft] = useState(null);
   const hasOrganization = Boolean(accessProfile?.arena_name || accessProfile?.organization_name);
 
   useEffect(() => {
@@ -218,6 +220,71 @@ export default function PlatformV2Profile({
       return;
     }
     setImageEditor({ identity: identityMode, kind, sourceUrl: URL.createObjectURL(file), fileName: file.name || "imagem" });
+  }
+
+  function openDetailsEditor() {
+    setDetailsDraft(identityMode === "organization" ? {
+      name: organization.name,
+      handle: organization.handle,
+      city: organization.city,
+      state: organization.state,
+    } : {
+      name: athlete.displayName,
+      handle: athlete.handle,
+      city: athlete.city,
+      state: athlete.state,
+      category: athlete.sportsCategory,
+      bio: athlete.bio,
+    });
+  }
+
+  function updateDetailsDraft(field, value) {
+    setDetailsDraft((currentValue) => ({ ...currentValue, [field]: value }));
+  }
+
+  async function saveDetails() {
+    if (!detailsDraft || busy) return;
+    if (String(detailsDraft.name || "").trim().length < 2) {
+      onNotice?.("Informe um nome com pelo menos 2 caracteres.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (identityMode === "organization") {
+        const payload = {
+          arena_name: String(detailsDraft.name || "").trim(),
+          instagram_handle: String(detailsDraft.handle || "").trim().replace(/^@+/, ""),
+          city: String(detailsDraft.city || "").trim(),
+          state: String(detailsDraft.state || "").trim().toLocaleUpperCase("pt-BR").slice(0, 2),
+        };
+        const { data, error } = await supabase.from("profiles").update(payload).eq("id", user.id).select("*").maybeSingle();
+        if (error) throw error;
+        setOrganization((currentValue) => ({
+          ...currentValue,
+          name: data?.arena_name || payload.arena_name,
+          handle: data?.instagram_handle || payload.instagram_handle,
+          city: data?.city || payload.city,
+          state: data?.state || payload.state,
+        }));
+      } else {
+        await saveAthlete({
+          ...athlete,
+          displayName: String(detailsDraft.name || "").trim(),
+          handle: normalizeMemberHandle(detailsDraft.handle),
+          city: String(detailsDraft.city || "").trim(),
+          state: String(detailsDraft.state || "").trim().toLocaleUpperCase("pt-BR").slice(0, 2),
+          sportsCategory: String(detailsDraft.category || "").trim(),
+          bio: String(detailsDraft.bio || "").trim(),
+          galleryPhotos: athleteGallery,
+        });
+      }
+      setDetailsDraft(null);
+      onNotice?.("Informações do perfil atualizadas com sucesso.");
+    } catch (error) {
+      onNotice?.(error?.message || "Não foi possível salvar as informações agora.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function closeEditor() {
@@ -338,7 +405,7 @@ export default function PlatformV2Profile({
             <span><strong>{identityMode === "athlete" ? athlete.followersCount || 0 : 0}</strong><small>Seguidores</small></span>
             <span><strong>0</strong><small>Seguindo</small></span>
           </div>
-          <button type="button" className={styles.profileEditButton} onClick={() => onNotice?.("Os dados de texto serão editados nesta mesma V2 na próxima etapa; fotos, capa e galeria já estão funcionando.")}><Settings /> Editar informações</button>
+          <button type="button" className={styles.profileEditButton} onClick={openDetailsEditor}><Settings /> Editar informações</button>
         </div>
       </section>
 
@@ -359,6 +426,19 @@ export default function PlatformV2Profile({
 
       {athleteStatus === "unavailable" ? <p className={styles.profileSchemaWarning}>A galeria do atleta aguarda a atualização do banco de homologação.</p> : null}
       {busy ? <div className={styles.profileBusy} role="status"><span /><strong>Salvando alterações...</strong></div> : null}
+      {detailsDraft ? <div className={styles.profileModalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDetailsDraft(null); }}>
+        <section className={styles.profileDetailsModal} role="dialog" aria-modal="true" aria-labelledby="v2-profile-editor-title">
+          <header><div><span>{identityMode === "organization" ? "Perfil da organização" : "Perfil do atleta"}</span><h2 id="v2-profile-editor-title">Editar informações</h2><p>Os dados permanecem separados entre as duas identidades.</p></div><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy} aria-label="Fechar edição"><X /></button></header>
+          <div className={styles.profileFormGrid}>
+            <label className={styles.profileFormWide}><span>{identityMode === "organization" ? "Nome da organização" : "Nome do atleta"}</span><input value={detailsDraft.name || ""} maxLength={80} onChange={(event) => updateDetailsDraft("name", event.target.value)} /></label>
+            <label><span>{identityMode === "organization" ? "Instagram" : "Nome de usuário"}</span><input value={detailsDraft.handle || ""} maxLength={64} placeholder="@nome" onChange={(event) => updateDetailsDraft("handle", event.target.value)} /></label>
+            <label><span>Estado</span><input value={detailsDraft.state || ""} maxLength={2} placeholder="CE" onChange={(event) => updateDetailsDraft("state", event.target.value)} /></label>
+            <label className={styles.profileFormWide}><span>Cidade</span><input value={detailsDraft.city || ""} maxLength={80} onChange={(event) => updateDetailsDraft("city", event.target.value)} /></label>
+            {identityMode === "athlete" ? <><label className={styles.profileFormWide}><span>Categoria esportiva</span><input value={detailsDraft.category || ""} maxLength={40} placeholder="Ex.: Categoria B" onChange={(event) => updateDetailsDraft("category", event.target.value)} /></label><label className={styles.profileFormWide}><span>Apresentação</span><textarea value={detailsDraft.bio || ""} maxLength={240} rows={4} onChange={(event) => updateDetailsDraft("bio", event.target.value)} /></label></> : null}
+          </div>
+          <footer><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy}>Cancelar</button><button type="button" onClick={saveDetails} disabled={busy}><Check /> {busy ? "Salvando..." : "Salvar alterações"}</button></footer>
+        </section>
+      </div> : null}
       {imageEditor ? <ProfileImageEditor kind={imageEditor.kind} sourceUrl={imageEditor.sourceUrl} fileName={imageEditor.fileName} onCancel={closeEditor} onApply={applyEditedImage} /> : null}
     </div>
   );
