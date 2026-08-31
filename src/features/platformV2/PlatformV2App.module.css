@@ -40,7 +40,7 @@
   right: 0;
   left: 0;
   display: grid;
-  height: 72px;
+  height: 68px;
   grid-template-columns: minmax(210px, 1fr) minmax(300px, 520px) minmax(210px, 1fr);
   align-items: center;
   gap: 24px;
@@ -179,7 +179,7 @@
 .sidebar {
   position: fixed;
   z-index: 90;
-  top: 72px;
+  top: 68px;
   bottom: 0;
   left: 0;
   display: flex;
@@ -217,8 +217,8 @@
 .sidebar nav button > strong { min-width: 0; overflow: hidden; font-size: .7rem; font-weight: 780; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar nav button > small { grid-column: 2; margin-top: -9px; color: #5f7186; font-size: .5rem; white-space: nowrap; }
 .sidebar nav button:hover { background: rgba(255, 255, 255, .035); color: #eaf0f7; }
-.sidebar nav .activeNav { border-color: rgba(255, 90, 10, .58); background: linear-gradient(90deg, rgba(255, 90, 10, .22), rgba(255, 90, 10, .055)); color: #fff; }
-.sidebar nav .activeNav > span { background: rgba(255, 90, 10, .16); color: #ff792f; }
+.sidebar nav .activeNav { border-color: #ff6d24; background: linear-gradient(100deg, #cf4307, #8f2804); color: #fff; box-shadow: 0 10px 26px rgba(255, 90, 10, .16); }
+.sidebar nav .activeNav > span { background: rgba(255, 255, 255, .12); color: #fff; }
 
 .sidebarFoot { gap: 10px; border: 1px solid #1e354f; border-radius: 15px; padding: 11px; background: #061426; color: #ff6c20; }
 .sidebarFoot > svg { width: 18px; flex: 0 0 auto; }
@@ -238,27 +238,27 @@
 .main {
   min-height: 100dvh;
   margin-left: 244px;
-  padding: 96px 28px 56px;
+  padding: 78px 24px 48px;
   transition: margin-left 190ms ease;
 }
 .sidebarClosed .main { margin-left: 76px; }
 
 .overview,
-.comingSoon { width: min(100%, 1120px); margin: 0 auto; }
+.comingSoon { width: min(100%, 980px); margin: 0 auto; }
 
 .overviewHeader {
   display: flex;
-  min-height: 82px;
+  min-height: 62px;
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .kicker { display: block; margin-bottom: 4px; color: var(--v2-orange-soft); font-size: .64rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
 .overviewHeader h1,
 .overviewHeader p { margin: 0; }
-.overviewHeader h1 { font-size: clamp(2rem, 3vw, 2.75rem); line-height: 1; letter-spacing: -.05em; }
+.overviewHeader h1 { font-size: clamp(2rem, 3vw, 2.45rem); line-height: 1; letter-spacing: -.05em; }
 .overviewHeader p { margin-top: 8px; color: var(--v2-muted); font-size: .8rem; }
 .synced { gap: 8px; padding-bottom: 5px; color: #7d91a7; font-size: .62rem; font-weight: 750; white-space: nowrap; }
 .synced i { width: 8px; height: 8px; border-radius: 50%; background: var(--v2-green); box-shadow: 0 0 14px rgba(69, 221, 138, .72); }
@@ -267,7 +267,7 @@
 .filters {
   display: flex;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
@@ -275,7 +275,7 @@
 .filters::-webkit-scrollbar,
 .stories::-webkit-scrollbar { display: none; }
 .filters button {
-  min-height: 38px;
+  min-height: 32px;
   flex: 0 0 auto;
   border: 1px solid #263d58;
   border-radius: 999px;
@@ -292,13 +292,13 @@
 
 .stories {
   display: flex;
-  gap: 15px;
-  margin-bottom: 22px;
+  gap: 12px;
+  margin-bottom: 10px;
   overflow-x: auto;
   padding: 1px 1px 5px;
   scrollbar-width: none;
 }
-.stories > button { display: grid; width: 78px; justify-items: center; gap: 4px; flex: 0 0 78px; border: 0; padding: 0; background: transparent; color: #d9e2ec; cursor: pointer; }
+.stories > button { display: grid; width: 62px; justify-items: center; gap: 3px; flex: 0 0 62px; border: 0; padding: 0; background: transparent; color: #d9e2ec; cursor: pointer; }
 .stories > button > strong,
 .stories > button > small { width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .stories > button > strong { font-size: .59rem; }
@@ -307,13 +307,13 @@
 
 .organizerAvatar { display: grid; width: 38px; height: 38px; place-items: center; overflow: hidden; flex: 0 0 auto; border: 2px solid var(--v2-orange); border-radius: 50%; background: #0f2b43; color: #fff; font-size: .58rem; font-weight: 900; }
 .organizerAvatar img { width: 100%; height: 100%; object-fit: cover; }
-.organizerAvatar.story { width: 60px; height: 60px; border-width: 2px; box-shadow: 0 0 0 3px rgba(255, 90, 10, .09); }
+.organizerAvatar.story { width: 46px; height: 46px; border-width: 2px; box-shadow: 0 0 0 3px rgba(255, 90, 10, .09); }
 .activeStory .organizerAvatar.story { box-shadow: 0 0 0 4px rgba(255, 90, 10, .28); }
 
-.contentGrid { display: grid; grid-template-columns: minmax(0, 680px) minmax(290px, 340px); align-items: start; justify-content: center; gap: 24px; }
-.feed { display: grid; min-width: 0; gap: 20px; }
-.post { overflow: hidden; border: 1px solid #243e5b; border-radius: 22px; background: var(--v2-surface); box-shadow: 0 20px 54px rgba(0, 0, 0, .25); }
-.postHeader { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; background: #091b30; }
+.contentGrid { display: grid; grid-template-columns: minmax(0, 540px) minmax(280px, 300px); align-items: start; justify-content: center; gap: 20px; }
+.feed { display: grid; min-width: 0; gap: 18px; }
+.post { overflow: hidden; border: 1px solid #243e5b; border-radius: 18px; background: var(--v2-surface); box-shadow: 0 20px 54px rgba(0, 0, 0, .25); }
+.postHeader { display: flex; min-height: 50px; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 11px; background: #091b30; }
 .organizerIdentity { min-width: 0; gap: 10px; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .organizerIdentity > span:last-child { display: grid; min-width: 0; gap: 2px; }
 .organizerIdentity strong,
@@ -325,30 +325,30 @@
 .openBadge { background: rgba(69, 221, 138, .11); color: #54e596; }
 .closedBadge { background: rgba(157, 174, 194, .10); color: #9eafc1; }
 
-.posterButton { position: relative; display: grid; width: 100%; aspect-ratio: 4 / 5; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #010711; cursor: pointer; }
+.posterButton { position: relative; display: grid; width: 100%; aspect-ratio: 2 / 1; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #010711; cursor: pointer; }
 .posterStage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #020914; }
 .posterBackdrop { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); opacity: .28; filter: blur(30px) saturate(.82); object-fit: cover; transform: scale(1.05); }
 .posterStage::after { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2, 9, 20, .16), rgba(2, 9, 20, .34)); content: ""; pointer-events: none; }
-.posterImage { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; }
+.posterImage { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .emptyPoster { display: grid; width: 100%; height: 100%; place-items: center; align-content: center; gap: 12px; padding: 35px; background: radial-gradient(circle at 65% 20%, rgba(255, 90, 10, .22), transparent 30%), linear-gradient(145deg, #0a1d33, #020914); text-align: center; }
 .emptyPoster > span { display: grid; width: 70px; height: 70px; place-items: center; border: 1px solid rgba(255, 90, 10, .55); border-radius: 24px; color: #ff7428; box-shadow: 0 0 38px rgba(255, 90, 10, .12); }
 .emptyPoster svg { width: 32px; }
 .emptyPoster strong { max-width: 440px; font-size: 1.6rem; line-height: 1.1; }
 .emptyPoster small { color: #93a5ba; }
 
-.postBody { padding: 15px 16px 13px; }
+.postBody { padding: 8px 11px 7px; }
 .postModality { color: #ff792e; font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-.postBody h2 { margin: 4px 0 7px; overflow: hidden; color: #fff; font-size: 1.12rem; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
+.postBody h2 { margin: 3px 0 6px; overflow: hidden; color: #fff; font-size: 1rem; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
 .postBody p { display: flex; flex-wrap: wrap; gap: 8px 15px; margin: 0; color: #9bacc0; font-size: .64rem; }
 .postBody p span { display: inline-flex; align-items: center; gap: 5px; }
 .postBody p svg { width: 13px; height: 13px; color: #7189a2; }
 
-.postActions { display: flex; gap: 8px; border-top: 1px solid #1d344e; padding: 10px 14px 13px; }
+.postActions { display: flex; gap: 8px; border-top: 1px solid #1d344e; padding: 8px 10px 10px; }
 .postActions button,
 .loadMore,
 .feedState button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -461,7 +461,7 @@
   .sidebar { width: 218px; }
   .main { margin-left: 218px; padding-right: 20px; padding-left: 20px; }
   .sidebarClosed .main { margin-left: 76px; }
-  .contentGrid { grid-template-columns: minmax(0, 620px) minmax(270px, 310px); gap: 18px; }
+  .contentGrid { grid-template-columns: minmax(0, 520px) minmax(270px, 290px); gap: 18px; }
 }
 
 @media (max-width: 999px) {
@@ -516,6 +516,7 @@
   .feed { gap: 15px; }
   .post { border-radius: 17px; }
   .postHeader { min-height: 58px; padding: 9px 10px; }
+  .posterButton { aspect-ratio: 4 / 5; }
   .organizerIdentity small { max-width: 200px; }
   .openBadge,
   .closedBadge { max-width: 120px; overflow: hidden; padding: 6px 8px; text-overflow: ellipsis; white-space: nowrap; }

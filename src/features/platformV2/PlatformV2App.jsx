@@ -317,10 +317,27 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
         details.category,
         runtime.getModalityName(item.type),
       ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(normalizedQuery);
-    }).sort((first, second) => Number(Boolean(getCover(second))) - Number(Boolean(getCover(first))));
+    }).sort((first, second) => {
+      const score = (item) => (
+        Number(Boolean(getCover(item))) * 2
+        + Number(runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item)))
+      );
+      return score(second) - score(first);
+    });
   }, [feed.items, organizationFilter, profile?.city, profile?.state, query, quickFilter, runtime]);
 
-  const upcoming = feed.items.slice(0, 3);
+  const upcoming = useMemo(
+    () => [...feed.items]
+      .sort((first, second) => {
+        const score = (item) => (
+          Number(Boolean(getCover(item))) * 2
+          + Number(runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item)))
+        );
+        return score(second) - score(first);
+      })
+      .slice(0, 3),
+    [feed.items, runtime]
+  );
   const registrations = (activity.registrations || []).filter((entry) => entry.bucket !== "past").slice(0, 2);
 
   function selectTab(tab) {
@@ -457,8 +474,8 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
                         <p>{getEventDate(item) ? <span><CalendarDays /> {runtime.formatDate(getEventDate(item))}</span> : null}<span><MapPin /> {getLocation(item)}</span></p>
                       </div>
                       <footer className={styles.postActions}>
-                        <button type="button" onClick={() => share(item)}><Share2 /> Compartilhar</button>
                         <button type="button" onClick={() => openDetails(item)}><ChevronRight /> Ver detalhes</button>
+                        <button type="button" onClick={() => share(item)}><Share2 /> Compartilhar</button>
                         {registrationOpen ? <button type="button" className={styles.primaryAction} onClick={() => openDetails(item, true)}><ClipboardCheck /> Inscrever-se</button> : null}
                       </footer>
                     </article>
