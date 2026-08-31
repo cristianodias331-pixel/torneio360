@@ -8,6 +8,7 @@ import {
   validateMemberProfile,
 } from "../src/domain/memberProfile.mjs";
 import {
+  createAthleteChallenge,
   loadMyAthleteActivity,
   loadPublicAthleteActivity,
 } from "../src/services/athleteActivityApi.mjs";
@@ -122,6 +123,22 @@ assert(ownActivityResult.activity.registrations[0].workflow_status === "submitte
 assert(ownActivityResult.activity.circuitAchievements.length === 1, "As conquistas de circuitos devem permanecer separadas dos pódios de torneios.");
 assert(publicActivityResult.activity.registrations.length === 1, "As participações confirmadas devem chegar ao perfil público.");
 
+let expandedChallengePayload = null;
+await createAthleteChallenge({
+  supabase: {
+    rpc: async (name, payload) => {
+      assert(name === "create_athlete_challenge", "A criação expandida deve usar o RPC próprio da V2.");
+      expandedChallengePayload = payload;
+      return { data: { id: "challenge-1" }, error: null };
+    },
+  },
+  challengedUserId: "member-2",
+  challengeType: "practice",
+  goalType: "training_hours",
+  goalTarget: 8,
+});
+assert(expandedChallengePayload.p_goal_type === "training_hours" && expandedChallengePayload.p_goal_target === 8, "A Meta esportiva deve salvar seu objetivo e sua quantidade.");
+
 const unavailableActivity = await loadMyAthleteActivity({
   supabase: {
     rpc: async () => ({ data: null, error: { code: "PGRST202", message: "get_my_athlete_activity" } }),
@@ -141,6 +158,7 @@ const athleteActivityStyles = await readFile(new URL("../src/styles/57-athlete-a
 const platformV2ProfileSource = await readFile(new URL("../src/features/platformV2/PlatformV2Profile.jsx", import.meta.url), "utf8");
 const platformV2Styles = await readFile(new URL("../src/features/platformV2/PlatformV2App.module.css", import.meta.url), "utf8");
 const profileImageEditorSource = await readFile(new URL("../src/features/profile/ProfileImageEditor.jsx", import.meta.url), "utf8");
+const expandedChallengeMigrationSource = await readFile(new URL("../supabase/migrations/202608310003_expanded_athlete_challenges.sql", import.meta.url), "utf8");
 
 assert(memberPresentationSource.includes("OWNER_MEMBER_PROFILE_TABS = MEMBER_PROFILE_TABS"), "A busca por dupla deve ficar dentro da atividade esportiva, sem criar uma sexta aba principal.");
 assert(memberPresentationSource.includes("publicMemberProfileTabs athleteProfileTabs"), "As abas do atleta devem ter uma grade responsiva própria.");
@@ -157,8 +175,10 @@ assert(athleteActivitySource.includes('role="tablist"') && athleteActivitySource
 assert(athleteActivityStyles.includes("html body .proDashboard.playAppShell .athleteActivityKinds button.active"), "O botão selecionado da atividade deve permanecer visível nos temas claro e escuro.");
 assert(organizerWorkspaceSource.includes('const returnPanel = ["inicio", "explorar"].includes(activePanel)') && memberProfileWorkspaceSource.includes('const returnPanel = ["overview", "explore"].includes(activePanel)'), "Abrir um torneio pelo perfil deve revelar a tela do evento e permitir voltar ao painel de origem.");
 assert(platformV2ProfileSource.includes("Pódios em torneios") && platformV2ProfileSource.includes("Pódios em circuitos") && platformV2ProfileSource.includes("Histórico oficial"), "A V2 deve separar conquistas de torneios, circuitos e histórico oficial.");
-assert(platformV2ProfileSource.includes("Partida direta") && platformV2ProfileSource.includes("Meta esportiva") && platformV2ProfileSource.includes("searchPublicPlatform"), "A V2 deve permitir criar desafios suportados e localizar atletas reais.");
+assert(["Partida direta", "Dupla x dupla", "Meta esportiva", "Desafio aberto", "Horas de treino", "Partidas disputadas", "Treinos na semana", "Sequência de vitórias"].every((label) => platformV2ProfileSource.includes(label)) && platformV2ProfileSource.includes("searchPublicPlatform"), "A V2 deve permitir criar os quatro formatos de desafio e configurar metas esportivas.");
 assert(platformV2Styles.includes("profileAchievementSummaryGrid") && platformV2Styles.includes("profileChallengeLayout"), "Conquistas e desafios da V2 devem preservar o novo layout responsivo.");
+assert(platformV2Styles.includes("profileChallengeGoal") && platformV2Styles.includes("profileChallengeSearch label > div"), "A Meta esportiva e a busca de atletas devem permanecer alinhadas no painel de criação.");
+assert(expandedChallengeMigrationSource.includes("create_athlete_challenge") && expandedChallengeMigrationSource.includes("list_my_expanded_athlete_challenges") && expandedChallengeMigrationSource.includes("'doubles', 'open'") && expandedChallengeMigrationSource.includes("'weekly_sessions', 'win_streak'"), "A homologação deve ter suporte persistente a duplas, desafio aberto e metas configuráveis.");
 assert(profileImageEditorSource.includes("galleryPortrait") && profileImageEditorSource.includes("4:5 vertical") && profileImageEditorSource.includes("1:1 quadrado"), "A galeria deve permitir ajustar a publicação nos dois formatos de post do Instagram.");
 assert(platformV2ProfileSource.includes("profileGalleryPreview") && platformV2ProfileSource.includes("PhotoLightbox"), "As fotos dos perfis de atleta e organização devem abrir ampliadas.");
 assert(platformV2ProfileSource.includes("excludeOrganizationCoverFromGallery"), "A capa da organização não deve ocupar uma posição na galeria.");

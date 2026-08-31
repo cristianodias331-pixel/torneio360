@@ -68,7 +68,7 @@ import {
   loadMyOrganizationPaymentSettings,
   saveMyOrganizationPaymentSettings,
 } from "../../services/organizationPaymentApi.mjs";
-import { respondAthleteChallenge, sendAthleteChallenge } from "../../services/athleteActivityApi.mjs";
+import { createAthleteChallenge, respondAthleteChallenge } from "../../services/athleteActivityApi.mjs";
 import ProfileImageEditor from "../profile/ProfileImageEditor.jsx";
 import styles from "./PlatformV2App.module.css";
 
@@ -302,7 +302,12 @@ function formatProfileDate(value) {
 }
 
 function getChallengeLabel(value) {
-  return value === "match" ? "Partida direta" : "Meta esportiva";
+  return ({
+    match: "Partida direta",
+    practice: "Meta esportiva",
+    doubles: "Dupla x dupla",
+    open: "Desafio aberto",
+  })[value] || "Desafio esportivo";
 }
 
 function getChallengeStatusLabel(value) {
@@ -430,23 +435,39 @@ function AchievementsPanel({ achievements = [] }) {
 }
 
 const CHALLENGE_CREATE_OPTIONS = [
-  { id: "match", label: "Partida direta", description: "Desafie um atleta para uma partida.", Icon: Trophy, available: true },
-  { id: "doubles", label: "Dupla x dupla", description: "Convide outra dupla.", Icon: Users, available: false },
-  { id: "practice", label: "Meta esportiva", description: "Compare treinos, jogos ou horas.", Icon: Target, available: true },
-  { id: "open", label: "Desafio aberto", description: "Publique para atletas próximos.", Icon: Flag, available: false },
+  { id: "match", label: "Partida direta", description: "Desafie um atleta para uma partida.", Icon: Trophy },
+  { id: "doubles", label: "Dupla x dupla", description: "Monte sua dupla e convide outra dupla.", Icon: Users },
+  { id: "practice", label: "Meta esportiva", description: "Compare treinos, jogos ou horas.", Icon: Target },
+  { id: "open", label: "Desafio aberto", description: "Publique para atletas da plataforma.", Icon: Flag },
 ];
+
+const SPORT_GOAL_OPTIONS = [
+  { id: "training_hours", label: "Horas de treino", unit: "horas" },
+  { id: "matches_played", label: "Partidas disputadas", unit: "partidas" },
+  { id: "weekly_sessions", label: "Treinos na semana", unit: "treinos" },
+  { id: "win_streak", label: "Sequência de vitórias", unit: "vitórias" },
+];
+
+function getChallengeGoalLabel(challenge) {
+  const option = SPORT_GOAL_OPTIONS.find((entry) => entry.id === challenge?.goal_type);
+  const target = Number(challenge?.goal_target);
+  return option && Number.isFinite(target) && target > 0 ? `${target} ${option.unit}` : "";
+}
 
 function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, onSend }) {
   const [filter, setFilter] = useState("all");
   const [creating, setCreating] = useState(false);
   const [challengeType, setChallengeType] = useState("match");
   const [query, setQuery] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [goalType, setGoalType] = useState("training_hours");
+  const [goalTarget, setGoalTarget] = useState(5);
   const [candidateState, setCandidateState] = useState({ loading: false, items: [], error: "" });
   const waitingCount = challenges.filter((entry) => entry.status === "pending").length;
   const acceptedCount = challenges.filter((entry) => entry.status === "accepted").length;
   const completedCount = challenges.filter((entry) => ["declined", "cancelled"].includes(entry.status)).length;
   const visibleChallenges = challenges.filter((entry) => {
-    if (filter === "received") return entry.direction === "incoming";
+    if (filter === "received") return entry.direction === "incoming" || entry.direction === "open";
     if (filter === "sent") return entry.direction === "outgoing";
     if (filter === "completed") return entry.status !== "pending";
     return true;
@@ -454,7 +475,7 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
 
   useEffect(() => {
     const normalizedQuery = query.trim();
-    if (!creating || normalizedQuery.length < 2) {
+    if (!creating || challengeType === "open" || normalizedQuery.length < 2) {
       setCandidateState({ loading: false, items: [], error: "" });
       return undefined;
     }
@@ -466,7 +487,7 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
         if (!active) return;
         setCandidateState({
           loading: false,
-          items: (result.accounts || []).filter((item) => item.account_kind === "athlete" && String(item.id) !== String(userId)),
+          items: (result.accounts || []).filter((item) => item.account_kind === "athlete" && String(item.id) !== String(userId) && !selectedMembers.some((selected) => String(selected.id) === String(item.id))),
           error: result.error ? "Não foi possível pesquisar agora." : "",
         });
       } catch {
@@ -474,41 +495,92 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
       }
     }, 280);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [creating, query, supabase, userId]);
+  }, [challengeType, creating, query, selectedMembers, supabase, userId]);
+
+  function chooseChallengeType(type) {
+    setChallengeType(type);
+    setCreating(true);
+    setQuery("");
+    setSelectedMembers([]);
+    setCandidateState({ loading: false, items: [], error: "" });
+  }
+
+  function closeCreation() {
+    setQuery("");
+    setSelectedMembers([]);
+    setCandidateState({ loading: false, items: [], error: "" });
+    setCreating(false);
+  }
+
+  function finishCreation() {
+    closeCreation();
+    setFilter("sent");
+  }
 
   async function sendTo(candidate) {
-    const sent = await onSend(candidate, challengeType);
-    if (sent) {
+    if (challengeType === "doubles") {
+      setSelectedMembers((current) => current.length < 3 ? [...current, candidate] : current);
       setQuery("");
       setCandidateState({ loading: false, items: [], error: "" });
-      setCreating(false);
-      setFilter("sent");
+      return;
     }
+    const sent = await onSend(candidate, challengeType, challengeType === "practice" ? { goalType, goalTarget } : {});
+    if (sent) finishCreation();
+  }
+
+  async function publishDoubles() {
+    if (selectedMembers.length !== 3) return;
+    const sent = await onSend(selectedMembers[1], "doubles", {
+      challengerPartner: selectedMembers[0],
+      challengedPartner: selectedMembers[2],
+    });
+    if (sent) finishCreation();
+  }
+
+  async function publishOpenChallenge() {
+    const sent = await onSend(null, "open");
+    if (sent) finishCreation();
   }
 
   return (
     <section className={`${styles.profilePanel} ${styles.profileChallengesPanel}`.trim()}>
-      <header className={styles.profileChallengeHeader}><div><Swords /><span><h2>Desafios</h2><p>Convide atletas, combine partidas e acompanhe suas disputas.</p></span></div><button type="button" onClick={() => setCreating((value) => !value)}><Plus /> {creating ? "Fechar criação" : "Novo desafio"}</button></header>
+      <header className={styles.profileChallengeHeader}><div><Swords /><span><h2>Desafios</h2><p>Convide atletas, combine partidas e acompanhe suas disputas.</p></span></div><button type="button" onClick={() => { if (creating) closeCreation(); else setCreating(true); }}><Plus /> {creating ? "Fechar criação" : "Novo desafio"}</button></header>
       <div className={styles.profileChallengeStats}><article><strong>{waitingCount}</strong><small>Aguardando resposta</small></article><article><strong>{acceptedCount}</strong><small>Aceitos</small></article><article><strong>{completedCount}</strong><small>Concluídos</small></article></div>
       <div className={styles.profileChallengeLayout}>
         <div className={styles.profileChallengeMain}>
           <nav className={styles.profileChallengeFilters} aria-label="Filtrar desafios">{[["all", "Todos"], ["received", "Recebidos"], ["sent", "Enviados"], ["completed", "Concluídos"]].map(([id, label]) => <button type="button" key={id} className={filter === id ? styles.activeChallengeFilter : ""} onClick={() => setFilter(id)}>{label}</button>)}</nav>
           {visibleChallenges.length ? <div className={styles.profileChallengeList}>{visibleChallenges.map((challenge) => {
-            const athleteName = challenge.athlete?.display_name || challenge.athlete?.name || "Atleta";
+            const athleteName = challenge.athlete?.display_name || challenge.athlete?.name || (challenge.challenge_type === "open" ? "Aberto para atletas da plataforma" : "Atleta");
             const location = [challenge.athlete?.city, challenge.athlete?.state].filter(Boolean).join("/");
+            const teammate = challenge.direction === "outgoing" ? challenge.challenger_partner : challenge.challenged_partner;
+            const rivalPartner = challenge.direction === "outgoing" ? challenge.challenged_partner : challenge.challenger_partner;
+            const doublesSummary = challenge.challenge_type === "doubles"
+              ? `${teammate?.display_name || "Sua dupla"} × ${athleteName}${rivalPartner?.display_name ? ` / ${rivalPartner.display_name}` : ""}`
+              : "";
+            const eyebrow = challenge.direction === "outgoing" ? "Você enviou" : challenge.direction === "open" ? "Desafio público" : "Você recebeu";
+            const statusLabel = challenge.challenge_type === "open" && challenge.status === "pending" ? "Aberto" : getChallengeStatusLabel(challenge.status);
+            const goalLabel = getChallengeGoalLabel(challenge);
             return <article key={challenge.id} data-status={challenge.status}>
               <IdentityAvatar name={athleteName} photoUrl={challenge.athlete?.photo_url || ""} />
-              <div><small>{challenge.direction === "incoming" ? "Você recebeu" : "Você enviou"}</small><strong>{athleteName}</strong><h3>{getChallengeLabel(challenge.challenge_type)}</h3><p><Clock3 /> {formatProfileDate(challenge.created_at)}{location ? <><MapPin /> {location}</> : null}</p></div>
-              <span className={styles.profileChallengeStatus}>{getChallengeStatusLabel(challenge.status)}</span>
-              {challenge.direction === "incoming" && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "accepted")}><Check /> Aceitar</button><button type="button" disabled={busy} onClick={() => onRespond(challenge, "declined")}><X /> Recusar</button></span> : null}
+              <div><small>{eyebrow}</small><strong>{athleteName}</strong><h3>{getChallengeLabel(challenge.challenge_type)}</h3>{doublesSummary ? <p className={styles.profileChallengePair}><Users /> {doublesSummary}</p> : null}{goalLabel ? <p className={styles.profileChallengePair}><Target /> Meta de {goalLabel}</p> : null}<p><Clock3 /> {formatProfileDate(challenge.created_at)}{location ? <><MapPin /> {location}</> : null}</p></div>
+              <span className={styles.profileChallengeStatus}>{statusLabel}</span>
+              {(challenge.direction === "incoming" || challenge.direction === "open") && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "accepted")}><Check /> Aceitar</button>{challenge.direction !== "open" ? <button type="button" disabled={busy} onClick={() => onRespond(challenge, "declined")}><X /> Recusar</button> : null}</span> : null}
               {challenge.direction === "outgoing" && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "cancelled")}><X /> Cancelar</button></span> : null}
             </article>;
           })}</div> : <div className={styles.profileEmpty}><Swords /><strong>Nenhum desafio neste filtro.</strong><small>Crie um convite ou consulte outra situação.</small></div>}
         </div>
         <aside className={styles.profileChallengeCreate}>
           <header><h3>Criar um desafio</h3><small>Escolha como quer competir.</small></header>
-          <div>{CHALLENGE_CREATE_OPTIONS.map(({ id, label, description, Icon, available }) => <button type="button" key={id} className={challengeType === id && available ? styles.selectedChallengeType : ""} disabled={!available} onClick={() => { setChallengeType(id); setCreating(true); }}><Icon /><span><strong>{label}</strong><small>{description}</small></span>{available ? <ChevronRight /> : <em>Em breve</em>}</button>)}</div>
-          {creating ? <section className={styles.profileChallengeSearch}><label><span>Encontrar atleta</span><div><Search /><input value={query} placeholder="Nome ou @usuário" onChange={(event) => setQuery(event.target.value)} /></div></label>{candidateState.loading ? <small>Pesquisando atletas...</small> : null}{candidateState.error ? <small className={styles.profileFieldError}>{candidateState.error}</small> : null}{query.trim().length >= 2 && !candidateState.loading && !candidateState.items.length && !candidateState.error ? <small>Nenhum atleta encontrado.</small> : null}{candidateState.items.length ? <div>{candidateState.items.map((candidate) => { const name = candidate.display_name || candidate.name || candidate.handle || "Atleta"; return <article key={candidate.id}><IdentityAvatar name={name} photoUrl={candidate.photo_url || ""} /><span><strong>{name}</strong><small>{candidate.handle ? `@${candidate.handle}` : [candidate.city, candidate.state].filter(Boolean).join("/") || "Perfil de atleta"}</small></span><button type="button" disabled={busy} onClick={() => sendTo(candidate)}>Desafiar</button></article>; })}</div> : null}</section> : null}
+          <div>{CHALLENGE_CREATE_OPTIONS.map(({ id, label, description, Icon }) => <button type="button" key={id} className={challengeType === id && creating ? styles.selectedChallengeType : ""} onClick={() => chooseChallengeType(id)}><Icon /><span><strong>{label}</strong><small>{description}</small></span><ChevronRight /></button>)}</div>
+          {creating && challengeType === "open" ? <section className={styles.profileOpenChallenge}><Flag /><div><strong>Publicar desafio aberto</strong><small>O convite ficará disponível para atletas da plataforma até alguém aceitar ou você cancelar.</small></div><button type="button" disabled={busy} onClick={publishOpenChallenge}>Publicar agora</button></section> : null}
+          {creating && challengeType !== "open" ? <section className={styles.profileChallengeSearch}>
+            {challengeType === "practice" ? <div className={styles.profileChallengeGoal}><label><span>Objetivo da meta</span><select value={goalType} onChange={(event) => setGoalType(event.target.value)}>{SPORT_GOAL_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label><label><span>Quantidade</span><input type="number" min="1" max="999" value={goalTarget} onChange={(event) => setGoalTarget(Math.max(1, Math.min(999, Number(event.target.value) || 1)))} /></label></div> : null}
+            {challengeType === "doubles" && selectedMembers.length ? <div className={styles.profileChallengeSelected}>{selectedMembers.map((member, index) => <span key={member.id}><small>{["Seu parceiro", "Adversário 1", "Adversário 2"][index]}</small><strong>{member.display_name || member.name || member.handle || "Atleta"}</strong><button type="button" onClick={() => setSelectedMembers((items) => items.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remover ${member.display_name || "atleta"}`}><X /></button></span>)}</div> : null}
+            {challengeType !== "doubles" || selectedMembers.length < 3 ? <label><span>{challengeType === "doubles" ? ["Encontrar seu parceiro", "Encontrar o primeiro adversário", "Encontrar o segundo adversário"][selectedMembers.length] : "Encontrar atleta"}</span><div><Search /><input value={query} placeholder="Nome ou @usuário" onChange={(event) => setQuery(event.target.value)} /></div></label> : null}
+            {candidateState.loading ? <small>Pesquisando atletas...</small> : null}{candidateState.error ? <small className={styles.profileFieldError}>{candidateState.error}</small> : null}{query.trim().length >= 2 && !candidateState.loading && !candidateState.items.length && !candidateState.error ? <small>Nenhum atleta encontrado.</small> : null}
+            {candidateState.items.length ? <div>{candidateState.items.map((candidate) => { const name = candidate.display_name || candidate.name || candidate.handle || "Atleta"; return <article key={candidate.id}><IdentityAvatar name={name} photoUrl={candidate.photo_url || ""} /><span><strong>{name}</strong><small>{candidate.handle ? `@${candidate.handle}` : [candidate.city, candidate.state].filter(Boolean).join("/") || "Perfil de atleta"}</small></span><button type="button" disabled={busy} onClick={() => sendTo(candidate)}>{challengeType === "doubles" ? "Selecionar" : "Desafiar"}</button></article>; })}</div> : null}
+            {challengeType === "doubles" ? <button type="button" className={styles.profileChallengePublish} disabled={busy || selectedMembers.length !== 3} onClick={publishDoubles}>Enviar desafio para a dupla</button> : null}
+          </section> : null}
           <p><ShieldCheck /> O contato só é liberado após o aceite.</p>
         </aside>
       </div>
@@ -857,26 +929,47 @@ export default function PlatformV2Profile({
     }
   }
 
-  async function sendNewChallenge(candidate, challengeType) {
-    if (!candidate?.id || busy) return false;
+  async function sendNewChallenge(candidate, challengeType, options = {}) {
+    if ((challengeType !== "open" && !candidate?.id) || busy) return false;
     setBusy(true);
     try {
-      const created = await sendAthleteChallenge({ supabase, challengedUserId: candidate.id, challengeType });
-      const athleteName = candidate.display_name || candidate.name || candidate.handle || "Atleta";
+      const created = await createAthleteChallenge({
+        supabase,
+        challengedUserId: candidate?.id || null,
+        challengeType,
+        challengerPartnerUserId: options.challengerPartner?.id || null,
+        challengedPartnerUserId: options.challengedPartner?.id || null,
+        goalType: options.goalType || null,
+        goalTarget: options.goalTarget || null,
+      });
+      const athleteName = candidate?.display_name || candidate?.name || candidate?.handle || "Atletas da plataforma";
       const nextChallenge = {
         ...created,
         direction: "outgoing",
         challenge_type: created?.challenge_type || challengeType,
         status: created?.status || "pending",
         created_at: created?.created_at || new Date().toISOString(),
-        athlete: {
+        is_open: challengeType === "open",
+        goal_type: created?.goal_type || options.goalType || null,
+        goal_target: created?.goal_target || options.goalTarget || null,
+        athlete: candidate ? {
           user_id: candidate.id,
           handle: candidate.handle || "",
           display_name: athleteName,
           photo_url: candidate.photo_url || "",
           city: candidate.city || "",
           state: candidate.state || "",
-        },
+        } : null,
+        challenger_partner: options.challengerPartner ? {
+          user_id: options.challengerPartner.id,
+          display_name: options.challengerPartner.display_name || options.challengerPartner.name || options.challengerPartner.handle || "Parceiro",
+          photo_url: options.challengerPartner.photo_url || "",
+        } : null,
+        challenged_partner: options.challengedPartner ? {
+          user_id: options.challengedPartner.id,
+          display_name: options.challengedPartner.display_name || options.challengedPartner.name || options.challengedPartner.handle || "Parceiro adversário",
+          photo_url: options.challengedPartner.photo_url || "",
+        } : null,
       };
       setProfileActivity((currentValue) => {
         const currentChallenges = currentValue.challenges || [];
@@ -888,7 +981,7 @@ export default function PlatformV2Profile({
             : [nextChallenge, ...currentChallenges],
         };
       });
-      onNotice?.(`Desafio enviado para ${athleteName}.`);
+      onNotice?.(challengeType === "open" ? "Desafio aberto publicado para os atletas da plataforma." : challengeType === "doubles" ? "Desafio enviado para a dupla adversária." : `Desafio enviado para ${athleteName}.`);
       return true;
     } catch (error) {
       onNotice?.(error?.message || "Não foi possível enviar o desafio agora.");

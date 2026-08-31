@@ -37,6 +37,15 @@ async function loadAchievements({ supabase, userId = "" }) {
   return { achievements: Array.isArray(data) ? data : [], schemaAvailable: true };
 }
 
+async function loadExpandedChallenges({ supabase }) {
+  const { data, error } = await supabase.rpc("list_my_expanded_athlete_challenges");
+  if (error) {
+    if (isUnavailableActivityError(error) || /list_my_expanded_athlete_challenges/i.test(String(error?.message || ""))) return null;
+    throw error;
+  }
+  return Array.isArray(data) ? data : null;
+}
+
 export async function loadMyAthleteActivity({ supabase }) {
   let workflowResult = { registrations: [], schemaAvailable: false };
   try {
@@ -44,9 +53,10 @@ export async function loadMyAthleteActivity({ supabase }) {
   } catch (error) {
     if (!isUnavailableActivityError(error)) throw error;
   }
-  const [{ data, error }, achievementResult] = await Promise.all([
+  const [{ data, error }, achievementResult, expandedChallenges] = await Promise.all([
     supabase.rpc("get_my_athlete_activity"),
     loadAchievements({ supabase }),
+    loadExpandedChallenges({ supabase }),
   ]);
   if (error) {
     if (isUnavailableActivityError(error)) {
@@ -100,6 +110,7 @@ export async function loadMyAthleteActivity({ supabase }) {
       ...data,
       achievements: achievementResult.achievements,
       registrations: workflowResult.schemaAvailable ? workflowResult.registrations : data?.registrations,
+      challenges: expandedChallenges || data?.challenges,
     }),
     schemaAvailable: workflowResult.schemaAvailable && achievementResult.schemaAvailable,
   };
@@ -143,6 +154,27 @@ export async function sendAthleteChallenge({ supabase, challengedUserId, challen
   const { data, error } = await supabase.rpc("send_athlete_challenge", {
     p_challenged_user_id: challengedUserId,
     p_challenge_type: challengeType,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function createAthleteChallenge({
+  supabase,
+  challengedUserId = null,
+  challengeType,
+  challengerPartnerUserId = null,
+  challengedPartnerUserId = null,
+  goalType = null,
+  goalTarget = null,
+}) {
+  const { data, error } = await supabase.rpc("create_athlete_challenge", {
+    p_challenged_user_id: challengedUserId,
+    p_challenge_type: challengeType,
+    p_challenger_partner_user_id: challengerPartnerUserId,
+    p_challenged_partner_user_id: challengedPartnerUserId,
+    p_goal_type: goalType,
+    p_goal_target: goalTarget,
   });
   if (error) throw error;
   return data;
