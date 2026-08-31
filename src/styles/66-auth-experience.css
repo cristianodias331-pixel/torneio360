@@ -735,19 +735,6 @@ html body .authExperiencePage .authLegalAgreements {
   font-size: .78rem !important;
 }
 
-.authExperiencePage .authLegalDocumentLink {
-  color: #edf2f7 !important;
-  font-weight: 760;
-  text-decoration-color: rgba(255, 116, 23, .78);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-.authExperiencePage .authLegalDocumentLink:hover,
-.authExperiencePage .authLegalDocumentLink:focus-visible {
-  color: var(--auth-orange-bright) !important;
-}
-
 .authExperiencePage .authLegalItem > small {
   color: #8897aa !important;
   font-size: .65rem !important;

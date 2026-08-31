@@ -204,16 +204,7 @@ function AuthSignupFields({
 
       <section className="authLegalAgreements" aria-label="Concordâncias para criar a conta">
         <div className="authLegalItem">
-          <strong>
-            <a
-              className="authLegalDocumentLink"
-              href="/legal/termos-de-uso-torneio360.pdf"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Termos de Uso
-            </a>
-          </strong>
+          <strong>Termos de Uso</strong>
           <small>Respeito à dignidade humana e às regras de convivência da comunidade.</small>
           <label>
             <input
@@ -221,33 +212,12 @@ function AuthSignupFields({
               checked={communityGuidelinesAccepted}
               onChange={(event) => setCommunityGuidelinesAccepted(event.target.checked)}
             />
-            <span>
-              Li e concordo com os{" "}
-              <a
-                className="authLegalDocumentLink"
-                href="/legal/termos-de-uso-torneio360.pdf"
-                target="_blank"
-                rel="noreferrer"
-                onClick={(event) => event.stopPropagation()}
-              >
-                Termos de Uso
-              </a>{" "}
-              e as Diretrizes da comunidade.
-            </span>
+            <span>Li e concordo com os Termos de Uso e as Diretrizes da comunidade.</span>
           </label>
         </div>
 
         <div className="authLegalItem">
-          <strong>
-            <a
-              className="authLegalDocumentLink"
-              href="/legal/aviso-de-privacidade-torneio360.pdf"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Aviso de Privacidade
-            </a>
-          </strong>
+          <strong>Aviso de Privacidade</strong>
           <small>Seus dados têm acesso restrito e são usados apenas para as finalidades da plataforma.</small>
           <label>
             <input
@@ -259,7 +229,7 @@ function AuthSignupFields({
           </label>
         </div>
 
-        <p>Abra os documentos em PDF e leia antes de concluir o cadastro.</p>
+        <p>Textos legais em preparação para revisão antes da versão oficial.</p>
       </section>
     </div>
   );
