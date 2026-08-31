@@ -494,7 +494,7 @@
 .organizationTournamentToolbar > label input::placeholder { color: #6f849b; }
 .organizationTournamentToolbar > label button { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 50%; padding: 0; background: rgba(255,255,255,.06); color: #a9bacb; cursor: pointer; }
 .organizationTournamentToolbar > label button svg { width: 13px; }
-.organizationTournamentList { display: grid; gap: 15px; }
+.organizationTournamentList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
 .organizationTournamentCard { overflow: hidden; border: 1px solid #284763; border-radius: 18px; background: #07182b; box-shadow: 0 20px 55px rgba(0, 0, 0, .22); }
 .organizationTournamentCard > header { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #213d58; padding: 8px 12px; background: #091b30; }
 .organizationTournamentIdentity { display: flex; min-width: 0; align-items: center; gap: 10px; }
@@ -1061,6 +1061,7 @@
   .organizationTournamentToolbar > nav button { min-height: 54px; padding: 8px; }
   .organizationTournamentToolbar > nav button strong { font-size: 1rem; }
   .organizationTournamentToolbar > nav button span { font-size: .5rem; }
+  .organizationTournamentList { grid-template-columns: 1fr; }
   .organizationTournamentCard { border-radius: 16px; }
   .organizationTournamentContent { grid-template-columns: minmax(116px, 36%) minmax(0, 1fr); }
   .organizationTournamentPoster { min-height: 315px; }
