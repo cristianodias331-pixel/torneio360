@@ -1071,6 +1071,8 @@ export default function PlatformV2Profile({
 
   async function removeGalleryPhoto(index) {
     if (busy) return;
+    const profileLabel = identityMode === "organization" ? "organização" : "atleta";
+    if (!window.confirm(`Deseja realmente apagar esta foto da galeria do ${profileLabel}? Esta ação não poderá ser desfeita.`)) return;
     setBusy(true);
     try {
       if (identityMode === "organization") {
