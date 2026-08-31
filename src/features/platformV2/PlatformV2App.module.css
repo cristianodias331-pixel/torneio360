@@ -327,8 +327,8 @@
 .openBadge { background: rgba(69, 221, 138, .11); color: #54e596; }
 .closedBadge { background: rgba(157, 174, 194, .10); color: #9eafc1; }
 
-.posterButton { position: relative; display: grid; width: 100%; height: 520px; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #07111f; cursor: pointer; }
-.sidebarClosed .posterButton { height: 600px; }
+.postContent { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(230px, .82fr); align-items: stretch; }
+.posterButton { position: relative; display: grid; width: 100%; height: auto; aspect-ratio: 4 / 5; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-right: 1px solid #1f3751; padding: 0; background: #07111f; cursor: pointer; }
 .posterStage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #07111f; }
 .posterBackdrop { position: absolute; inset: -44px; width: calc(100% + 88px); height: calc(100% + 88px); opacity: .76; filter: blur(27px) saturate(1.22) brightness(.76) contrast(1.06); object-fit: cover; transform: scale(1.12); }
 .posterStage::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(2, 9, 20, .18), rgba(2, 9, 20, .04) 32%, rgba(2, 9, 20, .04) 68%, rgba(2, 9, 20, .18)), linear-gradient(180deg, rgba(2, 9, 20, .04), rgba(2, 9, 20, .15)); content: ""; pointer-events: none; }
@@ -339,14 +339,18 @@
 .emptyPoster strong { max-width: 440px; font-size: 1.6rem; line-height: 1.1; }
 .emptyPoster small { color: #93a5ba; }
 
-.postBody { padding: 11px 13px 10px; }
+.postSummary { display: flex; min-width: 0; flex-direction: column; border-top: 1px solid #1f3751; background: linear-gradient(180deg, #0a1c31, #07172a); }
+.postBody { padding: 18px 16px 13px; }
 .postModality { color: #ff792e; font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-.postBody h2 { margin: 4px 0 7px; overflow: hidden; color: #fff; font-size: 1.12rem; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
-.postBody p { display: flex; flex-wrap: wrap; gap: 8px 15px; margin: 0; color: #9bacc0; font-size: .69rem; }
-.postBody p span { display: inline-flex; align-items: center; gap: 5px; }
-.postBody p svg { width: 13px; height: 13px; color: #7189a2; }
+.postBody h2 { display: -webkit-box; margin: 5px 0 7px; overflow: hidden; color: #fff; font-size: 1.15rem; line-height: 1.15; letter-spacing: -.025em; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.postBody > small { display: block; color: #71869e; font-size: .58rem; }
+.postFacts { display: grid; gap: 2px; padding: 5px 16px 16px; }
+.postFacts > span { display: grid; min-width: 0; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 8px; border-bottom: 1px solid rgba(91, 126, 164, .17); padding: 9px 0; color: #dce6f1; }
+.postFacts > span:last-child { border-bottom: 0; }
+.postFacts svg { width: 15px; height: 15px; margin-top: 1px; color: #ff762c; }
+.postFacts strong { min-width: 0; overflow-wrap: anywhere; font-size: .69rem; line-height: 1.35; }
 
-.postActions { display: flex; gap: 8px; border-top: 1px solid #1d344e; padding: 8px 10px 10px; }
+.postActions { display: grid; gap: 8px; margin-top: auto; border-top: 1px solid #1d344e; padding: 11px 12px 13px; }
 .postActions button,
 .loadMore,
 .feedState button {
@@ -365,7 +369,7 @@
   cursor: pointer;
   transition: 150ms ease;
 }
-.postActions button { flex: 1; }
+.postActions button { width: 100%; }
 .postActions button:hover,
 .loadMore:hover { border-color: #ff6c20; color: #fff; transform: translateY(-1px); }
 .postActions svg,
@@ -463,10 +467,8 @@
   .overview,
   .comingSoon { width: min(100%, 1180px); }
   .contentGrid { grid-template-columns: minmax(0, 680px) minmax(320px, 350px); gap: 24px; }
-  .posterButton { height: 560px; }
   .sidebarClosed .overview { width: min(100%, 1360px); }
   .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 820px) minmax(360px, 400px); gap: 26px; }
-  .sidebarClosed .posterButton { height: 650px; }
 }
 
 @media (max-width: 1180px) {
@@ -476,11 +478,9 @@
   .sidebarClosed .main { margin-left: 76px; }
   .contentGrid,
   .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 560px) minmax(270px, 300px); gap: 18px; }
-  .posterButton,
-  .sidebarClosed .posterButton { height: 480px; }
 }
 
-@media (max-width: 999px) {
+@media (max-width: 1080px) {
   .topbar { height: 62px; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 0 12px; }
   .brand { width: 150px; }
   .menuButton { width: 38px; height: 38px; border-radius: 12px; }
@@ -508,8 +508,9 @@
   .main,
   .sidebarClosed .main { margin-left: 0; padding: 82px 16px 42px; }
   .mobileSearch { display: flex; height: 43px; margin-bottom: 14px; padding: 0 13px; }
-  .contentGrid { grid-template-columns: minmax(0, 680px); }
-  .rail { position: static; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .contentGrid,
+  .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 680px); }
+  .rail { display: none; }
   .overviewHeader { min-height: 74px; }
 }
 
@@ -532,13 +533,17 @@
   .feed { gap: 15px; }
   .post { border-radius: 17px; }
   .postHeader { min-height: 58px; padding: 9px 10px; }
-  .posterButton,
-  .sidebarClosed .posterButton { height: auto; aspect-ratio: 4 / 5; }
+  .postContent { display: block; }
+  .posterButton { aspect-ratio: 4 / 5; border-right: 0; border-bottom: 1px solid #1f3751; }
+  .postSummary { border-top: 0; }
   .organizerIdentity small { max-width: 200px; }
   .openBadge,
   .closedBadge { max-width: 120px; overflow: hidden; padding: 6px 8px; text-overflow: ellipsis; white-space: nowrap; }
-  .postBody { padding: 13px 12px 11px; }
-  .postBody h2 { font-size: 1.02rem; }
+  .postBody { padding: 15px 12px 10px; }
+  .postBody h2 { font-size: 1.08rem; }
+  .postFacts { grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 2px 12px 12px; }
+  .postFacts > span { padding: 8px 0; }
+  .postFacts > span:last-child { grid-column: 1 / -1; }
   .postActions { display: grid; grid-template-columns: 1fr 1fr; padding: 9px 11px 11px; }
   .postActions .primaryAction { grid-column: 1 / -1; }
   .rail { display: none; }

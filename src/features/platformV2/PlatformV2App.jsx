@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CircleUserRound,
   ClipboardCheck,
+  Clock3,
   Flame,
   GitBranch,
   Home,
@@ -20,6 +21,7 @@ import {
   Search,
   Share2,
   Sparkles,
+  Tag,
   Trophy,
   UserRound,
   UsersRound,
@@ -108,6 +110,22 @@ function getLocation(item) {
     || details.address
     || [organization.city, organization.state].filter(Boolean).join(" · ")
     || "Local a confirmar";
+}
+
+function getTournamentGenderLabel(item) {
+  const details = getDetails(item);
+  const value = String(
+    details.genderOther
+    || details.gender
+    || details.participantGenderMode
+    || details.genderMode
+    || ""
+  ).trim();
+  const normalized = value.toLocaleLowerCase("pt-BR");
+  if (["male", "masculino", "masculina"].includes(normalized)) return "Masculino";
+  if (["female", "feminino", "feminina"].includes(normalized)) return "Feminino";
+  if (["mixed", "misto", "mista"].includes(normalized)) return "Misto";
+  return value;
 }
 
 function getProfileName(user, profile) {
@@ -460,6 +478,10 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
 
                 {visibleItems.map((item) => {
                   const name = getEventName(item);
+                  const details = getDetails(item);
+                  const category = String(details.category || "").trim();
+                  const gender = getTournamentGenderLabel(item);
+                  const startTime = String(details.eventStartTime || details.startTime || "").trim();
                   const registrationOpen = runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item));
                   return (
                     <article className={styles.post} key={item.id || item.public_id}>
@@ -467,17 +489,28 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
                         <button type="button" className={styles.organizerIdentity} onClick={() => setOrganizationFilter(getOrganizationId(item))}><OrganizerAvatar item={item} /><span><strong>{getOrganizationName(item)}</strong><small>{getLocation(item)}</small></span></button>
                         <span className={registrationOpen ? styles.openBadge : styles.closedBadge}>{registrationOpen ? "Inscrições abertas" : "Encerrado"}</span>
                       </header>
-                      <button type="button" className={styles.posterButton} onClick={() => openDetails(item)} aria-label={`Ver detalhes de ${name}`}><Poster item={item} alt={`Arte de ${name}`} /></button>
-                      <div className={styles.postBody}>
-                        <span className={styles.postModality}>{runtime.getModalityName(item.type)}</span>
-                        <h2>{name}</h2>
-                        <p>{getEventDate(item) ? <span><CalendarDays /> {runtime.formatDate(getEventDate(item))}</span> : null}<span><MapPin /> {getLocation(item)}</span></p>
+                      <div className={styles.postContent}>
+                        <button type="button" className={styles.posterButton} onClick={() => openDetails(item)} aria-label={`Ver detalhes de ${name}`}><Poster item={item} alt={`Arte de ${name}`} /></button>
+                        <div className={styles.postSummary}>
+                          <div className={styles.postBody}>
+                            <span className={styles.postModality}>{runtime.getModalityName(item.type)}</span>
+                            <h2>{name}</h2>
+                            <small>Informações principais do torneio</small>
+                          </div>
+                          <div className={styles.postFacts} aria-label={`Informações de ${name}`}>
+                            {category ? <span><Tag /> <strong>{category}</strong></span> : null}
+                            {gender ? <span><UsersRound /> <strong>{gender}</strong></span> : null}
+                            {getEventDate(item) ? <span><CalendarDays /> <strong>{runtime.formatDate(getEventDate(item))}</strong></span> : null}
+                            {startTime ? <span><Clock3 /> <strong>{startTime}</strong></span> : null}
+                            <span><MapPin /> <strong>{getLocation(item)}</strong></span>
+                          </div>
+                          <footer className={styles.postActions}>
+                            <button type="button" onClick={() => openDetails(item)}><ChevronRight /> Ver detalhes</button>
+                            <button type="button" onClick={() => share(item)}><Share2 /> Compartilhar</button>
+                            {registrationOpen ? <button type="button" className={styles.primaryAction} onClick={() => openDetails(item, true)}><ClipboardCheck /> Inscrever-se</button> : null}
+                          </footer>
+                        </div>
                       </div>
-                      <footer className={styles.postActions}>
-                        <button type="button" onClick={() => openDetails(item)}><ChevronRight /> Ver detalhes</button>
-                        <button type="button" onClick={() => share(item)}><Share2 /> Compartilhar</button>
-                        {registrationOpen ? <button type="button" className={styles.primaryAction} onClick={() => openDetails(item, true)}><ClipboardCheck /> Inscrever-se</button> : null}
-                      </footer>
                     </article>
                   );
                 })}
