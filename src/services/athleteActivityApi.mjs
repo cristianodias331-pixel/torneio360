@@ -20,6 +20,9 @@ function normalizeActivity(data) {
     partnerMatches: Array.isArray(data?.partner_matches) ? data.partner_matches : [],
     challenges: Array.isArray(data?.challenges) ? data.challenges : [],
     achievements: Array.isArray(data?.achievements) ? data.achievements : [],
+    circuitAchievements: Array.isArray(data?.circuit_achievements)
+      ? data.circuit_achievements
+      : Array.isArray(data?.circuitAchievements) ? data.circuitAchievements : [],
   };
 }
 

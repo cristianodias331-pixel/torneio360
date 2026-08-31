@@ -97,7 +97,10 @@ const activitySupabase = {
     if (name === "get_my_registration_workflows") {
       return { data: [{ id: "registration-1", workflow_status: "submitted" }], error: null };
     }
-    return { data: { registrations: [{ id: "registration-1" }], circuits: [], partner_matches: [], challenges: [] }, error: null };
+    if (name === "get_my_athlete_achievements" || name === "get_athlete_achievements") {
+      return { data: [], error: null };
+    }
+    return { data: { registrations: [{ id: "registration-1" }], circuits: [], circuit_achievements: [{ id: "circuit-achievement-1" }], partner_matches: [], challenges: [] }, error: null };
   },
 };
 const ownActivityResult = await loadMyAthleteActivity({
@@ -116,6 +119,7 @@ assert(publicActivityCall.payload.p_user_id === "member-1", "A atividade públic
 assert(activityCalls.some((call) => call.name === "get_athlete_achievements" && call.payload.p_user_id === "member-1"), "O visitante deve carregar os pódios confirmados do atleta visitado.");
 assert(ownActivityResult.activity.registrations.length === 1, "As inscrições do atleta devem chegar à aba Torneios/Circuitos.");
 assert(ownActivityResult.activity.registrations[0].workflow_status === "submitted", "O atleta deve acompanhar o comprovante em análise.");
+assert(ownActivityResult.activity.circuitAchievements.length === 1, "As conquistas de circuitos devem permanecer separadas dos pódios de torneios.");
 assert(publicActivityResult.activity.registrations.length === 1, "As participações confirmadas devem chegar ao perfil público.");
 
 const unavailableActivity = await loadMyAthleteActivity({
@@ -134,6 +138,8 @@ const memberProfileWorkspaceSource = await readFile(new URL("../src/features/pro
 const memberProfileStyles = await readFile(new URL("../src/styles/52-public-member-profile.css", import.meta.url), "utf8");
 const organizationProfileStyles = await readFile(new URL("../src/styles/51-unified-profile.css", import.meta.url), "utf8");
 const athleteActivityStyles = await readFile(new URL("../src/styles/57-athlete-activity.css", import.meta.url), "utf8");
+const platformV2ProfileSource = await readFile(new URL("../src/features/platformV2/PlatformV2Profile.jsx", import.meta.url), "utf8");
+const platformV2Styles = await readFile(new URL("../src/features/platformV2/PlatformV2App.module.css", import.meta.url), "utf8");
 
 assert(memberPresentationSource.includes("OWNER_MEMBER_PROFILE_TABS = MEMBER_PROFILE_TABS"), "A busca por dupla deve ficar dentro da atividade esportiva, sem criar uma sexta aba principal.");
 assert(memberPresentationSource.includes("publicMemberProfileTabs athleteProfileTabs"), "As abas do atleta devem ter uma grade responsiva própria.");
@@ -149,5 +155,8 @@ assert(athleteActivityStyles.includes("athletePerformanceCharts") && athleteActi
 assert(athleteActivitySource.includes('role="tablist"') && athleteActivitySource.includes("aria-selected={activitySection ==="), "A subdivisão esportiva deve indicar semanticamente qual botão está selecionado.");
 assert(athleteActivityStyles.includes("html body .proDashboard.playAppShell .athleteActivityKinds button.active"), "O botão selecionado da atividade deve permanecer visível nos temas claro e escuro.");
 assert(organizerWorkspaceSource.includes('const returnPanel = ["inicio", "explorar"].includes(activePanel)') && memberProfileWorkspaceSource.includes('const returnPanel = ["overview", "explore"].includes(activePanel)'), "Abrir um torneio pelo perfil deve revelar a tela do evento e permitir voltar ao painel de origem.");
+assert(platformV2ProfileSource.includes("Pódios em torneios") && platformV2ProfileSource.includes("Pódios em circuitos") && platformV2ProfileSource.includes("Histórico oficial"), "A V2 deve separar conquistas de torneios, circuitos e histórico oficial.");
+assert(platformV2ProfileSource.includes("Partida direta") && platformV2ProfileSource.includes("Meta esportiva") && platformV2ProfileSource.includes("searchPublicPlatform"), "A V2 deve permitir criar desafios suportados e localizar atletas reais.");
+assert(platformV2Styles.includes("profileAchievementSummaryGrid") && platformV2Styles.includes("profileChallengeLayout"), "Conquistas e desafios da V2 devem preservar o novo layout responsivo.");
 
 console.log("Perfil unificado: dados esportivos, contatos protegidos, atividades, duplas e desafios passaram.");

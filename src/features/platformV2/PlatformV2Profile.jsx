@@ -6,19 +6,28 @@ import {
   CalendarDays,
   Camera,
   Check,
+  ChevronRight,
   CircleUserRound,
+  Clock3,
   CreditCard,
+  Flag,
+  GitBranch,
+  History,
   ImagePlus,
   Images,
   MapPin,
+  Medal,
   MessageCircle,
   Phone,
   Plus,
+  Search,
   Settings,
   ShieldCheck,
   Swords,
+  Target,
   Trophy,
   UserRound,
+  Users,
   UsersRound,
   X,
 } from "lucide-react";
@@ -47,6 +56,7 @@ import { loadMyMemberProfile, saveMyMemberProfile } from "../../services/memberP
 import {
   loadMyOrganizationGallery,
   saveMyOrganizationGallery,
+  searchPublicPlatform,
 } from "../../services/publicSocialApi.mjs";
 import {
   loadMyOrganizationCover,
@@ -57,7 +67,7 @@ import {
   loadMyOrganizationPaymentSettings,
   saveMyOrganizationPaymentSettings,
 } from "../../services/organizationPaymentApi.mjs";
-import { respondAthleteChallenge } from "../../services/athleteActivityApi.mjs";
+import { respondAthleteChallenge, sendAthleteChallenge } from "../../services/athleteActivityApi.mjs";
 import ProfileImageEditor from "../profile/ProfileImageEditor.jsx";
 import styles from "./PlatformV2App.module.css";
 
@@ -263,55 +273,216 @@ function formatProfileDate(value) {
 }
 
 function getChallengeLabel(value) {
-  return value === "match" ? "Disputar uma partida" : "Quem pratica mais?";
+  return value === "match" ? "Partida direta" : "Meta esportiva";
 }
 
 function getChallengeStatusLabel(value) {
   return ({ pending: "Aguardando resposta", accepted: "Aceito", declined: "Recusado", cancelled: "Cancelado" })[value] || "Atualizado";
 }
 
-function AchievementsPanel({ achievements = [] }) {
-  const podiumCounts = [1, 2, 3].map((placement) => achievements.filter((entry) => Number(entry.placement) === placement).length);
+function getAchievementKind(achievement) {
+  const source = String(achievement?.source_type || achievement?.kind || achievement?.achievement_type || "").toLocaleLowerCase("pt-BR");
+  if (source.includes("circuit") || achievement?.circuit || achievement?.circuit_id) return "circuit";
+  return "tournament";
+}
+
+function getAchievementDate(achievement) {
+  return achievement?.event_date || achievement?.finished_at || achievement?.circuit?.end_date || achievement?.approved_at || "";
+}
+
+function getAchievementName(achievement) {
+  return getAchievementKind(achievement) === "circuit"
+    ? achievement?.circuit?.name || achievement?.circuit_name || "Circuito"
+    : achievement?.tournament?.name || achievement?.tournament_name || "Torneio";
+}
+
+function getAchievementYear(achievement) {
+  const value = String(getAchievementDate(achievement) || "");
+  return /^\d{4}/.test(value) ? value.slice(0, 4) : "Sem data";
+}
+
+function getAchievementDetail(achievement) {
+  if (getAchievementKind(achievement) === "circuit") {
+    const points = Number(achievement?.circuit_points ?? achievement?.points);
+    const stages = Number(achievement?.stage_count ?? achievement?.circuit?.tournament_count);
+    return [
+      `${achievement.placement}º lugar geral`,
+      Number.isFinite(points) && points > 0 ? `${new Intl.NumberFormat("pt-BR").format(points)} pts` : "",
+      Number.isFinite(stages) && stages > 0 ? `${stages} etapa${stages === 1 ? "" : "s"}` : "",
+    ].filter(Boolean).join(" · ");
+  }
+  return [achievement?.category, formatProfileDate(getAchievementDate(achievement))].filter(Boolean).join(" · ");
+}
+
+function AchievementSummary({ title, kind, achievements }) {
+  const counts = [1, 2, 3].map((placement) => achievements.filter((entry) => Number(entry.placement) === placement).length);
+  const Icon = kind === "circuit" ? Flag : Trophy;
   return (
-    <section className={styles.profilePanel}>
-      <header className={styles.profilePanelHeader}>
-        <div><Award aria-hidden="true" /><span><h2>Conquistas</h2><p>Pódios oficiais confirmados pelas organizações.</p></span></div>
-        <strong>{achievements.length}</strong>
-      </header>
-      <div className={styles.profilePodiumSummary}>
-        <article><strong>{achievements.length}</strong><small>Pódios</small></article>
-        <article data-place="1"><strong>{podiumCounts[0]}</strong><small>1º lugar</small></article>
-        <article data-place="2"><strong>{podiumCounts[1]}</strong><small>2º lugar</small></article>
-        <article data-place="3"><strong>{podiumCounts[2]}</strong><small>3º lugar</small></article>
-      </div>
-      {achievements.length ? <div className={styles.profileAchievementList}>{achievements.map((achievement) => (
-        <article key={achievement.id} data-place={achievement.placement}>
-          <span><strong>{achievement.placement}º</strong><small>lugar</small></span>
-          <div><small>{achievement.bracket_name || "Chave principal"}</small><h3>{achievement.tournament?.name || "Torneio"}</h3><p>{[achievement.category, formatProfileDate(achievement.event_date)].filter(Boolean).join(" · ")}</p></div>
-          <em><ShieldCheck aria-hidden="true" /> {achievement.organization?.name || "Organização"}</em>
-        </article>
-      ))}</div> : <div className={styles.profileEmpty}><Award /><strong>Nenhuma conquista oficial ainda.</strong><small>Os pódios aparecem automaticamente após a confirmação dos resultados.</small></div>}
+    <article className={styles.profileAchievementSummary} data-kind={kind}>
+      <div><Icon aria-hidden="true" /><span><small>{title}</small><strong>{achievements.length}</strong></span></div>
+      <dl>{counts.map((count, index) => <div key={index + 1} data-place={index + 1}><dt>{count}</dt><dd>{index + 1}º lugar</dd></div>)}</dl>
+    </article>
+  );
+}
+
+function AchievementHighlight({ achievement, kind }) {
+  const Icon = kind === "circuit" ? Flag : Trophy;
+  if (!achievement) {
+    return <article className={styles.profileAchievementHighlightEmpty}><Icon /><strong>Nenhum pódio em {kind === "circuit" ? "circuitos" : "torneios"} ainda.</strong><small>Os resultados oficiais aparecerão aqui após a confirmação da organização.</small></article>;
+  }
+  return (
+    <article className={styles.profileAchievementHighlight} data-place={achievement.placement}>
+      <span><Icon aria-hidden="true" /><b>{achievement.placement}º</b></span>
+      <div><small>{kind === "circuit" ? "Circuito" : "Torneio"}</small><h3>{getAchievementName(achievement)}</h3><p>{getAchievementDetail(achievement)}</p><em><ShieldCheck /> {achievement.organization?.name || achievement.organization_name || "Organização verificada"}</em></div>
+      <ChevronRight aria-hidden="true" />
+    </article>
+  );
+}
+
+function AchievementHistory({ achievements, kindFilter, yearFilter, onKindFilter, onYearFilter, limit = 0 }) {
+  const years = [...new Set(achievements.map(getAchievementYear).filter((year) => year !== "Sem data"))].sort((a, b) => b.localeCompare(a));
+  const filtered = achievements
+    .filter((entry) => kindFilter === "all" || getAchievementKind(entry) === kindFilter)
+    .filter((entry) => yearFilter === "all" || getAchievementYear(entry) === yearFilter)
+    .sort((a, b) => String(getAchievementDate(b)).localeCompare(String(getAchievementDate(a))));
+  const visible = limit ? filtered.slice(0, limit) : filtered;
+  return (
+    <section className={styles.profileAchievementHistory}>
+      <header><div><History /><span><h3>Histórico oficial</h3><small>Resultados encerrados e confirmados pelas organizações.</small></span></div><div className={styles.profileAchievementFilters}><select aria-label="Filtrar tipo de conquista" value={kindFilter} onChange={(event) => onKindFilter(event.target.value)}><option value="all">Todos</option><option value="tournament">Torneios</option><option value="circuit">Circuitos</option></select><select aria-label="Filtrar ano das conquistas" value={yearFilter} onChange={(event) => onYearFilter(event.target.value)}><option value="all">Todos os anos</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}</select></div></header>
+      {visible.length ? <div className={styles.profileAchievementHistoryList}>{visible.map((achievement) => {
+        const kind = getAchievementKind(achievement);
+        return <article key={achievement.id} data-place={achievement.placement}>
+          <span><Medal /><strong>{achievement.placement}º</strong></span>
+          <small data-kind={kind}>{kind === "circuit" ? "Circuito" : "Torneio"}</small>
+          <div><strong>{getAchievementName(achievement)}</strong><p>{kind === "circuit" ? getAchievementDetail(achievement) : [achievement.category, achievement.bracket_name || "Principal"].filter(Boolean).join(" · ")}</p></div>
+          <time><CalendarDays /> {formatProfileDate(getAchievementDate(achievement))}</time>
+          <em><ShieldCheck /> {achievement.organization?.name || achievement.organization_name || "Organização"}</em>
+        </article>;
+      })}</div> : <div className={`${styles.profileEmpty} ${styles.profileAchievementEmpty}`.trim()}><Award /><strong>Nenhuma conquista neste filtro.</strong><small>Altere o tipo ou o ano para consultar outros resultados.</small></div>}
     </section>
   );
 }
 
-function ChallengesPanel({ challenges = [], busy, onRespond }) {
-  const pendingIncoming = challenges.filter((entry) => entry.direction === "incoming" && entry.status === "pending").length;
+function AchievementsPanel({ achievements = [] }) {
+  const [view, setView] = useState("overview");
+  const [kindFilter, setKindFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const tournamentAchievements = achievements.filter((entry) => getAchievementKind(entry) === "tournament");
+  const circuitAchievements = achievements.filter((entry) => getAchievementKind(entry) === "circuit");
+  const recentTournament = [...tournamentAchievements].sort((a, b) => String(getAchievementDate(b)).localeCompare(String(getAchievementDate(a))))[0];
+  const recentCircuit = [...circuitAchievements].sort((a, b) => String(getAchievementDate(b)).localeCompare(String(getAchievementDate(a))))[0];
+
+  function selectView(nextView) {
+    setView(nextView);
+    setKindFilter(nextView === "tournaments" ? "tournament" : nextView === "circuits" ? "circuit" : "all");
+    setYearFilter("all");
+  }
+
   return (
-    <section className={styles.profilePanel}>
+    <section className={`${styles.profilePanel} ${styles.profileAchievementsPanel}`.trim()}>
       <header className={styles.profilePanelHeader}>
-        <div><Swords aria-hidden="true" /><span><h2>Desafios</h2><p>Convites esportivos recebidos e enviados.</p></span></div>
-        <strong>{pendingIncoming}</strong>
+        <div><Award aria-hidden="true" /><span><h2>Conquistas</h2><p>Pódios oficiais em torneios e circuitos.</p></span></div>
+        <strong>{achievements.length}</strong>
       </header>
-      {challenges.length ? <div className={styles.profileChallengeList}>{challenges.map((challenge) => {
-        const athleteName = challenge.athlete?.display_name || challenge.athlete?.name || "Atleta";
-        return <article key={challenge.id}>
-          <IdentityAvatar name={athleteName} photoUrl={challenge.athlete?.photo_url || ""} />
-          <div><small>{challenge.direction === "incoming" ? "Você recebeu" : "Você enviou"}</small><strong>{getChallengeLabel(challenge.challenge_type)}</strong><p>{athleteName} · {getChallengeStatusLabel(challenge.status)}</p></div>
-          {challenge.direction === "incoming" && challenge.status === "pending" ? <span><button type="button" disabled={busy} onClick={() => onRespond(challenge, "accepted")}><Check /> Aceitar</button><button type="button" disabled={busy} onClick={() => onRespond(challenge, "declined")}><X /> Recusar</button></span> : null}
-          {challenge.direction === "outgoing" && challenge.status === "pending" ? <span><button type="button" disabled={busy} onClick={() => onRespond(challenge, "cancelled")}><X /> Cancelar</button></span> : null}
-        </article>;
-      })}</div> : <div className={styles.profileEmpty}><Swords /><strong>Nenhum desafio ainda.</strong><small>Os convites esportivos aparecerão aqui quando forem enviados ou recebidos.</small></div>}
+      <nav className={styles.profileAchievementNav} aria-label="Seções das conquistas">{[
+        ["overview", "Visão geral"],
+        ["tournaments", "Torneios"],
+        ["circuits", "Circuitos"],
+        ["history", "Histórico"],
+      ].map(([id, label]) => <button type="button" key={id} className={view === id ? styles.activeAchievementNav : ""} onClick={() => selectView(id)}>{label}</button>)}</nav>
+      <div className={styles.profileAchievementSummaryGrid}>
+        {view !== "circuits" ? <AchievementSummary title="Pódios em torneios" kind="tournament" achievements={tournamentAchievements} /> : null}
+        {view !== "tournaments" ? <AchievementSummary title="Pódios em circuitos" kind="circuit" achievements={circuitAchievements} /> : null}
+      </div>
+      {view === "overview" ? <section className={styles.profileAchievementHighlights}><h3><Target /> Destaques recentes</h3><div><AchievementHighlight achievement={recentTournament} kind="tournament" /><AchievementHighlight achievement={recentCircuit} kind="circuit" /></div></section> : null}
+      <AchievementHistory achievements={achievements} kindFilter={kindFilter} yearFilter={yearFilter} onKindFilter={setKindFilter} onYearFilter={setYearFilter} limit={view === "overview" ? 3 : 0} />
+    </section>
+  );
+}
+
+const CHALLENGE_CREATE_OPTIONS = [
+  { id: "match", label: "Partida direta", description: "Desafie um atleta para uma partida.", Icon: Trophy, available: true },
+  { id: "doubles", label: "Dupla x dupla", description: "Convide outra dupla.", Icon: Users, available: false },
+  { id: "practice", label: "Meta esportiva", description: "Compare treinos, jogos ou horas.", Icon: Target, available: true },
+  { id: "open", label: "Desafio aberto", description: "Publique para atletas próximos.", Icon: Flag, available: false },
+];
+
+function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, onSend }) {
+  const [filter, setFilter] = useState("all");
+  const [creating, setCreating] = useState(false);
+  const [challengeType, setChallengeType] = useState("match");
+  const [query, setQuery] = useState("");
+  const [candidateState, setCandidateState] = useState({ loading: false, items: [], error: "" });
+  const waitingCount = challenges.filter((entry) => entry.status === "pending").length;
+  const acceptedCount = challenges.filter((entry) => entry.status === "accepted").length;
+  const completedCount = challenges.filter((entry) => ["declined", "cancelled"].includes(entry.status)).length;
+  const visibleChallenges = challenges.filter((entry) => {
+    if (filter === "received") return entry.direction === "incoming";
+    if (filter === "sent") return entry.direction === "outgoing";
+    if (filter === "completed") return entry.status !== "pending";
+    return true;
+  });
+
+  useEffect(() => {
+    const normalizedQuery = query.trim();
+    if (!creating || normalizedQuery.length < 2) {
+      setCandidateState({ loading: false, items: [], error: "" });
+      return undefined;
+    }
+    let active = true;
+    setCandidateState((current) => ({ ...current, loading: true, error: "" }));
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await searchPublicPlatform({ supabase, query: normalizedQuery, limit: 8 });
+        if (!active) return;
+        setCandidateState({
+          loading: false,
+          items: (result.accounts || []).filter((item) => item.account_kind === "athlete" && String(item.id) !== String(userId)),
+          error: result.error ? "Não foi possível pesquisar agora." : "",
+        });
+      } catch {
+        if (active) setCandidateState({ loading: false, items: [], error: "Não foi possível pesquisar agora." });
+      }
+    }, 280);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [creating, query, supabase, userId]);
+
+  async function sendTo(candidate) {
+    const sent = await onSend(candidate, challengeType);
+    if (sent) {
+      setQuery("");
+      setCandidateState({ loading: false, items: [], error: "" });
+      setCreating(false);
+      setFilter("sent");
+    }
+  }
+
+  return (
+    <section className={`${styles.profilePanel} ${styles.profileChallengesPanel}`.trim()}>
+      <header className={styles.profileChallengeHeader}><div><Swords /><span><h2>Desafios</h2><p>Convide atletas, combine partidas e acompanhe suas disputas.</p></span></div><button type="button" onClick={() => setCreating((value) => !value)}><Plus /> {creating ? "Fechar criação" : "Novo desafio"}</button></header>
+      <div className={styles.profileChallengeStats}><article><strong>{waitingCount}</strong><small>Aguardando resposta</small></article><article><strong>{acceptedCount}</strong><small>Aceitos</small></article><article><strong>{completedCount}</strong><small>Concluídos</small></article></div>
+      <div className={styles.profileChallengeLayout}>
+        <div className={styles.profileChallengeMain}>
+          <nav className={styles.profileChallengeFilters} aria-label="Filtrar desafios">{[["all", "Todos"], ["received", "Recebidos"], ["sent", "Enviados"], ["completed", "Concluídos"]].map(([id, label]) => <button type="button" key={id} className={filter === id ? styles.activeChallengeFilter : ""} onClick={() => setFilter(id)}>{label}</button>)}</nav>
+          {visibleChallenges.length ? <div className={styles.profileChallengeList}>{visibleChallenges.map((challenge) => {
+            const athleteName = challenge.athlete?.display_name || challenge.athlete?.name || "Atleta";
+            const location = [challenge.athlete?.city, challenge.athlete?.state].filter(Boolean).join("/");
+            return <article key={challenge.id} data-status={challenge.status}>
+              <IdentityAvatar name={athleteName} photoUrl={challenge.athlete?.photo_url || ""} />
+              <div><small>{challenge.direction === "incoming" ? "Você recebeu" : "Você enviou"}</small><strong>{athleteName}</strong><h3>{getChallengeLabel(challenge.challenge_type)}</h3><p><Clock3 /> {formatProfileDate(challenge.created_at)}{location ? <><MapPin /> {location}</> : null}</p></div>
+              <span className={styles.profileChallengeStatus}>{getChallengeStatusLabel(challenge.status)}</span>
+              {challenge.direction === "incoming" && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "accepted")}><Check /> Aceitar</button><button type="button" disabled={busy} onClick={() => onRespond(challenge, "declined")}><X /> Recusar</button></span> : null}
+              {challenge.direction === "outgoing" && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "cancelled")}><X /> Cancelar</button></span> : null}
+            </article>;
+          })}</div> : <div className={styles.profileEmpty}><Swords /><strong>Nenhum desafio neste filtro.</strong><small>Crie um convite ou consulte outra situação.</small></div>}
+        </div>
+        <aside className={styles.profileChallengeCreate}>
+          <header><h3>Criar um desafio</h3><small>Escolha como quer competir.</small></header>
+          <div>{CHALLENGE_CREATE_OPTIONS.map(({ id, label, description, Icon, available }) => <button type="button" key={id} className={challengeType === id && available ? styles.selectedChallengeType : ""} disabled={!available} onClick={() => { setChallengeType(id); setCreating(true); }}><Icon /><span><strong>{label}</strong><small>{description}</small></span>{available ? <ChevronRight /> : <em>Em breve</em>}</button>)}</div>
+          {creating ? <section className={styles.profileChallengeSearch}><label><span>Encontrar atleta</span><div><Search /><input value={query} placeholder="Nome ou @usuário" onChange={(event) => setQuery(event.target.value)} /></div></label>{candidateState.loading ? <small>Pesquisando atletas...</small> : null}{candidateState.error ? <small className={styles.profileFieldError}>{candidateState.error}</small> : null}{query.trim().length >= 2 && !candidateState.loading && !candidateState.items.length && !candidateState.error ? <small>Nenhum atleta encontrado.</small> : null}{candidateState.items.length ? <div>{candidateState.items.map((candidate) => { const name = candidate.display_name || candidate.name || candidate.handle || "Atleta"; return <article key={candidate.id}><IdentityAvatar name={name} photoUrl={candidate.photo_url || ""} /><span><strong>{name}</strong><small>{candidate.handle ? `@${candidate.handle}` : [candidate.city, candidate.state].filter(Boolean).join("/") || "Perfil de atleta"}</small></span><button type="button" disabled={busy} onClick={() => sendTo(candidate)}>Desafiar</button></article>; })}</div> : null}</section> : null}
+          <p><ShieldCheck /> O contato só é liberado após o aceite.</p>
+        </aside>
+      </div>
     </section>
   );
 }
@@ -343,7 +514,7 @@ export default function PlatformV2Profile({
   const [profileCityOptions, setProfileCityOptions] = useState([]);
   const [profileCitiesLoading, setProfileCitiesLoading] = useState(false);
   const [profileCitiesError, setProfileCitiesError] = useState("");
-  const [profileActivity, setProfileActivity] = useState(activity || { registrations: [], circuits: [], challenges: [], achievements: [] });
+  const [profileActivity, setProfileActivity] = useState(activity || { registrations: [], circuits: [], challenges: [], achievements: [], circuitAchievements: [] });
   const hasOrganization = Boolean(accessProfile?.arena_name || accessProfile?.organization_name);
 
   useEffect(() => {
@@ -406,7 +577,7 @@ export default function PlatformV2Profile({
   }, [hasOrganization, onIdentitySummaryChange, organization.name, organization.photoUrl]);
 
   useEffect(() => { setActiveSection("activity"); }, [identityMode]);
-  useEffect(() => { setProfileActivity(activity || { registrations: [], circuits: [], challenges: [], achievements: [] }); }, [activity]);
+  useEffect(() => { setProfileActivity(activity || { registrations: [], circuits: [], challenges: [], achievements: [], circuitAchievements: [] }); }, [activity]);
 
   useEffect(() => {
     if (!detailsDraft || detailsDraft.foreignLocation) {
@@ -640,6 +811,47 @@ export default function PlatformV2Profile({
     }
   }
 
+  async function sendNewChallenge(candidate, challengeType) {
+    if (!candidate?.id || busy) return false;
+    setBusy(true);
+    try {
+      const created = await sendAthleteChallenge({ supabase, challengedUserId: candidate.id, challengeType });
+      const athleteName = candidate.display_name || candidate.name || candidate.handle || "Atleta";
+      const nextChallenge = {
+        ...created,
+        direction: "outgoing",
+        challenge_type: created?.challenge_type || challengeType,
+        status: created?.status || "pending",
+        created_at: created?.created_at || new Date().toISOString(),
+        athlete: {
+          user_id: candidate.id,
+          handle: candidate.handle || "",
+          display_name: athleteName,
+          photo_url: candidate.photo_url || "",
+          city: candidate.city || "",
+          state: candidate.state || "",
+        },
+      };
+      setProfileActivity((currentValue) => {
+        const currentChallenges = currentValue.challenges || [];
+        const existingIndex = currentChallenges.findIndex((entry) => String(entry.id) === String(nextChallenge.id));
+        return {
+          ...currentValue,
+          challenges: existingIndex >= 0
+            ? currentChallenges.map((entry, index) => index === existingIndex ? { ...entry, ...nextChallenge } : entry)
+            : [nextChallenge, ...currentChallenges],
+        };
+      });
+      onNotice?.(`Desafio enviado para ${athleteName}.`);
+      return true;
+    } catch (error) {
+      onNotice?.(error?.message || "Não foi possível enviar o desafio agora.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function closeEditor() {
     setImageEditor(null);
   }
@@ -769,14 +981,14 @@ export default function PlatformV2Profile({
         <button type="button" className={activeSection === "about" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("about")}><CircleUserRound /> Sobre</button>
         {identityMode === "athlete" ? <>
           <button type="button" className={activeSection === "challenges" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("challenges")}><Swords /> Desafios <span>{(profileActivity.challenges || []).filter((entry) => entry.direction === "incoming" && entry.status === "pending").length}</span></button>
-          <button type="button" className={activeSection === "achievements" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("achievements")}><Award /> Conquistas <span>{(profileActivity.achievements || []).length}</span></button>
+          <button type="button" className={activeSection === "achievements" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("achievements")}><Award /> Conquistas <span>{(profileActivity.achievements || []).length + (profileActivity.circuitAchievements || []).length}</span></button>
         </> : null}
       </nav>
 
       {activeSection === "photos" ? <PhotoGallery title={identityMode === "organization" ? "Galeria da organização" : "Galeria do atleta"} photos={currentGallery} busy={busy} onAdd={addGalleryPhotos} onRemove={removeGalleryPhoto} /> : null}
       {activeSection === "activity" ? <ActivityPanel activity={profileActivity} events={organizationEvents} identityMode={identityMode} /> : null}
-      {identityMode === "athlete" && activeSection === "challenges" ? <ChallengesPanel challenges={profileActivity.challenges || []} busy={busy} onRespond={respondToChallenge} /> : null}
-      {identityMode === "athlete" && activeSection === "achievements" ? <AchievementsPanel achievements={profileActivity.achievements || []} /> : null}
+      {identityMode === "athlete" && activeSection === "challenges" ? <ChallengesPanel supabase={supabase} userId={user?.id} challenges={profileActivity.challenges || []} busy={busy} onRespond={respondToChallenge} onSend={sendNewChallenge} /> : null}
+      {identityMode === "athlete" && activeSection === "achievements" ? <AchievementsPanel achievements={[...(profileActivity.achievements || []), ...(profileActivity.circuitAchievements || [])]} /> : null}
       {activeSection === "about" ? (
         <section className={styles.profileAboutGrid}>
           <article className={styles.profilePanel}><header className={styles.profilePanelHeader}><div><CircleUserRound /><span><h2>Sobre</h2><p>Informações públicas desta identidade.</p></span></div></header><p className={styles.profileBio}>{current.bio || (identityMode === "organization" ? "Conte a história da sua organização." : "Conte um pouco sobre sua trajetória esportiva.")}</p></article>
