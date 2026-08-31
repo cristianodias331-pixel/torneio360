@@ -176,6 +176,7 @@ const platformV2AppSource = await readFile(new URL("../src/features/platformV2/P
 const mainSource = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const platformV2Styles = await readFile(new URL("../src/features/platformV2/PlatformV2App.module.css", import.meta.url), "utf8");
 const profileImageEditorSource = await readFile(new URL("../src/features/profile/ProfileImageEditor.jsx", import.meta.url), "utf8");
+const profileImageEditorStyles = await readFile(new URL("../src/styles/54-profile-image-editor.css", import.meta.url), "utf8");
 const expandedChallengeMigrationSource = await readFile(new URL("../supabase/migrations/202608310003_expanded_athlete_challenges.sql", import.meta.url), "utf8");
 const socialGraphMigrationSource = await readFile(new URL("../supabase/migrations/202608310004_profile_follows.sql", import.meta.url), "utf8");
 const simplifiedChallengeMigrationSource = await readFile(new URL("../supabase/migrations/202608310005_simplified_athlete_challenges.sql", import.meta.url), "utf8");
@@ -204,6 +205,8 @@ assert(mainSource.includes("getOrganizationSubscriptionWhatsAppUrl(session.user)
 assert(platformV2AppSource.includes('aria-label="Recarregar página"') && platformV2AppSource.includes("window.location.reload()"), "O cabeçalho da V2 deve oferecer recarregamento explícito ao lado das notificações.");
 assert(platformV2AppSource.includes('aria-label="Ações fixas da plataforma"') && platformV2Styles.includes("position: fixed"), "Menu, atualização, notificações e conta devem permanecer no cabeçalho fixo em qualquer aba.");
 assert(platformV2Styles.includes(".profileGalleryPreview img") && platformV2Styles.includes("object-fit: contain") && !platformV2Styles.includes(".profileGalleryPreview:hover img { filter: brightness(.82); transform:"), "As miniaturas das galerias do atleta e da organização devem mostrar a foto inteira, sem corte ou ampliação automática.");
+assert(profileImageEditorStyles.includes("calc((100dvh - 220px) * .8)") && profileImageEditorStyles.includes(".profileImageEditorBody > aside") && profileImageEditorStyles.includes("overflow-y: auto"), "A foto do editor V2 deve caber na altura visível enquanto somente os controles podem rolar.");
+assert(profileImageEditorStyles.includes("line-height: 0") && profileImageEditorStyles.includes("margin: auto"), "O ícone de fechar deve permanecer centralizado dentro do botão.");
 assert(platformV2Styles.includes("profileChallengeChoice") && platformV2Styles.includes("profileChallengeSearch label > div"), "As escolhas de pódio/dupla e a busca de atletas devem permanecer alinhadas no painel de criação.");
 assert(expandedChallengeMigrationSource.includes("create_athlete_challenge") && expandedChallengeMigrationSource.includes("list_my_expanded_athlete_challenges") && expandedChallengeMigrationSource.includes("'doubles', 'open'") && expandedChallengeMigrationSource.includes("'weekly_sessions', 'win_streak'"), "A homologação deve ter suporte persistente a duplas, desafio aberto e metas configuráveis.");
 assert(socialGraphMigrationSource.includes("profile_follows") && socialGraphMigrationSource.includes("get_my_social_graph") && socialGraphMigrationSource.includes("set_profile_follow"), "A homologação deve persistir seguidores separadamente por perfil ativo.");

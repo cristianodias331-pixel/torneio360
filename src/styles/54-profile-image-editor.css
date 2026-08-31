@@ -411,9 +411,16 @@
 }
 
 .platformV2ImageEditor .profileImageEditorModal > header > button {
+  padding: 0;
   border-color: #304d69;
   color: #e9f0f7;
   background: #0a1d31;
+  line-height: 0;
+}
+
+.platformV2ImageEditor .profileImageEditorModal > header > button svg {
+  display: block;
+  margin: auto;
 }
 
 .platformV2ImageEditor .profileImageEditorModal > header > button:hover {
@@ -425,9 +432,15 @@
   min-height: 0;
   grid-template-columns: minmax(0, 1.35fr) minmax(210px, .72fr);
   gap: 18px;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 2px 3px;
   scrollbar-color: #355572 transparent;
+}
+
+.platformV2ImageEditor .profileImageEditorBody > aside {
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .platformV2ImageEditor .profileImageEditorFrame {
@@ -442,6 +455,16 @@
 
 .platformV2ImageEditor .profileImageEditorFrameCover {
   border-radius: 15px;
+}
+
+.platformV2ImageEditor .profileImageEditorFrameGalleryPortrait {
+  width: min(100%, 350px, calc((100dvh - 220px) * .8));
+  max-height: 100%;
+}
+
+.platformV2ImageEditor .profileImageEditorFrameGallerySquare {
+  width: min(100%, 390px, calc(100dvh - 220px));
+  max-height: 100%;
 }
 
 .platformV2ImageEditor .profileImageEditorOutput,
@@ -519,6 +542,7 @@
   .platformV2ImageEditor .profileImageEditorBody {
     grid-template-columns: 1fr;
     gap: 10px;
+    overflow-y: auto;
   }
 
   .platformV2ImageEditor .profileImageEditorFramePhoto {
@@ -529,7 +553,10 @@
   .platformV2ImageEditor .profileImageEditorFrameGallerySquare { width: min(62vw, 230px); }
 
   .platformV2ImageEditor .profileImageEditorBody > aside {
+    max-height: none;
+    overflow: visible;
     gap: 8px;
+    padding-right: 0;
   }
 
   .platformV2ImageEditor .profileImageEditorOutput,
