@@ -83,7 +83,6 @@ import {
   PublicArenaPageController,
   PublicCircuitScreenView,
   PublicCupBracketView,
-  PublicPlatformHomeController,
   PublicExploreSection,
   PublicScheduleView,
   PublicTournamentPageController,
@@ -124,6 +123,7 @@ import OrganizationProfilePresentation from "./features/profile/OrganizationProf
 import OrganizationProfileContentPresentation from "./features/profile/OrganizationProfileContentPresentation.jsx";
 import NotificationCenter from "./features/notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "./features/notifications/useUnreadNotificationCount.js";
+import MemberSocialOverview, { MemberSocialOverviewSearch } from "./features/socialOverview/MemberSocialOverview.jsx";
 import { createAthleteIdentityIndex, renderAthleteNames } from "./features/profile/AthleteIdentityLink.jsx";
 import { buildVerifiedPodiumEntries } from "./domain/athleteAchievementEntries.mjs";
 import { approveTournamentPodium } from "./services/athleteActivityApi.mjs";
@@ -625,6 +625,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
     const params = new URLSearchParams(window.location.search);
     return normalizePersistedOrganizerPanel(params.get("aba"));
   });
+  const [overviewQuery, setOverviewQuery] = useState("");
   const [browsingPublicTournament, setBrowsingPublicTournament] = useState(null);
   const [browsingPublicTournamentLoading, setBrowsingPublicTournamentLoading] = useState(false);
   const [colorMode, setColorMode] = useState(() => {
@@ -1164,7 +1165,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     async function restoreUserAppState() {
       const localState = readLocalUserAppState(user.id);
-      const restoreRoute = !initialRouteIsExplicitRef.current;
+      // A entrada sem uma rota escolhida sempre começa na nova Visão geral.
+      // Rotas explícitas continuam sendo respeitadas pelo estado inicial acima.
+      const restoreRoute = false;
       const restoredLocally = applySavedAppState(localState, { restoreRoute });
 
       try {
@@ -6531,7 +6534,7 @@ setNewPublicInfo({
 
   function renderAppSidebar() {
     const navItems = [
-      { panel: "inicio", label: "Início", Icon: LayoutDashboard },
+      { panel: "inicio", label: "Visão geral", Icon: LayoutDashboard },
       { panel: "notificacoes", label: "Notificações", Icon: Bell, unreadCount: unreadNotificationCount },
       { panel: "ajustes", label: "Perfis", Icon: UserRound },
     ];
@@ -6542,6 +6545,7 @@ setNewPublicInfo({
     return (
       <PlatformSidebar
         activePanel={sidebarActivePanel}
+        className="unifiedPlatformSidebar"
         expanded={sidebarExpanded}
         items={navItems}
         onNavigate={goToPanel}
@@ -6694,6 +6698,9 @@ setNewPublicInfo({
         onSidebarExpandedChange={setSidebarExpanded}
         tagline={TORNEIO360_TAGLINE}
         notice={freeTrialDetails ? <FreeTrialNotice details={freeTrialDetails} formatDate={formatDateBR} /> : null}
+        center={activePanel === "inicio" && !browsingPublicTournament
+          ? <MemberSocialOverviewSearch value={overviewQuery} onChange={setOverviewQuery} />
+          : null}
         actions={actions}
       />
     );
@@ -6864,7 +6871,7 @@ setNewPublicInfo({
   }
 
   return (
-    <div className={`playAppShell proDashboard theme-${colorMode}`}>
+    <div className={`playAppShell proDashboard theme-${colorMode} ${activePanel === "inicio" && !browsingPublicTournament ? "publicOverviewShell unifiedPlatformShell memberSocialOverviewShell" : ""}`.trim()}>
       <NoticeModal notice={notice} onClose={() => setNotice(null)} />
 
       <MemberProfileDetailsModal
@@ -7391,7 +7398,7 @@ setNewPublicInfo({
         {renderAppTopbar()}
         {renderDataSafetyBanner()}
 
-        <main className="playContent">
+        <main className={`playContent ${activePanel === "inicio" && !browsingPublicTournament ? "publicOverviewContent unifiedPlatformContent" : ""}`.trim()}>
           {!(["ajustes", "inicio"].includes(activePanel)) ? <section className="playTitleBlock">
             <div>
               <span className="pageEyebrow">Painel de gestão</span>
@@ -7442,10 +7449,16 @@ setNewPublicInfo({
                       onOpenTournament={openPublishedTournamentFromFeed}
                     />
                   ) : (
-                    <PublicPlatformHomeController
-                      session={{ user }}
+                    <MemberSocialOverview
                       runtime={publicPlatformHomeRuntime}
-                      embedded
+                      supabase={supabase}
+                      user={user}
+                      profile={memberProfile}
+                      query={overviewQuery}
+                      onQueryChange={setOverviewQuery}
+                      onNavigate={(panel) => {
+                        if (panel === "registrations") void openProfileSection("atividades", "athlete");
+                      }}
                       onOpenTournament={openPublishedTournamentFromFeed}
                     />
                   )}
