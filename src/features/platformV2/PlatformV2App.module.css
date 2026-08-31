@@ -70,8 +70,10 @@
   place-items: center;
   flex: 0 0 auto;
   border: 1px solid #2b425c;
+  padding: 0;
   background: #071426;
   color: #dce5ef;
+  line-height: 0;
   cursor: pointer;
   transition: 160ms ease;
 }
@@ -84,7 +86,7 @@
 
 .menuButton:hover,
 .notificationButton:hover { border-color: var(--v2-orange); color: #fff; transform: translateY(-1px); }
-.menuButton svg { width: 21px; }
+.menuButton svg { width: 21px; height: 21px; }
 
 .brand { display: flex; width: 176px; height: 44px; min-width: 0; align-items: center; }
 .brand img { display: block; width: 100%; max-height: 30px; object-fit: contain; object-position: left center; }
@@ -104,21 +106,21 @@
 
 .topSearch { height: 44px; padding: 0 14px; }
 .topSearch > svg,
-.mobileSearch > svg { width: 18px; flex: 0 0 auto; }
+.mobileSearch > svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .topSearch input,
-.mobileSearch input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff; font-size: .78rem; }
+.mobileSearch input { width: 100%; height: 100%; min-width: 0; margin: 0; border: 0; outline: 0; padding: 0; background: transparent; color: #fff; font-size: .78rem; line-height: 1.2; }
 .topSearch input::placeholder,
 .mobileSearch input::placeholder { color: #8296ac; }
 .topSearch button,
 .mobileSearch button { display: grid; width: 27px; height: 27px; place-items: center; flex: 0 0 auto; border: 0; border-radius: 50%; padding: 0; background: #10243b; color: #aebccc; cursor: pointer; }
 .topSearch button svg,
-.mobileSearch button svg { width: 14px; }
+.mobileSearch button svg { width: 14px; height: 14px; }
 
 .topbarPageName { overflow: hidden; color: #f4f7fb; font-size: .9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 .topActions { min-width: 0; justify-content: flex-end; gap: 10px; }
 .notificationButton { width: 44px; height: 44px; border-radius: 14px; }
-.notificationButton svg { width: 18px; }
+.notificationButton svg { width: 18px; height: 18px; }
 
 .accountWrap { position: relative; min-width: 0; }
 .accountButton {
