@@ -303,9 +303,10 @@ function formatProfileDate(value) {
 
 function getChallengeLabel(value) {
   return ({
-    match: "Partida direta",
-    practice: "Meta esportiva",
-    doubles: "Dupla x dupla",
+    match: "Partida simples",
+    practice: "Meta esportiva anterior",
+    doubles: "Partida em dupla",
+    podium_goal: "Meta de pódios",
     open: "Desafio aberto",
   })[value] || "Desafio esportivo";
 }
@@ -435,23 +436,29 @@ function AchievementsPanel({ achievements = [] }) {
 }
 
 const CHALLENGE_CREATE_OPTIONS = [
-  { id: "match", label: "Partida direta", description: "Desafie um atleta para uma partida.", Icon: Trophy },
-  { id: "doubles", label: "Dupla x dupla", description: "Monte sua dupla e convide outra dupla.", Icon: Users },
-  { id: "practice", label: "Meta esportiva", description: "Compare treinos, jogos ou horas.", Icon: Target },
-  { id: "open", label: "Desafio aberto", description: "Publique para atletas da plataforma.", Icon: Flag },
+  { id: "match", label: "Partida simples", description: "Um contra um: escolha o atleta que deseja enfrentar e envie o convite para combinar a partida.", Icon: Trophy },
+  { id: "doubles", label: "Partida em dupla", description: "Minha dupla contra a sua: escolha os quatro atletas e indique se a disputa será mista ou da mesma categoria esportiva.", Icon: Users },
+  { id: "podium_goal", label: "Meta de pódios", description: "Compare quem conquista mais pódios oficiais durante 30 dias, 3 meses, 6 meses ou 1 ano.", Icon: Target },
 ];
 
-const SPORT_GOAL_OPTIONS = [
-  { id: "training_hours", label: "Horas de treino", unit: "horas" },
-  { id: "matches_played", label: "Partidas disputadas", unit: "partidas" },
-  { id: "weekly_sessions", label: "Treinos na semana", unit: "treinos" },
-  { id: "win_streak", label: "Sequência de vitórias", unit: "vitórias" },
+const DOUBLES_CATEGORY_OPTIONS = [
+  { id: "mixed", label: "Partida mista", description: "Cada dupla terá atletas de categorias esportivas diferentes." },
+  { id: "same_category", label: "Mesma categoria esportiva", description: "Os quatro atletas devem disputar dentro da mesma categoria." },
 ];
 
-function getChallengeGoalLabel(challenge) {
-  const option = SPORT_GOAL_OPTIONS.find((entry) => entry.id === challenge?.goal_type);
-  const target = Number(challenge?.goal_target);
-  return option && Number.isFinite(target) && target > 0 ? `${target} ${option.unit}` : "";
+const PODIUM_GOAL_PERIODS = [
+  { id: "30_days", label: "Próximos 30 dias" },
+  { id: "3_months", label: "Próximos 3 meses" },
+  { id: "6_months", label: "Próximos 6 meses" },
+  { id: "1_year", label: "Próximo 1 ano" },
+];
+
+function getPodiumPeriodLabel(value) {
+  return PODIUM_GOAL_PERIODS.find((entry) => entry.id === value)?.label || "Período a confirmar";
+}
+
+function getDoublesCategoryLabel(value) {
+  return DOUBLES_CATEGORY_OPTIONS.find((entry) => entry.id === value)?.label || "Categoria a confirmar";
 }
 
 function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, onSend }) {
@@ -460,8 +467,8 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
   const [challengeType, setChallengeType] = useState("match");
   const [query, setQuery] = useState("");
   const [selectedMembers, setSelectedMembers] = useState([]);
-  const [goalType, setGoalType] = useState("training_hours");
-  const [goalTarget, setGoalTarget] = useState(5);
+  const [doublesCategoryMode, setDoublesCategoryMode] = useState("same_category");
+  const [goalPeriod, setGoalPeriod] = useState("30_days");
   const [candidateState, setCandidateState] = useState({ loading: false, items: [], error: "" });
   const waitingCount = challenges.filter((entry) => entry.status === "pending").length;
   const acceptedCount = challenges.filter((entry) => entry.status === "accepted").length;
@@ -475,7 +482,7 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
 
   useEffect(() => {
     const normalizedQuery = query.trim();
-    if (!creating || challengeType === "open" || normalizedQuery.length < 2) {
+    if (!creating || normalizedQuery.length < 2) {
       setCandidateState({ loading: false, items: [], error: "" });
       return undefined;
     }
@@ -524,7 +531,7 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
       setCandidateState({ loading: false, items: [], error: "" });
       return;
     }
-    const sent = await onSend(candidate, challengeType, challengeType === "practice" ? { goalType, goalTarget } : {});
+    const sent = await onSend(candidate, challengeType, challengeType === "podium_goal" ? { goalPeriod } : {});
     if (sent) finishCreation();
   }
 
@@ -533,12 +540,8 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
     const sent = await onSend(selectedMembers[1], "doubles", {
       challengerPartner: selectedMembers[0],
       challengedPartner: selectedMembers[2],
+      doublesCategoryMode,
     });
-    if (sent) finishCreation();
-  }
-
-  async function publishOpenChallenge() {
-    const sent = await onSend(null, "open");
     if (sent) finishCreation();
   }
 
@@ -559,10 +562,16 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
               : "";
             const eyebrow = challenge.direction === "outgoing" ? "Você enviou" : challenge.direction === "open" ? "Desafio público" : "Você recebeu";
             const statusLabel = challenge.challenge_type === "open" && challenge.status === "pending" ? "Aberto" : getChallengeStatusLabel(challenge.status);
-            const goalLabel = getChallengeGoalLabel(challenge);
+            const ownPodiumScore = challenge.direction === "outgoing" ? Number(challenge.challenger_score || 0) : Number(challenge.challenged_score || 0);
+            const rivalPodiumScore = challenge.direction === "outgoing" ? Number(challenge.challenged_score || 0) : Number(challenge.challenger_score || 0);
+            const podiumSummary = challenge.challenge_type === "podium_goal"
+              ? challenge.status === "pending"
+                ? `${getPodiumPeriodLabel(challenge.goal_period)} · a contagem começa após o aceite`
+                : `${getPodiumPeriodLabel(challenge.goal_period)} · Você ${ownPodiumScore} × ${rivalPodiumScore} ${athleteName}`
+              : "";
             return <article key={challenge.id} data-status={challenge.status}>
               <IdentityAvatar name={athleteName} photoUrl={challenge.athlete?.photo_url || ""} />
-              <div><small>{eyebrow}</small><strong>{athleteName}</strong><h3>{getChallengeLabel(challenge.challenge_type)}</h3>{doublesSummary ? <p className={styles.profileChallengePair}><Users /> {doublesSummary}</p> : null}{goalLabel ? <p className={styles.profileChallengePair}><Target /> Meta de {goalLabel}</p> : null}<p><Clock3 /> {formatProfileDate(challenge.created_at)}{location ? <><MapPin /> {location}</> : null}</p></div>
+              <div><small>{eyebrow}</small><strong>{athleteName}</strong><h3>{getChallengeLabel(challenge.challenge_type)}</h3>{doublesSummary ? <p className={styles.profileChallengePair}><Users /> {doublesSummary} · {getDoublesCategoryLabel(challenge.doubles_category_mode)}</p> : null}{podiumSummary ? <p className={styles.profileChallengePair}><Target /> {podiumSummary}</p> : null}<p><Clock3 /> {formatProfileDate(challenge.created_at)}{challenge.goal_ends_at ? <> · encerra em {formatProfileDate(challenge.goal_ends_at)}</> : null}{location ? <><MapPin /> {location}</> : null}</p></div>
               <span className={styles.profileChallengeStatus}>{statusLabel}</span>
               {(challenge.direction === "incoming" || challenge.direction === "open") && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "accepted")}><Check /> Aceitar</button>{challenge.direction !== "open" ? <button type="button" disabled={busy} onClick={() => onRespond(challenge, "declined")}><X /> Recusar</button> : null}</span> : null}
               {challenge.direction === "outgoing" && challenge.status === "pending" ? <span className={styles.profileChallengeActions}><button type="button" disabled={busy} onClick={() => onRespond(challenge, "cancelled")}><X /> Cancelar</button></span> : null}
@@ -570,11 +579,11 @@ function ChallengesPanel({ supabase, userId, challenges = [], busy, onRespond, o
           })}</div> : <div className={styles.profileEmpty}><Swords /><strong>Nenhum desafio neste filtro.</strong><small>Crie um convite ou consulte outra situação.</small></div>}
         </div>
         <aside className={styles.profileChallengeCreate}>
-          <header><h3>Criar um desafio</h3><small>Escolha como quer competir.</small></header>
+          <header><h3>Criar um desafio</h3><small>Escolha uma das três disputas e confira como cada uma funciona.</small></header>
           <div>{CHALLENGE_CREATE_OPTIONS.map(({ id, label, description, Icon }) => <button type="button" key={id} className={challengeType === id && creating ? styles.selectedChallengeType : ""} onClick={() => chooseChallengeType(id)}><Icon /><span><strong>{label}</strong><small>{description}</small></span><ChevronRight /></button>)}</div>
-          {creating && challengeType === "open" ? <section className={styles.profileOpenChallenge}><Flag /><div><strong>Publicar desafio aberto</strong><small>O convite ficará disponível para atletas da plataforma até alguém aceitar ou você cancelar.</small></div><button type="button" disabled={busy} onClick={publishOpenChallenge}>Publicar agora</button></section> : null}
-          {creating && challengeType !== "open" ? <section className={styles.profileChallengeSearch}>
-            {challengeType === "practice" ? <div className={styles.profileChallengeGoal}><label><span>Objetivo da meta</span><select value={goalType} onChange={(event) => setGoalType(event.target.value)}>{SPORT_GOAL_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label><label><span>Quantidade</span><input type="number" min="1" max="999" value={goalTarget} onChange={(event) => setGoalTarget(Math.max(1, Math.min(999, Number(event.target.value) || 1)))} /></label></div> : null}
+          {creating ? <section className={styles.profileChallengeSearch}>
+            {challengeType === "podium_goal" ? <label className={styles.profileChallengeChoice}><span>Período da disputa</span><select value={goalPeriod} onChange={(event) => setGoalPeriod(event.target.value)}>{PODIUM_GOAL_PERIODS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select><small>Serão contados somente pódios oficiais confirmados durante o período. A contagem começa quando o atleta aceitar.</small></label> : null}
+            {challengeType === "doubles" ? <label className={styles.profileChallengeChoice}><span>Formação da partida</span><select value={doublesCategoryMode} onChange={(event) => setDoublesCategoryMode(event.target.value)}>{DOUBLES_CATEGORY_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select><small>{DOUBLES_CATEGORY_OPTIONS.find((option) => option.id === doublesCategoryMode)?.description}</small></label> : null}
             {challengeType === "doubles" && selectedMembers.length ? <div className={styles.profileChallengeSelected}>{selectedMembers.map((member, index) => <span key={member.id}><small>{["Seu parceiro", "Adversário 1", "Adversário 2"][index]}</small><strong>{member.display_name || member.name || member.handle || "Atleta"}</strong><button type="button" onClick={() => setSelectedMembers((items) => items.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remover ${member.display_name || "atleta"}`}><X /></button></span>)}</div> : null}
             {challengeType !== "doubles" || selectedMembers.length < 3 ? <label><span>{challengeType === "doubles" ? ["Encontrar seu parceiro", "Encontrar o primeiro adversário", "Encontrar o segundo adversário"][selectedMembers.length] : "Encontrar atleta"}</span><div><Search /><input value={query} placeholder="Nome ou @usuário" onChange={(event) => setQuery(event.target.value)} /></div></label> : null}
             {candidateState.loading ? <small>Pesquisando atletas...</small> : null}{candidateState.error ? <small className={styles.profileFieldError}>{candidateState.error}</small> : null}{query.trim().length >= 2 && !candidateState.loading && !candidateState.items.length && !candidateState.error ? <small>Nenhum atleta encontrado.</small> : null}
@@ -595,6 +604,9 @@ export default function PlatformV2Profile({
   identityMode,
   activity,
   feedItems = [],
+  socialGraph = { followersCount: 0, followingCount: 0, followers: [], following: [] },
+  socialBusy = "",
+  onToggleFollow,
   onIdentitySummaryChange,
   onNotice,
 }) {
@@ -617,6 +629,7 @@ export default function PlatformV2Profile({
   const [profileCitiesLoading, setProfileCitiesLoading] = useState(false);
   const [profileCitiesError, setProfileCitiesError] = useState("");
   const [profileActivity, setProfileActivity] = useState(activity || { registrations: [], circuits: [], challenges: [], achievements: [], circuitAchievements: [] });
+  const [connectionsView, setConnectionsView] = useState("");
   const hasOrganization = Boolean(accessProfile?.arena_name || accessProfile?.organization_name);
 
   useEffect(() => {
@@ -694,7 +707,7 @@ export default function PlatformV2Profile({
     onIdentitySummaryChange?.("organization", { name: organization.name, photoUrl: organization.photoUrl, label: "Perfil da organização" });
   }, [hasOrganization, onIdentitySummaryChange, organization.name, organization.photoUrl]);
 
-  useEffect(() => { setActiveSection("activity"); }, [identityMode]);
+  useEffect(() => { setActiveSection("activity"); setConnectionsView(""); }, [identityMode]);
   useEffect(() => { setProfileActivity(activity || { registrations: [], circuits: [], challenges: [], achievements: [], circuitAchievements: [] }); }, [activity]);
 
   useEffect(() => {
@@ -930,7 +943,7 @@ export default function PlatformV2Profile({
   }
 
   async function sendNewChallenge(candidate, challengeType, options = {}) {
-    if ((challengeType !== "open" && !candidate?.id) || busy) return false;
+    if (!candidate?.id || busy) return false;
     setBusy(true);
     try {
       const created = await createAthleteChallenge({
@@ -939,8 +952,8 @@ export default function PlatformV2Profile({
         challengeType,
         challengerPartnerUserId: options.challengerPartner?.id || null,
         challengedPartnerUserId: options.challengedPartner?.id || null,
-        goalType: options.goalType || null,
-        goalTarget: options.goalTarget || null,
+        doublesCategoryMode: options.doublesCategoryMode || null,
+        goalPeriod: options.goalPeriod || null,
       });
       const athleteName = candidate?.display_name || candidate?.name || candidate?.handle || "Atletas da plataforma";
       const nextChallenge = {
@@ -949,9 +962,8 @@ export default function PlatformV2Profile({
         challenge_type: created?.challenge_type || challengeType,
         status: created?.status || "pending",
         created_at: created?.created_at || new Date().toISOString(),
-        is_open: challengeType === "open",
-        goal_type: created?.goal_type || options.goalType || null,
-        goal_target: created?.goal_target || options.goalTarget || null,
+        doubles_category_mode: created?.doubles_category_mode || options.doublesCategoryMode || null,
+        goal_period: created?.goal_period || options.goalPeriod || null,
         athlete: candidate ? {
           user_id: candidate.id,
           handle: candidate.handle || "",
@@ -981,7 +993,7 @@ export default function PlatformV2Profile({
             : [nextChallenge, ...currentChallenges],
         };
       });
-      onNotice?.(challengeType === "open" ? "Desafio aberto publicado para os atletas da plataforma." : challengeType === "doubles" ? "Desafio enviado para a dupla adversária." : `Desafio enviado para ${athleteName}.`);
+      onNotice?.(challengeType === "doubles" ? "Convite enviado para a dupla adversária." : challengeType === "podium_goal" ? `Meta de pódios enviada para ${athleteName}.` : `Convite de partida simples enviado para ${athleteName}.`);
       return true;
     } catch (error) {
       onNotice?.(error?.message || "Não foi possível enviar o desafio agora.");
@@ -1104,8 +1116,8 @@ export default function PlatformV2Profile({
           </div>
           <div className={styles.profileStats}>
             <span><strong>{currentGallery.length}</strong><small>Fotos</small></span>
-            <span><strong>{identityMode === "athlete" ? athlete.followersCount || 0 : 0}</strong><small>Seguidores</small></span>
-            <span><strong>0</strong><small>Seguindo</small></span>
+            <button type="button" onClick={() => setConnectionsView("followers")}><strong>{socialGraph.followersCount || 0}</strong><small>Seguidores</small></button>
+            <button type="button" onClick={() => setConnectionsView("following")}><strong>{socialGraph.followingCount || 0}</strong><small>Seguindo</small></button>
           </div>
           <button type="button" className={styles.profileEditButton} onClick={openDetailsEditor}><Settings /> Editar informações</button>
         </div>
@@ -1145,6 +1157,21 @@ export default function PlatformV2Profile({
 
       {athleteStatus === "unavailable" ? <p className={styles.profileSchemaWarning}>A galeria do atleta aguarda a atualização do banco de homologação.</p> : null}
       {busy ? <div className={styles.profileBusy} role="status"><span /><strong>Salvando alterações...</strong></div> : null}
+      {connectionsView ? <div className={styles.profileConnectionsBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConnectionsView(""); }}>
+        <section className={styles.profileConnectionsModal} role="dialog" aria-modal="true" aria-labelledby="v2-connections-title">
+          <header><div><span>Rede de {identityMode === "organization" ? "organização" : "atleta"}</span><h2 id="v2-connections-title">{connectionsView === "followers" ? "Seguidores" : "Seguindo"}</h2><p>As conexões pertencem ao perfil que está ativo agora.</p></div><button type="button" onClick={() => setConnectionsView("")} aria-label="Fechar"><X /></button></header>
+          <div className={styles.profileConnectionsList}>
+            {(socialGraph[connectionsView] || []).length ? (socialGraph[connectionsView] || []).map((connection) => {
+              const targetKey = `${connection.kind}:${connection.user_id}`;
+              return <article key={targetKey}>
+                <IdentityAvatar name={connection.name} photoUrl={connection.photo_url} Icon={connection.kind === "organization" ? Building2 : UserRound} />
+                <span><strong>{connection.name || (connection.kind === "organization" ? "Organização" : "Atleta")}</strong><small>{connection.kind === "organization" ? "Organização" : "Atleta"}{connection.handle ? ` · @${connection.handle}` : ""}</small><small>{[connection.city, connection.state].filter(Boolean).join(" · ") || "Local não informado"}</small></span>
+                <button type="button" className={connection.is_following ? styles.connectionFollowing : ""} disabled={socialBusy === targetKey} onClick={() => onToggleFollow?.({ userId: connection.user_id, kind: connection.kind, name: connection.name }, !connection.is_following)}>{connection.is_following ? <><Check /> Seguindo</> : <><Plus /> Seguir</>}</button>
+              </article>;
+            }) : <div className={styles.profileConnectionsEmpty}><UsersRound /><strong>{connectionsView === "followers" ? "Ainda não há seguidores" : "Você ainda não segue nenhum perfil"}</strong><small>Quando houver conexões, elas aparecerão separadas nesta identidade.</small></div>}
+          </div>
+        </section>
+      </div> : null}
       {detailsDraft ? <div className={styles.profileModalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDetailsDraft(null); }}>
         <section className={styles.profileDetailsModal} role="dialog" aria-modal="true" aria-labelledby="v2-profile-editor-title">
           <header><div><span>{identityMode === "organization" ? "Perfil da organização" : "Perfil do atleta"}</span><h2 id="v2-profile-editor-title">Editar informações</h2><p>Os dados permanecem separados entre as duas identidades.</p></div><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy} aria-label="Fechar edição"><X /></button></header>

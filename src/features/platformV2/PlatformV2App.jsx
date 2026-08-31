@@ -18,6 +18,7 @@ import {
   LogOut,
   MapPin,
   Menu,
+  Plus,
   Search,
   Share2,
   Sparkles,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 import { loadMyAthleteActivity } from "../../services/athleteActivityApi.mjs";
 import { copyToClipboard } from "../../services/clipboard.mjs";
+import { loadMySocialGraph, setProfileFollow } from "../../services/socialGraphApi.mjs";
 import PlatformV2Profile from "./PlatformV2Profile.jsx";
 import styles from "./PlatformV2App.module.css";
 
@@ -50,6 +52,15 @@ const QUICK_FILTERS = [
   ["open", "Inscrições abertas"],
   ["beach", "Beach Tennis"],
 ];
+
+const EMPTY_SOCIAL_GRAPH = {
+  identityKind: "athlete",
+  followersCount: 0,
+  followingCount: 0,
+  followers: [],
+  following: [],
+  schemaAvailable: true,
+};
 
 function getInitials(value, fallback = "T3") {
   const initials = String(value || "")
@@ -267,6 +278,8 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   const [posterRatios, setPosterRatios] = useState({});
   const [identityMode, setIdentityMode] = useState("athlete");
   const [identitySummaries, setIdentitySummaries] = useState({});
+  const [socialGraph, setSocialGraph] = useState(EMPTY_SOCIAL_GRAPH);
+  const [socialBusy, setSocialBusy] = useState("");
   const sidebarHoverTimer = useRef(null);
   const sidebarOpen = sidebarPinned || sidebarHovered;
   const hasSession = Boolean(user?.id);
@@ -333,6 +346,20 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   }, [hasSession, supabase, user?.id]);
 
   useEffect(() => {
+    if (!hasSession) {
+      setSocialGraph({ ...EMPTY_SOCIAL_GRAPH, identityKind: identityMode });
+      return undefined;
+    }
+    let active = true;
+    loadMySocialGraph({ supabase, identityKind: identityMode }).then((result) => {
+      if (active) setSocialGraph(result);
+    }).catch(() => {
+      if (active) setSocialGraph({ ...EMPTY_SOCIAL_GRAPH, identityKind: identityMode, schemaAvailable: false });
+    });
+    return () => { active = false; };
+  }, [hasSession, identityMode, supabase, user?.id]);
+
+  useEffect(() => {
     const mobile = window.matchMedia?.("(max-width: 1080px)").matches;
     if (!mobile || !sidebarOpen) return undefined;
     const previous = document.body.style.overflow;
@@ -352,6 +379,12 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
     });
     return Array.from(values.values());
   }, [feed.items]);
+
+  const followedOrganizationIds = useMemo(() => new Set(
+    (socialGraph.following || [])
+      .filter((entry) => entry.kind === "organization")
+      .map((entry) => String(entry.user_id))
+  ), [socialGraph.following]);
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
@@ -376,12 +409,13 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
       ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(normalizedQuery);
     }).sort((first, second) => {
       const score = (item) => (
-        Number(Boolean(getCover(item))) * 2
+        Number(followedOrganizationIds.has(String(getOrganizationId(item)))) * 100
+        + Number(Boolean(getCover(item))) * 2
         + Number(runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item)))
       );
       return score(second) - score(first);
     });
-  }, [feed.items, organizationFilter, profile?.city, profile?.state, query, quickFilter, runtime]);
+  }, [feed.items, followedOrganizationIds, organizationFilter, profile?.city, profile?.state, query, quickFilter, runtime]);
 
   const upcoming = useMemo(
     () => [...feed.items]
@@ -455,6 +489,32 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
       setNotice(copied ? "Link copiado para compartilhar." : "Não foi possível copiar o link agora.");
     } catch (error) {
       if (error?.name !== "AbortError") setNotice("Não foi possível compartilhar agora.");
+    }
+  }
+
+  async function changeFollow(target, follow) {
+    if (!hasSession) {
+      onLogin?.();
+      return false;
+    }
+    const targetKey = `${target.kind}:${target.userId}`;
+    setSocialBusy(targetKey);
+    try {
+      const nextGraph = await setProfileFollow({
+        supabase,
+        followerKind: identityMode,
+        followedUserId: target.userId,
+        followedKind: target.kind,
+        follow,
+      });
+      setSocialGraph(nextGraph);
+      setNotice(follow ? `Agora você segue ${target.name || "este perfil"}.` : `Você deixou de seguir ${target.name || "este perfil"}.`);
+      return true;
+    } catch (error) {
+      setNotice(error?.message || "Não foi possível atualizar este perfil agora.");
+      return false;
+    } finally {
+      setSocialBusy("");
     }
   }
 
@@ -535,6 +595,9 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
             identityMode={identityMode}
             activity={activity}
             feedItems={feed.items}
+            socialGraph={socialGraph}
+            socialBusy={socialBusy}
+            onToggleFollow={changeFollow}
             onIdentitySummaryChange={updateIdentitySummary}
             onNotice={setNotice}
           />
@@ -578,6 +641,8 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
                   const gender = getTournamentGenderLabel(item);
                   const startTime = String(details.eventStartTime || details.startTime || "").trim();
                   const registrationOpen = runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item));
+                  const organizationId = String(getOrganizationId(item));
+                  const isFollowingOrganization = (socialGraph.following || []).some((entry) => entry.kind === "organization" && String(entry.user_id) === organizationId);
                   const posterRatio = posterRatios[itemKey];
                   const posterColumn = posterRatio ? Math.min(382, Math.max(250, Math.round(466 * posterRatio))) : null;
                   const posterHeight = posterRatio ? Math.round(posterColumn / posterRatio) : null;
@@ -590,7 +655,10 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
                     <article className={styles.post} key={itemKey}>
                       <header className={styles.postHeader}>
                         <button type="button" className={styles.organizerIdentity} onClick={() => setOrganizationFilter(getOrganizationId(item))}><OrganizerAvatar item={item} /><span><strong>{getOrganizationName(item)}</strong><small>{getLocation(item)}</small></span></button>
-                        <span className={registrationOpen ? styles.openBadge : styles.closedBadge}>{registrationOpen ? "Inscrições abertas" : "Encerrado"}</span>
+                        <span className={styles.postHeaderActions}>
+                          {organizationId && organizationId !== String(user?.id || "") ? <button type="button" className={`${styles.postFollowButton} ${isFollowingOrganization ? styles.following : ""}`.trim()} disabled={socialBusy === `organization:${organizationId}`} onClick={() => changeFollow({ userId: organizationId, kind: "organization", name: getOrganizationName(item) }, !isFollowingOrganization)}>{isFollowingOrganization ? <><Check /> Seguindo</> : <><Plus /> Seguir</>}</button> : null}
+                          <span className={registrationOpen ? styles.openBadge : styles.closedBadge}>{registrationOpen ? "Inscrições abertas" : "Encerrado"}</span>
+                        </span>
                       </header>
                       <div className={styles.postContent} style={posterLayout} data-poster-shape={posterRatio >= 0.92 ? "square" : "portrait"}>
                         <button type="button" className={styles.posterButton} onClick={() => openDetails(item)} aria-label={`Ver detalhes de ${name}`}>

@@ -165,16 +165,16 @@ export async function createAthleteChallenge({
   challengeType,
   challengerPartnerUserId = null,
   challengedPartnerUserId = null,
-  goalType = null,
-  goalTarget = null,
+  doublesCategoryMode = null,
+  goalPeriod = null,
 }) {
   const { data, error } = await supabase.rpc("create_athlete_challenge", {
     p_challenged_user_id: challengedUserId,
     p_challenge_type: challengeType,
     p_challenger_partner_user_id: challengerPartnerUserId,
     p_challenged_partner_user_id: challengedPartnerUserId,
-    p_goal_type: goalType,
-    p_goal_target: goalTarget,
+    p_doubles_category_mode: doublesCategoryMode,
+    p_goal_period: goalPeriod,
   });
   if (error) throw error;
   return data;
