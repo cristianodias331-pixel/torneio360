@@ -18,6 +18,7 @@ import {
   LoginScreen,
   MemberProfileWorkspaceView,
   OrganizerWorkspaceDashboard,
+  PlatformV2AppView,
   PublicArenaPageController,
   PublicCircuitScreenView,
   PublicCupBracketView,
@@ -259,6 +260,7 @@ function App() {
   const signupType = routeParams.get("cadastro");
   const wantsLogin = routeParams.get("entrar") === "1";
   const publicMode = routeParams.get("publico") === "1";
+  const platformV2Requested = routeParams.get("app") === "v2" || routeParams.get("retorno") === "v2";
 
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -568,6 +570,16 @@ function App() {
     );
   }
 
+  if (platformV2Requested && !session && !wantsLogin && !signupType && !authCallbackError && !authNotice) {
+    return (
+      <PlatformV2AppView
+        runtime={publicPlatformHomeRuntime}
+        supabase={supabase}
+        onLogin={() => navigatePlatform({ entrar: "1", retorno: "v2" })}
+      />
+    );
+  }
+
   if (!session && !wantsLogin && !signupType && !authCallbackError && !authNotice) {
     if (MARKETING_LANDING_V2_ENABLED) {
       return (
@@ -579,6 +591,18 @@ function App() {
       );
     }
     return <PublicPlatformHome />;
+  }
+
+  if (platformV2Requested && session) {
+    return (
+      <PlatformV2AppView
+        runtime={publicPlatformHomeRuntime}
+        supabase={supabase}
+        user={session.user}
+        profile={profile}
+        onLogout={logout}
+      />
+    );
   }
 
   if (!session) {
