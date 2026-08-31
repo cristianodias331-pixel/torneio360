@@ -13,6 +13,7 @@ import {
   loadPublicAthleteActivity,
 } from "../src/services/athleteActivityApi.mjs";
 import { loadMySocialGraph, setProfileFollow } from "../src/services/socialGraphApi.mjs";
+import { getOrganizationSubscriptionWhatsAppUrl } from "../src/domain/contactLinks.mjs";
 import { readFile } from "node:fs/promises";
 
 function assert(condition, message) {
@@ -30,6 +31,9 @@ assert(fallback.galleryPhotos.length === 0, "A galeria deve começar vazia.");
 assert(fallback.followersCount === 0, "O perfil deve começar sem seguidores artificiais.");
 assert(normalizeMemberHandle(" @Meu Nome ") === "meunome", "O nome de usuário deve ser normalizado.");
 assert(normalizeMemberGalleryPhotos(["foto-1.webp", "", "foto-2.webp"]).length === 2, "A galeria deve ignorar posições vazias.");
+const subscriptionWhatsAppUrl = getOrganizationSubscriptionWhatsAppUrl({ email: "atleta@teste.com" });
+assert(subscriptionWhatsAppUrl.startsWith("https://wa.me/5585988739056"), "A assinatura da organização deve usar o WhatsApp oficial da plataforma.");
+assert(decodeURIComponent(subscriptionWhatsAppUrl).includes("atleta@teste.com"), "O pedido de assinatura deve identificar a conta do atleta.");
 
 const validation = validateMemberProfile({
   ...fallback,
@@ -169,6 +173,7 @@ const organizationProfileStyles = await readFile(new URL("../src/styles/51-unifi
 const athleteActivityStyles = await readFile(new URL("../src/styles/57-athlete-activity.css", import.meta.url), "utf8");
 const platformV2ProfileSource = await readFile(new URL("../src/features/platformV2/PlatformV2Profile.jsx", import.meta.url), "utf8");
 const platformV2AppSource = await readFile(new URL("../src/features/platformV2/PlatformV2App.jsx", import.meta.url), "utf8");
+const mainSource = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const platformV2Styles = await readFile(new URL("../src/features/platformV2/PlatformV2App.module.css", import.meta.url), "utf8");
 const profileImageEditorSource = await readFile(new URL("../src/features/profile/ProfileImageEditor.jsx", import.meta.url), "utf8");
 const expandedChallengeMigrationSource = await readFile(new URL("../supabase/migrations/202608310003_expanded_athlete_challenges.sql", import.meta.url), "utf8");
@@ -194,6 +199,8 @@ assert(["Partida simples", "Partida em dupla", "Meta de pódios", "Próximos 30 
 assert(!platformV2ProfileSource.includes('{ id: "open", label:'), "Desafio aberto não deve aparecer entre as opções de criação.");
 assert(platformV2Styles.includes("profileAchievementSummaryGrid") && platformV2Styles.includes("profileChallengeLayout"), "Conquistas e desafios da V2 devem preservar o novo layout responsivo.");
 assert(platformV2AppSource.includes("Seja organizador") && platformV2AppSource.includes("Assine e crie campeonatos") && platformV2Styles.includes("organizerCta"), "O perfil do atleta deve destacar em verde o convite para assinar e organizar campeonatos.");
+assert(platformV2AppSource.includes("loadMyMemberProfile") && platformV2AppSource.includes('updateIdentitySummary("athlete"'), "A V2 deve carregar a identidade persistida do atleta já na abertura.");
+assert(mainSource.includes("getOrganizationSubscriptionWhatsAppUrl(session.user)") && platformV2AppSource.includes("onOrganizationSubscription?.()"), "O convite verde deve abrir o WhatsApp oficial da assinatura.");
 assert(platformV2Styles.includes("profileChallengeChoice") && platformV2Styles.includes("profileChallengeSearch label > div"), "As escolhas de pódio/dupla e a busca de atletas devem permanecer alinhadas no painel de criação.");
 assert(expandedChallengeMigrationSource.includes("create_athlete_challenge") && expandedChallengeMigrationSource.includes("list_my_expanded_athlete_challenges") && expandedChallengeMigrationSource.includes("'doubles', 'open'") && expandedChallengeMigrationSource.includes("'weekly_sessions', 'win_streak'"), "A homologação deve ter suporte persistente a duplas, desafio aberto e metas configuráveis.");
 assert(socialGraphMigrationSource.includes("profile_follows") && socialGraphMigrationSource.includes("get_my_social_graph") && socialGraphMigrationSource.includes("set_profile_follow"), "A homologação deve persistir seguidores separadamente por perfil ativo.");

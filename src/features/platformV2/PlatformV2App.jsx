@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { loadMyAthleteActivity } from "../../services/athleteActivityApi.mjs";
 import { copyToClipboard } from "../../services/clipboard.mjs";
+import { createMemberProfileFallback } from "../../domain/memberProfile.mjs";
+import { loadMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import { loadMySocialGraph, setProfileFollow } from "../../services/socialGraphApi.mjs";
 import PlatformV2Profile from "./PlatformV2Profile.jsx";
 import styles from "./PlatformV2App.module.css";
@@ -262,7 +264,16 @@ function ComingSoon({ tab }) {
   );
 }
 
-export default function PlatformV2App({ runtime, supabase, user = null, profile = null, onLogin, onLogout, onOrganize }) {
+export default function PlatformV2App({
+  runtime,
+  supabase,
+  user = null,
+  profile = null,
+  onLogin,
+  onLogout,
+  onOrganizationSubscription,
+  onManageOrganization,
+}) {
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
@@ -284,8 +295,12 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   const sidebarOpen = sidebarPinned || sidebarHovered;
   const hasSession = Boolean(user?.id);
   const hasOrganization = Boolean(profile?.arena_name || profile?.organization_name);
+  const athleteProfileFallback = useMemo(() => createMemberProfileFallback({
+    user,
+    accessProfile: hasOrganization ? null : profile,
+  }), [hasOrganization, profile, user]);
   const fallbackAthleteSummary = {
-    name: user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Atleta",
+    name: hasSession && hasOrganization ? "Carregando atleta..." : athleteProfileFallback.displayName || "Atleta",
     photoUrl: user?.user_metadata?.avatar_url || "",
     label: "Perfil do atleta",
   };
@@ -303,6 +318,39 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
       return { ...current, [mode]: summary };
     });
   }, []);
+
+  useEffect(() => {
+    if (!hasOrganization) return;
+    updateIdentitySummary("organization", fallbackOrganizationSummary);
+  }, [
+    fallbackOrganizationSummary.name,
+    fallbackOrganizationSummary.photoUrl,
+    hasOrganization,
+    updateIdentitySummary,
+  ]);
+
+  useEffect(() => {
+    if (!hasSession) return undefined;
+
+    let active = true;
+    loadMyMemberProfile({ supabase, fallback: athleteProfileFallback }).then(({ profile: memberProfile }) => {
+      if (!active) return;
+      updateIdentitySummary("athlete", {
+        name: memberProfile.displayName || "Atleta",
+        photoUrl: memberProfile.photoUrl || "",
+        label: "Perfil do atleta",
+      });
+    }).catch(() => {
+      if (!active) return;
+      updateIdentitySummary("athlete", {
+        name: athleteProfileFallback.displayName || "Atleta",
+        photoUrl: athleteProfileFallback.photoUrl || "",
+        label: "Perfil do atleta",
+      });
+    });
+
+    return () => { active = false; };
+  }, [athleteProfileFallback, hasSession, supabase, updateIdentitySummary, user?.id]);
 
   useEffect(() => {
     const previous = document.documentElement.dataset.platformV2;
@@ -452,7 +500,11 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
         onLogin?.();
         return;
       }
-      onOrganize?.();
+      if (identityMode === "organization") {
+        onManageOrganization?.();
+        return;
+      }
+      onOrganizationSubscription?.();
       return;
     }
     selectTab(id);
@@ -591,7 +643,7 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
             const visibleLabel = id === "organization" ? (organizationCta ? "Seja organizador" : "Gestão da organização") : label;
             const helperText = id === "organization"
               ? organizationCta
-                ? hasOrganization ? "Acessar gestão da organização" : "Assine e crie campeonatos"
+                ? "Assine e crie campeonatos"
                 : "Administrar eventos e assinatura"
               : !ready ? "Em construção" : "";
             return <button type="button" key={id} className={`${activeTab === id ? styles.activeNav : ""} ${organizationCta ? styles.organizerCta : ""}`.trim()} onClick={() => selectNavigationItem(id)} aria-current={activeTab === id ? "page" : undefined} title={visibleLabel}>

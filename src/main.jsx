@@ -57,6 +57,7 @@ import {
 } from "./domain/authNavigation.mjs";
 import {
   getBrazilianWhatsAppUrl,
+  getOrganizationSubscriptionWhatsAppUrl,
   getPlanRegularizationWhatsAppUrl,
 } from "./domain/contactLinks.mjs";
 import {
@@ -576,7 +577,7 @@ function App() {
         runtime={publicPlatformHomeRuntime}
         supabase={supabase}
         onLogin={() => navigatePlatform({ entrar: "1", retorno: "v2" })}
-        onOrganize={() => navigatePlatform({ entrar: "1", retorno: "v2" })}
+        onOrganizationSubscription={() => navigatePlatform({ entrar: "1", retorno: "v2" })}
       />
     );
   }
@@ -602,7 +603,12 @@ function App() {
         user={session.user}
         profile={profile}
         onLogout={logout}
-        onOrganize={() => navigatePlatform()}
+        onOrganizationSubscription={() => window.open(
+          getOrganizationSubscriptionWhatsAppUrl(session.user),
+          "_blank",
+          "noopener,noreferrer"
+        )}
+        onManageOrganization={() => navigatePlatform()}
       />
     );
   }
