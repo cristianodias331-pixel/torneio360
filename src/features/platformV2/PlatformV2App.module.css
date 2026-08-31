@@ -143,7 +143,7 @@
 .accountButton strong { font-size: .7rem; }
 .accountButton small { color: #8fa0b4; font-size: .55rem; }
 .accountButton > svg { width: 14px; color: #8799ad; }
-.accountAvatar { display: grid; width: 34px; height: 34px; place-items: center; overflow: hidden; flex: 0 0 auto; border: 1px solid #ff7330; border-radius: 11px; background: #17344d; color: #fff; font-size: .62rem; font-weight: 900; }
+.accountAvatar { display: grid; width: 34px; height: 34px; place-items: center; overflow: hidden; flex: 0 0 auto; border: 1px solid #ff7330; border-radius: 50%; background: #17344d; color: #fff; font-size: .62rem; font-weight: 900; }
 .accountAvatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .accountMenu {
@@ -151,7 +151,7 @@
   top: calc(100% + 9px);
   right: 0;
   display: grid;
-  width: 220px;
+  width: 286px;
   overflow: hidden;
   border: 1px solid #2a425d;
   border-radius: 15px;
@@ -160,9 +160,19 @@
   box-shadow: 0 22px 48px rgba(0, 0, 0, .42);
 }
 
-.accountMenu button { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 10px; padding: 10px; background: transparent; color: #dce5ef; font-size: .7rem; font-weight: 750; text-align: left; cursor: pointer; }
+.accountMenu button { display: flex; min-width: 0; align-items: center; gap: 9px; border: 0; border-radius: 10px; padding: 10px; background: transparent; color: #dce5ef; font-size: .7rem; font-weight: 750; text-align: left; cursor: pointer; }
 .accountMenu button:hover { background: #10243b; color: #fff; }
-.accountMenu svg { width: 16px; }
+.accountMenu svg { width: 16px; flex: 0 0 auto; }
+.accountMenu button > span { display: grid; min-width: 0; flex: 1; gap: 1px; }
+.accountMenu button > span strong,
+.accountMenu button > span small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.accountMenu button > span small { color: #768ba2; font-size: .55rem; font-weight: 600; }
+.accountMenuLabel { padding: 8px 10px 5px; color: #7890a8; font-size: .54rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.accountMenu .activeIdentity { background: #0d2840; color: #fff; }
+.accountMenu .activeIdentity > svg:first-child { color: #ff752b; }
+.accountMenu .activeIdentity > svg:last-child { color: #45dd8a; }
+.identityLimit { padding: 6px 10px 8px; color: #61768e; font-size: .51rem; }
+.accountMenu > i { display: block; height: 1px; margin: 2px 7px; background: #20364e; }
 
 .loginButton {
   display: inline-flex;
@@ -452,6 +462,101 @@
 .comingSoon > div strong { font-size: .68rem; }
 .comingSoon > div small { color: #8396ab; font-size: .58rem; }
 
+.profilePage { width: min(100%, 1180px); margin: 0 auto; padding-top: 12px; }
+.profileHero { overflow: hidden; border: 1px solid #203c59; border-radius: 25px; background: linear-gradient(180deg, #07192d, #061426); box-shadow: 0 24px 70px rgba(0, 0, 0, .22); }
+.profileCover { position: relative; display: grid; width: 100%; aspect-ratio: 851 / 315; max-height: 370px; place-items: center; overflow: hidden; background: radial-gradient(circle at 70% 30%, rgba(255, 101, 21, .18), transparent 28%), linear-gradient(135deg, #0d2942, #061121 55%, #17140f); }
+.profileCover::after { position: absolute; right: 0; bottom: 0; left: 0; height: 38%; background: linear-gradient(transparent, rgba(2, 9, 20, .74)); content: ""; pointer-events: none; }
+.profileCover > img { width: 100%; height: 100%; object-fit: cover; }
+.profileCover > span { display: grid; place-items: center; gap: 10px; color: #7589a0; }
+.profileCover > span > span { width: 120px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #ff6a1e, transparent); box-shadow: 0 0 20px rgba(255, 90, 10, .5); }
+.profileCover > span small { font-size: .58rem; }
+.coverEdit { position: absolute; z-index: 2; right: 18px; bottom: 18px; display: inline-flex; min-height: 40px; align-items: center; gap: 8px; border: 1px solid rgba(255, 255, 255, .24); border-radius: 14px; padding: 0 14px; background: rgba(3, 13, 25, .86); color: #fff; font-size: .65rem; font-weight: 850; cursor: pointer; backdrop-filter: blur(12px); }
+.coverEdit:hover { border-color: #ff6c22; background: rgba(27, 21, 17, .94); }
+.coverEdit input,
+.avatarEdit input,
+.profileGalleryAdd input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.coverEdit svg { width: 16px; }
+.profileIdentity { position: relative; display: grid; min-height: 154px; grid-template-columns: 126px minmax(220px, 1fr) auto auto; align-items: center; gap: 20px; padding: 20px 24px 22px; }
+.avatarEdit { position: relative; width: 118px; height: 118px; align-self: start; margin-top: -66px; cursor: pointer; }
+.profileAvatar { display: grid; width: 118px; height: 118px; place-items: center; overflow: hidden; border: 5px solid #061426; border-radius: 50%; background: #10283f; color: #fff; box-shadow: 0 0 0 2px #ff6a1e, 0 15px 38px rgba(0, 0, 0, .42); }
+.profileAvatar img { width: 100%; height: 100%; object-fit: cover; }
+.profileAvatar > span { display: grid; place-items: center; gap: 3px; font-size: 1.35rem; font-weight: 900; }
+.profileAvatar > span svg { width: 24px; color: #71869d; }
+.avatarEdit > span:last-child { position: absolute; right: 3px; bottom: 3px; display: grid; width: 34px; height: 34px; place-items: center; border: 3px solid #061426; border-radius: 50%; background: #ff5a0a; color: #fff; box-shadow: 0 8px 20px rgba(255, 90, 10, .32); }
+.avatarEdit > span:last-child svg { width: 15px; }
+.profileHeading { display: grid; min-width: 0; gap: 3px; }
+.profileType { display: inline-flex; align-items: center; gap: 6px; color: #ff762c; font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.profileType svg { width: 14px; }
+.profileHeading h1 { overflow: hidden; margin: 0; color: #fff; font-size: clamp(1.55rem, 3vw, 2.35rem); line-height: 1.05; letter-spacing: -.045em; text-overflow: ellipsis; white-space: nowrap; }
+.profileHeading p { margin: 3px 0 0; color: #8fa3b8; font-size: .68rem; }
+.profileStats { display: flex; align-items: center; gap: 24px; }
+.profileStats > span { display: grid; min-width: 56px; gap: 1px; text-align: center; }
+.profileStats strong { color: #fff; font-size: 1rem; }
+.profileStats small { color: #8195aa; font-size: .52rem; }
+.profileEditButton { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; border: 1px solid #38526d; border-radius: 13px; padding: 0 15px; background: #0a1d31; color: #eaf0f7; font-size: .64rem; font-weight: 850; cursor: pointer; }
+.profileEditButton:hover { border-color: #ff6a1e; background: #10253c; }
+.profileEditButton svg { width: 15px; }
+.profileTabs { display: flex; width: 100%; gap: 8px; margin: 18px 0; border-bottom: 1px solid #1c354f; padding: 0 5px; }
+.profileTabs button { display: inline-flex; min-height: 45px; align-items: center; gap: 8px; border: 0; border-bottom: 2px solid transparent; padding: 0 16px; background: transparent; color: #8397ad; font-size: .67rem; font-weight: 820; cursor: pointer; }
+.profileTabs button svg { width: 16px; }
+.profileTabs button > span { border-radius: 999px; padding: 3px 7px; background: #0b2138; color: #93a7bc; font-size: .5rem; }
+.profileTabs .activeProfileTab { border-bottom-color: #ff6417; color: #fff; }
+.profileTabs .activeProfileTab svg { color: #ff752b; }
+.profilePanel { min-width: 0; border: 1px solid #203b57; border-radius: 21px; padding: 20px; background: rgba(6, 20, 38, .88); }
+.profilePanelHeader { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.profilePanelHeader > div { display: flex; min-width: 0; align-items: center; gap: 12px; }
+.profilePanelHeader > div > svg { width: 20px; flex: 0 0 auto; color: #ff7429; }
+.profilePanelHeader > div > span { display: grid; min-width: 0; gap: 2px; }
+.profilePanelHeader h2 { margin: 0; color: #fff; font-size: .86rem; }
+.profilePanelHeader p { margin: 0; color: #8195aa; font-size: .58rem; }
+.profilePanelHeader > strong { flex: 0 0 auto; border: 1px solid #26445f; border-radius: 999px; padding: 6px 10px; background: #091c30; color: #fff; font-size: .62rem; }
+.profileGalleryGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.profileGalleryGrid figure { position: relative; aspect-ratio: 1; overflow: hidden; margin: 0; border: 1px solid #29445f; border-radius: 15px; background: #03101e; }
+.profileGalleryGrid figure img { width: 100%; height: 100%; object-fit: cover; }
+.profileGalleryGrid figure button { position: absolute; top: 7px; right: 7px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(255, 255, 255, .18); border-radius: 50%; padding: 0; background: rgba(3, 12, 22, .82); color: #fff; cursor: pointer; }
+.profileGalleryGrid figure button:hover { border-color: #ff6520; color: #ff7a35; }
+.profileGalleryGrid figure button svg { width: 13px; }
+.profileGalleryAdd { position: relative; display: grid; aspect-ratio: 1; place-items: center; align-content: center; gap: 5px; border: 1px dashed #395878; border-radius: 15px; background: linear-gradient(145deg, rgba(18, 45, 73, .5), rgba(6, 20, 38, .7)); color: #8ca2b8; text-align: center; cursor: pointer; }
+.profileGalleryAdd:hover { border-color: #ff6c22; color: #fff; }
+.profileGalleryAdd svg { width: 24px; color: #ff762c; }
+.profileGalleryAdd strong { font-size: .61rem; }
+.profileGalleryAdd small { font-size: .5rem; }
+.galleryHint { margin: 13px 0 0; color: #6f849a; font-size: .55rem; }
+.profileActivityGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.profileActivityGrid article { display: grid; min-width: 0; grid-template-columns: 54px minmax(0, 1fr) 20px; align-items: center; gap: 11px; border: 1px solid #1b3853; border-radius: 15px; padding: 8px; background: #071a2e; }
+.profileActivityGrid article > span { display: grid; width: 54px; height: 54px; place-items: center; overflow: hidden; border-radius: 12px; background: #0f2a44; color: #ff772d; }
+.profileActivityGrid article > span img { width: 100%; height: 100%; object-fit: cover; }
+.profileActivityGrid article > span svg { width: 19px; }
+.profileActivityGrid article > div { display: grid; min-width: 0; gap: 3px; }
+.profileActivityGrid article strong,
+.profileActivityGrid article small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profileActivityGrid article strong { color: #fff; font-size: .67rem; }
+.profileActivityGrid article small { color: #7e93a9; font-size: .53rem; }
+.profileActivityGrid article > svg { width: 15px; color: #45dd8a; }
+.profileEmpty { display: grid; min-height: 180px; place-items: center; align-content: center; gap: 6px; color: #778ba1; text-align: center; }
+.profileEmpty svg { width: 28px; color: #ff752b; }
+.profileEmpty strong { color: #dce5ef; font-size: .7rem; }
+.profileEmpty small { font-size: .55rem; }
+.profileAboutGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.profileBio { margin: 0; color: #aab8c7; font-size: .7rem; line-height: 1.7; }
+.profileFacts { display: grid; gap: 0; margin: 0; }
+.profileFacts > div { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 9px; border-bottom: 1px solid rgba(76, 109, 143, .2); padding: 9px 0; }
+.profileFacts > div:last-child { border-bottom: 0; }
+.profileFacts dt { display: grid; place-items: center; color: #ff752b; }
+.profileFacts dt svg { width: 16px; }
+.profileFacts dd { display: grid; gap: 1px; margin: 0; }
+.profileFacts dd strong { font-size: .6rem; }
+.profileFacts dd span { color: #8599ae; font-size: .55rem; }
+.profileBusy { position: fixed; z-index: 190; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 9px; border: 1px solid #31506e; border-radius: 14px; padding: 11px 14px; background: #07172a; box-shadow: 0 18px 45px rgba(0, 0, 0, .4); }
+.profileBusy > span { width: 16px; height: 16px; border: 2px solid #35506b; border-top-color: #ff7025; border-radius: 50%; animation: spin 700ms linear infinite; }
+.profileBusy strong { font-size: .61rem; }
+.profileSchemaWarning { margin: 12px 0 0; color: #e8b579; font-size: .58rem; text-align: center; }
+.profileEmptyPage { display: grid; min-height: calc(100dvh - 130px); place-items: center; align-content: center; text-align: center; }
+.profileEmptyPage > svg { width: 58px; color: #ff752b; }
+.profileEmptyPage > span { margin-top: 12px; color: #ff752b; font-size: .6rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.profileEmptyPage h1 { margin: 9px 0 6px; font-size: 2.3rem; letter-spacing: -.05em; }
+.profileEmptyPage p { max-width: 480px; margin: 0; color: #8da1b6; font-size: .72rem; }
+
 .detailBackdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(0, 5, 12, .78); backdrop-filter: blur(12px); }
 .detailPanel { position: relative; display: grid; width: min(100%, 900px); max-height: min(760px, calc(100dvh - 48px)); grid-template-columns: minmax(300px, 390px) minmax(0, 1fr); overflow: hidden; border: 1px solid #2a4868; border-radius: 26px; background: #061426; box-shadow: 0 30px 90px rgba(0, 0, 0, .54); }
 .detailClose { position: absolute; z-index: 4; top: 14px; right: 14px; display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #38536e; border-radius: 12px; background: rgba(3, 13, 25, .88); color: #e5edf6; cursor: pointer; }
@@ -478,7 +583,8 @@
 
 @media (min-width: 1600px) {
   .overview,
-  .comingSoon { width: min(100%, 1180px); }
+  .comingSoon,
+  .profilePage { width: min(100%, 1280px); }
   .contentGrid { grid-template-columns: minmax(0, 680px) minmax(320px, 350px); gap: 24px; }
   .sidebarClosed .overview { width: min(100%, 1360px); }
   .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 820px) minmax(360px, 400px); gap: 26px; }
@@ -506,8 +612,8 @@
   .accountButton { width: 40px; height: 40px; border: 0; padding: 2px; background: transparent; }
   .accountButton > span:nth-child(2),
   .accountButton > svg { display: none; }
-  .accountAvatar { width: 36px; height: 36px; border-radius: 12px; }
-  .accountMenu { top: calc(100% + 10px); }
+  .accountAvatar { width: 36px; height: 36px; border-radius: 50%; }
+  .accountMenu { top: calc(100% + 10px); width: min(310px, calc(100vw - 24px)); }
   .loginButton { height: 40px; padding: 0 13px; }
   .sidebar,
   .sidebarClosed .sidebar { z-index: 120; top: 62px; width: min(84vw, 290px); transform: translateX(-105%); }
@@ -528,10 +634,19 @@
   .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 680px); }
   .rail { display: none; }
   .overviewHeader { min-height: 74px; }
+  .profileIdentity { grid-template-columns: 112px minmax(180px, 1fr) auto; }
+  .avatarEdit,
+  .profileAvatar { width: 104px; height: 104px; }
+  .profileEditButton { grid-column: 2 / -1; justify-self: start; }
+  .profileGalleryGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
   .topActions { gap: 6px; }
+  .accountMenu { position: fixed; z-index: 180; top: auto; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; width: auto; max-height: min(76dvh, 520px); overflow-y: auto; border-radius: 22px; padding: 9px; box-shadow: 0 28px 90px rgba(0, 0, 0, .72); }
+  .accountMenu button { min-height: 52px; border-radius: 14px; padding: 10px 12px; }
+  .accountMenuLabel { padding: 10px 12px 6px; }
+  .identityLimit { padding: 7px 12px 10px; }
   .loginButton span { display: none; }
   .main,
   .sidebarClosed .main { padding: 76px 10px 34px; }
@@ -563,6 +678,30 @@
   .postActions .primaryAction { grid-column: 1 / -1; }
   .rail { display: none; }
   .comingSoon { min-height: calc(100dvh - 110px); padding: 25px 15px; }
+  .profilePage { padding-top: 0; }
+  .profileHero { border-radius: 18px; }
+  .profileCover { min-height: 132px; aspect-ratio: 851 / 315; }
+  .coverEdit { right: 10px; bottom: 10px; min-height: 36px; padding: 0 11px; }
+  .coverEdit span { display: none; }
+  .profileIdentity { min-height: 0; grid-template-columns: 82px minmax(0, 1fr); gap: 12px; padding: 13px 13px 17px; }
+  .avatarEdit { width: 78px; height: 78px; margin-top: -42px; }
+  .profileAvatar { width: 78px; height: 78px; border-width: 4px; }
+  .avatarEdit > span:last-child { width: 28px; height: 28px; border-width: 2px; }
+  .profileHeading h1 { font-size: 1.35rem; }
+  .profileStats { grid-column: 1 / -1; width: 100%; justify-content: space-around; gap: 8px; border-top: 1px solid #1e3852; padding-top: 13px; }
+  .profileEditButton { grid-column: 1 / -1; width: 100%; justify-self: stretch; }
+  .profileTabs { margin: 12px 0; overflow-x: auto; padding: 0; scrollbar-width: none; }
+  .profileTabs::-webkit-scrollbar { display: none; }
+  .profileTabs button { min-width: max-content; min-height: 42px; padding: 0 12px; }
+  .profilePanel { border-radius: 17px; padding: 14px; }
+  .profilePanelHeader { align-items: flex-start; margin-bottom: 14px; }
+  .profilePanelHeader p { max-width: 230px; }
+  .profileGalleryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .profileGalleryGrid figure,
+  .profileGalleryAdd { border-radius: 12px; }
+  .profileActivityGrid,
+  .profileAboutGrid { grid-template-columns: 1fr; }
+  .profileBusy { right: 10px; bottom: 10px; left: 10px; justify-content: center; }
   .detailBackdrop { align-items: end; padding: 0; }
   .detailPanel { width: 100%; max-height: 92dvh; grid-template-columns: 1fr; overflow-y: auto; border-width: 1px 0 0; border-radius: 24px 24px 0 0; }
   .detailPoster { min-height: 0; aspect-ratio: 4 / 3; }

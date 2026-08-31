@@ -740,7 +740,7 @@ export default function LoginScreen({
             <p>Crie seu perfil gratuitamente. A organização de torneios e circuitos é liberada por assinatura.</p>
             <div className="landingTrialBenefits" aria-label="Benefícios do teste grátis">
               <span>Foto, capa e apresentação</span>
-              <span>Galeria pessoal com até 6 fotos</span>
+              <span>Galeria pessoal com até 10 fotos</span>
               <span>3 dias de gestão quando ativar a organização</span>
             </div>
           </div>

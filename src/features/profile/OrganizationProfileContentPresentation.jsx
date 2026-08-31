@@ -223,10 +223,10 @@ export default function OrganizationProfileContentPresentation({
               <span><Building2 aria-hidden="true" /></span>
               <div>
                 <h3 id="organization-gallery-profile-title">Fotos da organização</h3>
-                <p>Até seis fotos institucionais escolhidas para esta galeria. A capa do perfil é separada.</p>
+                <p>Até dez fotos institucionais escolhidas para esta galeria. A capa do perfil é separada.</p>
               </div>
             </div>
-            <strong>{gallery.length}/6</strong>
+            <strong>{gallery.length}/10</strong>
           </header>
 
           {gallery.length > 0 || canEdit ? (
@@ -237,7 +237,7 @@ export default function OrganizationProfileContentPresentation({
                   {canEdit ? <button type="button" className="removeOrganizationGalleryPhoto" onClick={() => onRemoveGalleryPhoto?.(index)} disabled={galleryBusy}>Remover</button> : null}
                 </figure>
               ))}
-              {canEdit && gallery.length < 6 ? (
+              {canEdit && gallery.length < 10 ? (
                 <label className="unifiedMemberGalleryAdd">
                   <input
                     type="file"
@@ -252,7 +252,7 @@ export default function OrganizationProfileContentPresentation({
                   />
                   <PlusCircle aria-hidden="true" />
                   <strong>Adicionar fotos</strong>
-                  <small>{gallery.length ? `Restam ${6 - gallery.length}` : "Escolha até 6 imagens"}</small>
+                  <small>{gallery.length ? `Restam ${10 - gallery.length}` : "Escolha até 10 imagens"}</small>
                 </label>
               ) : null}
             </div>

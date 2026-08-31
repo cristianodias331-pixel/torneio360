@@ -2,7 +2,7 @@ function normalizePhotoList(value) {
   return (Array.isArray(value) ? value : [])
     .map((entry) => String(entry || "").trim())
     .filter(Boolean)
-    .slice(0, 6);
+    .slice(0, 10);
 }
 
 export async function fetchPublicTournamentFeed({ supabase, limit = 12, cursor = null } = {}) {

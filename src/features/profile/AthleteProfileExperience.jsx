@@ -79,7 +79,7 @@ export default function AthleteProfileExperience({
               <span><Images aria-hidden="true" /></span>
               <div>
                 <h3 id="athlete-profile-gallery-title">Fotos do perfil</h3>
-                <p>Até seis fotos. Elas aparecem no perfil sem curtidas nem comentários.</p>
+                <p>Até dez fotos. Elas aparecem no perfil sem curtidas nem comentários.</p>
               </div>
             </div>
             <strong>{galleryPhotos.length}/{MAX_MEMBER_GALLERY_PHOTOS}</strong>

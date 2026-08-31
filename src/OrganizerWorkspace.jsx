@@ -1364,7 +1364,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         if (!active) return;
         try {
           const localPhotos = JSON.parse(localStorage.getItem(`organizationGallery:${user.id}`) || "[]");
-          const safeLocalPhotos = Array.isArray(localPhotos) ? localPhotos.filter((photo) => typeof photo === "string").slice(0, 6) : [];
+          const safeLocalPhotos = Array.isArray(localPhotos) ? localPhotos.filter((photo) => typeof photo === "string").slice(0, 10) : [];
           organizationGalleryBaseRef.current = safeLocalPhotos;
           setOrganizationGallery(safeLocalPhotos);
         } catch {
@@ -3867,10 +3867,10 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
   async function handleOrganizationGalleryFiles(files) {
     if (!files?.length || organizationGallerySaving) return;
-    const availableSlots = Math.max(0, 6 - organizationGallery.length);
+    const availableSlots = Math.max(0, 10 - organizationGallery.length);
     const selectedFiles = Array.from(files).slice(0, availableSlots);
     if (selectedFiles.length === 0) {
-      showNotice("info", "Galeria completa", "A organização aceita até seis fotos.");
+      showNotice("info", "Galeria completa", "A organização aceita até dez fotos.");
       return;
     }
     try {
@@ -3879,7 +3879,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       setOrganizationGallery((current) => [
         ...current,
         ...prepared.map((entry) => entry.imageUrl),
-      ].slice(0, 6));
+      ].slice(0, 10));
     } catch (error) {
       showNotice("warning", "Fotos não adicionadas", error?.message || "Escolha outras imagens.");
     }
@@ -9104,7 +9104,7 @@ setNewPublicInfo({
               <span><Images aria-hidden="true" /></span>
               <div>
                 <h3 id="member-gallery-profile-title">Fotos do perfil</h3>
-                <p>Até seis fotos. Elas aparecem somente no seu perfil, sem curtidas ou comentários.</p>
+                <p>Até dez fotos. Elas aparecem somente no seu perfil, sem curtidas ou comentários.</p>
               </div>
             </div>
             <strong>{memberProfile.galleryPhotos.length}/{MAX_MEMBER_GALLERY_PHOTOS}</strong>
@@ -9150,10 +9150,10 @@ setNewPublicInfo({
               <span><Building2 aria-hidden="true" /></span>
               <div>
                 <h3 id="organization-gallery-profile-title">Fotos da organização</h3>
-                <p>Até seis fotos institucionais escolhidas para esta galeria. A capa do perfil é separada.</p>
+                <p>Até dez fotos institucionais escolhidas para esta galeria. A capa do perfil é separada.</p>
               </div>
             </div>
-            <strong>{organizationGallery.length}/6</strong>
+            <strong>{organizationGallery.length}/10</strong>
           </header>
 
           <div className="unifiedMemberGalleryGrid">
@@ -9163,7 +9163,7 @@ setNewPublicInfo({
                 <button type="button" className="removeOrganizationGalleryPhoto" onClick={() => removeOrganizationGalleryPhoto(index)} disabled={organizationGallerySaving}>Remover</button>
               </figure>
             ))}
-            {organizationGallery.length < 6 ? (
+            {organizationGallery.length < 10 ? (
               <label className="unifiedMemberGalleryAdd">
                 <input
                   type="file"
@@ -9178,7 +9178,7 @@ setNewPublicInfo({
                 />
                 <PlusCircle aria-hidden="true" />
                 <strong>Adicionar fotos</strong>
-                <small>Restam {6 - organizationGallery.length}</small>
+                <small>Restam {10 - organizationGallery.length}</small>
               </label>
             ) : null}
           </div>

@@ -408,7 +408,7 @@ export function PublicArenaPageView({
 
         {activeProfileTab === "fotos" ? (
           <section className="publicOrganizationGallerySection profileSubtabPanel profilePhotosPanel">
-            <header><div><h2>Fotos da organização</h2><p>Galeria institucional do perfil.</p></div><span>{organizationGallery.length}/6</span></header>
+            <header><div><h2>Fotos da organização</h2><p>Galeria institucional do perfil.</p></div><span>{organizationGallery.length}/10</span></header>
             {organizationGallery.length > 0 ? <div className="publicOrganizationGalleryGrid">
               {organizationGallery.map((photoUrl, index) => (
                 <button

@@ -16,7 +16,7 @@ const dominantHandOptions = new Set(["Destro", "Canhoto", "Ambidestro", "Não in
 const shirtSizeOptions = new Set(["PP", "P", "M", "G", "GG", "XGG", "Não informado"]);
 const genderOptions = new Set(["Masculino", "Feminino"]);
 
-export const MAX_MEMBER_GALLERY_PHOTOS = 6;
+export const MAX_MEMBER_GALLERY_PHOTOS = 10;
 
 export function normalizeMemberGender(value) {
   const normalized = String(value || "").normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");

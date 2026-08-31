@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Award,
   Bell,
@@ -29,11 +29,12 @@ import {
 } from "lucide-react";
 import { loadMyAthleteActivity } from "../../services/athleteActivityApi.mjs";
 import { copyToClipboard } from "../../services/clipboard.mjs";
+import PlatformV2Profile from "./PlatformV2Profile.jsx";
 import styles from "./PlatformV2App.module.css";
 
 const NAVIGATION = [
   { id: "overview", label: "Visão geral", Icon: Home, ready: true },
-  { id: "profile", label: "Meu perfil", Icon: UserRound },
+  { id: "profile", label: "Meu perfil", Icon: UserRound, ready: true },
   { id: "tournaments", label: "Torneios", Icon: Trophy },
   { id: "circuits", label: "Circuitos", Icon: GitBranch },
   { id: "registrations", label: "Inscrições", Icon: ClipboardCheck },
@@ -264,11 +265,31 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState("");
   const [posterRatios, setPosterRatios] = useState({});
+  const [identityMode, setIdentityMode] = useState("athlete");
+  const [identitySummaries, setIdentitySummaries] = useState({});
   const sidebarHoverTimer = useRef(null);
   const sidebarOpen = sidebarPinned || sidebarHovered;
   const hasSession = Boolean(user?.id);
-  const profileName = getProfileName(user, profile);
-  const profilePhoto = getProfilePhoto(user, profile);
+  const hasOrganization = Boolean(profile?.arena_name || profile?.organization_name);
+  const fallbackAthleteSummary = {
+    name: user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Atleta",
+    photoUrl: user?.user_metadata?.avatar_url || "",
+    label: "Perfil do atleta",
+  };
+  const fallbackOrganizationSummary = {
+    name: getProfileName(user, profile),
+    photoUrl: getProfilePhoto(user, profile),
+    label: "Perfil da organização",
+  };
+  const currentSummary = identitySummaries[identityMode]
+    || (identityMode === "organization" ? fallbackOrganizationSummary : fallbackAthleteSummary);
+
+  const updateIdentitySummary = useCallback((mode, summary) => {
+    setIdentitySummaries((current) => {
+      if (current[mode]?.name === summary?.name && current[mode]?.photoUrl === summary?.photoUrl) return current;
+      return { ...current, [mode]: summary };
+    });
+  }, []);
 
   useEffect(() => {
     const previous = document.documentElement.dataset.platformV2;
@@ -386,6 +407,11 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }
 
+  function selectIdentity(mode) {
+    setIdentityMode(mode);
+    selectTab("profile");
+  }
+
   function openSidebarOnHover() {
     if (!window.matchMedia?.("(min-width: 1081px)").matches) return;
     if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
@@ -460,18 +486,26 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
             <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar torneios, eventos ou organizadores" aria-label="Buscar torneios, eventos ou organizadores" />
             {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca"><X /></button> : null}
           </label>
-        ) : <strong className={styles.topbarPageName}>{NAVIGATION.find((entry) => entry.id === activeTab)?.label}</strong>}
+        ) : <strong className={styles.topbarPageName}>{activeTab === "profile" ? (identityMode === "organization" ? "Perfil da organização" : "Perfil do atleta") : NAVIGATION.find((entry) => entry.id === activeTab)?.label}</strong>}
 
         <div className={styles.topActions}>
           <button type="button" className={styles.notificationButton} onClick={() => selectTab("notifications")} aria-label="Abrir notificações"><Bell /></button>
           {hasSession ? (
             <div className={styles.accountWrap}>
               <button type="button" className={styles.accountButton} onClick={() => setAccountOpen((current) => !current)} aria-expanded={accountOpen}>
-                <span className={styles.accountAvatar}>{profilePhoto ? <img src={profilePhoto} alt="" /> : getInitials(profileName)}</span>
-                <span><strong>{profileName}</strong><small>{profile?.arena_name ? "Perfil da organização" : "Conta Torneio 360"}</small></span>
+                <span className={styles.accountAvatar}>{currentSummary.photoUrl ? <img src={currentSummary.photoUrl} alt="" /> : getInitials(currentSummary.name)}</span>
+                <span><strong>{currentSummary.name}</strong><small>{currentSummary.label}</small></span>
                 <ChevronDown />
               </button>
-              {accountOpen ? <div className={styles.accountMenu}><button type="button" onClick={() => selectTab("profile")}><CircleUserRound /> Meu perfil</button><button type="button" onClick={onLogout}><LogOut /> Sair</button></div> : null}
+              {accountOpen ? <div className={styles.accountMenu}>
+                <span className={styles.accountMenuLabel}>Usar o Torneio 360 como</span>
+                <button type="button" className={identityMode === "athlete" ? styles.activeIdentity : ""} onClick={() => selectIdentity("athlete")}><UserRound /><span><strong>{identitySummaries.athlete?.name || fallbackAthleteSummary.name}</strong><small>Perfil do atleta</small></span>{identityMode === "athlete" ? <Check /> : null}</button>
+                {hasOrganization ? <button type="button" className={identityMode === "organization" ? styles.activeIdentity : ""} onClick={() => selectIdentity("organization")}><Building2 /><span><strong>{identitySummaries.organization?.name || fallbackOrganizationSummary.name}</strong><small>Perfil da organização</small></span>{identityMode === "organization" ? <Check /> : null}</button> : null}
+                <span className={styles.identityLimit}>1 atleta + 1 organização por acesso</span>
+                <i />
+                <button type="button" onClick={() => selectTab("profile")}><CircleUserRound /><span><strong>Meu perfil</strong><small>Fotos e informações</small></span></button>
+                <button type="button" onClick={onLogout}><LogOut /><span><strong>Sair</strong><small>Encerrar sessão</small></span></button>
+              </div> : null}
             </div>
           ) : <button type="button" className={styles.loginButton} onClick={onLogin} aria-label="Entrar"><LogIn /><span>Entrar</span></button>}
         </div>
@@ -493,7 +527,18 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
 
       <main className={styles.main}>
         {notice ? <div className={styles.notice} role="status"><Check /><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Fechar aviso"><X /></button></div> : null}
-        {activeTab !== "overview" ? <ComingSoon tab={activeTab} /> : (
+        {activeTab === "profile" ? (
+          <PlatformV2Profile
+            supabase={supabase}
+            user={user}
+            accessProfile={profile}
+            identityMode={identityMode}
+            activity={activity}
+            feedItems={feed.items}
+            onIdentitySummaryChange={updateIdentitySummary}
+            onNotice={setNotice}
+          />
+        ) : activeTab !== "overview" ? <ComingSoon tab={activeTab} /> : (
           <div className={styles.overview}>
             <header className={styles.overviewHeader}>
               <div><span className={styles.kicker}>Para você</span><h1>Visão geral</h1><p>Descubra torneios, acompanhe eventos e encontre sua próxima disputa.</p></div>

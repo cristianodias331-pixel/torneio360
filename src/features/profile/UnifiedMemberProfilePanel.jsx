@@ -157,7 +157,7 @@ export default function UnifiedMemberProfilePanel({
             <span><Images aria-hidden="true" /></span>
             <div>
               <h3 id="member-gallery-title">Galeria do atleta</h3>
-              <p>Até seis fotos em 1080 × 1080 (1:1) ou 1080 × 1350 (4:5). Não existem curtidas nem comentários.</p>
+              <p>Até dez fotos em 1080 × 1080 (1:1) ou 1080 × 1350 (4:5). Não existem curtidas nem comentários.</p>
             </div>
           </div>
           <strong>{galleryPhotos.length}/{MAX_MEMBER_GALLERY_PHOTOS}</strong>

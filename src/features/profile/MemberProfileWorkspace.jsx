@@ -301,7 +301,7 @@ export default function MemberProfileWorkspace({
     const availableSlots = Math.max(0, MAX_MEMBER_GALLERY_PHOTOS - profile.galleryPhotos.length);
     const selectedFiles = Array.from(files).slice(0, availableSlots);
     if (!selectedFiles.length) {
-      setNotice({ tone: "info", message: "A galeria já possui as seis fotos permitidas." });
+      setNotice({ tone: "info", message: `A galeria já possui as ${MAX_MEMBER_GALLERY_PHOTOS} fotos permitidas.` });
       return;
     }
     try {

@@ -497,7 +497,7 @@ export default function PublicArenaPageController({ arenaId = null, publicId = n
         setOrganizationGallery([]);
         return;
       }
-      const photos = (result?.photos || []).slice(0, 6);
+      const photos = (result?.photos || []).slice(0, 10);
       const separateCoverUrl = String(bundle?.profile?.cover_url || "").trim();
       const visiblePhotos = separateCoverUrl
         ? await excludeOrganizationCoverFromGallery(photos, separateCoverUrl)
