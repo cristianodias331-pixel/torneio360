@@ -234,6 +234,11 @@
 .sidebar nav button:hover { background: rgba(255, 255, 255, .035); color: #eaf0f7; }
 .sidebar nav .activeNav { border-color: #ff6d24; background: linear-gradient(100deg, #cf4307, #8f2804); color: #fff; box-shadow: 0 10px 26px rgba(255, 90, 10, .16); }
 .sidebar nav .activeNav > span { background: rgba(255, 255, 255, .12); color: #fff; }
+.sidebar nav .organizerCta { margin-top: 8px; border-color: rgba(71, 218, 126, .7); background: linear-gradient(105deg, rgba(16, 104, 57, .96), rgba(7, 63, 39, .96)); color: #ecfff3; box-shadow: 0 12px 28px rgba(35, 199, 96, .14); }
+.sidebar nav .organizerCta > span { background: rgba(178, 255, 205, .12); color: #6bf09a; }
+.sidebar nav .organizerCta > strong { color: #f5fff8; }
+.sidebar nav .organizerCta > small { color: #9ceaba; }
+.sidebar nav .organizerCta:hover { border-color: #65ee98; background: linear-gradient(105deg, #14773f, #075132); color: #fff; box-shadow: 0 14px 34px rgba(35, 199, 96, .22); }
 
 .sidebarFoot { gap: 10px; border: 1px solid #1e354f; border-radius: 15px; padding: 11px; background: #061426; color: #ff6c20; }
 .sidebarFoot > svg { width: 18px; flex: 0 0 auto; }

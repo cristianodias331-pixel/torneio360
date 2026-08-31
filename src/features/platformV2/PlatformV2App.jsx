@@ -43,7 +43,7 @@ const NAVIGATION = [
   { id: "partners", label: "Duplas e desafios", Icon: UsersRound },
   { id: "ranking", label: "Ranking", Icon: Award },
   { id: "notifications", label: "Notificações", Icon: Bell },
-  { id: "organization", label: "Organizar", Icon: Building2 },
+  { id: "organization", label: "Organizar", Icon: Building2, ready: true },
 ];
 
 const QUICK_FILTERS = [
@@ -262,7 +262,7 @@ function ComingSoon({ tab }) {
   );
 }
 
-export default function PlatformV2App({ runtime, supabase, user = null, profile = null, onLogin, onLogout }) {
+export default function PlatformV2App({ runtime, supabase, user = null, profile = null, onLogin, onLogout, onOrganize }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
@@ -446,6 +446,18 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
     selectTab("profile");
   }
 
+  function selectNavigationItem(id) {
+    if (id === "organization") {
+      if (!hasSession) {
+        onLogin?.();
+        return;
+      }
+      onOrganize?.();
+      return;
+    }
+    selectTab(id);
+  }
+
   function openSidebarOnHover() {
     if (!window.matchMedia?.("(min-width: 1081px)").matches) return;
     if (sidebarHoverTimer.current) window.clearTimeout(sidebarHoverTimer.current);
@@ -574,13 +586,20 @@ export default function PlatformV2App({ runtime, supabase, user = null, profile 
       <button type="button" className={styles.mobileBackdrop} onClick={closeSidebar} aria-label="Fechar menu" />
       <aside className={styles.sidebar} aria-label="Navegação da plataforma V2" onMouseEnter={openSidebarOnHover} onMouseLeave={closeSidebarOnHover}>
         <nav>
-          {NAVIGATION.filter(({ id }) => id !== "notifications").map(({ id, label, Icon, ready }) => (
-            <button type="button" key={id} className={activeTab === id ? styles.activeNav : ""} onClick={() => selectTab(id)} aria-current={activeTab === id ? "page" : undefined} title={label}>
+          {NAVIGATION.filter(({ id }) => id !== "notifications").map(({ id, label, Icon, ready }) => {
+            const organizationCta = id === "organization" && identityMode === "athlete";
+            const visibleLabel = id === "organization" ? (organizationCta ? "Seja organizador" : "Gestão da organização") : label;
+            const helperText = id === "organization"
+              ? organizationCta
+                ? hasOrganization ? "Acessar gestão da organização" : "Assine e crie campeonatos"
+                : "Administrar eventos e assinatura"
+              : !ready ? "Em construção" : "";
+            return <button type="button" key={id} className={`${activeTab === id ? styles.activeNav : ""} ${organizationCta ? styles.organizerCta : ""}`.trim()} onClick={() => selectNavigationItem(id)} aria-current={activeTab === id ? "page" : undefined} title={visibleLabel}>
               <span><Icon /></span>
-              <strong>{label}</strong>
-              {!ready && sidebarOpen ? <small>Em construção</small> : null}
-            </button>
-          ))}
+              <strong>{visibleLabel}</strong>
+              {helperText && sidebarOpen ? <small>{helperText}</small> : null}
+            </button>;
+          })}
         </nav>
         <div className={styles.sidebarFoot}><Flame /><span><strong>Plataforma V2</strong><small>Prévia de homologação</small></span></div>
       </aside>

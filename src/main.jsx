@@ -576,6 +576,7 @@ function App() {
         runtime={publicPlatformHomeRuntime}
         supabase={supabase}
         onLogin={() => navigatePlatform({ entrar: "1", retorno: "v2" })}
+        onOrganize={() => navigatePlatform({ entrar: "1", retorno: "v2" })}
       />
     );
   }
@@ -601,6 +602,7 @@ function App() {
         user={session.user}
         profile={profile}
         onLogout={logout}
+        onOrganize={() => navigatePlatform()}
       />
     );
   }
