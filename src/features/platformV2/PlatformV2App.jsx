@@ -363,6 +363,12 @@ export default function PlatformV2App({
   }, []);
 
   useEffect(() => {
+    if (!notice) return undefined;
+    const noticeTimer = window.setTimeout(() => setNotice(""), 5000);
+    return () => window.clearTimeout(noticeTimer);
+  }, [notice]);
+
+  useEffect(() => {
     let active = true;
     setFeed((current) => ({ ...current, status: "loading", error: "" }));
     runtime.fetchPublicTournamentFeed({ limit: 24 }).then((result) => {
