@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   AtSign,
+  Award,
   Building2,
   CalendarDays,
   Camera,
@@ -11,8 +12,11 @@ import {
   Images,
   MapPin,
   MessageCircle,
+  Phone,
   Plus,
   Settings,
+  ShieldCheck,
+  Swords,
   Trophy,
   UserRound,
   UsersRound,
@@ -53,6 +57,7 @@ import {
   loadMyOrganizationPaymentSettings,
   saveMyOrganizationPaymentSettings,
 } from "../../services/organizationPaymentApi.mjs";
+import { respondAthleteChallenge } from "../../services/athleteActivityApi.mjs";
 import ProfileImageEditor from "../profile/ProfileImageEditor.jsx";
 import styles from "./PlatformV2App.module.css";
 
@@ -121,40 +126,39 @@ function LocationEditor({ draft, errors = {}, cityOptions, citiesLoading, cities
 
   return (
     <>
+      <label className={foreignLocation ? styles.profileLocationDisabled : ""}>
+        <span>Estado</span>
+        <select disabled={foreignLocation} value={foreignLocation ? "" : stateCode} onChange={(event) => { onChange("state", event.target.value); onChange("city", ""); }}>
+          <option value="">{foreignLocation ? "Desativado para local no exterior" : "Selecione o estado"}</option>
+          {BRAZILIAN_STATES.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}
+        </select>
+        {!foreignLocation ? <FieldError message={errors.state} /> : null}
+      </label>
+      <label className={foreignLocation ? styles.profileLocationDisabled : ""}>
+        <span>Município</span>
+        <select value={foreignLocation ? "" : (draft.city || "")} disabled={foreignLocation || !stateCode || citiesLoading} onChange={(event) => onChange("city", event.target.value)}>
+          <option value="">{foreignLocation ? "Desativado para local no exterior" : citiesLoading ? "Carregando municípios..." : stateCode ? "Selecione o município" : "Selecione primeiro o estado"}</option>
+          {!foreignLocation ? availableCities.map((city) => <option key={city} value={city}>{city}</option>) : null}
+        </select>
+        {!foreignLocation && citiesError ? <small className={styles.profileFieldError}>{citiesError}</small> : null}
+        {!foreignLocation ? <FieldError message={errors.city} /> : null}
+      </label>
       <label className={styles.profileForeignToggle}>
         <input
           type="checkbox"
           checked={foreignLocation}
-          onChange={(event) => onChange("foreignLocation", event.target.checked)}
+          onChange={(event) => {
+            onChange("state", "");
+            onChange("city", "");
+            onChange("foreignLocation", event.target.checked);
+          }}
         />
-        <span><strong>Local no exterior</strong><small>Marque para escrever o estado, a região e a cidade livremente.</small></span>
+        <span><strong>Local no exterior</strong><small>Desativa Estado e Município do Brasil e libera o preenchimento manual.</small></span>
       </label>
-      {foreignLocation ? (
-        <>
-          <label><span>Estado, província ou região</span><input value={draft.state || ""} maxLength={80} placeholder="Ex.: Flórida" onChange={(event) => onChange("state", event.target.value)} /><FieldError message={errors.state} /></label>
-          <label><span>Cidade ou localidade</span><input value={draft.city || ""} maxLength={80} placeholder="Ex.: Miami" onChange={(event) => onChange("city", event.target.value)} /><FieldError message={errors.city} /></label>
-        </>
-      ) : (
-        <>
-          <label>
-            <span>Estado</span>
-            <select value={stateCode} onChange={(event) => { onChange("state", event.target.value); onChange("city", ""); }}>
-              <option value="">Selecione o estado</option>
-              {BRAZILIAN_STATES.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}
-            </select>
-            <FieldError message={errors.state} />
-          </label>
-          <label>
-            <span>Município</span>
-            <select value={draft.city || ""} disabled={!stateCode || citiesLoading} onChange={(event) => onChange("city", event.target.value)}>
-              <option value="">{citiesLoading ? "Carregando municípios..." : stateCode ? "Selecione o município" : "Selecione primeiro o estado"}</option>
-              {availableCities.map((city) => <option key={city} value={city}>{city}</option>)}
-            </select>
-            {citiesError ? <small className={styles.profileFieldError}>{citiesError}</small> : null}
-            <FieldError message={errors.city} />
-          </label>
-        </>
-      )}
+      {foreignLocation ? <>
+        <label><span>Estado, província ou região</span><input value={draft.state || ""} maxLength={80} placeholder="Ex.: Flórida" onChange={(event) => onChange("state", event.target.value)} /><FieldError message={errors.state} /></label>
+        <label><span>Cidade ou localidade</span><input value={draft.city || ""} maxLength={80} placeholder="Ex.: Miami" onChange={(event) => onChange("city", event.target.value)} /><FieldError message={errors.city} /></label>
+      </> : null}
     </>
   );
 }
@@ -251,6 +255,67 @@ function ActivityPanel({ activity, events, identityMode }) {
   );
 }
 
+function formatProfileDate(value) {
+  if (!value) return "Data não informada";
+  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+function getChallengeLabel(value) {
+  return value === "match" ? "Disputar uma partida" : "Quem pratica mais?";
+}
+
+function getChallengeStatusLabel(value) {
+  return ({ pending: "Aguardando resposta", accepted: "Aceito", declined: "Recusado", cancelled: "Cancelado" })[value] || "Atualizado";
+}
+
+function AchievementsPanel({ achievements = [] }) {
+  const podiumCounts = [1, 2, 3].map((placement) => achievements.filter((entry) => Number(entry.placement) === placement).length);
+  return (
+    <section className={styles.profilePanel}>
+      <header className={styles.profilePanelHeader}>
+        <div><Award aria-hidden="true" /><span><h2>Conquistas</h2><p>Pódios oficiais confirmados pelas organizações.</p></span></div>
+        <strong>{achievements.length}</strong>
+      </header>
+      <div className={styles.profilePodiumSummary}>
+        <article><strong>{achievements.length}</strong><small>Pódios</small></article>
+        <article data-place="1"><strong>{podiumCounts[0]}</strong><small>1º lugar</small></article>
+        <article data-place="2"><strong>{podiumCounts[1]}</strong><small>2º lugar</small></article>
+        <article data-place="3"><strong>{podiumCounts[2]}</strong><small>3º lugar</small></article>
+      </div>
+      {achievements.length ? <div className={styles.profileAchievementList}>{achievements.map((achievement) => (
+        <article key={achievement.id} data-place={achievement.placement}>
+          <span><strong>{achievement.placement}º</strong><small>lugar</small></span>
+          <div><small>{achievement.bracket_name || "Chave principal"}</small><h3>{achievement.tournament?.name || "Torneio"}</h3><p>{[achievement.category, formatProfileDate(achievement.event_date)].filter(Boolean).join(" · ")}</p></div>
+          <em><ShieldCheck aria-hidden="true" /> {achievement.organization?.name || "Organização"}</em>
+        </article>
+      ))}</div> : <div className={styles.profileEmpty}><Award /><strong>Nenhuma conquista oficial ainda.</strong><small>Os pódios aparecem automaticamente após a confirmação dos resultados.</small></div>}
+    </section>
+  );
+}
+
+function ChallengesPanel({ challenges = [], busy, onRespond }) {
+  const pendingIncoming = challenges.filter((entry) => entry.direction === "incoming" && entry.status === "pending").length;
+  return (
+    <section className={styles.profilePanel}>
+      <header className={styles.profilePanelHeader}>
+        <div><Swords aria-hidden="true" /><span><h2>Desafios</h2><p>Convites esportivos recebidos e enviados.</p></span></div>
+        <strong>{pendingIncoming}</strong>
+      </header>
+      {challenges.length ? <div className={styles.profileChallengeList}>{challenges.map((challenge) => {
+        const athleteName = challenge.athlete?.display_name || challenge.athlete?.name || "Atleta";
+        return <article key={challenge.id}>
+          <IdentityAvatar name={athleteName} photoUrl={challenge.athlete?.photo_url || ""} />
+          <div><small>{challenge.direction === "incoming" ? "Você recebeu" : "Você enviou"}</small><strong>{getChallengeLabel(challenge.challenge_type)}</strong><p>{athleteName} · {getChallengeStatusLabel(challenge.status)}</p></div>
+          {challenge.direction === "incoming" && challenge.status === "pending" ? <span><button type="button" disabled={busy} onClick={() => onRespond(challenge, "accepted")}><Check /> Aceitar</button><button type="button" disabled={busy} onClick={() => onRespond(challenge, "declined")}><X /> Recusar</button></span> : null}
+          {challenge.direction === "outgoing" && challenge.status === "pending" ? <span><button type="button" disabled={busy} onClick={() => onRespond(challenge, "cancelled")}><X /> Cancelar</button></span> : null}
+        </article>;
+      })}</div> : <div className={styles.profileEmpty}><Swords /><strong>Nenhum desafio ainda.</strong><small>Os convites esportivos aparecerão aqui quando forem enviados ou recebidos.</small></div>}
+    </section>
+  );
+}
+
 export default function PlatformV2Profile({
   supabase,
   user,
@@ -278,6 +343,7 @@ export default function PlatformV2Profile({
   const [profileCityOptions, setProfileCityOptions] = useState([]);
   const [profileCitiesLoading, setProfileCitiesLoading] = useState(false);
   const [profileCitiesError, setProfileCitiesError] = useState("");
+  const [profileActivity, setProfileActivity] = useState(activity || { registrations: [], circuits: [], challenges: [], achievements: [] });
   const hasOrganization = Boolean(accessProfile?.arena_name || accessProfile?.organization_name);
 
   useEffect(() => {
@@ -340,6 +406,7 @@ export default function PlatformV2Profile({
   }, [hasOrganization, onIdentitySummaryChange, organization.name, organization.photoUrl]);
 
   useEffect(() => { setActiveSection("activity"); }, [identityMode]);
+  useEffect(() => { setProfileActivity(activity || { registrations: [], circuits: [], challenges: [], achievements: [] }); }, [activity]);
 
   useEffect(() => {
     if (!detailsDraft || detailsDraft.foreignLocation) {
@@ -556,6 +623,23 @@ export default function PlatformV2Profile({
     }
   }
 
+  async function respondToChallenge(challenge, status) {
+    if (!challenge?.id || busy) return;
+    setBusy(true);
+    try {
+      const updated = await respondAthleteChallenge({ supabase, challengeId: challenge.id, status });
+      setProfileActivity((currentValue) => ({
+        ...currentValue,
+        challenges: (currentValue.challenges || []).map((entry) => entry.id === challenge.id ? { ...entry, ...updated, status: updated?.status || status } : entry),
+      }));
+      onNotice?.(status === "accepted" ? "Desafio aceito." : status === "declined" ? "Desafio recusado." : "Desafio cancelado.");
+    } catch (error) {
+      onNotice?.(error?.message || "Não foi possível atualizar o desafio agora.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function closeEditor() {
     setImageEditor(null);
   }
@@ -683,14 +767,31 @@ export default function PlatformV2Profile({
         <button type="button" className={activeSection === "activity" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("activity")}><Trophy /> {identityMode === "organization" ? "Eventos" : "Atividades"}</button>
         <button type="button" className={activeSection === "photos" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("photos")}><Images /> Fotos <span>{currentGallery.length}/{MAX_MEMBER_GALLERY_PHOTOS}</span></button>
         <button type="button" className={activeSection === "about" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("about")}><CircleUserRound /> Sobre</button>
+        {identityMode === "athlete" ? <>
+          <button type="button" className={activeSection === "challenges" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("challenges")}><Swords /> Desafios <span>{(profileActivity.challenges || []).filter((entry) => entry.direction === "incoming" && entry.status === "pending").length}</span></button>
+          <button type="button" className={activeSection === "achievements" ? styles.activeProfileTab : ""} onClick={() => setActiveSection("achievements")}><Award /> Conquistas <span>{(profileActivity.achievements || []).length}</span></button>
+        </> : null}
       </nav>
 
       {activeSection === "photos" ? <PhotoGallery title={identityMode === "organization" ? "Galeria da organização" : "Galeria do atleta"} photos={currentGallery} busy={busy} onAdd={addGalleryPhotos} onRemove={removeGalleryPhoto} /> : null}
-      {activeSection === "activity" ? <ActivityPanel activity={activity} events={organizationEvents} identityMode={identityMode} /> : null}
+      {activeSection === "activity" ? <ActivityPanel activity={profileActivity} events={organizationEvents} identityMode={identityMode} /> : null}
+      {identityMode === "athlete" && activeSection === "challenges" ? <ChallengesPanel challenges={profileActivity.challenges || []} busy={busy} onRespond={respondToChallenge} /> : null}
+      {identityMode === "athlete" && activeSection === "achievements" ? <AchievementsPanel achievements={profileActivity.achievements || []} /> : null}
       {activeSection === "about" ? (
         <section className={styles.profileAboutGrid}>
           <article className={styles.profilePanel}><header className={styles.profilePanelHeader}><div><CircleUserRound /><span><h2>Sobre</h2><p>Informações públicas desta identidade.</p></span></div></header><p className={styles.profileBio}>{current.bio || (identityMode === "organization" ? "Conte a história da sua organização." : "Conte um pouco sobre sua trajetória esportiva.")}</p></article>
           <article className={styles.profilePanel}><header className={styles.profilePanelHeader}><div><MapPin /><span><h2>Informações principais</h2><p>Dados separados por perfil.</p></span></div></header><dl className={styles.profileFacts}><div><dt><MapPin /></dt><dd><strong>Localização</strong><span>{location || "Não informada"}</span></dd></div><div><dt>{identityMode === "organization" ? <Building2 /> : <UsersRound />}</dt><dd><strong>{identityMode === "organization" ? "Tipo" : "Categoria"}</strong><span>{identityMode === "organization" ? "Organização" : athlete.sportsCategory || "Não informada"}</span></dd></div><div><dt><CalendarDays /></dt><dd><strong>Identidade</strong><span>{identityMode === "organization" ? "1 organização neste acesso" : "1 atleta neste acesso"}</span></dd></div></dl></article>
+          {identityMode === "athlete" ? <>
+            <article className={`${styles.profilePanel} ${styles.profileAboutWide}`.trim()}>
+              <header className={styles.profilePanelHeader}><div><Trophy /><span><h2>Dados esportivos do atleta</h2><p>Modalidades e informações usadas nas inscrições e formação de duplas.</p></span></div></header>
+              <div className={styles.profileSportSummary}><div><small>Modalidades praticadas</small><SportBadges sports={athlete.sports || []} /></div><dl><div><dt>Nível técnico</dt><dd>{athlete.sportsCategory || "Não informado"}</dd></div><div><dt>Categoria esportiva</dt><dd>{athlete.gender || "Não informada"}</dd></div><div><dt>Mão dominante</dt><dd>{athlete.dominantHand || "Não informada"}</dd></div><div><dt>Tamanho da camiseta</dt><dd>{athlete.shirtSize || "Não informado"}</dd></div></dl></div>
+            </article>
+            <article className={`${styles.profilePanel} ${styles.profileAboutWide}`.trim()}>
+              <header className={styles.profilePanelHeader}><div><UsersRound /><span><h2>Contato para dupla e desafios</h2><p>Canais esportivos cadastrados pelo atleta.</p></span></div></header>
+              <div className={styles.profileContactSummary}><div><Phone /><span><small>WhatsApp</small><strong>{athlete.whatsapp || "Não informado"}</strong></span></div><div><MessageCircle /><span><small>Telegram</small><strong>{athlete.telegram ? `@${athlete.telegram}` : "Não informado"}</strong></span></div><div><AtSign /><span><small>Instagram</small><strong>{athlete.instagram ? `@${athlete.instagram}` : "Não informado"}</strong></span></div></div>
+              <p className={`${styles.profileContactPermission} ${athlete.showContacts ? styles.contactAllowed : ""}`.trim()}><ShieldCheck /> <span><strong>{athlete.showContacts ? "Contato permitido após uma combinação" : "Contato protegido"}</strong><small>{athlete.showContacts ? "Os canais poderão ser revelados apenas no fluxo esportivo autorizado." : "Os canais não serão revelados a outros atletas."}</small></span></p>
+            </article>
+          </> : <article className={`${styles.profilePanel} ${styles.profileAboutWide}`.trim()}><header className={styles.profilePanelHeader}><div><MessageCircle /><span><h2>Contato da organização</h2><p>Canais públicos da arena.</p></span></div></header><div className={styles.profileContactSummary}><div><Phone /><span><small>WhatsApp</small><strong>{organization.whatsapp || "Não informado"}</strong></span></div><div><AtSign /><span><small>Instagram</small><strong>{organization.handle ? `@${organization.handle}` : "Não informado"}</strong></span></div><div><MapPin /><span><small>Endereço</small><strong>{organization.address || location || "Não informado"}</strong></span></div></div></article>}
         </section>
       ) : null}
 
@@ -749,7 +850,7 @@ export default function PlatformV2Profile({
           <footer><button type="button" onClick={() => setDetailsDraft(null)} disabled={busy}>Cancelar</button><button type="button" onClick={saveDetails} disabled={busy}><Check /> {busy ? "Salvando..." : "Salvar alterações"}</button></footer>
         </section>
       </div> : null}
-      {imageEditor ? <ProfileImageEditor kind={imageEditor.kind} sourceUrl={imageEditor.sourceUrl} fileName={imageEditor.fileName} onCancel={closeEditor} onApply={applyEditedImage} /> : null}
+      {imageEditor ? <ProfileImageEditor variant="platform-v2" kind={imageEditor.kind} sourceUrl={imageEditor.sourceUrl} fileName={imageEditor.fileName} onCancel={closeEditor} onApply={applyEditedImage} /> : null}
     </div>
   );
 }

@@ -317,3 +317,169 @@
     width: 100%;
   }
 }
+
+/* O enquadrador da Plataforma V2 usa o mesmo tema visual do produto. */
+.profileImageEditorOverlay.platformV2ImageEditor {
+  inset: 0;
+  padding: 16px;
+  color: #eef4fb;
+  background: rgba(0, 6, 15, .84);
+  backdrop-filter: blur(14px);
+}
+
+.platformV2ImageEditor .profileImageEditorModal {
+  width: min(100%, 780px);
+  max-height: calc(100dvh - 32px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  overflow: hidden;
+  padding: 18px;
+  border-color: #294866;
+  border-radius: 22px;
+  color: #dce7f3;
+  background: #061426;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .62), 0 0 0 1px rgba(255, 102, 28, .04);
+}
+
+.platformV2ImageEditor .profileImageEditorModal h2 {
+  color: #fff;
+  font-size: 1.45rem;
+  letter-spacing: -.035em;
+}
+
+.platformV2ImageEditor .profileImageEditorModal > header p,
+.platformV2ImageEditor .profileImageEditorBody > aside > p,
+.platformV2ImageEditor .profileImageEditorOutput small,
+.platformV2ImageEditor .profileImageEditorFileName {
+  color: #8297ad;
+}
+
+.platformV2ImageEditor .profileImageEditorModal > header > button {
+  border-color: #304d69;
+  color: #e9f0f7;
+  background: #0a1d31;
+}
+
+.platformV2ImageEditor .profileImageEditorModal > header > button:hover {
+  border-color: #ff6b1a;
+  color: #ff7b36;
+}
+
+.platformV2ImageEditor .profileImageEditorBody {
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.35fr) minmax(210px, .72fr);
+  gap: 18px;
+  overflow-y: auto;
+  padding: 2px 3px;
+  scrollbar-color: #355572 transparent;
+}
+
+.platformV2ImageEditor .profileImageEditorFrame {
+  border-color: #ff6719;
+  background: #020a15;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 16px 42px rgba(0, 0, 0, .38), 0 0 28px rgba(255, 92, 12, .08);
+}
+
+.platformV2ImageEditor .profileImageEditorFramePhoto {
+  width: min(100%, 330px);
+}
+
+.platformV2ImageEditor .profileImageEditorFrameCover {
+  border-radius: 15px;
+}
+
+.platformV2ImageEditor .profileImageEditorOutput,
+.platformV2ImageEditor .profileImageEditorZoom {
+  border-color: #294763;
+  color: #f4f7fb;
+  background: #091b2f;
+}
+
+.platformV2ImageEditor .profileImageEditorOutput,
+.platformV2ImageEditor .profileImageEditorZoom > span,
+.platformV2ImageEditor .profileImageEditorZoom > strong {
+  color: #f4f7fb;
+}
+
+.platformV2ImageEditor .profileImageEditorZoom input {
+  accent-color: #ff681b;
+}
+
+.platformV2ImageEditor .profileImageEditorHint {
+  border-color: rgba(255, 105, 27, .54);
+  color: #cbd8e5;
+  background: rgba(255, 97, 18, .07);
+}
+
+.platformV2ImageEditor .profileImageEditorError {
+  border-color: rgba(255, 116, 70, .48);
+  color: #ffad8c;
+  background: rgba(255, 79, 34, .08);
+}
+
+.platformV2ImageEditor .profileImageEditorModal > footer {
+  border-top: 1px solid #203a54;
+  padding-top: 14px;
+}
+
+.platformV2ImageEditor .profileImageEditorModal > footer button {
+  min-height: 42px;
+  border: 1px solid #304d69;
+  border-radius: 13px;
+  padding: 0 16px;
+  color: #dce7f3;
+  background: #0a1d31;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.platformV2ImageEditor .profileImageEditorModal > footer .actionConfirmBtn {
+  border-color: #ff5d0d;
+  color: #fff;
+  background: #ff5d0d;
+  box-shadow: 0 10px 28px rgba(255, 88, 8, .18);
+}
+
+@media (max-width: 760px) {
+  .profileImageEditorOverlay.platformV2ImageEditor {
+    padding: 8px;
+  }
+
+  .platformV2ImageEditor .profileImageEditorModal {
+    max-height: calc(100dvh - 16px);
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .platformV2ImageEditor .profileImageEditorBody {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .platformV2ImageEditor .profileImageEditorFramePhoto {
+    width: min(58vw, 220px);
+  }
+
+  .platformV2ImageEditor .profileImageEditorBody > aside {
+    gap: 8px;
+  }
+
+  .platformV2ImageEditor .profileImageEditorOutput,
+  .platformV2ImageEditor .profileImageEditorZoom,
+  .platformV2ImageEditor .profileImageEditorHint {
+    padding: 9px 10px;
+  }
+
+  .platformV2ImageEditor .profileImageEditorModal > footer {
+    gap: 8px;
+    padding-top: 10px;
+    flex-direction: row;
+  }
+
+  .platformV2ImageEditor .profileImageEditorModal > footer button {
+    min-height: 40px;
+  }
+}

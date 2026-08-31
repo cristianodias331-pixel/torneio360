@@ -538,6 +538,7 @@
 .profileEmpty strong { color: #dce5ef; font-size: .7rem; }
 .profileEmpty small { font-size: .55rem; }
 .profileAboutGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.profileAboutWide { grid-column: 1 / -1; }
 .profileBio { margin: 0; color: #aab8c7; font-size: .7rem; line-height: 1.7; }
 .profileFacts { display: grid; gap: 0; margin: 0; }
 .profileFacts > div { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 9px; border-bottom: 1px solid rgba(76, 109, 143, .2); padding: 9px 0; }
@@ -547,6 +548,58 @@
 .profileFacts dd { display: grid; gap: 1px; margin: 0; }
 .profileFacts dd strong { font-size: .6rem; }
 .profileFacts dd span { color: #8599ae; font-size: .55rem; }
+.profileSportSummary { display: grid; gap: 16px; }
+.profileSportSummary > div { display: grid; gap: 5px; }
+.profileSportSummary > div > small { color: #7f94aa; font-size: .55rem; font-weight: 800; }
+.profileSportSummary dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 0; }
+.profileSportSummary dl > div { display: grid; gap: 4px; border: 1px solid #203d58; border-radius: 13px; padding: 11px 12px; background: #071b2f; }
+.profileSportSummary dt { color: #7f94aa; font-size: .51rem; }
+.profileSportSummary dd { margin: 0; color: #eef4fa; font-size: .65rem; font-weight: 850; }
+.profileContactSummary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.profileContactSummary > div { display: grid; min-width: 0; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 8px; border: 1px solid #203d58; border-radius: 13px; padding: 10px; background: #071b2f; }
+.profileContactSummary > div > svg { width: 15px; color: #ff7429; }
+.profileContactSummary > div > span { display: grid; min-width: 0; gap: 2px; }
+.profileContactSummary small { color: #7890a7; font-size: .49rem; }
+.profileContactSummary strong { overflow: hidden; color: #eef4fa; font-size: .59rem; text-overflow: ellipsis; white-space: nowrap; }
+.profileContactPermission { display: flex; align-items: center; gap: 9px; margin: 12px 0 0; border: 1px solid #29445f; border-radius: 13px; padding: 10px 12px; color: #92a6ba; background: #07192b; }
+.profileContactPermission > svg { width: 17px; flex: 0 0 auto; color: #7790a7; }
+.profileContactPermission > span { display: grid; gap: 2px; }
+.profileContactPermission strong { color: #dce5ee; font-size: .57rem; }
+.profileContactPermission small { font-size: .49rem; }
+.profileContactPermission.contactAllowed { border-color: rgba(69, 221, 138, .28); background: rgba(69, 221, 138, .06); }
+.profileContactPermission.contactAllowed > svg { color: #45dd8a; }
+.profilePodiumSummary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 14px; }
+.profilePodiumSummary article { display: grid; place-items: center; gap: 2px; border: 1px solid #203d58; border-radius: 14px; padding: 13px 8px; background: #071b2f; }
+.profilePodiumSummary strong { font-size: 1.05rem; }
+.profilePodiumSummary small { color: #8296aa; font-size: .5rem; }
+.profilePodiumSummary article[data-place="1"] strong { color: #f2cf45; }
+.profilePodiumSummary article[data-place="2"] strong { color: #bdc9d5; }
+.profilePodiumSummary article[data-place="3"] strong { color: #d98a53; }
+.profileAchievementList { display: grid; gap: 9px; }
+.profileAchievementList > article { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 11px; border: 1px solid #203c57; border-radius: 15px; padding: 10px; background: #071a2e; }
+.profileAchievementList > article > span { display: grid; width: 50px; height: 50px; place-items: center; align-content: center; border: 1px solid #3c5872; border-radius: 13px; background: #0b233a; }
+.profileAchievementList > article > span strong { font-size: .9rem; }
+.profileAchievementList > article > span small { color: #8094a9; font-size: .45rem; }
+.profileAchievementList > article > div { display: grid; min-width: 0; gap: 2px; }
+.profileAchievementList h3 { overflow: hidden; margin: 0; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.profileAchievementList p,
+.profileAchievementList > article > div > small { margin: 0; color: #7f94aa; font-size: .51rem; }
+.profileAchievementList em { display: inline-flex; align-items: center; gap: 5px; color: #45dd8a; font-size: .49rem; font-style: normal; }
+.profileAchievementList em svg { width: 13px; }
+.profileChallengeList { display: grid; gap: 9px; }
+.profileChallengeList > article { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 11px; border: 1px solid #203c57; border-radius: 15px; padding: 10px; background: #071a2e; }
+.profileChallengeList .profileAvatar { width: 48px; height: 48px; border-width: 2px; box-shadow: 0 0 0 1px #ff6a1e; }
+.profileChallengeList .profileAvatar > span { font-size: .68rem; }
+.profileChallengeList .profileAvatar > span svg { display: none; }
+.profileChallengeList > article > div { display: grid; min-width: 0; gap: 2px; }
+.profileChallengeList > article > div small { color: #ff7a32; font-size: .47rem; font-weight: 850; text-transform: uppercase; }
+.profileChallengeList > article > div strong { overflow: hidden; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.profileChallengeList > article > div p { margin: 0; color: #8094a9; font-size: .53rem; }
+.profileChallengeList > article > span:last-child { display: flex; gap: 6px; }
+.profileChallengeList button { display: inline-flex; min-height: 34px; align-items: center; gap: 5px; border: 1px solid #34516d; border-radius: 10px; padding: 0 10px; background: #0a1f35; color: #e5edf5; font-size: .52rem; font-weight: 850; cursor: pointer; }
+.profileChallengeList button:first-child { border-color: rgba(69, 221, 138, .42); color: #62e49b; }
+.profileChallengeList button svg { width: 12px; }
+.profileChallengeList button:disabled { opacity: .5; cursor: wait; }
 .profileBusy { position: fixed; z-index: 190; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 9px; border: 1px solid #31506e; border-radius: 14px; padding: 11px 14px; background: #07172a; box-shadow: 0 18px 45px rgba(0, 0, 0, .4); }
 .profileBusy > span { width: 16px; height: 16px; border: 2px solid #35506b; border-top-color: #ff7025; border-radius: 50%; animation: spin 700ms linear infinite; }
 .profileBusy strong { font-size: .61rem; }
@@ -595,6 +648,8 @@
 .profileContactToggle strong { color: #e5edf5; font-size: .59rem; }
 .profileForeignToggle small,
 .profileContactToggle small { color: #758ba2; font-size: .5rem; font-weight: 500; }
+.profileLocationDisabled { opacity: .48; }
+.profileLocationDisabled select { cursor: not-allowed; }
 .profileFieldError { color: #ff9b72; font-size: .5rem; line-height: 1.35; }
 .profileCharCount { justify-self: end; margin-top: -2px; color: #6e849a; font-size: .49rem; }
 .profileInputPrefix { display: grid !important; grid-template-columns: 38px minmax(0, 1fr); overflow: hidden; border: 1px solid #2a4662; border-radius: 13px; background: #081c31; }
@@ -760,6 +815,13 @@
   .profileGalleryAdd { border-radius: 12px; }
   .profileActivityGrid,
   .profileAboutGrid { grid-template-columns: 1fr; }
+  .profileAboutWide { grid-column: 1; }
+  .profileSportSummary dl,
+  .profileContactSummary { grid-template-columns: 1fr 1fr; }
+  .profileChallengeList > article { grid-template-columns: 48px minmax(0, 1fr); }
+  .profileChallengeList > article > span:last-child { grid-column: 1 / -1; justify-content: flex-end; }
+  .profileAchievementList > article { grid-template-columns: 50px minmax(0, 1fr); }
+  .profileAchievementList em { grid-column: 2; }
   .profileBusy { right: 10px; bottom: 10px; left: 10px; justify-content: center; }
   .profileModalBackdrop { align-items: end; padding: 0; }
   .profileDetailsModal { max-height: 94dvh; border-width: 1px 0 0; border-radius: 23px 23px 0 0; }
@@ -788,6 +850,9 @@
   .postActions { grid-template-columns: 1fr; }
   .postActions .primaryAction { grid-column: auto; }
   .postActions button { min-height: 42px; }
+  .profileSportSummary dl,
+  .profileContactSummary { grid-template-columns: 1fr; }
+  .profilePodiumSummary { grid-template-columns: 1fr 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

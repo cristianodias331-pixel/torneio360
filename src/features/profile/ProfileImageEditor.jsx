@@ -52,6 +52,7 @@ function clampTransform(transform, imageSize, preset) {
 }
 
 export default function ProfileImageEditor({
+  variant = "",
   kind = "photo",
   sourceUrl,
   fileName = "",
@@ -230,7 +231,7 @@ export default function ProfileImageEditor({
   }
 
   return (
-    <div className="profileImageEditorOverlay" role="dialog" aria-modal="true" aria-labelledby="profile-image-editor-title">
+    <div className={`profileImageEditorOverlay${variant === "platform-v2" ? " platformV2ImageEditor" : ""}`} role="dialog" aria-modal="true" aria-labelledby="profile-image-editor-title">
       <section className="profileImageEditorModal">
         <header>
           <div>
