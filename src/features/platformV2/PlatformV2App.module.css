@@ -327,12 +327,12 @@
 .openBadge { background: rgba(69, 221, 138, .11); color: #54e596; }
 .closedBadge { background: rgba(157, 174, 194, .10); color: #9eafc1; }
 
-.posterButton { position: relative; display: grid; width: 100%; height: 520px; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #010711; cursor: pointer; }
+.posterButton { position: relative; display: grid; width: 100%; height: 520px; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #07111f; cursor: pointer; }
 .sidebarClosed .posterButton { height: 600px; }
-.posterStage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #020914; }
-.posterBackdrop { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); opacity: .28; filter: blur(30px) saturate(.82); object-fit: cover; transform: scale(1.05); }
-.posterStage::after { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2, 9, 20, .16), rgba(2, 9, 20, .34)); content: ""; pointer-events: none; }
-.posterImage { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.posterStage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #07111f; }
+.posterBackdrop { position: absolute; inset: -44px; width: calc(100% + 88px); height: calc(100% + 88px); opacity: .76; filter: blur(27px) saturate(1.22) brightness(.76) contrast(1.06); object-fit: cover; transform: scale(1.12); }
+.posterStage::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(2, 9, 20, .18), rgba(2, 9, 20, .04) 32%, rgba(2, 9, 20, .04) 68%, rgba(2, 9, 20, .18)), linear-gradient(180deg, rgba(2, 9, 20, .04), rgba(2, 9, 20, .15)); content: ""; pointer-events: none; }
+.posterImage { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 24px rgba(0, 0, 0, .38)); }
 .emptyPoster { display: grid; width: 100%; height: 100%; place-items: center; align-content: center; gap: 12px; padding: 35px; background: radial-gradient(circle at 65% 20%, rgba(255, 90, 10, .22), transparent 30%), linear-gradient(145deg, #0a1d33, #020914); text-align: center; }
 .emptyPoster > span { display: grid; width: 70px; height: 70px; place-items: center; border: 1px solid rgba(255, 90, 10, .55); border-radius: 24px; color: #ff7428; box-shadow: 0 0 38px rgba(255, 90, 10, .12); }
 .emptyPoster svg { width: 32px; }
