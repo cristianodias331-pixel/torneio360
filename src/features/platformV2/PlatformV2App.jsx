@@ -11,8 +11,11 @@ import {
   ClipboardCheck,
   Clock3,
   Flame,
+  FileText,
   GitBranch,
   Home,
+  ImagePlus,
+  LayoutGrid,
   LoaderCircle,
   LogIn,
   LogOut,
@@ -21,6 +24,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Save,
   Share2,
   Sparkles,
   Pencil,
@@ -91,6 +95,14 @@ const EMPTY_SOCIAL_GRAPH = {
   following: [],
   schemaAvailable: true,
 };
+
+const TOURNAMENT_CREATION_STEPS = [
+  { id: 1, label: "Informações" },
+  { id: 2, label: "Formato" },
+  { id: 3, label: "Agenda" },
+  { id: 4, label: "Divulgação" },
+  { id: 5, label: "Revisão" },
+];
 
 function getInitials(value, fallback = "T3") {
   const initials = String(value || "")
@@ -292,6 +304,241 @@ function ComingSoon({ tab }) {
   );
 }
 
+function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState([]);
+  const [validationError, setValidationError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [coverFile, setCoverFile] = useState(null);
+  const [regulationsFile, setRegulationsFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState("");
+  const [draft, setDraft] = useState(() => ({
+    name: "",
+    structure: "single",
+    modality: "beach_tennis",
+    category: "",
+    groupedCategories: [""],
+    composition: "mixed",
+    winningScore: "6",
+    rankingRule: "wins_balance_games",
+    startDate: "",
+    endDate: "",
+    registrationDeadline: "",
+    startTime: "",
+    location: [profile?.arena_name || profile?.organization_name, profile?.city, profile?.state].filter(Boolean).join(" · "),
+    partnerMode: "ready",
+    regulationsText: "",
+  }));
+
+  useEffect(() => {
+    if (!coverFile) {
+      setCoverPreview("");
+      return undefined;
+    }
+    const preview = URL.createObjectURL(coverFile);
+    setCoverPreview(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [coverFile]);
+
+  function updateDraft(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function updateGroupedCategory(index, value) {
+    setDraft((current) => ({
+      ...current,
+      groupedCategories: current.groupedCategories.map((category, categoryIndex) => categoryIndex === index ? value : category),
+    }));
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function addGroupedCategory() {
+    setDraft((current) => ({ ...current, groupedCategories: [...current.groupedCategories, ""] }));
+    setSaved(false);
+  }
+
+  function removeGroupedCategory(index) {
+    setDraft((current) => ({ ...current, groupedCategories: current.groupedCategories.filter((_, categoryIndex) => categoryIndex !== index) }));
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function validateStep(step) {
+    if (step === 1 && draft.name.trim().length < 3) return "Informe o nome do evento para continuar.";
+    if (step === 2) {
+      const categoriesReady = draft.structure === "grouped"
+        ? draft.groupedCategories.length > 0 && draft.groupedCategories.every((category) => category.trim())
+        : draft.category.trim();
+      if (!draft.modality || !categoriesReady || !draft.composition) return "Defina modalidade, todas as categorias e a composição.";
+    }
+    if (step === 3) {
+      if (!draft.startDate || !draft.registrationDeadline || !draft.startTime || !draft.location.trim()) return "Preencha data, prazo de inscrição, horário e local.";
+      if (draft.endDate && draft.endDate < draft.startDate) return "A data final não pode ser anterior ao início.";
+      if (draft.registrationDeadline > draft.startDate) return "O prazo de inscrição deve terminar até a data de início.";
+    }
+    return "";
+  }
+
+  function openStep(step) {
+    const available = step === currentStep || step < currentStep || completedSteps.includes(step);
+    if (!available) return;
+    setCurrentStep(step);
+    setValidationError("");
+  }
+
+  function advance() {
+    const error = validateStep(currentStep);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    setCompletedSteps((current) => current.includes(currentStep) ? current : [...current, currentStep]);
+    setValidationError("");
+    if (currentStep < TOURNAMENT_CREATION_STEPS.length) {
+      setCurrentStep((step) => step + 1);
+      return;
+    }
+    setSaved(true);
+    onNotice?.("Rascunho do torneio salvo no fluxo V2.");
+  }
+
+  function goBack() {
+    if (currentStep === 1) {
+      onClose?.();
+      return;
+    }
+    setCurrentStep((step) => step - 1);
+    setValidationError("");
+  }
+
+  const formatDate = (value) => value ? runtime.formatDate(value) : "Não informado";
+  const compositionLabel = { male: "Masculino", female: "Feminino", mixed: "Misto", free: "Livre" }[draft.composition] || "Não informado";
+  const modalityLabel = { beach_tennis: "Beach Tennis", tennis: "Tênis", volleyball: "Vôlei", footvolley: "Futevôlei", pickleball: "Pickleball" }[draft.modality] || draft.modality;
+  const categoryLabel = draft.structure === "grouped"
+    ? draft.groupedCategories.filter((category) => category.trim()).join(" · ") || "Sem categorias"
+    : draft.category || "Sem categoria";
+
+  return (
+    <section className={styles.createTournamentPage} aria-labelledby="create-tournament-title">
+      <header className={styles.createTournamentHeader}>
+        <div><span className={styles.kicker}>Novo evento</span><h1 id="create-tournament-title">Criar torneio</h1><p>Preencha por etapas. As informações permanecem salvas ao avançar ou voltar.</p></div>
+        <button type="button" onClick={onClose} aria-label="Fechar criação"><X /></button>
+      </header>
+
+      <nav className={styles.createTournamentSteps} aria-label="Etapas da criação do torneio">
+        {TOURNAMENT_CREATION_STEPS.map((step) => {
+          const completed = completedSteps.includes(step.id);
+          const active = currentStep === step.id;
+          const available = active || step.id < currentStep || completed;
+          return (
+            <button
+              type="button"
+              key={step.id}
+              className={`${active ? styles.activeCreateStep : ""} ${completed ? styles.completedCreateStep : ""}`.trim()}
+              onClick={() => openStep(step.id)}
+              disabled={!available}
+              aria-current={active ? "step" : undefined}
+              aria-label={`${step.label}${completed ? ", concluída" : active ? ", etapa atual" : ""}`}
+            >
+              <span>{step.id}</span>
+              <strong>{step.label}</strong>
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className={styles.createTournamentBody}>
+        {currentStep === 1 ? (
+          <section className={styles.createTournamentPanel} aria-labelledby="create-step-information">
+            <header><span><FileText /></span><div><h2 id="create-step-information">Informações principais</h2><p>Comece pelo nome e escolha como o evento será organizado.</p></div></header>
+            <div className={styles.createTournamentFields}>
+              <label className={styles.createTournamentWideField}><span>Nome do evento/torneio</span><input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="Ex.: Mistão Arena 500" autoFocus /></label>
+              <fieldset className={styles.createTournamentWideField}>
+                <legend>Estrutura do evento</legend>
+                <div className={styles.createTournamentChoiceGrid}>
+                  <button type="button" className={draft.structure === "single" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("structure", "single")}><span><Trophy /></span><div><strong>Torneio único</strong><small>Uma categoria e uma programação.</small></div></button>
+                  <button type="button" className={draft.structure === "grouped" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("structure", "grouped")}><span><LayoutGrid /></span><div><strong>Torneios agrupados</strong><small>Várias categorias dentro do mesmo evento e da mesma publicação.</small></div></button>
+                </div>
+              </fieldset>
+              <div className={styles.createTournamentPhotoRule}><ImagePlus /><span><strong>Uma única foto para o evento</strong><small>A mesma capa será usada no torneio único ou em todas as categorias agrupadas.</small></span></div>
+            </div>
+          </section>
+        ) : null}
+
+        {currentStep === 2 ? (
+          <section className={styles.createTournamentPanel} aria-labelledby="create-step-format">
+            <header><span><Trophy /></span><div><h2 id="create-step-format">Formato da competição</h2><p>Defina modalidade, categoria e composição dos participantes.</p></div></header>
+            <div className={styles.createTournamentFields}>
+              <label><span>Modalidade</span><select value={draft.modality} onChange={(event) => updateDraft("modality", event.target.value)}><option value="beach_tennis">Beach Tennis</option><option value="tennis">Tênis</option><option value="volleyball">Vôlei</option><option value="footvolley">Futevôlei</option><option value="pickleball">Pickleball</option></select></label>
+              {draft.structure === "single" ? <label><span>Categoria</span><input value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} placeholder="Ex.: Categoria C" /></label> : <div className={styles.createTournamentCategoryList}><span>Categorias agrupadas</span>{draft.groupedCategories.map((category, index) => <div key={`category-${index}`}><input value={category} onChange={(event) => updateGroupedCategory(index, event.target.value)} placeholder={`Categoria ${index + 1}`} />{draft.groupedCategories.length > 1 ? <button type="button" onClick={() => removeGroupedCategory(index)} aria-label={`Remover categoria ${index + 1}`}><Trash2 /></button> : null}</div>)}<button type="button" onClick={addGroupedCategory}><Plus /> Adicionar categoria</button></div>}
+              <fieldset className={styles.createTournamentWideField}><legend>Composição</legend><div className={styles.createTournamentPills}>{[["male", "Masculino"], ["female", "Feminino"], ["mixed", "Misto"], ["free", "Livre"]].map(([value, label]) => <button type="button" key={value} className={draft.composition === value ? styles.selectedCreatePill : ""} onClick={() => updateDraft("composition", value)}>{label}</button>)}</div></fieldset>
+              <label><span>Games para vencer</span><select value={draft.winningScore} onChange={(event) => updateDraft("winningScore", event.target.value)}><option value="4">4 games</option><option value="6">6 games</option><option value="8">8 games</option></select></label>
+              <label><span>Critério do ranking</span><select value={draft.rankingRule} onChange={(event) => updateDraft("rankingRule", event.target.value)}><option value="wins_balance_games">Vitórias → saldo → games</option><option value="wins_games_head_to_head">Vitórias → games → confronto direto</option></select></label>
+              {draft.structure === "grouped" ? <div className={styles.createTournamentInfo}><ImagePlus /><span><strong>Uma capa compartilhada</strong><small>Todas as categorias acima usarão a mesma foto geral do evento.</small></span></div> : null}
+            </div>
+          </section>
+        ) : null}
+
+        {currentStep === 3 ? (
+          <section className={styles.createTournamentPanel} aria-labelledby="create-step-agenda">
+            <header><span><CalendarDays /></span><div><h2 id="create-step-agenda">Agenda e local</h2><p>Organize o período, as inscrições e o início dos jogos.</p></div></header>
+            <div className={styles.createTournamentFields}>
+              <label><span>Início do torneio</span><input type="date" value={draft.startDate} onChange={(event) => updateDraft("startDate", event.target.value)} /></label>
+              <label><span>Fim do torneio</span><input type="date" value={draft.endDate} onChange={(event) => updateDraft("endDate", event.target.value)} /></label>
+              <label><span>Inscrições até</span><input type="date" value={draft.registrationDeadline} onChange={(event) => updateDraft("registrationDeadline", event.target.value)} /></label>
+              <label><span>Horário de início</span><input type="time" value={draft.startTime} onChange={(event) => updateDraft("startTime", event.target.value)} /></label>
+              <label className={styles.createTournamentWideField}><span>Local</span><input value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} placeholder="Arena e quadra" /></label>
+              <fieldset className={styles.createTournamentWideField}><legend>Inscrição em dupla</legend><div className={styles.createTournamentChoiceGrid}><button type="button" className={draft.partnerMode === "ready" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("partnerMode", "ready")}><span><UsersRound /></span><div><strong>Somente dupla pronta</strong><small>A inscrição exigirá os dois atletas.</small></div></button><button type="button" className={draft.partnerMode === "finder" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("partnerMode", "finder")}><span><Search /></span><div><strong>Encontre sua dupla</strong><small>O atleta poderá entrar sozinho e procurar um parceiro.</small></div></button></div></fieldset>
+            </div>
+          </section>
+        ) : null}
+
+        {currentStep === 4 ? (
+          <section className={styles.createTournamentPanel} aria-labelledby="create-step-publication">
+            <header><span><ImagePlus /></span><div><h2 id="create-step-publication">Divulgação e regulamento</h2><p>Escolha a única foto que representará todo o evento.</p></div></header>
+            <div className={styles.createTournamentPublication}>
+              <label className={styles.createTournamentUpload}>
+                {coverPreview ? <img src={coverPreview} alt="Prévia da foto única do evento" /> : <span><ImagePlus /><strong>Escolher foto do evento</strong><small>Uma capa para o torneio único ou para todas as categorias agrupadas.</small></span>}
+                <input type="file" accept="image/*" onChange={(event) => setCoverFile(event.target.files?.[0] || null)} />
+              </label>
+              <div className={styles.createTournamentFields}>
+                <label><span>Regulamento em PDF</span><input type="file" accept="application/pdf" onChange={(event) => setRegulationsFile(event.target.files?.[0] || null)} /></label>
+                {regulationsFile ? <small className={styles.createTournamentFileName}>{regulationsFile.name}</small> : null}
+                <label><span>Resumo do regulamento</span><textarea value={draft.regulationsText} onChange={(event) => updateDraft("regulationsText", event.target.value)} placeholder="Categorias, formato, conduta e premiação." /></label>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {currentStep === 5 ? (
+          <section className={styles.createTournamentPanel} aria-labelledby="create-step-review">
+            <header><span><Check /></span><div><h2 id="create-step-review">Revisar e salvar</h2><p>Confira como as informações principais serão publicadas.</p></div></header>
+            <div className={styles.createTournamentReview}>
+              <div className={styles.createTournamentReviewPoster}>{coverPreview ? <img src={coverPreview} alt="Foto do evento" /> : <span><ImagePlus /><strong>Foto única do evento</strong><small>{coverFile?.name || "Ainda não escolhida"}</small></span>}</div>
+              <dl>
+                <div><dt>Evento</dt><dd>{draft.name || "Não informado"}</dd></div>
+                <div><dt>Estrutura</dt><dd>{draft.structure === "grouped" ? "Torneios agrupados" : "Torneio único"}</dd></div>
+                <div><dt>Formato</dt><dd>{modalityLabel} · {categoryLabel} · {compositionLabel}</dd></div>
+                <div><dt>Data e horário</dt><dd>{formatDate(draft.startDate)} · {draft.startTime || "Não informado"}</dd></div>
+                <div><dt>Local</dt><dd>{draft.location || "Não informado"}</dd></div>
+                <div><dt>Inscrição</dt><dd>{draft.partnerMode === "finder" ? "Encontre sua dupla ativado" : "Somente dupla pronta"}</dd></div>
+              </dl>
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <footer className={styles.createTournamentFooter}>
+        <span className={validationError ? styles.createTournamentError : saved ? styles.createTournamentSaved : ""} role={validationError ? "alert" : "status"}>{validationError || (saved ? "Rascunho salvo. Seus dados continuam disponíveis para revisão." : `Etapa ${currentStep} de ${TOURNAMENT_CREATION_STEPS.length}`)}</span>
+        <div><button type="button" onClick={goBack}>{currentStep === 1 ? "Cancelar" : "Voltar"}</button><button type="button" className={styles.createTournamentPrimaryAction} onClick={advance}>{currentStep === 5 ? <><Save /> Salvar rascunho</> : <>Continuar <ChevronRight /></>}</button></div>
+      </footer>
+    </section>
+  );
+}
+
 function OrganizationTournaments({
   supabase,
   user,
@@ -299,10 +546,12 @@ function OrganizationTournaments({
   runtime,
   onManageOrganization,
   onShare,
+  onNotice,
 }) {
   const [state, setState] = useState({ status: "loading", items: [], error: "" });
   const [statusFilter, setStatusFilter] = useState("active");
   const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
   const organizationName = getProfileName(user, profile);
   const organizationPhoto = getProfilePhoto(user, profile);
   const organizationLocation = [profile?.city, profile?.state].filter(Boolean).join(" · ") || "Local não informado";
@@ -374,11 +623,15 @@ function OrganizationTournaments({
     onManageOrganization?.(params);
   }
 
+  if (creating) {
+    return <CreateTournamentWizard profile={profile} runtime={runtime} onClose={() => setCreating(false)} onNotice={onNotice} />;
+  }
+
   return (
     <section className={styles.organizationTournamentsPage} aria-labelledby="organization-tournaments-title">
       <header className={styles.organizationTournamentsHeader}>
         <div><span className={styles.kicker}>Gestão da organização</span><h1 id="organization-tournaments-title">Torneios</h1><p>Edite, abra e acompanhe os torneios publicados pela organização.</p></div>
-        <button type="button" onClick={() => manage({ aba: "criar" })}><Plus /> Criar torneio</button>
+        <button type="button" onClick={() => setCreating(true)}><Plus /> Criar torneio</button>
       </header>
 
       <div className={styles.organizationTournamentToolbar}>
@@ -869,6 +1122,7 @@ export default function PlatformV2App({
             runtime={runtime}
             onManageOrganization={onManageOrganization}
             onShare={share}
+            onNotice={setNotice}
           />
         ) : activeTab !== "overview" ? <ComingSoon tab={activeTab} /> : (
           <div className={styles.overview}>
