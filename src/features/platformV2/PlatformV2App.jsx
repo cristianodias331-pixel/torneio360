@@ -60,6 +60,29 @@ const QUICK_FILTERS = [
   ["beach", "Beach Tennis"],
 ];
 
+const V2_TAB_PARAM = "v2_tab";
+const V2_IDENTITY_PARAM = "v2_identity";
+const RESTORABLE_V2_TABS = new Set(NAVIGATION.map(({ id }) => id).filter((id) => id !== "organization"));
+
+function getInitialV2Tab() {
+  const tab = new URLSearchParams(window.location.search).get(V2_TAB_PARAM);
+  return RESTORABLE_V2_TABS.has(tab) ? tab : "overview";
+}
+
+function getInitialV2Identity(profile) {
+  const identity = new URLSearchParams(window.location.search).get(V2_IDENTITY_PARAM);
+  const hasOrganization = Boolean(profile?.arena_name || profile?.organization_name);
+  return identity === "organization" && hasOrganization ? "organization" : "athlete";
+}
+
+function replaceV2Location(tab, identity) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("app", "v2");
+  url.searchParams.set(V2_TAB_PARAM, RESTORABLE_V2_TABS.has(tab) ? tab : "overview");
+  url.searchParams.set(V2_IDENTITY_PARAM, identity === "organization" ? "organization" : "athlete");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 const EMPTY_SOCIAL_GRAPH = {
   identityKind: "athlete",
   followersCount: 0,
@@ -432,7 +455,7 @@ export default function PlatformV2App({
   onOrganizationSubscription,
   onManageOrganization,
 }) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(getInitialV2Tab);
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -445,7 +468,7 @@ export default function PlatformV2App({
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState("");
   const [posterRatios, setPosterRatios] = useState({});
-  const [identityMode, setIdentityMode] = useState("athlete");
+  const [identityMode, setIdentityMode] = useState(() => getInitialV2Identity(profile));
   const [identitySummaries, setIdentitySummaries] = useState({});
   const [socialGraph, setSocialGraph] = useState(EMPTY_SOCIAL_GRAPH);
   const [socialBusy, setSocialBusy] = useState("");
@@ -643,8 +666,9 @@ export default function PlatformV2App({
   );
   const registrations = (activity.registrations || []).filter((entry) => entry.bucket !== "past").slice(0, 2);
 
-  function selectTab(tab) {
+  function selectTab(tab, { identity = identityMode } = {}) {
     setActiveTab(tab);
+    replaceV2Location(tab, identity);
     setAccountOpen(false);
     if (window.matchMedia?.("(max-width: 1080px)").matches) {
       setSidebarPinned(false);
@@ -655,7 +679,7 @@ export default function PlatformV2App({
 
   function selectIdentity(mode) {
     setIdentityMode(mode);
-    selectTab("profile");
+    selectTab("profile", { identity: mode });
   }
 
   function selectNavigationItem(id) {
