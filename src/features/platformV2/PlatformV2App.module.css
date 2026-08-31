@@ -244,7 +244,8 @@
 .sidebarClosed .main { margin-left: 76px; }
 
 .overview,
-.comingSoon { width: min(100%, 980px); margin: 0 auto; }
+.comingSoon { width: min(100%, 1080px); margin: 0 auto; }
+.sidebarClosed .overview { width: min(100%, 1220px); }
 
 .overviewHeader {
   display: flex;
@@ -258,8 +259,8 @@
 .kicker { display: block; margin-bottom: 4px; color: var(--v2-orange-soft); font-size: .64rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
 .overviewHeader h1,
 .overviewHeader p { margin: 0; }
-.overviewHeader h1 { font-size: clamp(2rem, 3vw, 2.45rem); line-height: 1; letter-spacing: -.05em; }
-.overviewHeader p { margin-top: 8px; color: var(--v2-muted); font-size: .8rem; }
+.overviewHeader h1 { font-size: clamp(2.15rem, 3vw, 2.65rem); line-height: 1; letter-spacing: -.05em; }
+.overviewHeader p { margin-top: 8px; color: var(--v2-muted); font-size: .84rem; }
 .synced { gap: 8px; padding-bottom: 5px; color: #7d91a7; font-size: .62rem; font-weight: 750; white-space: nowrap; }
 .synced i { width: 8px; height: 8px; border-radius: 50%; background: var(--v2-green); box-shadow: 0 0 14px rgba(69, 221, 138, .72); }
 .mobileSearch { display: none; }
@@ -275,14 +276,14 @@
 .filters::-webkit-scrollbar,
 .stories::-webkit-scrollbar { display: none; }
 .filters button {
-  min-height: 32px;
+  min-height: 36px;
   flex: 0 0 auto;
   border: 1px solid #263d58;
   border-radius: 999px;
   padding: 0 15px;
   background: #071528;
   color: #b2c0cf;
-  font-size: .7rem;
+  font-size: .74rem;
   font-weight: 800;
   cursor: pointer;
   transition: 150ms ease;
@@ -292,40 +293,42 @@
 
 .stories {
   display: flex;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 14px;
+  margin-bottom: 14px;
   overflow-x: auto;
   padding: 1px 1px 5px;
   scrollbar-width: none;
 }
-.stories > button { display: grid; width: 62px; justify-items: center; gap: 3px; flex: 0 0 62px; border: 0; padding: 0; background: transparent; color: #d9e2ec; cursor: pointer; }
+.stories > button { display: grid; width: 72px; justify-items: center; gap: 4px; flex: 0 0 72px; border: 0; padding: 0; background: transparent; color: #d9e2ec; cursor: pointer; }
 .stories > button > strong,
 .stories > button > small { width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.stories > button > strong { font-size: .59rem; }
-.stories > button > small { color: #6f839a; font-size: .5rem; }
+.stories > button > strong { font-size: .63rem; }
+.stories > button > small { color: #6f839a; font-size: .53rem; }
 .stories .activeStory > strong { color: #ff7b32; }
 
 .organizerAvatar { display: grid; width: 38px; height: 38px; place-items: center; overflow: hidden; flex: 0 0 auto; border: 2px solid var(--v2-orange); border-radius: 50%; background: #0f2b43; color: #fff; font-size: .58rem; font-weight: 900; }
 .organizerAvatar img { width: 100%; height: 100%; object-fit: cover; }
-.organizerAvatar.story { width: 46px; height: 46px; border-width: 2px; box-shadow: 0 0 0 3px rgba(255, 90, 10, .09); }
+.organizerAvatar.story { width: 54px; height: 54px; border-width: 2px; box-shadow: 0 0 0 3px rgba(255, 90, 10, .09); }
 .activeStory .organizerAvatar.story { box-shadow: 0 0 0 4px rgba(255, 90, 10, .28); }
 
-.contentGrid { display: grid; grid-template-columns: minmax(0, 540px) minmax(280px, 300px); align-items: start; justify-content: center; gap: 20px; }
+.contentGrid { display: grid; grid-template-columns: minmax(0, 620px) minmax(290px, 330px); align-items: start; justify-content: center; gap: 22px; }
+.sidebarClosed .contentGrid { grid-template-columns: minmax(0, 720px) minmax(320px, 360px); gap: 24px; }
 .feed { display: grid; min-width: 0; gap: 18px; }
 .post { overflow: hidden; border: 1px solid #243e5b; border-radius: 18px; background: var(--v2-surface); box-shadow: 0 20px 54px rgba(0, 0, 0, .25); }
-.postHeader { display: flex; min-height: 50px; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 11px; background: #091b30; }
+.postHeader { display: flex; min-height: 56px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: #091b30; }
 .organizerIdentity { min-width: 0; gap: 10px; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .organizerIdentity > span:last-child { display: grid; min-width: 0; gap: 2px; }
 .organizerIdentity strong,
 .organizerIdentity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.organizerIdentity strong { color: #f5f8fc; font-size: .72rem; }
-.organizerIdentity small { max-width: 350px; color: #8ea1b6; font-size: .56rem; }
+.organizerIdentity strong { color: #f5f8fc; font-size: .77rem; }
+.organizerIdentity small { max-width: 350px; color: #8ea1b6; font-size: .6rem; }
 .openBadge,
 .closedBadge { flex: 0 0 auto; border-radius: 999px; padding: 7px 10px; font-size: .56rem; font-weight: 850; }
 .openBadge { background: rgba(69, 221, 138, .11); color: #54e596; }
 .closedBadge { background: rgba(157, 174, 194, .10); color: #9eafc1; }
 
-.posterButton { position: relative; display: grid; width: 100%; aspect-ratio: 2 / 1; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #010711; cursor: pointer; }
+.posterButton { position: relative; display: grid; width: 100%; height: 520px; place-items: center; overflow: hidden; border: 0; border-top: 1px solid #1f3751; border-bottom: 1px solid #1f3751; padding: 0; background: #010711; cursor: pointer; }
+.sidebarClosed .posterButton { height: 600px; }
 .posterStage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #020914; }
 .posterBackdrop { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); opacity: .28; filter: blur(30px) saturate(.82); object-fit: cover; transform: scale(1.05); }
 .posterStage::after { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2, 9, 20, .16), rgba(2, 9, 20, .34)); content: ""; pointer-events: none; }
@@ -336,10 +339,10 @@
 .emptyPoster strong { max-width: 440px; font-size: 1.6rem; line-height: 1.1; }
 .emptyPoster small { color: #93a5ba; }
 
-.postBody { padding: 8px 11px 7px; }
+.postBody { padding: 11px 13px 10px; }
 .postModality { color: #ff792e; font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-.postBody h2 { margin: 3px 0 6px; overflow: hidden; color: #fff; font-size: 1rem; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
-.postBody p { display: flex; flex-wrap: wrap; gap: 8px 15px; margin: 0; color: #9bacc0; font-size: .64rem; }
+.postBody h2 { margin: 4px 0 7px; overflow: hidden; color: #fff; font-size: 1.12rem; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
+.postBody p { display: flex; flex-wrap: wrap; gap: 8px 15px; margin: 0; color: #9bacc0; font-size: .69rem; }
 .postBody p span { display: inline-flex; align-items: center; gap: 5px; }
 .postBody p svg { width: 13px; height: 13px; color: #7189a2; }
 
@@ -348,7 +351,7 @@
 .loadMore,
 .feedState button {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -357,7 +360,7 @@
   padding: 0 14px;
   background: #091a2e;
   color: #bdc9d6;
-  font-size: .65rem;
+  font-size: .69rem;
   font-weight: 820;
   cursor: pointer;
   transition: 150ms ease;
@@ -372,7 +375,7 @@
 .rail { position: sticky; top: 92px; display: grid; gap: 14px; }
 .railCard { overflow: hidden; border: 1px solid #223d59; border-radius: 19px; padding: 13px; background: #07172a; box-shadow: 0 16px 40px rgba(0, 0, 0, .2); }
 .railCard > header { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
-.railCard > header > span { display: inline-flex; min-width: 0; align-items: center; gap: 7px; color: #f2f6fb; font-size: .68rem; font-weight: 850; }
+.railCard > header > span { display: inline-flex; min-width: 0; align-items: center; gap: 7px; color: #f2f6fb; font-size: .72rem; font-weight: 850; }
 .railCard > header svg { width: 14px; color: #ff7126; }
 .railCard > header button { border: 0; padding: 0; background: transparent; color: #ff782d; font-size: .56rem; font-weight: 850; cursor: pointer; }
 .railCard > p { margin: 9px 0 5px; color: #8294a9; font-size: .62rem; }
@@ -389,9 +392,9 @@
 .railOrganizer strong,
 .railOrganizer small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .railEvent strong,
-.railOrganizer strong { color: #eaf0f7; font-size: .62rem; }
+.railOrganizer strong { color: #eaf0f7; font-size: .67rem; }
 .railEvent small,
-.railOrganizer small { color: #7f92a8; font-size: .53rem; }
+.railOrganizer small { color: #7f92a8; font-size: .57rem; }
 .railEvent > svg,
 .railOrganizer > svg { width: 14px; color: #667d95; }
 .railEvent .confirmed { color: var(--v2-green); }
@@ -456,12 +459,25 @@
 .detailPrimary svg { width: 17px; }
 .detailFootnote { margin-top: 13px; color: #647991; font-size: .51rem; text-align: center; }
 
+@media (min-width: 1600px) {
+  .overview,
+  .comingSoon { width: min(100%, 1180px); }
+  .contentGrid { grid-template-columns: minmax(0, 680px) minmax(320px, 350px); gap: 24px; }
+  .posterButton { height: 560px; }
+  .sidebarClosed .overview { width: min(100%, 1360px); }
+  .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 820px) minmax(360px, 400px); gap: 26px; }
+  .sidebarClosed .posterButton { height: 650px; }
+}
+
 @media (max-width: 1180px) {
   .topbar { grid-template-columns: minmax(190px, 1fr) minmax(280px, 430px) minmax(190px, 1fr); gap: 15px; }
   .sidebar { width: 218px; }
   .main { margin-left: 218px; padding-right: 20px; padding-left: 20px; }
   .sidebarClosed .main { margin-left: 76px; }
-  .contentGrid { grid-template-columns: minmax(0, 520px) minmax(270px, 290px); gap: 18px; }
+  .contentGrid,
+  .sidebarClosed .contentGrid { grid-template-columns: minmax(0, 560px) minmax(270px, 300px); gap: 18px; }
+  .posterButton,
+  .sidebarClosed .posterButton { height: 480px; }
 }
 
 @media (max-width: 999px) {
@@ -516,7 +532,8 @@
   .feed { gap: 15px; }
   .post { border-radius: 17px; }
   .postHeader { min-height: 58px; padding: 9px 10px; }
-  .posterButton { aspect-ratio: 4 / 5; }
+  .posterButton,
+  .sidebarClosed .posterButton { height: auto; aspect-ratio: 4 / 5; }
   .organizerIdentity small { max-width: 200px; }
   .openBadge,
   .closedBadge { max-width: 120px; overflow: hidden; padding: 6px 8px; text-overflow: ellipsis; white-space: nowrap; }
