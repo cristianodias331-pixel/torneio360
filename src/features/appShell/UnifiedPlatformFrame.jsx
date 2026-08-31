@@ -21,6 +21,9 @@ export default function UnifiedPlatformFrame({
   unreadNotificationCount = 0,
   canCreate = false,
   showOrganizationAction = false,
+  className = "",
+  navigationItems = null,
+  topbarCenter = null,
   onNavigate,
   onAccountAction,
   onSignup,
@@ -46,7 +49,7 @@ export default function UnifiedPlatformFrame({
     document.documentElement.dataset.theme = colorMode;
   }, [colorMode]);
 
-  const navItems = NAV_ITEMS.filter((item) => (
+  const navItems = (navigationItems || NAV_ITEMS).filter((item) => (
     (!item.requiresSession || hasSession)
     && (!item.organizationAction || showOrganizationAction)
   )).map((item) => ({
@@ -80,7 +83,7 @@ export default function UnifiedPlatformFrame({
   );
 
   return (
-    <div className={`playAppShell proDashboard theme-${colorMode} publicOverviewShell unifiedPlatformShell`}>
+    <div className={`playAppShell proDashboard theme-${colorMode} publicOverviewShell unifiedPlatformShell ${className}`.trim()}>
       <PlatformSidebar
         activePanel={activePanel}
         className="unifiedPlatformSidebar"
@@ -94,6 +97,7 @@ export default function UnifiedPlatformFrame({
           sidebarExpanded={sidebarExpanded}
           onSidebarExpandedChange={setSidebarExpanded}
           tagline={tagline}
+          center={topbarCenter}
           actions={topbarActions}
         />
 

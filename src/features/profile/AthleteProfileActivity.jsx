@@ -262,11 +262,12 @@ export default function AthleteProfileActivity({
   profile,
   activeTab,
   owner = false,
+  initialSection = "tournaments",
   onOpenTournament = null,
 }) {
   const [state, setState] = useState({ status: "loading", activity: null, schemaAvailable: true, error: "" });
   const [filter, setFilter] = useState("all");
-  const [activitySection, setActivitySection] = useState("tournaments");
+  const [activitySection, setActivitySection] = useState(initialSection);
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
   const [challengeQuery, setChallengeQuery] = useState("");

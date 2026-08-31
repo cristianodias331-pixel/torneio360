@@ -65,6 +65,7 @@ export function PlatformTopbar({
   onSidebarExpandedChange,
   tagline = "Gestão inteligente de torneios",
   notice = null,
+  center = null,
   actions = null,
 }) {
   return (
@@ -85,6 +86,7 @@ export function PlatformTopbar({
         <div className="brandTaglineOnly"><span>{tagline}</span></div>
       </div>
       {notice ? <div className="playTopbarNotice">{notice}</div> : null}
+      {center ? <div className="playTopbarCenter">{center}</div> : null}
       <div className="playUserBox proTopActions">
         {actions}
       </div>

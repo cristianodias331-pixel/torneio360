@@ -1,5 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Building2, Check, CreditCard, ShieldCheck, UserRound } from "lucide-react";
+import {
+  Award,
+  Bell,
+  Building2,
+  Check,
+  ClipboardCheck,
+  CreditCard,
+  GitBranch,
+  Home,
+  ShieldCheck,
+  Trophy,
+  UserRound,
+  Users,
+} from "lucide-react";
 import {
   MAX_MEMBER_GALLERY_PHOTOS,
   createMemberProfileFallback,
@@ -17,13 +30,81 @@ import MemberProfileDetailsModal from "./MemberProfileDetailsModal.jsx";
 import useMemberHandleAvailability from "./useMemberHandleAvailability.js";
 import ProfileImageEditor from "./ProfileImageEditor.jsx";
 import AthleteProfileExperience from "./AthleteProfileExperience.jsx";
+import AthleteProfileActivity from "./AthleteProfileActivity.jsx";
 import UnifiedPlatformFrame from "../appShell/UnifiedPlatformFrame.jsx";
+import MemberSocialOverview, { MemberSocialOverviewSearch } from "../socialOverview/MemberSocialOverview.jsx";
 import NotificationCenter from "../notifications/NotificationCenter.jsx";
 import useUnreadNotificationCount from "../notifications/useUnreadNotificationCount.js";
-import { PlatformGlobalSearch, PublicExploreSection, PublicTournamentFeedSection } from "../publicArena/PublicPlatformHomeController.jsx";
+import { PublicExploreSection } from "../publicArena/PublicPlatformHomeController.jsx";
 import { getOrganizationSubscriptionWhatsAppUrl } from "../../domain/contactLinks.mjs";
 import "../../styles/51-unified-profile.css";
 import "../../styles/52-public-member-profile.css";
+
+const MEMBER_NAV_ITEMS = [
+  { panel: "overview", label: "Visão geral", Icon: Home },
+  { panel: "profile", label: "Meu perfil", Icon: UserRound },
+  { panel: "tournaments", label: "Torneios", Icon: Trophy },
+  { panel: "circuits", label: "Circuitos", Icon: GitBranch },
+  { panel: "registrations", label: "Inscrições", Icon: ClipboardCheck },
+  { panel: "partners", label: "Duplas e desafios", Icon: Users },
+  { panel: "ranking", label: "Ranking", Icon: Award },
+  { panel: "notifications", label: "Notificações", Icon: Bell, requiresSession: true },
+  { panel: "organization", label: "Organizar", Icon: Building2, requiresSession: true, organizationAction: true },
+];
+
+function getMemberPanelFromLocation() {
+  const panel = new URLSearchParams(window.location.search).get("aba");
+  const panelMap = {
+    notificacoes: "notifications",
+    explorar: "tournaments",
+    ajustes: "profile",
+    torneios: "tournaments",
+    circuitos: "circuits",
+    inscricoes: "registrations",
+    duplas: "partners",
+    ranking: "ranking",
+  };
+  return panelMap[panel] || "overview";
+}
+
+function getMemberPanelTitle(panel) {
+  return {
+    organization: "Organizar no Torneio 360",
+    profile: "Meu perfil",
+    notifications: "Notificações",
+    tournaments: "Torneios",
+    circuits: "Circuitos",
+    registrations: "Inscrições",
+    partners: "Duplas e desafios",
+    ranking: "Ranking e conquistas",
+  }[panel];
+}
+
+function getMemberPanelEyebrow(panel) {
+  return {
+    organization: "Assinatura da organização",
+    profile: "Perfil de atleta",
+    notifications: "Central da plataforma",
+    tournaments: "Descobrir",
+    circuits: "Minha atividade esportiva",
+    registrations: "Minha atividade esportiva",
+    partners: "Conexões esportivas",
+    ranking: "Desempenho esportivo",
+  }[panel];
+}
+
+function getMemberPanelDescription(panel) {
+  return {
+    profile: "Seu perfil pessoal como ele aparece para a comunidade. Somente você pode editar.",
+    organization: "Mantenha o perfil esportivo e libere a gestão de torneios e circuitos nesta mesma conta.",
+    notifications: "Acompanhe convites de dupla, inscrições e decisões importantes.",
+    tournaments: "Encontre torneios publicados e abra inscrições sem sair da plataforma.",
+    circuits: "Acompanhe os circuitos vinculados às suas participações.",
+    registrations: "Veja inscrições, aprovações, participações atuais e histórico.",
+    partners: "Gerencie sua procura por dupla e seus desafios esportivos.",
+    ranking: "Acompanhe resultados, pódios e conquistas reconhecidas na plataforma.",
+  }[panel];
+}
 
 function readLocalAthleteDetails(userId) {
   if (!userId) return {};
@@ -137,10 +218,8 @@ export default function MemberProfileWorkspace({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState(null);
-  const [activePanel, setActivePanel] = useState(() => {
-    const panel = new URLSearchParams(window.location.search).get("aba");
-    return panel === "notificacoes" ? "notifications" : panel === "explorar" ? "explore" : panel === "ajustes" ? "profile" : "overview";
-  });
+  const [activePanel, setActivePanel] = useState(getMemberPanelFromLocation);
+  const [overviewQuery, setOverviewQuery] = useState("");
   const [activeProfileTab, setActiveProfileTab] = useState("atividades");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageEditor, setImageEditor] = useState(null);
@@ -326,7 +405,7 @@ export default function MemberProfileWorkspace({
   }
 
   function navigate(panel) {
-    if (panel === "overview" || panel === "explore" || panel === "profile" || panel === "notifications" || panel === "organization") {
+    if (MEMBER_NAV_ITEMS.some((item) => item.panel === panel)) {
       setNotice(null);
       setBrowsingTournament(null);
       setActivePanel(panel);
@@ -379,17 +458,14 @@ export default function MemberProfileWorkspace({
     <UnifiedPlatformFrame
       activePanel={activePanel}
       hasSession
-      title={activePanel === "organization" ? "Organizar no Torneio360" : activePanel === "profile" ? "Meu perfil" : activePanel === "notifications" ? "Notificações" : activePanel === "explore" ? "Explorar" : "Início"}
-      eyebrow={activePanel === "organization" ? "Assinatura da organização" : activePanel === "profile" ? "Perfil de atleta" : activePanel === "notifications" ? "Central da plataforma" : activePanel === "explore" ? "Descobrir" : "Publicações"}
-      description={activePanel === "profile"
-        ? "Seu perfil pessoal como ele aparece para a comunidade. Somente você pode editar."
-        : activePanel === "organization"
-          ? "Mantenha o perfil esportivo e libere a gestão de torneios e circuitos nesta mesma conta."
-        : activePanel === "notifications"
-          ? "Acompanhe convites de dupla, inscrições e decisões importantes."
-        : activePanel === "explore"
-          ? "Encontre torneios, organizações e outros atletas."
-          : "Acompanhe as publicações de torneios das organizações."}
+      className={activePanel === "overview" && !browsingTournament ? "memberSocialOverviewShell" : ""}
+      navigationItems={MEMBER_NAV_ITEMS}
+      topbarCenter={activePanel === "overview" && !browsingTournament
+        ? <MemberSocialOverviewSearch value={overviewQuery} onChange={setOverviewQuery} />
+        : null}
+      title={getMemberPanelTitle(activePanel)}
+      eyebrow={getMemberPanelEyebrow(activePanel)}
+      description={getMemberPanelDescription(activePanel)}
       accountLabel="Sair"
       unreadNotificationCount={unreadNotificationCount}
       showOrganizationAction
@@ -452,9 +528,20 @@ export default function MemberProfileWorkspace({
           : activePanel !== "profile" && activePanel !== "notifications" && browsingTournamentLoading
             ? <section className="publicMemberSection"><p>Carregando o torneio no mesmo ambiente...</p></section>
             : activePanel === "overview" && publicPlatformHomeRuntime
-              ? <><PlatformGlobalSearch runtime={publicPlatformHomeRuntime} onOpenTournament={openPublishedTournament} /><PublicTournamentFeedSection runtime={publicPlatformHomeRuntime} hasSession embedded onOpenTournament={openPublishedTournament} onRegister={(_, item) => openPublishedTournament(item, "inscricao")} /></>
-              : activePanel === "explore" && publicPlatformHomeRuntime
+              ? <MemberSocialOverview runtime={publicPlatformHomeRuntime} supabase={supabase} user={user} profile={profile} query={overviewQuery} onQueryChange={setOverviewQuery} onNavigate={navigate} onOpenTournament={openPublishedTournament} />
+              : activePanel === "tournaments" && publicPlatformHomeRuntime
                 ? <PublicExploreSection runtime={publicPlatformHomeRuntime} hasSession onOpenTournament={openPublishedTournament} />
+                : ["circuits", "registrations", "partners", "ranking"].includes(activePanel) ? (
+                  <AthleteProfileActivity
+                    key={activePanel}
+                    supabase={supabase}
+                    profile={profile}
+                    owner
+                    activeTab={activePanel === "partners" ? "duplas" : activePanel === "ranking" ? "conquistas" : "atividades"}
+                    initialSection={activePanel === "circuits" ? "circuits" : "tournaments"}
+                    onOpenTournament={openPublishedTournament}
+                  />
+                )
                 : activePanel === "profile" ? (
         <>
           {!status || status === "loading" ? <div className="memberProfileOwnLoading" role="status">Carregando seu perfil...</div> : null}

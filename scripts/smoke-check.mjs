@@ -5148,7 +5148,7 @@ assert.ok(
     && unifiedPlatformFrameSource.includes('panel: "profile"')
     && !unifiedPlatformFrameSource.includes('panel: "explore"')
     && !unifiedPlatformFrameSource.includes('panel: "create"')
-    && memberProfileWorkspaceSource.includes("PublicTournamentFeedSection")
+    && memberProfileWorkspaceSource.includes("MemberSocialOverview")
     && memberProfileWorkspaceSource.includes("A criação de torneios e circuitos pertence a uma identidade de organização"),
   "A conta gratuita voltou a usar uma área separada ou perdeu o bloqueio de assinatura."
 );
