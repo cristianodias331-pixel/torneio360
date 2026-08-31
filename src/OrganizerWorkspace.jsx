@@ -657,6 +657,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
   const circuitHistoryLoadPromisesRef = useRef(new Map());
   const circuitRankingViewCacheRef = useRef(new Map());
   const tournamentDetailsLoadPromisesRef = useRef(new Map());
+  const v2TournamentActionRef = useRef("");
   const [circuitHistoryLoadState, setCircuitHistoryLoadState] = useState({});
   const [circuitForm, setCircuitForm] = useState({
     id: null,
@@ -1157,6 +1158,32 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       });
     }
   }, [tournaments, selected, restoredTournamentId]);
+
+  useEffect(() => {
+    if (tournaments.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const editTournamentId = params.get("editar_torneio");
+    const deleteTournamentId = params.get("excluir_torneio");
+    const action = editTournamentId ? "edit" : deleteTournamentId ? "delete" : "";
+    const tournamentId = editTournamentId || deleteTournamentId;
+    if (!action || !tournamentId) return;
+
+    const actionKey = `${action}:${tournamentId}`;
+    if (v2TournamentActionRef.current === actionKey) return;
+    const tournament = tournaments.find((item) => String(item.id) === String(tournamentId));
+    if (!tournament) return;
+
+    v2TournamentActionRef.current = actionKey;
+    params.delete("editar_torneio");
+    params.delete("excluir_torneio");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}${window.location.hash || ""}`);
+    setProfileIdentity("organization");
+    setProfileSubtab("publicacoes");
+    setActivePanel("ajustes");
+
+    if (action === "edit") void openEditTournament(tournament);
+    else setDeleteTarget(tournament);
+  }, [tournaments]);
 
   useEffect(() => {
     if (restoredAppStateRef.current) return;

@@ -472,6 +472,54 @@
 .comingSoon > div strong { font-size: .68rem; }
 .comingSoon > div small { color: #8396ab; font-size: .58rem; }
 
+.organizationTournamentsPage { width: min(100%, 1120px); margin: 0 auto; padding-top: 8px; }
+.sidebarClosed .organizationTournamentsPage { width: min(100%, 1240px); }
+.organizationTournamentsHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+.organizationTournamentsHeader h1,
+.organizationTournamentsHeader p { margin: 0; }
+.organizationTournamentsHeader h1 { color: #fff; font-size: clamp(2rem, 3vw, 2.55rem); line-height: 1; letter-spacing: -.05em; }
+.organizationTournamentsHeader p { margin-top: 8px; color: #8ea2b7; font-size: .76rem; }
+.organizationTournamentsHeader > button { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; border: 1px solid #ff681e; border-radius: 13px; padding: 0 16px; background: #ff5a0a; color: #fff; font: inherit; font-size: .68rem; font-weight: 900; cursor: pointer; box-shadow: 0 12px 30px rgba(255, 90, 10, .18); }
+.organizationTournamentsHeader > button svg { width: 16px; }
+.organizationTournamentToolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 340px); align-items: center; gap: 13px; margin-bottom: 14px; }
+.organizationTournamentToolbar > nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.organizationTournamentToolbar > nav button { display: grid; min-height: 62px; grid-template-columns: auto 1fr; align-content: center; align-items: baseline; gap: 4px 7px; border: 1px solid #243f5c; border-radius: 14px; padding: 10px 13px; background: #07182b; color: #88a0b6; font: inherit; text-align: left; cursor: pointer; }
+.organizationTournamentToolbar > nav button strong { color: #fff; font-size: 1.15rem; }
+.organizationTournamentToolbar > nav button span { font-size: .58rem; font-weight: 800; }
+.organizationTournamentToolbar > nav .selectedTournamentFilter { border-color: #ff651a; background: rgba(255, 94, 13, .1); color: #ff8240; box-shadow: inset 0 -2px #ff5f12; }
+.organizationTournamentToolbar > nav .selectedTournamentFilter strong { color: #ff762d; }
+.organizationTournamentToolbar > label { display: flex; height: 43px; align-items: center; gap: 8px; border: 1px solid #294866; border-radius: 13px; padding: 0 12px; background: #07182b; color: #51aeef; }
+.organizationTournamentToolbar > label > svg { width: 16px; flex: 0 0 auto; }
+.organizationTournamentToolbar > label input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff; font: inherit; font-size: .65rem; }
+.organizationTournamentToolbar > label input::placeholder { color: #6f849b; }
+.organizationTournamentToolbar > label button { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 50%; padding: 0; background: rgba(255,255,255,.06); color: #a9bacb; cursor: pointer; }
+.organizationTournamentToolbar > label button svg { width: 13px; }
+.organizationTournamentList { display: grid; gap: 15px; }
+.organizationTournamentCard { overflow: hidden; border: 1px solid #284763; border-radius: 18px; background: #07182b; box-shadow: 0 20px 55px rgba(0, 0, 0, .22); }
+.organizationTournamentCard > header { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #213d58; padding: 8px 12px; background: #091b30; }
+.organizationTournamentIdentity { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.organizationTournamentIdentity > span:last-child { display: grid; min-width: 0; gap: 2px; }
+.organizationTournamentIdentity strong { overflow: hidden; color: #fff; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.organizationTournamentIdentity small { overflow: hidden; color: #8196ac; font-size: .54rem; text-overflow: ellipsis; white-space: nowrap; }
+.organizationTournamentContent { display: grid; grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); align-items: stretch; }
+.organizationTournamentPoster { position: relative; display: grid; width: 100%; min-height: 350px; align-self: stretch; place-items: center; overflow: hidden; border: 0; border-right: 1px solid #213d58; padding: 0; background: #040d19; cursor: pointer; }
+.organizationTournamentSummary { display: flex; min-width: 0; flex-direction: column; background: linear-gradient(180deg, #0a1c31, #07172a); }
+.organizationTournamentInfo { padding: 23px 20px 14px; }
+.organizationTournamentInfo > span { color: #ff792e; font-size: .6rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.organizationTournamentInfo h2 { margin: 6px 0 6px; color: #fff; font-size: 1.45rem; letter-spacing: -.035em; }
+.organizationTournamentInfo > small { color: #748aa1; font-size: .6rem; }
+.organizationTournamentInfo > div { display: grid; margin-top: 17px; }
+.organizationTournamentInfo > div > span { display: grid; min-height: 38px; grid-template-columns: 23px minmax(0, 1fr); align-items: center; gap: 8px; border-bottom: 1px solid rgba(89, 124, 160, .19); color: #dce7f2; }
+.organizationTournamentInfo > div > span:last-child { border-bottom: 0; }
+.organizationTournamentInfo > div svg { width: 15px; color: #ff742b; }
+.organizationTournamentInfo > div strong { min-width: 0; overflow-wrap: anywhere; font-size: .7rem; }
+.organizationTournamentActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: auto; border-top: 1px solid #203b55; padding: 12px 14px 14px; }
+.organizationTournamentActions button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; border: 1px solid #31506d; border-radius: 12px; background: #0a1e33; color: #dce7f1; font: inherit; font-size: .66rem; font-weight: 850; cursor: pointer; transition: border-color .16s ease, color .16s ease, transform .16s ease; }
+.organizationTournamentActions button:hover { border-color: #ff6b20; color: #fff; transform: translateY(-1px); }
+.organizationTournamentActions button svg { width: 15px; }
+.organizationTournamentActions .organizationTournamentDelete { border-color: rgba(241, 89, 80, .46); color: #ff928b; }
+.organizationTournamentActions .organizationTournamentDelete:hover { border-color: #ef5f55; color: #ffaaa5; }
+
 .profilePage { width: min(100%, 1180px); margin: 0 auto; padding-top: 12px; }
 .profileHero { overflow: hidden; border: 1px solid #203c59; border-radius: 25px; background: linear-gradient(180deg, #07192d, #061426); box-shadow: 0 24px 70px rgba(0, 0, 0, .22); }
 .profileCover { position: relative; display: grid; width: 100%; aspect-ratio: 851 / 315; max-height: 370px; place-items: center; overflow: hidden; background: radial-gradient(circle at 70% 30%, rgba(255, 101, 21, .18), transparent 28%), linear-gradient(135deg, #0d2942, #061121 55%, #17140f); }
@@ -1005,6 +1053,27 @@
   .postActions .primaryAction { grid-column: 1 / -1; }
   .rail { display: none; }
   .comingSoon { min-height: calc(100dvh - 110px); padding: 25px 15px; }
+  .organizationTournamentsPage { padding-top: 0; }
+  .organizationTournamentsHeader { align-items: stretch; flex-direction: column; gap: 13px; margin-bottom: 14px; }
+  .organizationTournamentsHeader h1 { font-size: 1.8rem; }
+  .organizationTournamentsHeader > button { width: 100%; }
+  .organizationTournamentToolbar { grid-template-columns: 1fr; }
+  .organizationTournamentToolbar > nav button { min-height: 54px; padding: 8px; }
+  .organizationTournamentToolbar > nav button strong { font-size: 1rem; }
+  .organizationTournamentToolbar > nav button span { font-size: .5rem; }
+  .organizationTournamentCard { border-radius: 16px; }
+  .organizationTournamentContent { grid-template-columns: minmax(116px, 36%) minmax(0, 1fr); }
+  .organizationTournamentPoster { min-height: 315px; }
+  .organizationTournamentInfo { padding: 14px 10px 8px; }
+  .organizationTournamentInfo h2 { font-size: 1rem; }
+  .organizationTournamentInfo > small { display: none; }
+  .organizationTournamentInfo > div { margin-top: 9px; }
+  .organizationTournamentInfo > div > span { min-height: 31px; grid-template-columns: 18px minmax(0, 1fr); gap: 5px; }
+  .organizationTournamentInfo > div svg { width: 13px; }
+  .organizationTournamentInfo > div strong { font-size: .58rem; }
+  .organizationTournamentActions { gap: 6px; padding: 8px; }
+  .organizationTournamentActions button { min-height: 38px; gap: 4px; border-radius: 10px; font-size: .55rem; }
+  .organizationTournamentActions button svg { width: 13px; }
   .profilePage { padding-top: 0; }
   .profileHero { border-radius: 18px; }
   .profileCover { min-height: 132px; aspect-ratio: 851 / 315; }

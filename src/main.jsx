@@ -608,7 +608,7 @@ function App() {
           "_blank",
           "noopener,noreferrer"
         )}
-        onManageOrganization={() => navigatePlatform()}
+        onManageOrganization={(params = {}) => navigatePlatform(params)}
       />
     );
   }

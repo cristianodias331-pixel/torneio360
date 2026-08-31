@@ -23,7 +23,9 @@ import {
   Search,
   Share2,
   Sparkles,
+  Pencil,
   Tag,
+  Trash2,
   Trophy,
   UserRound,
   UsersRound,
@@ -34,13 +36,15 @@ import { copyToClipboard } from "../../services/clipboard.mjs";
 import { createMemberProfileFallback } from "../../domain/memberProfile.mjs";
 import { loadMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import { loadMySocialGraph, setProfileFollow } from "../../services/socialGraphApi.mjs";
+import { getTournamentLifecycleStatus } from "../../domain/tournamentLifecycle.mjs";
+import { normalizeTournamentSummaryRow, tournamentSummarySelect } from "../../domain/tournamentSummary.mjs";
 import PlatformV2Profile from "./PlatformV2Profile.jsx";
 import styles from "./PlatformV2App.module.css";
 
 const NAVIGATION = [
   { id: "overview", label: "Visão geral", Icon: Home, ready: true },
   { id: "profile", label: "Meu perfil", Icon: UserRound, ready: true },
-  { id: "tournaments", label: "Torneios", Icon: Trophy },
+  { id: "tournaments", label: "Torneios", Icon: Trophy, ready: true },
   { id: "circuits", label: "Circuitos", Icon: GitBranch },
   { id: "registrations", label: "Inscrições", Icon: ClipboardCheck },
   { id: "partners", label: "Duplas e desafios", Icon: UsersRound },
@@ -261,6 +265,159 @@ function ComingSoon({ tab }) {
       <h1>{item.label}</h1>
       <p>Esta aba será construída dentro deste mesmo padrão, sem importar o visual anterior.</p>
       <div><Sparkles /><span><strong>Estrutura isolada</strong><small>Dados e funções serão conectados depois da aprovação visual.</small></span></div>
+    </section>
+  );
+}
+
+function OrganizationTournaments({
+  supabase,
+  user,
+  profile,
+  runtime,
+  onManageOrganization,
+  onShare,
+}) {
+  const [state, setState] = useState({ status: "loading", items: [], error: "" });
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [search, setSearch] = useState("");
+  const organizationName = getProfileName(user, profile);
+  const organizationPhoto = getProfilePhoto(user, profile);
+  const organizationLocation = [profile?.city, profile?.state].filter(Boolean).join(" · ") || "Local não informado";
+
+  useEffect(() => {
+    if (!user?.id) {
+      setState({ status: "ready", items: [], error: "" });
+      return undefined;
+    }
+
+    let active = true;
+    setState((current) => ({ ...current, status: "loading", error: "" }));
+
+    (async () => {
+      let { data, error } = await supabase
+        .from("tournaments")
+        .select(tournamentSummarySelect)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      let summarized = !error;
+
+      if (error) {
+        ({ data, error } = await supabase
+          .from("tournaments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }));
+        summarized = false;
+      }
+
+      if (!active) return;
+      if (error) {
+        setState({ status: "error", items: [], error: "Não foi possível carregar os torneios da organização." });
+        return;
+      }
+
+      const items = (data || [])
+        .map((item) => summarized ? normalizeTournamentSummaryRow(item) : item)
+        .filter((item) => !item.data?.deletedAt);
+      setState({ status: "ready", items, error: "" });
+    })();
+
+    return () => { active = false; };
+  }, [supabase, user?.id]);
+
+  const lifecycleCounts = useMemo(() => state.items.reduce((counts, item) => {
+    const status = getTournamentLifecycleStatus(item);
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, { active: 0, upcoming: 0, finished: 0 }), [state.items]);
+
+  const visibleItems = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
+    return state.items.filter((item) => {
+      if (getTournamentLifecycleStatus(item) !== statusFilter) return false;
+      if (!normalizedSearch) return true;
+      const details = getDetails(item);
+      return [
+        getEventName(item),
+        runtime.getModalityName(item.type),
+        details.category,
+        getTournamentGenderLabel(item),
+        getLocation(item),
+      ].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(normalizedSearch);
+    });
+  }, [runtime, search, state.items, statusFilter]);
+
+  function manage(params) {
+    onManageOrganization?.(params);
+  }
+
+  return (
+    <section className={styles.organizationTournamentsPage} aria-labelledby="organization-tournaments-title">
+      <header className={styles.organizationTournamentsHeader}>
+        <div><span className={styles.kicker}>Gestão da organização</span><h1 id="organization-tournaments-title">Torneios</h1><p>Edite, abra e acompanhe os torneios publicados pela organização.</p></div>
+        <button type="button" onClick={() => manage({ aba: "criar" })}><Plus /> Criar torneio</button>
+      </header>
+
+      <div className={styles.organizationTournamentToolbar}>
+        <nav aria-label="Filtrar torneios por situação">
+          <button type="button" className={statusFilter === "active" ? styles.selectedTournamentFilter : ""} onClick={() => setStatusFilter("active")}><strong>{lifecycleCounts.active}</strong><span>Em andamento</span></button>
+          <button type="button" className={statusFilter === "upcoming" ? styles.selectedTournamentFilter : ""} onClick={() => setStatusFilter("upcoming")}><strong>{lifecycleCounts.upcoming}</strong><span>Próximos</span></button>
+          <button type="button" className={statusFilter === "finished" ? styles.selectedTournamentFilter : ""} onClick={() => setStatusFilter("finished")}><strong>{lifecycleCounts.finished}</strong><span>Encerrados</span></button>
+        </nav>
+        <label><Search /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, modalidade, categoria ou local" aria-label="Pesquisar torneios da organização" />{search ? <button type="button" onClick={() => setSearch("")} aria-label="Limpar pesquisa"><X /></button> : null}</label>
+      </div>
+
+      <div className={styles.organizationTournamentList}>
+        {state.status === "loading" ? <div className={styles.feedState}><LoaderCircle /><strong>Carregando torneios...</strong></div> : null}
+        {state.error ? <div className={styles.feedState}><X /><strong>{state.error}</strong></div> : null}
+        {state.status === "ready" && !visibleItems.length ? <div className={styles.feedState}><Trophy /><strong>Nenhum torneio corresponde a este filtro.</strong></div> : null}
+
+        {visibleItems.map((item) => {
+          const details = getDetails(item);
+          const name = getEventName(item);
+          const category = String(details.category || "").trim();
+          const gender = getTournamentGenderLabel(item);
+          const startTime = String(details.eventStartTime || details.startTime || "").trim();
+          const registrationOpen = runtime.isRegistrationOpen(runtime.getRegistrationDeadline(item));
+          return (
+            <article className={styles.organizationTournamentCard} key={item.id || item.public_id}>
+              <header>
+                <span className={styles.organizationTournamentIdentity}>
+                  <span className={styles.organizerAvatar}>{organizationPhoto ? <img src={organizationPhoto} alt="" /> : getInitials(organizationName)}</span>
+                  <span><strong>{organizationName}</strong><small>{organizationLocation}</small></span>
+                </span>
+                <span className={registrationOpen ? styles.openBadge : styles.closedBadge}>{registrationOpen ? "Inscrições abertas" : "Inscrições encerradas"}</span>
+              </header>
+
+              <div className={styles.organizationTournamentContent}>
+                <button type="button" className={styles.organizationTournamentPoster} onClick={() => manage({ aba: "criar", torneio: item.id })} aria-label={`Abrir ${name}`}>
+                  <Poster item={item} alt={`Arte de ${name}`} />
+                </button>
+                <div className={styles.organizationTournamentSummary}>
+                  <div className={styles.organizationTournamentInfo}>
+                    <span>{runtime.getModalityName(item.type)}</span>
+                    <h2>{name}</h2>
+                    <small>Informações principais do torneio</small>
+                    <div>
+                      {category ? <span><Tag /><strong>{category}</strong></span> : null}
+                      {gender ? <span><UsersRound /><strong>{gender}</strong></span> : null}
+                      {getEventDate(item) ? <span><CalendarDays /><strong>{runtime.formatDate(getEventDate(item))}</strong></span> : null}
+                      {startTime ? <span><Clock3 /><strong>{startTime}</strong></span> : null}
+                      <span><MapPin /><strong>{getLocation(item)}</strong></span>
+                    </div>
+                  </div>
+                  <footer className={styles.organizationTournamentActions}>
+                    <button type="button" onClick={() => manage({ aba: "ajustes", perfil: "publicacoes", identidade: "organizacao", editar_torneio: item.id })}><Pencil /> Editar</button>
+                    <button type="button" onClick={() => manage({ aba: "criar", torneio: item.id })}><ChevronRight /> Abrir</button>
+                    <button type="button" className={styles.organizationTournamentDelete} onClick={() => manage({ aba: "ajustes", perfil: "publicacoes", identidade: "organizacao", excluir_torneio: item.id })}><Trash2 /> Excluir</button>
+                    <button type="button" onClick={() => onShare(item)}><Share2 /> Compartilhar</button>
+                  </footer>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -679,6 +836,15 @@ export default function PlatformV2App({
             onToggleFollow={changeFollow}
             onIdentitySummaryChange={updateIdentitySummary}
             onNotice={setNotice}
+          />
+        ) : activeTab === "tournaments" && identityMode === "organization" ? (
+          <OrganizationTournaments
+            supabase={supabase}
+            user={user}
+            profile={profile}
+            runtime={runtime}
+            onManageOrganization={onManageOrganization}
+            onShare={share}
           />
         ) : activeTab !== "overview" ? <ComingSoon tab={activeTab} /> : (
           <div className={styles.overview}>
