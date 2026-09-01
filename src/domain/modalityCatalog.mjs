@@ -58,6 +58,67 @@ export const modalityPickerGroups = [
   },
 ];
 
+export const platformV2ModalityFamilies = [
+  {
+    id: "super",
+    label: "Super",
+    choiceLabel: "Escolha a quantidade",
+    choices: [
+      { type: "Reizinho", count: 4, label: "Super 4" },
+      { type: "Reizinho", count: 6, label: "Super 6" },
+      { type: "Super 08", count: 8, label: "Super 8" },
+      { type: "Super 12", count: 12, label: "Super 12" },
+    ],
+  },
+  {
+    id: "fixed",
+    label: "Super (dupla fixa)",
+    choiceLabel: "Escolha a quantidade de duplas",
+    choices: [
+      { type: "Super 12 Mista (Dupla Fixa)", count: 6, label: "Super 6" },
+      { type: "Super 16 Mista (Dupla Fixa)", count: 8, label: "Super 8" },
+      { type: "Super 10 (Dupla Fixa)", count: 10, label: "Super 10" },
+      { type: "Super 12 (Dupla Fixa)", count: 12, label: "Super 12" },
+    ],
+  },
+  {
+    id: "simple",
+    label: "Simples/Individual (1 contra 1)",
+    choiceLabel: "Escolha a quantidade de jogadores",
+    choices: [4, 6, 8, 10, 12, 14].map((count) => ({
+      type: "Simples 8",
+      count,
+      label: `${count} jogadores`,
+    })),
+  },
+  {
+    id: "mixed",
+    label: "Super Mista",
+    choiceLabel: "Escolha a quantidade de participantes",
+    choices: [
+      { type: "Super 10 Mista (Dupla Aleatória)", count: 10, label: "Super Mista 10" },
+      { type: "Super 12 Mista (Dupla Aleatória)", count: 12, label: "Super Mista 12" },
+      { type: "Super 16 Mista (Dupla Aleatória)", count: 16, label: "Super Mista 16" },
+      { type: "Super 20 Mista (Dupla Aleatória)", count: 20, label: "Super Mista 20" },
+    ],
+  },
+  {
+    id: "championships",
+    label: "Campeonatos/Copas",
+    choiceLabel: "Escolha o modelo",
+    choices: [
+      { type: "Campeonato Cearense", label: "Campeonato Cearense" },
+      { type: "Campeonato Cearense Individual", label: "Campeonato Cearense Individual" },
+    ],
+  },
+];
+
+export const platformV2SpecificModalities = [
+  { type: "Copa - 18 duplas", count: 18, label: "Copa 18 duplas" },
+  { type: "Copa Sunset", label: "Copa Sunset" },
+  { type: "Modelo Play Ranking", label: "Modelo Torneio 360" },
+];
+
 export const modalityPickerDescriptions = {
   "Super 12 Mista (Dupla Fixa)": "6 duplas definidas e classificação por equipe.",
   "Super 16 Mista (Dupla Fixa)": "8 duplas definidas e classificação por equipe.",

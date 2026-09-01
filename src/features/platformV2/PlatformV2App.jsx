@@ -42,15 +42,25 @@ import { loadMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import { loadMySocialGraph, setProfileFollow } from "../../services/socialGraphApi.mjs";
 import { getTournamentLifecycleStatus } from "../../domain/tournamentLifecycle.mjs";
 import { validatePublicTextFields } from "../../domain/contentModeration.mjs";
-import { getModalityDisplayName, modalityPickerGroups } from "../../domain/modalityCatalog.mjs";
+import {
+  getModalityDisplayName,
+  platformV2ModalityFamilies,
+  platformV2SpecificModalities,
+} from "../../domain/modalityCatalog.mjs";
 import { allowedByPlan, modalityConfig } from "../../domain/modalityConfig.mjs";
-import { isCupType, isMixedType, requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
+import {
+  isCupType,
+  isFlexibleSimpleType,
+  isMixedType,
+  isReizinhoType,
+  requiresFixedDoubles,
+} from "../../domain/modalityClassification.mjs";
 import { getAutomaticCupRankingLabel, getNewTournamentRankingCriteria } from "../../domain/cupRankingDefaults.mjs";
 import { formatDateBR, getWeekdayBR } from "../../domain/dateTime.mjs";
 import { cupRankingCriteria, rankingCriteriaOptions } from "../../domain/rankingCriteria.mjs";
-import { createInitialData } from "../../domain/tournamentDataNormalization.mjs";
+import { createInitialData, normalizeTournamentData } from "../../domain/tournamentDataNormalization.mjs";
 import { generatePublicId } from "../../domain/publicIdentifiers.mjs";
-import { getCompatibleTournamentType, getGenderCompatibleTournamentTypes, getStoredTournamentGenderFields } from "../../domain/tournamentGenderConfig.mjs";
+import { getGenderCompatibleTournamentTypes, getStoredTournamentGenderFields } from "../../domain/tournamentGenderConfig.mjs";
 import { normalizeTournamentSummaryRow, tournamentSummarySelect } from "../../domain/tournamentSummary.mjs";
 import { prepareSocialPostImageFile, resizeImageFile } from "../media/imageResize.mjs";
 import { uploadPreparedImagePair } from "../../services/mediaStorage.mjs";
@@ -120,7 +130,10 @@ const TOURNAMENT_CREATION_STEPS = [
 function createGroupedTournamentDraft({ location = "", modality = "" } = {}) {
   return {
     category: "",
+    modalitySection: "main",
+    modalityFamily: "",
     modality,
+    participantCount: "",
     composition: "",
     compositionOther: "",
     winningScore: "",
@@ -131,6 +144,140 @@ function createGroupedTournamentDraft({ location = "", modality = "" } = {}) {
     startTime: "",
     location,
   };
+}
+
+function getModalityCountOptions(type) {
+  const config = modalityConfig[type];
+  if (!config) return [];
+  if (Array.isArray(config.allowedPlayerCounts)) return config.allowedPlayerCounts;
+  if (Array.isArray(config.allowedTeamCounts)) return config.allowedTeamCounts;
+  if (Number.isFinite(config.teams)) return [config.teams];
+  if (Number.isFinite(config.men) && Number.isFinite(config.women)) return [config.men + config.women];
+  if (Number.isFinite(config.total)) return [config.total];
+  return [];
+}
+
+function isModalitySelectionReady(type, participantCount) {
+  return getModalityCountOptions(type).includes(Number(participantCount));
+}
+
+function getModalityQuantityName(type) {
+  const config = modalityConfig[type];
+  if (isFlexibleSimpleType(config) || config?.individualCup === true) return "jogadores";
+  if (Number.isFinite(config?.teams) || isCupType(config)) return "duplas";
+  return "participantes";
+}
+
+function getSelectedModalityLabel(type, participantCount) {
+  const count = Number(participantCount);
+  if (isReizinhoType(modalityConfig[type]) && [4, 6].includes(count)) return `Super ${count}`;
+  if (isFlexibleSimpleType(modalityConfig[type]) && count) return `Simples/Individual · ${count} jogadores`;
+
+  const knownChoice = [
+    ...platformV2ModalityFamilies.flatMap((family) => family.choices),
+    ...platformV2SpecificModalities,
+  ].find((choice) => choice.type === type && (choice.count == null || Number(choice.count) === count));
+  const label = knownChoice?.label || getModalityDisplayName(type);
+  if (!count || knownChoice?.count != null || getModalityCountOptions(type).length <= 1) return label;
+  return `${label} · ${count} ${getModalityQuantityName(type)}`;
+}
+
+function createConfiguredTournamentData(type, participantCount) {
+  const config = modalityConfig[type];
+  const initialData = createInitialData(type, config);
+  const count = Number(participantCount);
+  if (!isModalitySelectionReady(type, count)) return initialData;
+
+  if (isReizinhoType(config)) {
+    return normalizeTournamentData(type, { ...initialData, reizinhoPlayerCount: count });
+  }
+  if (isFlexibleSimpleType(config)) {
+    return normalizeTournamentData(type, { ...initialData, simplePlayerCount: count });
+  }
+  if (isCupType(config)) {
+    return normalizeTournamentData(type, {
+      ...initialData,
+      cupConfig: { ...initialData.cupConfig, teamCount: count },
+    });
+  }
+  return initialData;
+}
+
+function TournamentModalityPicker({
+  allowedTypes,
+  section,
+  family,
+  value,
+  participantCount,
+  onSectionChange,
+  onFamilyChange,
+  onSelect,
+  onCountChange,
+  compact = false,
+}) {
+  const availableFamilies = platformV2ModalityFamilies
+    .map((entry) => ({ ...entry, choices: entry.choices.filter((choice) => allowedTypes.includes(choice.type)) }))
+    .filter((entry) => entry.choices.length > 0);
+  const availableSpecific = platformV2SpecificModalities.filter((choice) => allowedTypes.includes(choice.type));
+  const activeFamily = availableFamilies.find((entry) => entry.id === family);
+  const visibleChoices = section === "specific" ? availableSpecific : activeFamily?.choices || [];
+  const selectedChoice = visibleChoices.find((choice) => (
+    choice.type === value
+    && (choice.count == null || Number(choice.count) === Number(participantCount))
+  ));
+  const countOptions = selectedChoice?.count == null && value ? getModalityCountOptions(value) : [];
+  const quantityName = getModalityQuantityName(value);
+
+  return (
+    <section className={`${styles.modalityHierarchy} ${compact ? styles.compactModalityHierarchy : ""}`} aria-label="Escolha da modalidade">
+      <div className={styles.modalityHierarchyTabs} role="tablist" aria-label="Tipo de modalidade">
+        <button type="button" role="tab" aria-selected={section !== "specific"} className={section !== "specific" ? styles.selectedModalityTab : ""} onClick={() => onSectionChange("main")}>Modalidades</button>
+        <button type="button" role="tab" aria-selected={section === "specific"} className={section === "specific" ? styles.selectedModalityTab : ""} disabled={!availableSpecific.length} onClick={() => onSectionChange("specific")}>Modalidades específicas</button>
+      </div>
+
+      {section === "specific" ? (
+        <div className={styles.modalityChoicePanel}>
+          <strong>Escolha a modalidade específica</strong>
+          <div className={styles.modalityOptionGrid}>
+            {availableSpecific.map((choice) => (
+              <button type="button" key={choice.type} className={selectedChoice?.type === choice.type ? styles.selectedModalityOption : ""} onClick={() => onSelect(choice.type, choice.count == null ? "" : String(choice.count))}>
+                <strong>{choice.label}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={styles.modalityFamilyGrid}>
+            {availableFamilies.map((entry) => (
+              <button type="button" key={entry.id} className={family === entry.id ? styles.selectedModalityFamily : ""} onClick={() => onFamilyChange(entry.id)}>{entry.label}</button>
+            ))}
+          </div>
+          {activeFamily ? (
+            <div className={styles.modalityChoicePanel}>
+              <strong>{activeFamily.choiceLabel}</strong>
+              <div className={styles.modalityOptionGrid}>
+                {activeFamily.choices.map((choice) => {
+                  const selected = choice.type === value && (choice.count == null || Number(choice.count) === Number(participantCount));
+                  return <button type="button" key={`${choice.type}-${choice.count || "model"}`} className={selected ? styles.selectedModalityOption : ""} onClick={() => onSelect(choice.type, choice.count == null ? "" : String(choice.count))}><strong>{choice.label}</strong></button>;
+                })}
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {countOptions.length > 1 ? (
+        <label className={styles.modalityCountField}>
+          <span>Quantidade de {quantityName}</span>
+          <select value={participantCount} onChange={(event) => onCountChange(event.target.value)}>
+            <option value="">Escolha a quantidade</option>
+            {countOptions.map((count) => <option key={count} value={count}>{count} {quantityName}</option>)}
+          </select>
+        </label>
+      ) : null}
+    </section>
+  );
 }
 
 function getInclusiveDateRange(startDate, endDate) {
@@ -394,7 +541,10 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
   const [draft, setDraft] = useState(() => ({
     name: "",
     structure: "single",
+    modalitySection: "main",
+    modalityFamily: "",
     modality: "",
+    participantCount: "",
     category: "",
     groupedCategories: [createGroupedTournamentDraft({ location: initialLocation })],
     composition: "",
@@ -427,20 +577,62 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
     setValidationError("");
   }
 
-  function changeModality(modality) {
+  function changeModalitySection(modalitySection) {
+    setDraft((current) => ({
+      ...current,
+      modalitySection,
+      modalityFamily: "",
+      modality: "",
+      participantCount: "",
+    }));
+    setValidationError("");
+  }
+
+  function changeModalityFamily(modalityFamily) {
+    setDraft((current) => ({
+      ...current,
+      modalitySection: "main",
+      modalityFamily,
+      modality: "",
+      participantCount: "",
+    }));
+    setValidationError("");
+  }
+
+  function changeModalitySelection(modality, participantCount) {
     setDraft((current) => ({
       ...current,
       modality,
+      participantCount,
       composition: isMixedType(modalityConfig[modality]) ? "mista" : current.composition,
     }));
     setValidationError("");
   }
 
   function changeComposition(composition) {
+    setDraft((current) => {
+      const compatibleTypes = getGenderCompatibleTournamentTypes(allowedTournamentTypes, composition);
+      const keepModality = compatibleTypes.includes(current.modality);
+      return {
+        ...current,
+        composition,
+        modality: keepModality ? current.modality : "",
+        modalityFamily: keepModality ? current.modalityFamily : "",
+        participantCount: keepModality ? current.participantCount : "",
+      };
+    });
+    setValidationError("");
+  }
+
+  function updateGroupedModality(index, patch) {
     setDraft((current) => ({
       ...current,
-      composition,
-      modality: getCompatibleTournamentType(current.modality, composition, allowedTournamentTypes),
+      groupedCategories: current.groupedCategories.map((category, categoryIndex) => {
+        if (categoryIndex !== index) return category;
+        const nextCategory = { ...category, ...patch };
+        if (patch.modality && isMixedType(modalityConfig[patch.modality])) nextCategory.composition = "mista";
+        return nextCategory;
+      }),
     }));
     setValidationError("");
   }
@@ -451,17 +643,14 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
       groupedCategories: current.groupedCategories.map((category, categoryIndex) => {
         if (categoryIndex !== index) return category;
         if (field === "composition") {
+          const compatibleTypes = getGenderCompatibleTournamentTypes(allowedTournamentTypes, value);
+          const keepModality = compatibleTypes.includes(category.modality);
           return {
             ...category,
             composition: value,
-            modality: getCompatibleTournamentType(category.modality, value, allowedTournamentTypes),
-          };
-        }
-        if (field === "modality") {
-          return {
-            ...category,
-            modality: value,
-            composition: isMixedType(modalityConfig[value]) ? "mista" : category.composition,
+            modality: keepModality ? category.modality : "",
+            modalityFamily: keepModality ? category.modalityFamily : "",
+            participantCount: keepModality ? category.participantCount : "",
           };
         }
         return { ...category, [field]: value };
@@ -532,14 +721,15 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
           const compositionReady = category.composition && (category.composition !== "outro" || category.compositionOther.trim());
           return category.category.trim()
             && allowedTournamentTypes.includes(category.modality)
+            && isModalitySelectionReady(category.modality, category.participantCount)
             && compositionReady
             && ["4", "6"].includes(category.winningScore)
             && rankingReady;
         });
-        if (!categoriesReady) return "Revise categoria, modalidade, composição, games e critério de cada torneio.";
+        if (!categoriesReady) return "Revise categoria, modalidade e quantidade, composição, set e critério de cada torneio.";
       } else {
         const rankingReady = isCupType(modalityConfig[draft.modality]) || rankingCriteriaOptions.some((option) => option.value === draft.rankingRule);
-        if (!draft.modality || !allowedTournamentTypes.includes(draft.modality) || !draft.category.trim() || !draft.composition || !["4", "6"].includes(draft.winningScore) || !rankingReady) return "Defina modalidade, categoria, composição, set para vencer e critério.";
+        if (!draft.modality || !allowedTournamentTypes.includes(draft.modality) || !isModalitySelectionReady(draft.modality, draft.participantCount) || !draft.category.trim() || !draft.composition || !["4", "6"].includes(draft.winningScore) || !rankingReady) return "Defina modalidade e quantidade, categoria, composição, set para vencer e critério.";
         if (draft.composition === "outro" && !draft.compositionOther.trim()) return "Informe qual será a outra composição.";
       }
     }
@@ -699,7 +889,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
             name: category.category.trim(),
             type: category.modality,
             data: {
-              ...createInitialData(category.modality, modalityConfig[category.modality]),
+              ...createConfiguredTournamentData(category.modality, category.participantCount),
               ...baseData,
               category: category.category.trim(),
               ...getStoredTournamentGenderFields(category.modality, category.composition, category.compositionOther),
@@ -730,7 +920,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
           name: draft.name.trim(),
           type: draft.modality,
           data: {
-            ...createInitialData(draft.modality, modalityConfig[draft.modality]),
+            ...createConfiguredTournamentData(draft.modality, draft.participantCount),
             ...baseData,
             category: draft.category.trim(),
             ...getStoredTournamentGenderFields(draft.modality, draft.composition, draft.compositionOther),
@@ -800,8 +990,8 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
     ? [...new Set(draft.groupedCategories.map((category) => getCompositionLabel(category.composition, category.compositionOther)))].join(" · ")
     : getCompositionLabel(draft.composition, draft.compositionOther);
   const modalityLabel = draft.structure === "grouped"
-    ? [...new Set(draft.groupedCategories.map((category) => getModalityDisplayName(category.modality)))].join(" · ")
-    : getModalityDisplayName(draft.modality);
+    ? [...new Set(draft.groupedCategories.map((category) => getSelectedModalityLabel(category.modality, category.participantCount)))].join(" · ")
+    : getSelectedModalityLabel(draft.modality, draft.participantCount);
   const cupModality = isCupType(modalityConfig[draft.modality]);
   const fixedDoublesModality = requiresFixedDoubles(modalityConfig[draft.modality]);
   const compatibleTournamentTypes = getGenderCompatibleTournamentTypes(allowedTournamentTypes, draft.composition);
@@ -868,16 +1058,17 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
             <header><span><Trophy /></span><div><h2 id="create-step-format">Formato da competição</h2></div></header>
             {draft.structure === "single" ? (
               <div className={styles.createTournamentFields}>
-                <label>
-                  <span>Modalidade</span>
-                  <select value={draft.modality} onChange={(event) => changeModality(event.target.value)}>
-                    <option value="">Escolha a modalidade</option>
-                    {modalityPickerGroups.map((group) => {
-                      const groupTypes = group.types.filter((type) => compatibleTournamentTypes.includes(type));
-                      return groupTypes.length ? <optgroup key={group.id} label={group.title}>{groupTypes.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}</optgroup> : null;
-                    })}
-                  </select>
-                </label>
+                <TournamentModalityPicker
+                  allowedTypes={compatibleTournamentTypes}
+                  section={draft.modalitySection}
+                  family={draft.modalityFamily}
+                  value={draft.modality}
+                  participantCount={draft.participantCount}
+                  onSectionChange={changeModalitySection}
+                  onFamilyChange={changeModalityFamily}
+                  onSelect={changeModalitySelection}
+                  onCountChange={(participantCount) => updateDraft("participantCount", participantCount)}
+                />
                 <label><span>Categoria</span><input value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} placeholder="Ex.: Categoria C" /></label>
                 <label>
                   <span>Composição</span>
@@ -910,16 +1101,18 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
                       </header>
                       <div className={styles.createTournamentFields}>
                         <label><span>Categoria</span><input value={category.category} onChange={(event) => updateGroupedCategory(index, "category", event.target.value)} placeholder="Ex.: Categoria C" /></label>
-                        <label>
-                          <span>Modalidade</span>
-                          <select value={category.modality} onChange={(event) => updateGroupedCategory(index, "modality", event.target.value)}>
-                            <option value="">Escolha a modalidade</option>
-                            {modalityPickerGroups.map((group) => {
-                              const groupTypes = group.types.filter((type) => categoryTypes.includes(type));
-                              return groupTypes.length ? <optgroup key={group.id} label={group.title}>{groupTypes.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}</optgroup> : null;
-                            })}
-                          </select>
-                        </label>
+                        <TournamentModalityPicker
+                          compact
+                          allowedTypes={categoryTypes}
+                          section={category.modalitySection}
+                          family={category.modalityFamily}
+                          value={category.modality}
+                          participantCount={category.participantCount}
+                          onSectionChange={(modalitySection) => updateGroupedModality(index, { modalitySection, modalityFamily: "", modality: "", participantCount: "" })}
+                          onFamilyChange={(modalityFamily) => updateGroupedModality(index, { modalitySection: "main", modalityFamily, modality: "", participantCount: "" })}
+                          onSelect={(modality, participantCount) => updateGroupedModality(index, { modality, participantCount })}
+                          onCountChange={(participantCount) => updateGroupedModality(index, { participantCount })}
+                        />
                         <label>
                           <span>Composição</span>
                           <select value={category.composition} onChange={(event) => updateGroupedCategory(index, "composition", event.target.value)}>
@@ -974,7 +1167,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
               <div className={styles.createTournamentGroupedList}>
                 {draft.groupedCategories.map((category, index) => (
                   <article className={styles.createTournamentGroupedCard} key={`schedule-${index}`}>
-                    <header><strong>{category.category || `Torneio ${index + 1}`}</strong><small>{getModalityDisplayName(category.modality)}</small></header>
+                    <header><strong>{category.category || `Torneio ${index + 1}`}</strong><small>{getSelectedModalityLabel(category.modality, category.participantCount)}</small></header>
                     <div className={`${styles.createTournamentFields} ${styles.createTournamentScheduleFields}`}>
                       <label><span>Início</span><input type="date" value={category.startDate} onChange={(event) => updateGroupedCategory(index, "startDate", event.target.value)} /></label>
                       <label><span>Fim</span><input type="date" value={category.endDate} min={category.startDate || undefined} onChange={(event) => updateGroupedCategory(index, "endDate", event.target.value)} /></label>

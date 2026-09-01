@@ -306,6 +306,8 @@ import {
   modalityPickerDescriptions,
   modalityPickerGroups,
   normalizeModalitySearch,
+  platformV2ModalityFamilies,
+  platformV2SpecificModalities,
 } from "../src/domain/modalityCatalog.mjs";
 import { allowedByPlan, modalityConfig } from "../src/domain/modalityConfig.mjs";
 import {
@@ -890,6 +892,14 @@ assert.ok(
   "O set para vencer do V2 voltou a ser predefinido ou deixou de ser obrigatório."
 );
 assert.ok(
+  platformV2Source.includes("function TournamentModalityPicker(")
+    && platformV2Source.includes('>Modalidades específicas</button>')
+    && platformV2Source.includes("createConfiguredTournamentData(category.modality, category.participantCount)")
+    && platformV2Source.includes("createConfiguredTournamentData(draft.modality, draft.participantCount)")
+    && !platformV2Source.includes("modalityPickerGroups"),
+  "O seletor hierárquico de modalidades do V2 foi removido ou deixou de persistir a quantidade escolhida."
+);
+assert.ok(
   styleSource.includes('@keyframes asyncActionIndicatorSpin')
     && styleSource.includes('button[aria-busy="true"]::after')
     && organizerWorkspaceSource.includes("if (circuitSavingRef.current) return false;")
@@ -1152,6 +1162,26 @@ assert.deepEqual(
   modalityPickerGroups.map((group) => group.title),
   ["Duplas fixas", "Ranking individual", "Mistas", "Copas e modelos"],
   "Os agrupamentos do seletor de modalidades foram alterados."
+);
+assert.deepEqual(
+  platformV2ModalityFamilies.map((family) => family.label),
+  ["Super", "Super (dupla fixa)", "Simples/Individual (1 contra 1)", "Super Mista", "Campeonatos/Copas"],
+  "As famílias de modalidades apresentadas no V2 foram alteradas."
+);
+assert.deepEqual(
+  platformV2ModalityFamilies.find((family) => family.id === "super")?.choices.map((choice) => choice.label),
+  ["Super 4", "Super 6", "Super 8", "Super 12"],
+  "As quantidades da família Super foram alteradas."
+);
+assert.deepEqual(
+  platformV2ModalityFamilies.find((family) => family.id === "super")?.choices.slice(0, 2).map(({ type, count }) => ({ type, count })),
+  [{ type: "Reizinho", count: 4 }, { type: "Reizinho", count: 6 }],
+  "A unificação do Reizinho como Super 4 e Super 6 foi perdida."
+);
+assert.deepEqual(
+  platformV2SpecificModalities.map((choice) => choice.label),
+  ["Copa 18 duplas", "Copa Sunset", "Modelo Torneio 360"],
+  "A aba de modalidades específicas do V2 foi alterada."
 );
 assert.equal(
   modalityPickerDescriptions["Campeonato Cearense"],

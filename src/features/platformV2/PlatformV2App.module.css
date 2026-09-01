@@ -559,6 +559,26 @@
 .createTournamentFields input:focus,
 .createTournamentFields select:focus,
 .createTournamentFields textarea:focus { border-color: #ff6a20; box-shadow: 0 0 0 3px rgba(255, 101, 24, .1); }
+.modalityHierarchy { display: grid; grid-column: 1 / -1; gap: 10px; border: 1px solid #2b4a66; border-radius: 15px; padding: 12px; background: linear-gradient(145deg, #07192b, #061323); }
+.compactModalityHierarchy { padding: 10px; }
+.modalityHierarchyTabs { display: flex; flex-wrap: wrap; gap: 7px; }
+.modalityHierarchyTabs > button { min-height: 35px; border: 1px solid #31516d; border-radius: 10px; padding: 0 13px; background: #0a1d31; color: #9fb1c3; font: inherit; font-size: .62rem; font-weight: 850; cursor: pointer; }
+.modalityHierarchyTabs > button:hover:not(:disabled) { border-color: #ff6d25; color: #fff; }
+.modalityHierarchyTabs > button:disabled { opacity: .42; cursor: not-allowed; }
+.modalityHierarchyTabs > .selectedModalityTab { border-color: #ff6d25; background: #b33b08; color: #fff; box-shadow: 0 8px 22px rgba(255, 90, 10, .14); }
+.modalityFamilyGrid,
+.modalityOptionGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 7px; }
+.modalityFamilyGrid > button,
+.modalityOptionGrid > button { min-height: 43px; border: 1px solid #31516d; border-radius: 11px; padding: 8px 10px; background: #091c30; color: #d7e1eb; font: inherit; font-size: .63rem; font-weight: 820; line-height: 1.25; text-align: left; cursor: pointer; transition: 150ms ease; }
+.modalityFamilyGrid > button:hover,
+.modalityOptionGrid > button:hover { border-color: #ff6d25; background: #0d263f; color: #fff; transform: translateY(-1px); }
+.modalityFamilyGrid > .selectedModalityFamily { border-color: #ff6d25; background: linear-gradient(110deg, #a93607, #6f2306); color: #fff; }
+.modalityChoicePanel { display: grid; gap: 8px; border-top: 1px solid rgba(91, 126, 164, .28); padding-top: 10px; }
+.modalityChoicePanel > strong { color: #b8c7d6; font-size: .64rem; }
+.modalityOptionGrid > .selectedModalityOption { border-color: #45dd8a; background: linear-gradient(115deg, #105534, #0a3825); color: #f1fff7; box-shadow: 0 8px 22px rgba(69, 221, 138, .1); }
+.modalityCountField { display: grid; max-width: 300px; gap: 7px; color: #a9b9c8; font-size: .62rem; font-weight: 800; }
+.modalityCountField select { min-height: 44px; border: 1px solid #2b4a66; border-radius: 12px; padding: 0 12px; outline: 0; background: #061426; color: #f5f8fb; font: inherit; font-size: .72rem; }
+.modalityCountField select:focus { border-color: #ff6a20; box-shadow: 0 0 0 3px rgba(255, 101, 24, .1); }
 .createTournamentWideField { grid-column: 1 / -1; }
 .createTournamentCategoryList { display: grid; min-width: 0; align-content: start; gap: 7px; }
 .createTournamentCategoryList > span { color: #a9b9c8; font-size: .62rem; font-weight: 800; }
@@ -652,6 +672,9 @@
   .createTournamentWideField { grid-column: 1; }
   .createTournamentGroupedCard .createTournamentFields,
   .createTournamentGroupedCard .createTournamentScheduleFields { grid-template-columns: 1fr; }
+  .modalityFamilyGrid,
+  .modalityOptionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .modalityCountField { max-width: none; }
   .createTournamentUpload { min-height: 230px; }
   .createTournamentReviewPoster { min-height: 240px; }
   .createTournamentFooter { align-items: stretch; flex-direction: column; gap: 6px; padding: 7px 12px 9px; }
