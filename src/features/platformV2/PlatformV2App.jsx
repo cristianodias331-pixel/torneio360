@@ -42,6 +42,12 @@ import { loadMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import { loadMySocialGraph, setProfileFollow } from "../../services/socialGraphApi.mjs";
 import { getTournamentLifecycleStatus } from "../../domain/tournamentLifecycle.mjs";
 import { getModalityDisplayName, modalityPickerGroups } from "../../domain/modalityCatalog.mjs";
+import { allowedByPlan, modalityConfig } from "../../domain/modalityConfig.mjs";
+import { isCupType, isMixedType, requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
+import { getAutomaticCupRankingLabel } from "../../domain/cupRankingDefaults.mjs";
+import { formatDateBR, getWeekdayBR } from "../../domain/dateTime.mjs";
+import { cupRankingCriteria, rankingCriteriaOptions } from "../../domain/rankingCriteria.mjs";
+import { getCompatibleTournamentType, getGenderCompatibleTournamentTypes } from "../../domain/tournamentGenderConfig.mjs";
 import { normalizeTournamentSummaryRow, tournamentSummarySelect } from "../../domain/tournamentSummary.mjs";
 import PlatformV2Profile from "./PlatformV2Profile.jsx";
 import styles from "./PlatformV2App.module.css";
@@ -104,6 +110,38 @@ const TOURNAMENT_CREATION_STEPS = [
   { id: 4, label: "Divulgação" },
   { id: 5, label: "Revisão" },
 ];
+
+function createGroupedTournamentDraft({ location = "", modality = "" } = {}) {
+  return {
+    category: "",
+    modality,
+    composition: "",
+    compositionOther: "",
+    winningScore: "4",
+    rankingRule: "",
+    startDate: "",
+    endDate: "",
+    registrationDeadline: "",
+    startTime: "",
+    location,
+  };
+}
+
+function getInclusiveDateRange(startDate, endDate) {
+  if (!startDate) return [];
+  const effectiveEndDate = endDate || startDate;
+  if (effectiveEndDate < startDate) return [];
+  const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
+  const [endYear, endMonth, endDay] = effectiveEndDate.split("-").map(Number);
+  let current = Date.UTC(startYear, startMonth - 1, startDay);
+  const end = Date.UTC(endYear, endMonth - 1, endDay);
+  const dates = [];
+  while (current <= end) {
+    dates.push(new Date(current).toISOString().slice(0, 10));
+    current += 86_400_000;
+  }
+  return dates;
+}
 
 function getInitials(value, fallback = "T3") {
   const initials = String(value || "")
@@ -306,29 +344,36 @@ function ComingSoon({ tab }) {
 }
 
 function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
+  const planKey = String(profile?.plan || "basic").trim().toLocaleLowerCase("pt-BR");
+  const allowedTournamentTypes = allowedByPlan[planKey] || allowedByPlan.basic;
+  const initialLocation = [profile?.arena_name || profile?.organization_name, profile?.city, profile?.state].filter(Boolean).join(" · ");
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [validationError, setValidationError] = useState("");
   const [saved, setSaved] = useState(false);
   const [coverFile, setCoverFile] = useState(null);
   const [regulationsFile, setRegulationsFile] = useState(null);
+  const [regulationsFileError, setRegulationsFileError] = useState("");
   const [coverPreview, setCoverPreview] = useState("");
   const [draft, setDraft] = useState(() => ({
     name: "",
     structure: "single",
-    modality: "Super 08",
+    modality: "",
     category: "",
-    groupedCategories: [""],
-    composition: "mixed",
-    winningScore: "6",
-    rankingRule: "wins_balance_games",
+    groupedCategories: [createGroupedTournamentDraft({ location: initialLocation })],
+    composition: "",
+    compositionOther: "",
+    winningScore: "4",
+    rankingRule: "",
     startDate: "",
     endDate: "",
     registrationDeadline: "",
     startTime: "",
-    location: [profile?.arena_name || profile?.organization_name, profile?.city, profile?.state].filter(Boolean).join(" · "),
+    location: initialLocation,
     partnerMode: "ready",
+    partnerFinderDeadline: "",
     regulationsText: "",
+    dailyStartTimes: {},
   }));
 
   useEffect(() => {
@@ -347,18 +392,105 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
     setSaved(false);
   }
 
-  function updateGroupedCategory(index, value) {
+  function changeModality(modality) {
     setDraft((current) => ({
       ...current,
-      groupedCategories: current.groupedCategories.map((category, categoryIndex) => categoryIndex === index ? value : category),
+      modality,
+      composition: isMixedType(modalityConfig[modality]) ? "mista" : current.composition,
+    }));
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function changeComposition(composition) {
+    setDraft((current) => ({
+      ...current,
+      composition,
+      modality: getCompatibleTournamentType(current.modality, composition, allowedTournamentTypes),
+    }));
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function updateGroupedCategory(index, field, value) {
+    setDraft((current) => ({
+      ...current,
+      groupedCategories: current.groupedCategories.map((category, categoryIndex) => {
+        if (categoryIndex !== index) return category;
+        if (field === "composition") {
+          return {
+            ...category,
+            composition: value,
+            modality: getCompatibleTournamentType(category.modality, value, allowedTournamentTypes),
+          };
+        }
+        if (field === "modality") {
+          return {
+            ...category,
+            modality: value,
+            composition: isMixedType(modalityConfig[value]) ? "mista" : category.composition,
+          };
+        }
+        return { ...category, [field]: value };
+      }),
     }));
     setValidationError("");
     setSaved(false);
   }
 
   function addGroupedCategory() {
-    setDraft((current) => ({ ...current, groupedCategories: [...current.groupedCategories, ""] }));
+    setDraft((current) => ({
+      ...current,
+      groupedCategories: [...current.groupedCategories, createGroupedTournamentDraft({ location: current.location || initialLocation })],
+    }));
     setSaved(false);
+  }
+
+  function duplicateGroupedCategory(index) {
+    setDraft((current) => {
+      const source = current.groupedCategories[index];
+      if (!source) return current;
+      const copy = { ...source, category: "" };
+      return {
+        ...current,
+        groupedCategories: [
+          ...current.groupedCategories.slice(0, index + 1),
+          copy,
+          ...current.groupedCategories.slice(index + 1),
+        ],
+      };
+    });
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function updateDailyStartTime(date, time) {
+    setDraft((current) => ({
+      ...current,
+      dailyStartTimes: { ...current.dailyStartTimes, [date]: time },
+    }));
+    setValidationError("");
+    setSaved(false);
+  }
+
+  function chooseRegulationsFile(file) {
+    if (!file) {
+      setRegulationsFile(null);
+      setRegulationsFileError("");
+      return;
+    }
+    if (file.type !== "application/pdf" && !file.name.toLocaleLowerCase("pt-BR").endsWith(".pdf")) {
+      setRegulationsFile(null);
+      setRegulationsFileError("Escolha um arquivo PDF.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setRegulationsFile(null);
+      setRegulationsFileError("O PDF deve ter no máximo 10 MB.");
+      return;
+    }
+    setRegulationsFile(file);
+    setRegulationsFileError("");
   }
 
   function removeGroupedCategory(index) {
@@ -370,16 +502,39 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
   function validateStep(step) {
     if (step === 1 && draft.name.trim().length < 3) return "Informe o nome do evento para continuar.";
     if (step === 2) {
-      const categoriesReady = draft.structure === "grouped"
-        ? draft.groupedCategories.length > 0 && draft.groupedCategories.every((category) => category.trim())
-        : draft.category.trim();
-      if (!draft.modality || !categoriesReady || !draft.composition) return "Defina modalidade, todas as categorias e a composição.";
+      if (draft.structure === "grouped") {
+        const categoriesReady = draft.groupedCategories.length > 0 && draft.groupedCategories.every((category) => {
+          const rankingReady = isCupType(modalityConfig[category.modality]) || rankingCriteriaOptions.some((option) => option.value === category.rankingRule);
+          const compositionReady = category.composition && (category.composition !== "outro" || category.compositionOther.trim());
+          return category.category.trim()
+            && allowedTournamentTypes.includes(category.modality)
+            && compositionReady
+            && ["4", "6"].includes(category.winningScore)
+            && rankingReady;
+        });
+        if (!categoriesReady) return "Revise categoria, modalidade, composição, games e critério de cada torneio.";
+      } else {
+        const rankingReady = isCupType(modalityConfig[draft.modality]) || rankingCriteriaOptions.some((option) => option.value === draft.rankingRule);
+        if (!draft.modality || !allowedTournamentTypes.includes(draft.modality) || !draft.category.trim() || !draft.composition || !rankingReady) return "Defina modalidade, categoria, composição e critério.";
+        if (draft.composition === "outro" && !draft.compositionOther.trim()) return "Informe qual será a outra composição.";
+      }
     }
     if (step === 3) {
-      if (!draft.startDate || !draft.registrationDeadline || !draft.startTime || !draft.location.trim()) return "Preencha data, prazo de inscrição, horário e local.";
-      if (draft.endDate && draft.endDate < draft.startDate) return "A data final não pode ser anterior ao início.";
-      if (draft.registrationDeadline > draft.startDate) return "O prazo de inscrição deve terminar até a data de início.";
+      if (draft.structure === "grouped") {
+        const invalidCategory = draft.groupedCategories.find((category) => (
+          !category.startDate
+          || Boolean(category.endDate && category.endDate < category.startDate)
+          || Boolean(category.registrationDeadline && category.registrationDeadline > category.startDate)
+        ));
+        if (invalidCategory) return `Revise as datas de ${invalidCategory.category || "uma categoria"}.`;
+      } else {
+        if (!draft.startDate || !draft.endDate) return "Informe as datas de início e fim do torneio.";
+        if (draft.endDate < draft.startDate) return "A data final não pode ser anterior ao início.";
+        if (draft.registrationDeadline && draft.registrationDeadline > draft.startDate) return "O prazo de inscrição deve terminar até a data de início.";
+        if (draft.partnerFinderDeadline && draft.partnerFinderDeadline > draft.startDate) return "O prazo para formar a dupla deve terminar até o início.";
+      }
     }
+    if (step === 4 && regulationsFileError) return regulationsFileError;
     return "";
   }
 
@@ -416,11 +571,27 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
   }
 
   const formatDate = (value) => value ? runtime.formatDate(value) : "Não informado";
-  const compositionLabel = { male: "Masculino", female: "Feminino", mixed: "Misto", free: "Livre" }[draft.composition] || "Não informado";
-  const modalityLabel = getModalityDisplayName(draft.modality);
+  const getCompositionLabel = (composition, other = "") => ({ masculino: "Masculino", feminino: "Feminino", mista: "Mista", livre: "Livre", outro: other || "Outra" }[composition] || "Não informado");
+  const compositionLabel = draft.structure === "grouped"
+    ? [...new Set(draft.groupedCategories.map((category) => getCompositionLabel(category.composition, category.compositionOther)))].join(" · ")
+    : getCompositionLabel(draft.composition, draft.compositionOther);
+  const modalityLabel = draft.structure === "grouped"
+    ? [...new Set(draft.groupedCategories.map((category) => getModalityDisplayName(category.modality)))].join(" · ")
+    : getModalityDisplayName(draft.modality);
+  const cupModality = isCupType(modalityConfig[draft.modality]);
+  const fixedDoublesModality = requiresFixedDoubles(modalityConfig[draft.modality]);
+  const compatibleTournamentTypes = getGenderCompatibleTournamentTypes(allowedTournamentTypes, draft.composition);
+  const eventDateRange = getInclusiveDateRange(draft.startDate, draft.endDate);
+  const multiDayEvent = draft.structure === "single" && eventDateRange.length > 1;
   const categoryLabel = draft.structure === "grouped"
-    ? draft.groupedCategories.filter((category) => category.trim()).join(" · ") || "Sem categorias"
+    ? draft.groupedCategories.map((category) => category.category.trim()).filter(Boolean).join(" · ") || "Sem categorias"
     : draft.category || "Sem categoria";
+  const groupedDates = draft.groupedCategories.map((category) => category.startDate).filter(Boolean).sort();
+  const reviewStartDate = draft.structure === "grouped" ? groupedDates[0] || "" : draft.startDate;
+  const reviewStartTime = draft.structure === "grouped" ? "Horários por categoria" : multiDayEvent ? "Horários por dia" : draft.startTime || "Não informado";
+  const reviewLocation = draft.structure === "grouped"
+    ? [...new Set(draft.groupedCategories.map((category) => category.location.trim()).filter(Boolean))].join(" · ") || "Não informado"
+    : draft.location || "Não informado";
 
   return (
     <section className={styles.createTournamentPage} aria-labelledby="create-tournament-title">
@@ -471,27 +642,126 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
         {currentStep === 2 ? (
           <section className={styles.createTournamentPanel} aria-labelledby="create-step-format">
             <header><span><Trophy /></span><div><h2 id="create-step-format">Formato da competição</h2></div></header>
-            <div className={styles.createTournamentFields}>
-              <label><span>Modalidade</span><select value={draft.modality} onChange={(event) => updateDraft("modality", event.target.value)}>{modalityPickerGroups.map((group) => <optgroup key={group.id} label={group.title}>{group.types.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}</optgroup>)}</select></label>
-              {draft.structure === "single" ? <label><span>Categoria</span><input value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} placeholder="Ex.: Categoria C" /></label> : <div className={styles.createTournamentCategoryList}><span>Categorias agrupadas</span>{draft.groupedCategories.map((category, index) => <div key={`category-${index}`}><input value={category} onChange={(event) => updateGroupedCategory(index, event.target.value)} placeholder={`Categoria ${index + 1}`} />{draft.groupedCategories.length > 1 ? <button type="button" onClick={() => removeGroupedCategory(index)} aria-label={`Remover categoria ${index + 1}`}><Trash2 /></button> : null}</div>)}<button type="button" onClick={addGroupedCategory}><Plus /> Adicionar categoria</button></div>}
-              <fieldset className={styles.createTournamentWideField}><legend>Composição</legend><div className={styles.createTournamentPills}>{[["male", "Masculino"], ["female", "Feminino"], ["mixed", "Misto"], ["free", "Livre"]].map(([value, label]) => <button type="button" key={value} className={draft.composition === value ? styles.selectedCreatePill : ""} onClick={() => updateDraft("composition", value)}>{label}</button>)}</div></fieldset>
-              <label><span>Games para vencer</span><select value={draft.winningScore} onChange={(event) => updateDraft("winningScore", event.target.value)}><option value="4">4 games</option><option value="6">6 games</option><option value="8">8 games</option></select></label>
-              <label><span>Critério do ranking</span><select value={draft.rankingRule} onChange={(event) => updateDraft("rankingRule", event.target.value)}><option value="wins_balance_games">Vitórias → saldo → games</option><option value="wins_games_head_to_head">Vitórias → games → confronto direto</option></select></label>
-            </div>
+            {draft.structure === "single" ? (
+              <div className={styles.createTournamentFields}>
+                <label>
+                  <span>Modalidade</span>
+                  <select value={draft.modality} onChange={(event) => changeModality(event.target.value)}>
+                    <option value="">Escolha a modalidade</option>
+                    {modalityPickerGroups.map((group) => {
+                      const groupTypes = group.types.filter((type) => compatibleTournamentTypes.includes(type));
+                      return groupTypes.length ? <optgroup key={group.id} label={group.title}>{groupTypes.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}</optgroup> : null;
+                    })}
+                  </select>
+                </label>
+                <label><span>Categoria</span><input value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} placeholder="Ex.: Categoria C" /></label>
+                <label>
+                  <span>Composição</span>
+                  <select value={draft.composition} onChange={(event) => changeComposition(event.target.value)}>
+                    <option value="">Escolha a composição</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="feminino">Feminino</option>
+                    <option value="mista">Mista</option>
+                    <option value="livre">Livre</option>
+                    <option value="outro">Outra</option>
+                  </select>
+                </label>
+                {draft.composition === "outro" ? <label><span>Outra composição</span><input value={draft.compositionOther} onChange={(event) => updateDraft("compositionOther", event.target.value)} placeholder="Informe a composição" /></label> : null}
+                <label><span>Set para vencer</span><select value={draft.winningScore} onChange={(event) => updateDraft("winningScore", event.target.value)}><option value="4">4 games</option><option value="6">6 games</option></select></label>
+                <label><span>Critério do ranking</span><select value={cupModality ? cupRankingCriteria : draft.rankingRule} disabled={cupModality} onChange={(event) => updateDraft("rankingRule", event.target.value)}>{cupModality ? <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(draft.modality)}</option> : <><option value="">Escolha a ordem dos critérios</option>{rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</>}</select></label>
+              </div>
+            ) : (
+              <div className={styles.createTournamentGroupedList}>
+                {draft.groupedCategories.map((category, index) => {
+                  const categoryTypes = getGenderCompatibleTournamentTypes(allowedTournamentTypes, category.composition);
+                  const categoryCupModality = isCupType(modalityConfig[category.modality]);
+                  return (
+                    <article className={styles.createTournamentGroupedCard} key={`category-${index}`}>
+                      <header>
+                        <strong>Torneio {index + 1}</strong>
+                        <span className={styles.createTournamentGroupedActions}>
+                          <button type="button" onClick={() => duplicateGroupedCategory(index)}><Plus /> Duplicar</button>
+                          {draft.groupedCategories.length > 1 ? <button type="button" onClick={() => removeGroupedCategory(index)} aria-label={`Remover torneio ${index + 1}`}><Trash2 /> Remover</button> : null}
+                        </span>
+                      </header>
+                      <div className={styles.createTournamentFields}>
+                        <label><span>Categoria</span><input value={category.category} onChange={(event) => updateGroupedCategory(index, "category", event.target.value)} placeholder="Ex.: Categoria C" /></label>
+                        <label>
+                          <span>Modalidade</span>
+                          <select value={category.modality} onChange={(event) => updateGroupedCategory(index, "modality", event.target.value)}>
+                            <option value="">Escolha a modalidade</option>
+                            {modalityPickerGroups.map((group) => {
+                              const groupTypes = group.types.filter((type) => categoryTypes.includes(type));
+                              return groupTypes.length ? <optgroup key={group.id} label={group.title}>{groupTypes.map((type) => <option key={type} value={type}>{getModalityDisplayName(type)}</option>)}</optgroup> : null;
+                            })}
+                          </select>
+                        </label>
+                        <label>
+                          <span>Composição</span>
+                          <select value={category.composition} onChange={(event) => updateGroupedCategory(index, "composition", event.target.value)}>
+                            <option value="">Escolha a composição</option>
+                            <option value="masculino">Masculino</option>
+                            <option value="feminino">Feminino</option>
+                            <option value="mista">Mista</option>
+                            <option value="livre">Livre</option>
+                            <option value="outro">Outra</option>
+                          </select>
+                        </label>
+                        {category.composition === "outro" ? <label><span>Outra composição</span><input value={category.compositionOther} onChange={(event) => updateGroupedCategory(index, "compositionOther", event.target.value)} placeholder="Informe a composição" /></label> : null}
+                        <label><span>Set para vencer</span><select value={category.winningScore} onChange={(event) => updateGroupedCategory(index, "winningScore", event.target.value)}><option value="4">4 games</option><option value="6">6 games</option></select></label>
+                        <label><span>Critério do ranking</span><select value={categoryCupModality ? cupRankingCriteria : category.rankingRule} disabled={categoryCupModality} onChange={(event) => updateGroupedCategory(index, "rankingRule", event.target.value)}>{categoryCupModality ? <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(category.modality)}</option> : <><option value="">Escolha a ordem dos critérios</option>{rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</>}</select></label>
+                      </div>
+                    </article>
+                  );
+                })}
+                <button type="button" className={styles.createTournamentAddCategory} onClick={addGroupedCategory}><Plus /> Adicionar torneio</button>
+              </div>
+            )}
           </section>
         ) : null}
 
         {currentStep === 3 ? (
           <section className={styles.createTournamentPanel} aria-labelledby="create-step-agenda">
             <header><span><CalendarDays /></span><div><h2 id="create-step-agenda">Agenda e local</h2></div></header>
-            <div className={styles.createTournamentFields}>
-              <label><span>Início do torneio</span><input type="date" value={draft.startDate} onChange={(event) => updateDraft("startDate", event.target.value)} /></label>
-              <label><span>Fim do torneio</span><input type="date" value={draft.endDate} onChange={(event) => updateDraft("endDate", event.target.value)} /></label>
-              <label><span>Inscrições até</span><input type="date" value={draft.registrationDeadline} onChange={(event) => updateDraft("registrationDeadline", event.target.value)} /></label>
-              <label><span>Horário de início</span><input type="time" value={draft.startTime} onChange={(event) => updateDraft("startTime", event.target.value)} /></label>
-              <label className={styles.createTournamentWideField}><span>Local</span><input value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} placeholder="Arena e quadra" /></label>
-              <fieldset className={styles.createTournamentWideField}><legend>Inscrição em dupla</legend><div className={styles.createTournamentChoiceGrid}><button type="button" className={draft.partnerMode === "ready" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("partnerMode", "ready")}><span><UsersRound /></span><div><strong>Somente dupla pronta</strong><small>A inscrição exigirá os dois atletas.</small></div></button><button type="button" className={draft.partnerMode === "finder" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("partnerMode", "finder")}><span><Search /></span><div><strong>Encontre sua dupla</strong><small>O atleta poderá entrar sozinho e procurar um parceiro.</small></div></button></div></fieldset>
-            </div>
+            {draft.structure === "single" ? (
+              <div className={styles.createTournamentFields}>
+                <label><span>Início do torneio</span><input type="date" value={draft.startDate} onChange={(event) => updateDraft("startDate", event.target.value)} /></label>
+                <label><span>Fim do torneio</span><input type="date" value={draft.endDate} min={draft.startDate || undefined} onChange={(event) => updateDraft("endDate", event.target.value)} /></label>
+                <label><span>Inscrições até</span><input type="date" value={draft.registrationDeadline} max={draft.startDate || undefined} onChange={(event) => updateDraft("registrationDeadline", event.target.value)} /></label>
+                <label><span>Horário de início</span><input type="time" value={draft.startTime} onChange={(event) => updateDraft("startTime", event.target.value)} /></label>
+                <label className={styles.createTournamentWideField}><span>Local</span><input value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} placeholder="Arena e quadra" /></label>
+                {fixedDoublesModality ? <fieldset className={styles.createTournamentWideField}><legend>Inscrição em dupla</legend><div className={styles.createTournamentChoiceGrid}><button type="button" className={draft.partnerMode === "ready" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("partnerMode", "ready")}><span><UsersRound /></span><div><strong>Somente dupla pronta</strong></div></button><button type="button" className={draft.partnerMode === "finder" ? styles.selectedCreateChoice : ""} onClick={() => updateDraft("partnerMode", "finder")}><span><Search /></span><div><strong>Encontre sua dupla</strong></div></button></div></fieldset> : null}
+                {fixedDoublesModality && draft.partnerMode === "finder" ? <label className={styles.createTournamentWideField}><span>Prazo para formar a dupla</span><input type="date" value={draft.partnerFinderDeadline} max={draft.startDate || undefined} onChange={(event) => updateDraft("partnerFinderDeadline", event.target.value)} /></label> : null}
+                {multiDayEvent ? (
+                  <section className={`${styles.createTournamentWideField} ${styles.createTournamentDailyTimes}`}>
+                    <strong>Horário por dia</strong>
+                    <div>
+                      {eventDateRange.map((date) => (
+                        <label key={date}>
+                          <span>{formatDateBR(date)} · {getWeekdayBR(date)}</span>
+                          <input type="time" value={draft.dailyStartTimes[date] || draft.startTime} onChange={(event) => updateDailyStartTime(date, event.target.value)} />
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+            ) : (
+              <div className={styles.createTournamentGroupedList}>
+                {draft.groupedCategories.map((category, index) => (
+                  <article className={styles.createTournamentGroupedCard} key={`schedule-${index}`}>
+                    <header><strong>{category.category || `Torneio ${index + 1}`}</strong><small>{getModalityDisplayName(category.modality)}</small></header>
+                    <div className={`${styles.createTournamentFields} ${styles.createTournamentScheduleFields}`}>
+                      <label><span>Início</span><input type="date" value={category.startDate} onChange={(event) => updateGroupedCategory(index, "startDate", event.target.value)} /></label>
+                      <label><span>Fim</span><input type="date" value={category.endDate} min={category.startDate || undefined} onChange={(event) => updateGroupedCategory(index, "endDate", event.target.value)} /></label>
+                      <label><span>Inscrições até</span><input type="date" value={category.registrationDeadline} max={category.startDate || undefined} onChange={(event) => updateGroupedCategory(index, "registrationDeadline", event.target.value)} /></label>
+                      <label><span>Horário</span><input type="time" value={category.startTime} onChange={(event) => updateGroupedCategory(index, "startTime", event.target.value)} /></label>
+                      <label className={styles.createTournamentWideField}><span>Local</span><input value={category.location} onChange={(event) => updateGroupedCategory(index, "location", event.target.value)} placeholder="Arena e quadra" /></label>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         ) : null}
 
@@ -500,13 +770,14 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
             <header><span><ImagePlus /></span><div><h2 id="create-step-publication">Divulgação e regulamento</h2></div></header>
             <div className={styles.createTournamentPublication}>
               <label className={styles.createTournamentUpload}>
-                {coverPreview ? <img src={coverPreview} alt="Prévia da foto única do evento" /> : <span><ImagePlus /><strong>Escolher foto do evento</strong><small>Uma capa para o torneio único ou para todas as categorias agrupadas.</small></span>}
+                {coverPreview ? <img src={coverPreview} alt="Prévia da foto única do evento" /> : <span><ImagePlus /><strong>Escolher foto do evento</strong></span>}
                 <input type="file" accept="image/*" onChange={(event) => setCoverFile(event.target.files?.[0] || null)} />
               </label>
               <div className={styles.createTournamentFields}>
-                <label><span>Regulamento em PDF</span><input type="file" accept="application/pdf" onChange={(event) => setRegulationsFile(event.target.files?.[0] || null)} /></label>
+                <label><span>Regulamento em PDF (até 10 MB)</span><input type="file" accept="application/pdf" onChange={(event) => chooseRegulationsFile(event.target.files?.[0] || null)} /></label>
                 {regulationsFile ? <small className={styles.createTournamentFileName}>{regulationsFile.name}</small> : null}
-                <label><span>Resumo do regulamento</span><textarea value={draft.regulationsText} onChange={(event) => updateDraft("regulationsText", event.target.value)} placeholder="Categorias, formato, conduta e premiação." /></label>
+                {regulationsFileError ? <small className={styles.createTournamentFileError}>{regulationsFileError}</small> : null}
+                <label><span>Resumo do regulamento</span><textarea maxLength={5000} value={draft.regulationsText} onChange={(event) => updateDraft("regulationsText", event.target.value)} placeholder="Categorias, formato, conduta e premiação." /><small className={styles.createTournamentCharacterCount}>{draft.regulationsText.length}/5000</small></label>
               </div>
             </div>
           </section>
@@ -521,9 +792,9 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
                 <div><dt>Evento</dt><dd>{draft.name || "Não informado"}</dd></div>
                 <div><dt>Estrutura</dt><dd>{draft.structure === "grouped" ? "Torneios agrupados" : "Torneio único"}</dd></div>
                 <div><dt>Formato</dt><dd>{modalityLabel} · {categoryLabel} · {compositionLabel}</dd></div>
-                <div><dt>Data e horário</dt><dd>{formatDate(draft.startDate)} · {draft.startTime || "Não informado"}</dd></div>
-                <div><dt>Local</dt><dd>{draft.location || "Não informado"}</dd></div>
-                <div><dt>Inscrição</dt><dd>{draft.partnerMode === "finder" ? "Encontre sua dupla ativado" : "Somente dupla pronta"}</dd></div>
+                <div><dt>Data e horário</dt><dd>{formatDate(reviewStartDate)} · {reviewStartTime}</dd></div>
+                <div><dt>Local</dt><dd>{reviewLocation}</dd></div>
+                {draft.structure === "single" && fixedDoublesModality ? <div><dt>Inscrição</dt><dd>{draft.partnerMode === "finder" ? "Encontre sua dupla ativado" : "Somente dupla pronta"}</dd></div> : null}
               </dl>
             </div>
           </section>
