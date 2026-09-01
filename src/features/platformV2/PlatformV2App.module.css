@@ -626,7 +626,7 @@
 .createTournamentFooter button:disabled { cursor: wait; opacity: .62; }
 .createTournamentFooter button svg { width: 15px; }
 .createTournamentFooter .createTournamentPrimaryAction { border-color: #ff5c0c; background: #ff5b0b; color: #fff; }
-.createTournamentFooter .createTournamentError { color: #ff918b; }
+.createTournamentFooter .createTournamentError { display: inline-flex; min-height: 36px; align-items: center; border: 1px solid rgba(255, 111, 102, .48); border-radius: 11px; padding: 7px 12px; background: rgba(146, 35, 35, .26); color: #ffd0cc; box-shadow: 0 8px 22px rgba(0, 0, 0, .18); font-size: .78rem; font-weight: 850; line-height: 1.3; }
 .createTournamentFooter .createTournamentSaved { color: #50dc92; }
 
 @media (max-width: 980px) {

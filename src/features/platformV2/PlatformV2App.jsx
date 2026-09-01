@@ -123,7 +123,7 @@ function createGroupedTournamentDraft({ location = "", modality = "" } = {}) {
     modality,
     composition: "",
     compositionOther: "",
-    winningScore: "4",
+    winningScore: "",
     rankingRule: "",
     startDate: "",
     endDate: "",
@@ -399,7 +399,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
     groupedCategories: [createGroupedTournamentDraft({ location: initialLocation })],
     composition: "",
     compositionOther: "",
-    winningScore: "4",
+    winningScore: "",
     rankingRule: "",
     startDate: "",
     endDate: "",
@@ -539,7 +539,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
         if (!categoriesReady) return "Revise categoria, modalidade, composição, games e critério de cada torneio.";
       } else {
         const rankingReady = isCupType(modalityConfig[draft.modality]) || rankingCriteriaOptions.some((option) => option.value === draft.rankingRule);
-        if (!draft.modality || !allowedTournamentTypes.includes(draft.modality) || !draft.category.trim() || !draft.composition || !rankingReady) return "Defina modalidade, categoria, composição e critério.";
+        if (!draft.modality || !allowedTournamentTypes.includes(draft.modality) || !draft.category.trim() || !draft.composition || !["4", "6"].includes(draft.winningScore) || !rankingReady) return "Defina modalidade, categoria, composição, set para vencer e critério.";
         if (draft.composition === "outro" && !draft.compositionOther.trim()) return "Informe qual será a outra composição.";
       }
     }
@@ -710,7 +710,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
               eventDay: getWeekdayBR(category.startDate),
               eventStartTime: category.startTime,
               location: category.location.trim(),
-              winningScore: Number(category.winningScore) || 4,
+              winningScore: Number(category.winningScore),
               rankingCriteria,
               partnerFinder: {
                 enabled: requiresFixedDoubles(modalityConfig[category.modality]),
@@ -738,7 +738,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
             eventDay: getWeekdayBR(draft.startDate),
             eventStartTime: draft.startTime,
             dailyStartTimes: draft.dailyStartTimes,
-            winningScore: Number(draft.winningScore) || 4,
+            winningScore: Number(draft.winningScore),
             rankingCriteria: getNewTournamentRankingCriteria(draft.modality, draft.rankingRule),
             partnerFinder: {
               enabled: fixedDoublesModality && draft.partnerMode === "finder",
@@ -891,7 +891,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
                   </select>
                 </label>
                 {draft.composition === "outro" ? <label><span>Outra composição</span><input value={draft.compositionOther} onChange={(event) => updateDraft("compositionOther", event.target.value)} placeholder="Informe a composição" /></label> : null}
-                <label><span>Set para vencer</span><select value={draft.winningScore} onChange={(event) => updateDraft("winningScore", event.target.value)}><option value="4">4 games</option><option value="6">6 games</option></select></label>
+                <label><span>Set para vencer</span><select value={draft.winningScore} onChange={(event) => updateDraft("winningScore", event.target.value)}><option value="">Escolha o set</option><option value="4">4 games</option><option value="6">6 games</option></select></label>
                 <label><span>Critério do ranking</span><select value={cupModality ? cupRankingCriteria : draft.rankingRule} disabled={cupModality} onChange={(event) => updateDraft("rankingRule", event.target.value)}>{cupModality ? <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(draft.modality)}</option> : <><option value="">Escolha a ordem dos critérios</option>{rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</>}</select></label>
               </div>
             ) : (
@@ -932,7 +932,7 @@ function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCo
                           </select>
                         </label>
                         {category.composition === "outro" ? <label><span>Outra composição</span><input value={category.compositionOther} onChange={(event) => updateGroupedCategory(index, "compositionOther", event.target.value)} placeholder="Informe a composição" /></label> : null}
-                        <label><span>Set para vencer</span><select value={category.winningScore} onChange={(event) => updateGroupedCategory(index, "winningScore", event.target.value)}><option value="4">4 games</option><option value="6">6 games</option></select></label>
+                        <label><span>Set para vencer</span><select value={category.winningScore} onChange={(event) => updateGroupedCategory(index, "winningScore", event.target.value)}><option value="">Escolha o set</option><option value="4">4 games</option><option value="6">6 games</option></select></label>
                         <label><span>Critério do ranking</span><select value={categoryCupModality ? cupRankingCriteria : category.rankingRule} disabled={categoryCupModality} onChange={(event) => updateGroupedCategory(index, "rankingRule", event.target.value)}>{categoryCupModality ? <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(category.modality)}</option> : <><option value="">Escolha a ordem dos critérios</option>{rankingCriteriaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</>}</select></label>
                       </div>
                     </article>

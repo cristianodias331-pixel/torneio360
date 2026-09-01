@@ -881,6 +881,15 @@ assert.ok(
   "A criação de torneios no V2 voltou a ser apenas um rascunho sem persistência."
 );
 assert.ok(
+  platformV2Source.includes('winningScore: "",')
+    && !platformV2Source.includes('winningScore: "4",')
+    && platformV2Source.split('<option value="">Escolha o set</option>').length - 1 === 2
+    && platformV2Source.includes('!["4", "6"].includes(draft.winningScore)')
+    && !platformV2Source.includes('Number(draft.winningScore) || 4')
+    && !platformV2Source.includes('Number(category.winningScore) || 4'),
+  "O set para vencer do V2 voltou a ser predefinido ou deixou de ser obrigatório."
+);
+assert.ok(
   styleSource.includes('@keyframes asyncActionIndicatorSpin')
     && styleSource.includes('button[aria-busy="true"]::after')
     && organizerWorkspaceSource.includes("if (circuitSavingRef.current) return false;")
