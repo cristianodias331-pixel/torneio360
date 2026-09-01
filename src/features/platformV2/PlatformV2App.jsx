@@ -41,14 +41,20 @@ import { createMemberProfileFallback } from "../../domain/memberProfile.mjs";
 import { loadMyMemberProfile } from "../../services/memberProfileApi.mjs";
 import { loadMySocialGraph, setProfileFollow } from "../../services/socialGraphApi.mjs";
 import { getTournamentLifecycleStatus } from "../../domain/tournamentLifecycle.mjs";
+import { validatePublicTextFields } from "../../domain/contentModeration.mjs";
 import { getModalityDisplayName, modalityPickerGroups } from "../../domain/modalityCatalog.mjs";
 import { allowedByPlan, modalityConfig } from "../../domain/modalityConfig.mjs";
 import { isCupType, isMixedType, requiresFixedDoubles } from "../../domain/modalityClassification.mjs";
-import { getAutomaticCupRankingLabel } from "../../domain/cupRankingDefaults.mjs";
+import { getAutomaticCupRankingLabel, getNewTournamentRankingCriteria } from "../../domain/cupRankingDefaults.mjs";
 import { formatDateBR, getWeekdayBR } from "../../domain/dateTime.mjs";
 import { cupRankingCriteria, rankingCriteriaOptions } from "../../domain/rankingCriteria.mjs";
-import { getCompatibleTournamentType, getGenderCompatibleTournamentTypes } from "../../domain/tournamentGenderConfig.mjs";
+import { createInitialData } from "../../domain/tournamentDataNormalization.mjs";
+import { generatePublicId } from "../../domain/publicIdentifiers.mjs";
+import { getCompatibleTournamentType, getGenderCompatibleTournamentTypes, getStoredTournamentGenderFields } from "../../domain/tournamentGenderConfig.mjs";
 import { normalizeTournamentSummaryRow, tournamentSummarySelect } from "../../domain/tournamentSummary.mjs";
+import { prepareSocialPostImageFile, resizeImageFile } from "../media/imageResize.mjs";
+import { uploadPreparedImagePair } from "../../services/mediaStorage.mjs";
+import { uploadTournamentRegulationsPdf, validateTournamentRegulationsPdf } from "../../services/tournamentRegulationsApi.mjs";
 import PlatformV2Profile from "./PlatformV2Profile.jsx";
 import styles from "./PlatformV2App.module.css";
 
@@ -141,6 +147,36 @@ function getInclusiveDateRange(startDate, endDate) {
     current += 86_400_000;
   }
   return dates;
+}
+
+function buildTournamentPublicInfo(user, profile) {
+  return {
+    visibility: {
+      showArenaName: true,
+      showOrganizerName: true,
+      showWhatsapp: true,
+      showWhatsappGroupLink: true,
+      showInstagram: true,
+      showAddress: true,
+      showMapsLink: true,
+      showCityState: true,
+    },
+    organizer: {
+      photoUrl: profile?.photo_url || profile?.avatar_url || user?.user_metadata?.avatar_url || "",
+      arenaName: profile?.arena_name || profile?.organization_name || "",
+      organizerName: profile?.name || user?.user_metadata?.name || user?.user_metadata?.full_name || "",
+      whatsapp: profile?.phone || "",
+      instagramHandle: profile?.instagram_handle || "",
+      instagramLink: profile?.instagram_link || "",
+      whatsappGroupLink: profile?.whatsapp_group_link || "",
+      pixKey: profile?.pix_key || "",
+      cardPaymentLink: profile?.card_payment_link || "",
+      address: profile?.address || "",
+      mapsLink: profile?.maps_link || "",
+      city: profile?.city || "",
+      state: profile?.state || "",
+    },
+  };
 }
 
 function getInitials(value, fallback = "T3") {
@@ -343,14 +379,14 @@ function ComingSoon({ tab }) {
   );
 }
 
-function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
+function CreateTournamentWizard({ supabase, user, profile, runtime, tournamentCount = 0, onClose, onCreated, onNotice }) {
   const planKey = String(profile?.plan || "basic").trim().toLocaleLowerCase("pt-BR");
   const allowedTournamentTypes = allowedByPlan[planKey] || allowedByPlan.basic;
   const initialLocation = [profile?.arena_name || profile?.organization_name, profile?.city, profile?.state].filter(Boolean).join(" · ");
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [validationError, setValidationError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [coverFile, setCoverFile] = useState(null);
   const [regulationsFile, setRegulationsFile] = useState(null);
   const [regulationsFileError, setRegulationsFileError] = useState("");
@@ -389,7 +425,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
   function updateDraft(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
     setValidationError("");
-    setSaved(false);
   }
 
   function changeModality(modality) {
@@ -399,7 +434,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       composition: isMixedType(modalityConfig[modality]) ? "mista" : current.composition,
     }));
     setValidationError("");
-    setSaved(false);
   }
 
   function changeComposition(composition) {
@@ -409,7 +443,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       modality: getCompatibleTournamentType(current.modality, composition, allowedTournamentTypes),
     }));
     setValidationError("");
-    setSaved(false);
   }
 
   function updateGroupedCategory(index, field, value) {
@@ -435,7 +468,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       }),
     }));
     setValidationError("");
-    setSaved(false);
   }
 
   function addGroupedCategory() {
@@ -443,7 +475,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       ...current,
       groupedCategories: [...current.groupedCategories, createGroupedTournamentDraft({ location: current.location || initialLocation })],
     }));
-    setSaved(false);
   }
 
   function duplicateGroupedCategory(index) {
@@ -461,7 +492,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       };
     });
     setValidationError("");
-    setSaved(false);
   }
 
   function updateDailyStartTime(date, time) {
@@ -470,7 +500,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       dailyStartTimes: { ...current.dailyStartTimes, [date]: time },
     }));
     setValidationError("");
-    setSaved(false);
   }
 
   function chooseRegulationsFile(file) {
@@ -479,14 +508,10 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       setRegulationsFileError("");
       return;
     }
-    if (file.type !== "application/pdf" && !file.name.toLocaleLowerCase("pt-BR").endsWith(".pdf")) {
+    const error = validateTournamentRegulationsPdf(file);
+    if (error) {
       setRegulationsFile(null);
-      setRegulationsFileError("Escolha um arquivo PDF.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setRegulationsFile(null);
-      setRegulationsFileError("O PDF deve ter no máximo 10 MB.");
+      setRegulationsFileError(error);
       return;
     }
     setRegulationsFile(file);
@@ -496,7 +521,6 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
   function removeGroupedCategory(index) {
     setDraft((current) => ({ ...current, groupedCategories: current.groupedCategories.filter((_, categoryIndex) => categoryIndex !== index) }));
     setValidationError("");
-    setSaved(false);
   }
 
   function validateStep(step) {
@@ -545,20 +569,220 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
     setValidationError("");
   }
 
-  function advance() {
+  async function createTournament() {
+    if (saving) return;
+
+    for (let step = 1; step <= 4; step += 1) {
+      const error = validateStep(step);
+      if (!error) continue;
+      setCurrentStep(step);
+      setValidationError(error);
+      return;
+    }
+
+    if (!supabase || !user?.id) {
+      setValidationError("Sua sessão expirou. Entre novamente para criar o torneio.");
+      return;
+    }
+
+    const arenaName = String(profile?.arena_name || profile?.organization_name || "").trim();
+    const organizerName = String(profile?.name || user?.user_metadata?.name || user?.user_metadata?.full_name || "").trim();
+    if (!arenaName || !organizerName) {
+      setValidationError("Complete o nome da organização e do responsável antes de criar o torneio.");
+      return;
+    }
+
+    if (planKey === "basic" && tournamentCount >= 1) {
+      setValidationError("O plano Basic permite apenas um campeonato por vez.");
+      return;
+    }
+
+    const grouped = draft.structure === "grouped";
+    const moderation = validatePublicTextFields({
+      name: draft.name,
+      category: grouped ? "" : draft.category,
+      categoryNames: grouped ? draft.groupedCategories.map((category) => category.category).join(" ") : "",
+      location: grouped ? draft.groupedCategories.map((category) => category.location).join(" ") : draft.location,
+      regulations: draft.regulationsText,
+    });
+    if (!moderation.allowed) {
+      setValidationError(moderation.message);
+      return;
+    }
+
+    setSaving(true);
+    setValidationError("");
+
+    try {
+      let coverImageUrl = "";
+      let coverImageThumbnailUrl = "";
+      if (coverFile) {
+        const [preparedImage, thumbnailUrl] = await Promise.all([
+          prepareSocialPostImageFile(coverFile),
+          resizeImageFile(coverFile, {
+            maxWidth: 420,
+            maxHeight: 525,
+            quality: 0.78,
+            outputType: "image/webp",
+          }),
+        ]);
+        const uploadedCover = await uploadPreparedImagePair({
+          supabase,
+          userId: user.id,
+          imageUrl: preparedImage.imageUrl,
+          thumbnailUrl,
+          kind: "event-cover",
+        });
+        coverImageUrl = uploadedCover.imageUrl;
+        coverImageThumbnailUrl = uploadedCover.thumbnailUrl;
+      }
+
+      let regulationsPdfUrl = "";
+      let regulationsPdfName = "";
+      if (regulationsFile) {
+        const uploadedRegulations = await uploadTournamentRegulationsPdf({
+          supabase,
+          userId: user.id,
+          file: regulationsFile,
+        });
+        regulationsPdfUrl = uploadedRegulations.url;
+        regulationsPdfName = uploadedRegulations.name;
+      }
+
+      const groupedStartDates = grouped
+        ? draft.groupedCategories.map((category) => category.startDate).filter(Boolean).sort()
+        : [];
+      const groupedEndDates = grouped
+        ? draft.groupedCategories.map((category) => category.endDate || category.startDate).filter(Boolean).sort()
+        : [];
+      const eventStartDate = grouped ? groupedStartDates[0] : draft.startDate;
+      const eventEndDate = grouped
+        ? groupedEndDates[groupedEndDates.length - 1]
+        : draft.endDate || draft.startDate;
+      const eventGroupKey = grouped ? generatePublicId() : null;
+      const publishedAt = new Date().toISOString();
+      const publicInfo = buildTournamentPublicInfo(user, profile);
+      const baseData = {
+        eventName: draft.name.trim(),
+        eventGroupKey,
+        multiCategoryEvent: grouped,
+        eventStartDate,
+        eventEndDate,
+        eventGroupStartDate: grouped ? eventStartDate : "",
+        eventGroupEndDate: grouped ? eventEndDate : "",
+        eventPeriodLabel: eventEndDate && eventEndDate !== eventStartDate
+          ? `${formatDateBR(eventStartDate)} até ${formatDateBR(eventEndDate)}`
+          : formatDateBR(eventStartDate),
+        registrationDeadline: grouped ? "" : draft.registrationDeadline,
+        regulations: {
+          text: draft.regulationsText.trim(),
+          pdfUrl: regulationsPdfUrl,
+          pdfName: regulationsPdfName,
+        },
+        location: grouped ? "" : draft.location.trim(),
+        publicInfo,
+        coverImageUrl,
+        coverImageThumbnailUrl,
+        eventCoverImageUrl: coverImageUrl,
+        eventCoverImageThumbnailUrl: coverImageThumbnailUrl,
+        publishedOnProfile: true,
+        publishedAt,
+      };
+
+      const rows = grouped
+        ? draft.groupedCategories.map((category) => {
+          const rankingCriteria = getNewTournamentRankingCriteria(category.modality, category.rankingRule);
+          return {
+            user_id: user.id,
+            public_id: generatePublicId(),
+            is_public: true,
+            name: category.category.trim(),
+            type: category.modality,
+            data: {
+              ...createInitialData(category.modality, modalityConfig[category.modality]),
+              ...baseData,
+              category: category.category.trim(),
+              ...getStoredTournamentGenderFields(category.modality, category.composition, category.compositionOther),
+              eventDate: category.startDate,
+              eventStartDate: category.startDate,
+              eventEndDate: category.endDate || category.startDate,
+              registrationDeadline: category.registrationDeadline,
+              eventDay: getWeekdayBR(category.startDate),
+              eventStartTime: category.startTime,
+              location: category.location.trim(),
+              winningScore: Number(category.winningScore) || 4,
+              rankingCriteria,
+              partnerFinder: {
+                enabled: requiresFixedDoubles(modalityConfig[category.modality]),
+                deadline: category.registrationDeadline || "",
+                paymentAfterPair: true,
+                organizerCanSuggest: true,
+              },
+              usesEventCover: true,
+            },
+            status: "active",
+          };
+        })
+        : [{
+          user_id: user.id,
+          public_id: generatePublicId(),
+          is_public: true,
+          name: draft.name.trim(),
+          type: draft.modality,
+          data: {
+            ...createInitialData(draft.modality, modalityConfig[draft.modality]),
+            ...baseData,
+            category: draft.category.trim(),
+            ...getStoredTournamentGenderFields(draft.modality, draft.composition, draft.compositionOther),
+            eventDate: draft.startDate,
+            eventDay: getWeekdayBR(draft.startDate),
+            eventStartTime: draft.startTime,
+            dailyStartTimes: draft.dailyStartTimes,
+            winningScore: Number(draft.winningScore) || 4,
+            rankingCriteria: getNewTournamentRankingCriteria(draft.modality, draft.rankingRule),
+            partnerFinder: {
+              enabled: fixedDoublesModality && draft.partnerMode === "finder",
+              deadline: draft.partnerFinderDeadline || draft.registrationDeadline || "",
+              paymentAfterPair: true,
+              organizerCanSuggest: true,
+            },
+          },
+          status: "active",
+        }];
+
+      const { data: createdRows, error } = await supabase
+        .from("tournaments")
+        .insert(rows)
+        .select("*");
+      if (error) throw error;
+
+      const confirmedRows = Array.isArray(createdRows) ? createdRows.filter(Boolean) : [];
+      if (!confirmedRows.length) throw new Error("O banco não confirmou a criação do torneio.");
+
+      setCompletedSteps((current) => current.includes(5) ? current : [...current, 5]);
+      setSaving(false);
+      onCreated?.(confirmedRows);
+      onNotice?.(grouped ? "Torneios criados e publicados." : "Torneio criado e publicado.");
+    } catch (error) {
+      console.error("Erro ao criar torneio no V2:", error);
+      setSaving(false);
+      setValidationError(error?.message || "Não foi possível criar o torneio. Tente novamente.");
+    }
+  }
+
+  async function advance() {
     const error = validateStep(currentStep);
     if (error) {
       setValidationError(error);
       return;
     }
-    setCompletedSteps((current) => current.includes(currentStep) ? current : [...current, currentStep]);
     setValidationError("");
     if (currentStep < TOURNAMENT_CREATION_STEPS.length) {
+      setCompletedSteps((current) => current.includes(currentStep) ? current : [...current, currentStep]);
       setCurrentStep((step) => step + 1);
       return;
     }
-    setSaved(true);
-    onNotice?.("Rascunho do torneio salvo no fluxo V2.");
+    await createTournament();
   }
 
   function goBack() {
@@ -597,7 +821,7 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
     <section className={styles.createTournamentPage} aria-labelledby="create-tournament-title">
       <header className={styles.createTournamentHeader}>
         <div><span className={styles.kicker}>Novo evento</span><h1 id="create-tournament-title">Criar torneio</h1></div>
-        <button type="button" onClick={onClose} aria-label="Fechar criação"><X /></button>
+        <button type="button" onClick={onClose} aria-label="Fechar criação" disabled={saving}><X /></button>
       </header>
 
       <nav className={styles.createTournamentSteps} aria-label="Etapas da criação do torneio">
@@ -802,8 +1026,8 @@ function CreateTournamentWizard({ profile, runtime, onClose, onNotice }) {
       </div>
 
       <footer className={styles.createTournamentFooter}>
-        <span className={validationError ? styles.createTournamentError : saved ? styles.createTournamentSaved : ""} role={validationError ? "alert" : "status"}>{validationError || (saved ? "Rascunho salvo. Seus dados continuam disponíveis para revisão." : `Etapa ${currentStep} de ${TOURNAMENT_CREATION_STEPS.length}`)}</span>
-        <div><button type="button" onClick={goBack}>{currentStep === 1 ? "Cancelar" : "Voltar"}</button><button type="button" className={styles.createTournamentPrimaryAction} onClick={advance}>{currentStep === 5 ? <><Save /> Salvar rascunho</> : <>Continuar <ChevronRight /></>}</button></div>
+        <span className={validationError ? styles.createTournamentError : ""} role={validationError ? "alert" : "status"}>{validationError || (saving ? "Criando e publicando o torneio..." : `Etapa ${currentStep} de ${TOURNAMENT_CREATION_STEPS.length}`)}</span>
+        <div><button type="button" onClick={goBack} disabled={saving}>{currentStep === 1 ? "Cancelar" : "Voltar"}</button><button type="button" className={styles.createTournamentPrimaryAction} onClick={advance} disabled={saving}>{currentStep === 5 ? <><Save /> {saving ? "Criando..." : draft.structure === "grouped" ? "Criar torneios" : "Criar torneio"}</> : <>Continuar <ChevronRight /></>}</button></div>
       </footer>
     </section>
   );
@@ -893,8 +1117,33 @@ function OrganizationTournaments({
     onManageOrganization?.(params);
   }
 
+  function handleTournamentCreated(createdRows) {
+    const rows = Array.isArray(createdRows) ? createdRows.filter(Boolean) : [];
+    if (!rows.length) return;
+    const createdIds = new Set(rows.map((item) => String(item.id)));
+    setState((current) => ({
+      status: "ready",
+      error: "",
+      items: [...rows, ...current.items.filter((item) => !createdIds.has(String(item.id)))],
+    }));
+    setStatusFilter(getTournamentLifecycleStatus(rows[0]));
+    setSearch("");
+    setCreating(false);
+  }
+
   if (creating) {
-    return <CreateTournamentWizard profile={profile} runtime={runtime} onClose={() => setCreating(false)} onNotice={onNotice} />;
+    return (
+      <CreateTournamentWizard
+        supabase={supabase}
+        user={user}
+        profile={profile}
+        runtime={runtime}
+        tournamentCount={state.items.length}
+        onClose={() => setCreating(false)}
+        onCreated={handleTournamentCreated}
+        onNotice={onNotice}
+      />
+    );
   }
 
   return (

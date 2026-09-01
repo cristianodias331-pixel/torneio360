@@ -457,6 +457,7 @@ const organizerWorkspaceSource = readFileSync(new URL("src/OrganizerWorkspace.js
 const organizationProfilePresentationSource = readFileSync(new URL("src/features/profile/OrganizationProfilePresentation.jsx", root), "utf8");
 const organizationProfileContentPresentationSource = readFileSync(new URL("src/features/profile/OrganizationProfileContentPresentation.jsx", root), "utf8");
 const platformChromeSource = readFileSync(new URL("src/features/appShell/PlatformChrome.jsx", root), "utf8");
+const platformV2Source = readFileSync(new URL("src/features/platformV2/PlatformV2App.jsx", root), "utf8");
 const mainSource = `${mainEntrySource}\n${organizerWorkspaceSource}\n${platformChromeSource}`;
 const lazyFeaturesSource = readFileSync(
   new URL("src/features/appShell/lazyFeatures.jsx", root),
@@ -870,6 +871,15 @@ const indexSource = readFileSync(new URL("index.html", root), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("package.json", root), "utf8"));
 const manifest = JSON.parse(readFileSync(new URL("public/manifest.webmanifest", root), "utf8"));
 const appVersion = JSON.parse(readFileSync(new URL("public/app-version.json", root), "utf8"));
+assert.ok(
+  platformV2Source.includes('.from("tournaments")')
+    && platformV2Source.includes('.insert(rows)')
+    && platformV2Source.includes("onCreated?.(confirmedRows)")
+    && platformV2Source.includes('"Criar torneio"')
+    && !platformV2Source.includes("Salvar rascunho")
+    && !platformV2Source.includes("Rascunho do torneio salvo"),
+  "A criação de torneios no V2 voltou a ser apenas um rascunho sem persistência."
+);
 assert.ok(
   styleSource.includes('@keyframes asyncActionIndicatorSpin')
     && styleSource.includes('button[aria-busy="true"]::after')

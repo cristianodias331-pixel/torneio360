@@ -527,6 +527,7 @@
 .createTournamentHeader .kicker { margin-bottom: 3px; }
 .createTournamentHeader > button { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1px solid #31506d; border-radius: 12px; padding: 0; background: #0a1e33; color: #dce7f1; cursor: pointer; }
 .createTournamentHeader > button:hover { border-color: #ff6a1f; color: #fff; }
+.createTournamentHeader > button:disabled { cursor: wait; opacity: .55; }
 .createTournamentHeader > button svg { width: 18px; }
 .createTournamentSteps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid #203a54; padding: 7px 14px; background: #081a2e; }
 .createTournamentSteps button { display: grid; min-width: 0; grid-template-columns: 31px minmax(0, 1fr); align-items: center; gap: 8px; border: 0; padding: 5px 7px; background: transparent; color: #70869d; font: inherit; text-align: left; cursor: pointer; }
@@ -622,6 +623,7 @@
 .createTournamentFooter > span { color: #71879d; font-size: .6rem; }
 .createTournamentFooter > div { display: flex; gap: 9px; }
 .createTournamentFooter button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; border: 1px solid #31506b; border-radius: 12px; padding: 0 16px; background: #0a1c30; color: #dce6ef; font: inherit; font-size: .66rem; font-weight: 850; cursor: pointer; }
+.createTournamentFooter button:disabled { cursor: wait; opacity: .62; }
 .createTournamentFooter button svg { width: 15px; }
 .createTournamentFooter .createTournamentPrimaryAction { border-color: #ff5c0c; background: #ff5b0b; color: #fff; }
 .createTournamentFooter .createTournamentError { color: #ff918b; }
