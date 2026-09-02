@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CircleHelp } from "lucide-react";
+import "../../styles/31-matches-and-brackets.css";
 import { getModalityDisplayName } from "../../domain/modalityCatalog.mjs";
 import { isIndividualCupType } from "../../domain/modalityClassification.mjs";
 import {
