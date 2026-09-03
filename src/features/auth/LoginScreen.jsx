@@ -4,7 +4,6 @@ import { NoticeModal } from "../dialogs/ConfirmationDialogs.jsx";
 import {
   BeachLogo,
   Info,
-  PlanCard,
   PlatformSupportLinks,
 } from "../appShell/EntryPresentation.jsx";
 import { getBrazilTodayISO } from "../../domain/dateTime.mjs";
@@ -436,7 +435,6 @@ export default function LoginScreen({
 
         <nav className="landingNav">
           <a href="#como-funciona">Como funciona</a>
-          <a href="#planos">Planos</a>
           <a href="#modalidades">Modalidades</a>
           <a href="#contato">Contato</a>
         </nav>
@@ -656,76 +654,6 @@ export default function LoginScreen({
               <h3>Copa Premium</h3>
               <p>Formato de Copa com 18 duplas, grupos, chaves finais e disputa paralela.</p>
             </div>
-          </div>
-        </section>
-
-        <section id="planos" className="landingSection">
-          <div className="sectionIntro">
-            <span>Planos</span>
-            <h2>Escolha o plano ideal para seus torneios</h2>
-          </div>
-
-          <div className="plansGrid plansGridThree landingPlans">
-            <PlanCard
-              title="Basic"
-              tag="Entrada"
-              price="R$ 19,90"
-              text="Para começar com torneios individuais e mistos."
-              items={[
-                "Super 8",
-                "Super 12",
-                "Super 10 mista",
-                "Super 12 mista",
-                "Super 16 mista",
-                "Super 20 mista",
-                "Gerencie apenas 1 campeonato por vez",
-                "Sorteio automático",
-              ]}
-            />
-
-            <PlanCard
-              title="Pro"
-              tag="Organizador"
-              badge="Mais usado"
-              price="R$ 39,90"
-              text="Para organizadores que precisam de modalidades com duplas fixas."
-              items={[
-                "Super 6 (dupla fixa)",
-                "Super 8",
-                "Super 8 (dupla fixa)",
-                "Super 10 (dupla fixa)",
-                "Super 12 (dupla fixa)",
-                "Super 12",
-                "Super 10 mista",
-                "Super 12 mista",
-                "Super 16 mista",
-                "Super 20 mista",
-                "Gerencie vários campeonatos ao mesmo tempo",
-              ]}
-            />
-
-            <PlanCard
-              title="Premium"
-              tag="Completo"
-              price="R$ 59,90"
-              text="Para quem quer liberar todos os formatos disponíveis."
-              items={[
-                "Super 6 (dupla fixa)",
-                "Super 8",
-                "Super 8 (dupla fixa)",
-                "Super 10 (dupla fixa)",
-                "Super 12 (dupla fixa)",
-                "Super 12",
-                "Super 10 mista",
-                "Super 12 mista",
-                "Super 16 mista",
-                "Super 20 mista",
-                "Simples (1 contra 1 por jogo)",
-                "Copa - 18 duplas",
-                "Torneio modelo Campeonato Cearense",
-                "Gerencie vários campeonatos ao mesmo tempo",
-              ]}
-            />
           </div>
         </section>
 
