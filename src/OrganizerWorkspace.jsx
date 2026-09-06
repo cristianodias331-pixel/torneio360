@@ -398,6 +398,7 @@ export function createOrganizerWorkspace(runtime) {
     getTournamentMatchStatusSummary,
     getTournamentOperationalGames,
     getTournamentTimingSummary,
+    hasPlayableGameSides,
   } = createTournamentOperations({ syncCupBracketScores });
   const { getSafeCupPresentation } = createCupPresentation({ getCupPlayTimeById });
   const {
