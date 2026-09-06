@@ -1189,6 +1189,11 @@ html[data-theme="dark"] .publicPage .cupBrackets .bracketColumn.bracketTree .bra
   font-size: 8px !important;
 }
 
+.proDashboard .bracketTree .matchScoreInput {
+  /* O padding dos formulários do painel não cabe no placar de 32px. */
+  padding: 0 !important;
+}
+
 .bracketTree .matchVsDivider {
   gap: 6px;
   height: 13px;

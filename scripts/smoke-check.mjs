@@ -4924,6 +4924,15 @@ assert.ok(
   "Chamar um jogo da chave deve iniciar o cronômetro sem parar uma partida que já está em andamento."
 );
 assert.ok(
+  organizerWorkspaceSource.match(/const \{\s*capExpiredTournamentMatchTimers,[\s\S]*?\} = createTournamentOperations\(\{ syncCupBracketScores \}\);/)?.[0]
+    .includes("hasPlayableGameSides,"),
+  "O painel precisa receber hasPlayableGameSides para iniciar e parar jogos das chaves sem ReferenceError."
+);
+assert.ok(
+  styleSource.match(/\.proDashboard \.bracketTree \.matchScoreInput\s*\{[^}]*padding:\s*0\s*!important;/),
+  "O placar das chaves precisa anular o padding dos formulários para manter o número visível."
+);
+assert.ok(
   publicBracketViewSource.includes("export function PublicScheduleView")
     && publicBracketViewSource.includes("export function PublicCupBracketView")
     && publicBracketViewSource.includes("export function PublicBracketColumn")
