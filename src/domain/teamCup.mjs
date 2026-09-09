@@ -161,7 +161,10 @@ export function drawTeamMembers(data, rng = Math.random) {
 export function generateTeamCupGroups(data, rng = Math.random) {
   if (data.schedule.length || data.brackets.length) throw new Error("Os grupos já foram gerados. Jogos existentes serão preservados.");
   validateTeamCupTeams(data);
-  const teams = shuffleTeamCup(data.players.teams, rng);
+  const order = data.teamCup.groupOrder;
+  const byId = new Map(data.players.teams.map(team => [team.id, team]));
+  if (order && (!Array.isArray(order) || order.length !== byId.size || new Set(order).size !== byId.size || order.some(id => !byId.has(id)))) throw new Error("Revise a formação dos grupos antes de gerar os confrontos.");
+  const teams = order ? order.map(id => byId.get(id)) : shuffleTeamCup(data.players.teams, rng);
   const next = { ...data, groupsShuffled: true, players: { ...data.players, teams }, cupConfig: { ...data.cupConfig, teamCount: teams.length } };
   next.schedule = generateCearenseGroupSchedule(next.players, next.cupConfig).map(round => round.map(game => makeTeamMatch({ ...game, matchKey: `teams_group_${game.groupId}_${game.ids1[0]}_${game.ids2[0]}` })));
   return next;

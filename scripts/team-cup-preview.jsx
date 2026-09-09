@@ -6,16 +6,24 @@ import { createOrganizerWorkspace } from "../src/OrganizerWorkspace.jsx";
 import PublicTournamentScreen from "../src/features/publicArena/PublicTournamentScreen.jsx";
 import { createInitialData } from "../src/domain/tournamentDataNormalization.mjs";
 import { modalityConfig } from "../src/domain/modalityConfig.mjs";
-import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified } from "../src/domain/teamCup.mjs";
+import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified, TEAM_LEVELS } from "../src/domain/teamCup.mjs";
 const query = new URLSearchParams(location.search);
 const kind = query.get("kind") || "trio";
-const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "");
+const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "");
 function initial() {
   const base = createInitialData("Times/Equipes", modalityConfig["Times/Equipes"]);
-  const data = createTeamCupData({ ...base, winningScore: 6 }, 6, kind);
-  if (query.has("setup")) return data;
+  const data = createTeamCupData({ ...base, winningScore: 6 }, query.has("participants") ? 9 : 6, kind);
+  if (query.has("setup") || query.has("empty")) return data;
   const names = ["Cristiano", "Danilo", "Cristian", "Layner", "Nicolas", "Guilherme", "Maria", "Ana", "Júlia", "Fernanda", "Beatriz", "Carolina"];
   data.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => a.name = names[(i * 3 + j) % names.length] + " " + (i + 1) + (j + 1)));
+  if (query.has("participants")) {
+    data.players.teams.forEach((team, i) => team.athletes.forEach((a, j) => {
+      const examples = a.gender === "H" ? names.slice(0, 6) : names.slice(6);
+      a.name = examples[(i + j) % examples.length] + " " + (i + 1) + (j + 1);
+      a.level = TEAM_LEVELS[(i + j) % TEAM_LEVELS.length];
+    }));
+    return data;
+  }
   let fixture = generateTeamCupGroups(data, () => .4);
   if (query.has("finals")) {
     fixture.cupConfig.repechageEnabled = true;
@@ -43,7 +51,7 @@ function Preview() {
   }
   return <><aside style={{ padding: 12, display: "flex", flexWrap: "wrap", gap: 12 }}><strong>PRÉVIA LOCAL · sem banco de dados</strong>
     <button onClick={() => { const next = theme === "dark" ? "light" : "dark"; setTheme(next); document.documentElement.dataset.theme = next; }}>Alternar tema</button>
-    <a href="?kind=trio">Trio</a><a href="?kind=squad">Squad</a><a href="?setup=1">Cadastro vazio</a><a href="?kind=squad&setup=1">Cadastro Squad</a><a href={"?finals=1&kind=" + kind}>Chaves prontas</a><a href={"?public=1&kind=" + kind}>Visão pública</a><span role="status">Salvamentos locais: {saves}</span></aside>
+    <a href="?participants=1">Participantes Trio</a><a href="?participants=1&kind=squad">Participantes Squad</a><a href="?participants=1&empty=1">Testar Colar lista</a><a href="?kind=trio">Trio</a><a href="?kind=squad">Squad</a><a href="?setup=1">Cadastro vazio</a><a href="?kind=squad&setup=1">Cadastro Squad</a><a href={"?finals=1&kind=" + kind}>Chaves prontas</a><a href={"?public=1&kind=" + kind}>Visão pública</a><span role="status">Salvamentos locais: {saves}</span></aside>
     {query.has("public") ? <PublicTournamentScreen tournament={record} runtime={{}} />
       : <div className={`proDashboard playAppShell theme-${theme}`}><main className="playMain"><div className="tournamentWorkspaceContent"><TournamentScreen tournament={record} userId="fixture-user" onBack={() => {}} onSave={save} onOpenCourtCenter={() => alert("Central de Quadras · prévia local")} centralCourtNumbers={["1", "2", "3", "4", "5", "6"]} /></div></main></div>}
   </>;

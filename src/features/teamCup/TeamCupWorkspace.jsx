@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { ChevronDown, Flame, Grid3X3, Share2, Trophy, Users } from "lucide-react";
 import { RankingTable } from "../ranking/RankingTables.jsx";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
-import { createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups, generateTeamCupBrackets,
-  TEAM_COUNTS, TEAM_LEVELS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup,
+import TeamCupParticipants from "./TeamCupParticipants.jsx";
+import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets,
+  TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup,
   teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
 import "../../styles/31-matches-and-brackets.css";
@@ -97,7 +98,6 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       try { return transform(current); } catch (error) { setMessage(error.message); return current; }
     });
   }
-  function editSetting(key, value) { change(d => ({ ...d, teamCup: { ...d.teamCup, [key]: value } })); }
   function reconfigure(count, kind) {
     if (locked) return;
     const hasNames = teams.some(t => t.athletes.some(a => a.name.trim())) || data.teamCup.pool.some(a => a.name.trim());
@@ -115,31 +115,6 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       }
       return { ...d, players: { ...d.players, teams: nextTeams }, teamCup: { ...d.teamCup, formation: value, pool: structuredClone(pool), drawStage: "pending" } };
     });
-  }
-  function editTeam(index, patch) { change(d => ({ ...d, players: { ...d.players, teams: d.players.teams.map((t, i) => i === index ? { ...t, ...patch, ...(patch.name !== undefined ? { a: patch.name } : {}) } : t) } })); }
-  function editAthlete(index, athleteIndex, key, value) {
-    change(d => {
-      const copy = structuredClone(d);
-      const athlete = index === null ? copy.teamCup.pool[athleteIndex] : copy.players.teams[index].athletes[athleteIndex];
-      athlete[key] = value;
-      return copy;
-    });
-  }
-  function athleteRow(a, i, teamIndex = null) {
-    const frozen = readOnly || locked || (teamIndex === null && data.teamCup.drawStage !== "pending");
-    return <div className="tc-athlete" key={a.id}>
-      <span className="tc-athlete-index">{i + 1}</span>
-      <input aria-label={"Atleta " + (i + 1) + (teamIndex === null ? "" : " · " + teamName(teams[teamIndex]))} placeholder={"Nome do atleta " + (i + 1)} maxLength={100}
-        value={a.name} disabled={frozen} onChange={e => editAthlete(teamIndex, i, "name", e.target.value)} />
-      <select aria-label={"Composição · " + (a.name || "atleta " + (i + 1))} value={a.gender} disabled={frozen} onChange={e => editAthlete(teamIndex, i, "gender", e.target.value)}><option value="H">H</option><option value="M">M</option></select>
-      {!readOnly && <select aria-label={"Nível · " + (a.name || "atleta " + (i + 1))} value={a.level} disabled={frozen} onChange={e => editAthlete(teamIndex, i, "level", e.target.value)}>
-        <option value="">Nível</option>{TEAM_LEVELS.map(l => <option key={l}>{l}</option>)}
-      </select>}
-      {teamIndex === null ? data.teamCup.designatedCaptains && <label className="tc-check"><input type="checkbox" checked={Boolean(a.captainCandidate)} disabled={frozen}
-        onChange={e => editAthlete(null, i, "captainCandidate", e.target.checked)} />Cap.</label> : <label className="tc-check" title="Capitão ou capitã">
-        <input type="radio" name={"captain-" + teams[teamIndex].id} checked={teams[teamIndex].captainId === a.id} disabled={frozen || random}
-          onChange={() => editTeam(teamIndex, { captainId: a.id })} />Cap.</label>}
-    </div>;
   }
   function onLegChange(key, i, patch) {
     change(d => {
@@ -196,26 +171,14 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         </div>
         {locked && <p className="tc-help">Formação e regras protegidas: os grupos já foram gerados.</p>}
       </div>}
-      {(readOnly || organizationTab === "players") && <div className="organizationPanel">
-      {!readOnly && random && !locked && <section className="tc-panel"><h2>Sorteio em duas etapas</h2><div className="tc-actions">
-        <label className="tc-check"><input type="checkbox" checked={data.teamCup.designatedCaptains} disabled={data.teamCup.drawStage !== "pending"} onChange={e => editSetting("designatedCaptains", e.target.checked)} />Definir previamente quem pode ser capitão</label>
-        <label className="tc-check"><input type="checkbox" checked={data.teamCup.balanced} disabled={data.teamCup.drawStage !== "pending"} onChange={e => editSetting("balanced", e.target.checked)} />Equilibrar equipes por nível</label>
-      </div><p className="tc-help">H = homem · M = mulher. {data.teamCup.designatedCaptains ? "Marque exatamente " + teams.length + " capitães para o sorteio separado." : "O primeiro sorteio seleciona um atleta para liderar cada equipe."} O equilíbrio considera também os capitães; não garante forças idênticas.</p>
-        <div className="tc-pool">{data.teamCup.pool.map((a, i) => athleteRow(a, i))}</div><div className="tc-actions">
-          <button type="button" className="actionShuffleBtn" disabled={data.teamCup.drawStage !== "pending"} onClick={() => change(d => drawTeamCaptains(d))}>1. Sortear capitães</button>
-          <button type="button" className="actionShuffleBtn" disabled={data.teamCup.drawStage !== "captains"} onClick={() => change(d => drawTeamMembers(d))}>2. Sortear integrantes</button>
-          <span>{data.teamCup.drawStage === "complete" ? "Equipes formadas" : data.teamCup.drawStage === "captains" ? "Capitães definidos · falta sortear integrantes" : "Aguardando o primeiro sorteio"}</span>
-        </div></section>}
-      <div className="tc-team-grid">{teams.map((team, i) => <section className="tc-panel" key={team.id}>
-        {readOnly ? <h2>{teamName(team)}</h2> : <Field label={"Nome da equipe " + (i + 1)}><input value={team.name} maxLength={60} onChange={e => editTeam(i, { name: e.target.value })} /></Field>}
-        {readOnly || locked || (random && data.teamCup.drawStage !== "pending") ? <ul className="tc-member-list">{team.athletes.map(a => <li key={a.id}>{a.name || "A definir"} {a.id === team.captainId && <span className="tc-captain">Capitão/ã</span>}</li>)}</ul> : !random && team.athletes.map((a, j) => athleteRow(a, j, i))}
-        {random && data.teamCup.drawStage === "pending" && !locked && <p className="tc-help">Aguardando sorteio.</p>}
-      </section>)}</div>
-      </div>}
+      {organizationTab === "players" && !readOnly && <div className="organizationPanel"><TeamCupParticipants data={data} onChange={change} /></div>}
+      {readOnly && <div className="tc-team-grid">{teams.map(team => <section className="tc-panel" key={team.id}><h2>{teamName(team)}</h2>
+        <ul className="tc-member-list">{team.athletes.map(a => <li key={a.id}>{a.name || "A definir"} {a.id === team.captainId && <span className="tc-captain">Capitão/ã</span>}</li>)}</ul>
+      </section>)}</div>}
     </section>}
     {(tab === "groups" || tab === "ranking") && <section className="card">
       <div className="cardTitleRow"><h2>{tab === "groups" ? "Grupos" : "Ranking"}</h2>{saveIndicator}</div>
-      {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Depois, sorteie os grupos e gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={random && data.teamCup.drawStage !== "complete"} onClick={() => change(d => generateTeamCupGroups(d))}>Sortear grupos e gerar confrontos</button></div></>}
+      {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Salve a formação em Organizar grupos e depois gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={random && data.teamCup.drawStage !== "complete"} onClick={() => change(d => generateTeamCupGroups(d))}>{data.teamCup.groupOrder ? "Gerar fase de grupos" : "Sortear grupos e gerar confrontos"}</button></div></>}
       <h3>Classificação dos grupos</h3>
       <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games das partidas concluídas de cada confronto finalizado, incluindo o desempate.</p>
       <div className="tc-team-grid">{groups.map(group => <section key={group.id}>
