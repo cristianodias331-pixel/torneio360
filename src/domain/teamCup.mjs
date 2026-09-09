@@ -1,0 +1,326 @@
+import { generateCearenseGroupSchedule } from "./cupGroupSchedule.mjs";
+import { createCearenseGroups } from "./cupGroups.mjs";
+import { calculateCupGroupRankings } from "./cupGroupRanking.mjs";
+import { rankCearenseCampaignEntries } from "./campaignRanking.mjs";
+import { getCopinhaManualTieOrder } from "./groupRankingRules.mjs";
+import { playRankingMainBracketPlans } from "./cupBracketPlans.mjs";
+import { buildCopinhaBracketFromPlan, expandBracketPlanWithVisualByes } from "./cupBracketConstruction.mjs";
+import { buildCearenseEliminationRounds } from "./bracketConstruction.mjs";
+import { resolveBracketGame } from "./bracketProgression.mjs";
+import { getScoreWinnerSide, normalizeScoreInput } from "./scoreRules.mjs";
+import { startMatchTimer, stopMatchTimer } from "./matchTimer.mjs";
+
+export const TEAM_CUP_TYPE = "Times/Equipes";
+export const TEAM_LEVELS = ["Principiante", "Iniciante", "D", "C", "B", "A"];
+// Cinco times não permitem exclusivamente grupos de três ou quatro.
+export const TEAM_COUNTS = Array.from({ length: 29 }, (_, i) => i + 4).filter(n => n !== 5);
+export const isTeamCup = data => data?.cupConfig?.format === "team-cup";
+export const teamSize = data => data?.teamCup?.kind === "squad" ? 4 : 3;
+export function defaultTeamName(i) {
+  let label = "";
+  for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(65 + (n - 1) % 26) + label;
+  return "Time " + label;
+}
+export const teamName = (team, i = 0) => typeof team?.name === "string" ? team.name : typeof team?.a === "string" ? team.a : defaultTeamName(i);
+export const shuffleTeamCup = (items, rng = Math.random) => {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+const blankTeam = (i, size) => ({
+  id: `team-${i}`, name: defaultTeamName(i), a: defaultTeamName(i), b: "",
+  athletes: Array.from({ length: size }, (_, j) => ({ id: `athlete-${i}-${j}`, name: "", gender: size === 4 ? (j < 2 ? "H" : "M") : "H", level: "" })),
+  captainId: `athlete-${i}-0`,
+});
+
+export function createTeamCupData(base = {}, count = 6, kind = "trio") {
+  return {
+    ...base, rankingCriteria: "wins_balance_points",
+    cupConfig: { format: "team-cup", teamCount: count, mainBracketName: "Eliminatória Principal", repechageName: "Consolation", repechageEnabled: false, tieBreakOverrides: {}, campaignTieBreakOverrides: {} },
+    teamCup: { version: 1, kind, formation: "fixed", balanced: false, designatedCaptains: false, drawStage: "pending", pool: [] },
+    players: { teams: Array.from({ length: count }, (_, i) => blankTeam(i, kind === "squad" ? 4 : 3)) },
+    schedule: [], brackets: [], groupsShuffled: false,
+  };
+}
+
+export function normalizeTeamCupData(data, defaults) {
+  const cup = { ...defaults.cupConfig, ...data.cupConfig, format: "team-cup" };
+  const settings = { ...defaults.teamCup, ...data.teamCup };
+  const teams = Array.isArray(data.players?.teams) ? data.players.teams : defaults.players.teams;
+  // Never truncate saved rosters, scores or captains during hydration.
+  return { ...data, cupConfig: cup, teamCup: settings,
+    players: { ...data.players, teams: teams.map((team, i) => ({ ...team, name: teamName(team, i), a: teamName(team, i), b: "", athletes: Array.isArray(team.athletes) ? team.athletes : [] })) },
+    schedule: (data.schedule || []).map(round => round.map(game => summarizeTeamMatch(game, data.winningScore))),
+    brackets: (data.brackets || []).map(game => summarizeTeamMatch(game, data.winningScore)),
+  };
+}
+
+export function teamLegWinner(leg, target = 4) {
+  if (!leg || [leg.s1, leg.s2].some(v => v === "" || v == null || !Number.isFinite(Number(v)) || Number(v) < 0)) return null;
+  return getScoreWinnerSide(leg, target);
+}
+
+export function teamMatchState(game, target = 4) {
+  const legs = game.teamCupLegs || [];
+  const first = legs.slice(0, 2).map(leg => teamLegWinner(leg, target));
+  const decider = Boolean(first[0] && first[1] && first[0] !== first[1]);
+  const winners = [...first, decider ? teamLegWinner(legs[2], target) : null];
+  const wins = [winners.filter(w => w === "team1").length, winners.filter(w => w === "team2").length];
+  return { decider, winners, wins, winner: wins[0] === 2 ? "team1" : wins[1] === 2 ? "team2" : null };
+}
+
+export function summarizeTeamMatch(game, target = 4) {
+  if (!Array.isArray(game.teamCupLegs)) return game;
+  const state = teamMatchState(game, target);
+  const sums = [0, 0];
+  game.teamCupLegs.forEach((leg, i) => { if (state.winners[i]) { sums[0] += Number(leg.s1); sums[1] += Number(leg.s2); } });
+  return { ...game, s1: state.winner ? String(sums[0]) : "", s2: state.winner ? String(sums[1]) : "" };
+}
+
+export function makeTeamMatch(game) {
+  return { ...game, teamCupLegs: Array.from({ length: 3 }, (_, i) => ({ matchKey: `${game.matchKey}_leg${i + 1}`, s1: "", s2: "", court: 1, courtNumberOverride: "", inProgress: false })) };
+}
+export const teamCupGames = data => [...(data.schedule || []).flat(), ...(data.brackets || [])];
+export const hasTeamCupActivity = data => teamCupGames(data).some(game => game.teamCupLegs?.some(leg => leg.s1 !== "" || leg.s2 !== "" || leg.matchTimerFirstStartedAt));
+
+function validateAthletes(athletes, balanced) {
+  const names = athletes.map(a => String(a.name || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
+  if (names.some(n => !n)) throw new Error("Preencha o nome de todos os atletas.");
+  if (new Set(names).size !== names.length) throw new Error("Há nomes repetidos. Diferencie os atletas homônimos.");
+  if (new Set(athletes.map(a => a.id)).size !== athletes.length) throw new Error("Um atleta aparece em mais de uma equipe.");
+  if (athletes.some(a => !["H", "M"].includes(a.gender))) throw new Error("Informe H ou M para cada atleta.");
+  if (balanced && athletes.some(a => !TEAM_LEVELS.includes(a.level))) throw new Error("Informe o nível de todos os atletas para equilibrar o sorteio.");
+}
+export function validateTeamCupTeams(data) {
+  const teams = data.players.teams;
+  if (!TEAM_COUNTS.includes(teams.length)) throw new Error("Escolha 4 ou de 6 a 32 equipes.");
+  if (teams.some(t => !String(t.name || "").trim())) throw new Error("Informe o nome das equipes.");
+  if (new Set(teams.map(t => t.name.trim().toLowerCase())).size !== teams.length) throw new Error("Use nomes diferentes para as equipes.");
+  if (teams.some(t => t.athletes.length !== teamSize(data))) throw new Error("Complete todos os integrantes de cada equipe.");
+  validateAthletes(teams.flatMap(t => t.athletes), false);
+  if (teams.some(t => !t.athletes.some(a => a.id === t.captainId))) throw new Error("Defina um capitão ou uma capitã por equipe.");
+  if (teamSize(data) === 4 && teams.some(t => t.athletes.filter(a => a.gender === "H").length !== 2)) throw new Error("Cada Squad precisa de 2 homens e 2 mulheres.");
+  return true;
+}
+
+export function drawTeamCaptains(data, rng = Math.random) {
+  if (data.schedule.length) throw new Error("As equipes estão vinculadas aos jogos; o sorteio não pode ser refeito.");
+  if (data.teamCup.drawStage !== "pending") throw new Error("Os capitães já foram sorteados.");
+  const { pool, designatedCaptains, balanced } = data.teamCup;
+  const count = data.players.teams.length;
+  if (pool.length !== count * teamSize(data)) throw new Error("A quantidade de atletas precisa completar todas as equipes.");
+  validateAthletes(pool, balanced);
+  if (teamSize(data) === 4 && pool.filter(a => a.gender === "H").length !== count * 2) throw new Error("O sorteio de Squad exige 2 homens e 2 mulheres por equipe.");
+  const candidates = designatedCaptains ? pool.filter(a => a.captainCandidate) : pool;
+  if (designatedCaptains && candidates.length !== count) throw new Error(`Marque exatamente ${count} capitães antes de sortear.`);
+  const captains = shuffleTeamCup(candidates, rng).slice(0, count);
+  return { ...data, teamCup: { ...data.teamCup, drawStage: "captains" }, players: { ...data.players,
+    teams: data.players.teams.map((team, i) => ({ ...team, captainId: captains[i].id, athletes: [{ ...captains[i] }] })) } };
+}
+
+export function drawTeamMembers(data, rng = Math.random) {
+  if (data.schedule.length || data.teamCup.drawStage !== "captains") throw new Error("Sorteie primeiro os capitães.");
+  const teams = structuredClone(data.players.teams);
+  const captainIds = new Set(teams.map(t => t.captainId));
+  const members = shuffleTeamCup(data.teamCup.pool.filter(a => !captainIds.has(a.id)), rng);
+  const strength = a => TEAM_LEVELS.indexOf(a.level) + 1;
+  const total = t => t.athletes.reduce((sum, a) => sum + strength(a), 0);
+  if (data.teamCup.balanced) members.sort((a, b) => strength(b) - strength(a));
+  for (const athlete of members) {
+    const options = shuffleTeamCup(teams.filter(t => t.athletes.length < teamSize(data)
+      && (teamSize(data) !== 4 || t.athletes.filter(a => a.gender === athlete.gender).length < 2)), rng);
+    if (data.teamCup.balanced) options.sort((a, b) => total(a) - total(b));
+    if (!options.length) throw new Error("Não foi possível completar o sorteio com essa composição.");
+    options[0].athletes.push({ ...athlete });
+  }
+  // Improve total-level balance without moving captains or changing gender slots.
+  if (data.teamCup.balanced) {
+    for (let pass = 0; pass < 100; pass++) {
+      let improved = false;
+      for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) {
+        for (let a = 1; a < teams[i].athletes.length; a++) for (let b = 1; b < teams[j].athletes.length; b++) {
+          const x = teams[i].athletes[a], y = teams[j].athletes[b];
+          if (teamSize(data) === 4 && x.gender !== y.gender) continue;
+          const diff = total(teams[i]) - total(teams[j]), change = strength(y) - strength(x);
+          if (Math.abs(diff + 2 * change) < Math.abs(diff)) {
+            [teams[i].athletes[a], teams[j].athletes[b]] = [y, x]; improved = true;
+          }
+        }
+      }
+      if (!improved) break;
+    }
+  }
+  const next = { ...data, teamCup: { ...data.teamCup, drawStage: "complete" }, players: { ...data.players, teams } };
+  validateTeamCupTeams(next);
+  return next;
+}
+
+export function generateTeamCupGroups(data, rng = Math.random) {
+  if (data.schedule.length || data.brackets.length) throw new Error("Os grupos já foram gerados. Jogos existentes serão preservados.");
+  validateTeamCupTeams(data);
+  const teams = shuffleTeamCup(data.players.teams, rng);
+  const next = { ...data, groupsShuffled: true, players: { ...data.players, teams }, cupConfig: { ...data.cupConfig, teamCount: teams.length } };
+  next.schedule = generateCearenseGroupSchedule(next.players, next.cupConfig).map(round => round.map(game => makeTeamMatch({ ...game, matchKey: `teams_group_${game.groupId}_${game.ids1[0]}_${game.ids2[0]}` })));
+  return next;
+}
+
+// Reuse Torneio 360 ranking/seeding only through this explicit adapter.
+// Other cup formats never enter the new rules.
+export function teamCupRankingData(data) {
+  return { ...data, cupConfig: { ...data.cupConfig, format: "playranking", playRankingBracketVersion: 4 },
+    schedule: data.schedule.map(round => round.map(game => summarizeTeamMatch(game, data.winningScore))) };
+}
+export function rankTeamCupRows(rows, games, target, storedOrder) {
+  const ordered = [...rows].sort((a, b) => b.w - a.w || b.bal - a.bal || b.pts - a.pts || a.name.localeCompare(b.name));
+  if (!games.length || !games.every(g => teamMatchState(g, target).winner)) return { rows: ordered, unresolvedTieIds: [] };
+  const result = [], unresolvedTieIds = [];
+  for (let start = 0; start < ordered.length;) {
+    let end = start + 1;
+    while (end < ordered.length && ["w", "bal", "pts"].every(k => ordered[start][k] === ordered[end][k])) end++;
+    const tied = ordered.slice(start, end);
+    const directWins = new Map(tied.map(row => [row.id, 0]));
+    for (const game of games) {
+      if (!directWins.has(game.ids1[0]) || !directWins.has(game.ids2[0])) continue;
+      const winner = teamMatchState(game, target).winner;
+      const id = winner === "team1" ? game.ids1[0] : game.ids2[0];
+      directWins.set(id, directWins.get(id) + 1);
+    }
+    tied.sort((a, b) => directWins.get(b.id) - directWins.get(a.id));
+    for (let i = 0; i < tied.length;) {
+      let j = i + 1;
+      while (j < tied.length && directWins.get(tied[j].id) === directWins.get(tied[i].id)) j++;
+      const remaining = tied.slice(i, j), order = getCopinhaManualTieOrder(remaining, storedOrder);
+      if (remaining.length > 1 && !order) unresolvedTieIds.push(...remaining.map(r => r.id));
+      result.push(...(order ? remaining.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)) : remaining));
+      i = j;
+    }
+    start = end;
+  }
+  return { rows: result, unresolvedTieIds };
+}
+export function teamCupRankings(data) {
+  return calculateCupGroupRankings(teamCupRankingData(data)).map(group => ({
+    ...group, ...rankTeamCupRows(group.rows, data.schedule.flat().filter(g => g.groupId === group.id),
+      data.winningScore, data.cupConfig.tieBreakOverrides?.[String(group.id)]),
+  }));
+}
+export function teamCupQualified(data) {
+  const groups = teamCupRankings(data);
+  const overrides = data.cupConfig.campaignTieBreakOverrides || {};
+  const champions = rankCearenseCampaignEntries(groups.map(g => ({ ...g.rows[0], groupPosition: 1 })), overrides, "campeoes");
+  const groupRank = new Map(champions.rows.map((r, i) => [r.groupId, i + 1]));
+  const runners = groups.map(g => ({ ...g.rows[1], groupPosition: 2, groupRank: groupRank.get(g.id) }));
+  const eliminated = rankCearenseCampaignEntries(groups.flatMap(g => g.rows.slice(2).map((r, i) => ({ ...r, groupPosition: i + 3 }))), overrides, "paralela");
+  return { main: [...champions.rows.map((r, i) => ({ ...r, groupRank: i + 1 })), ...runners],
+    repechage: eliminated.rows.map((r, i) => ({ ...r, groupRank: i + 1 })),
+    unresolvedCampaignTies: [...champions.unresolvedTies, ...eliminated.unresolvedTies] };
+}
+
+export function generateTeamCupBrackets(data) {
+  if (data.brackets.length) throw new Error("As eliminatórias já foram geradas.");
+  if (!data.schedule.length || !data.schedule.flat().every(g => teamMatchState(g, data.winningScore).winner)) throw new Error("Conclua todos os confrontos dos grupos.");
+  if (teamCupRankings(data).some(g => g.unresolvedTieIds.length)) throw new Error("Resolva os empates dos grupos antes de gerar as eliminatórias.");
+  const qualified = teamCupQualified(data);
+  const ties = qualified.unresolvedCampaignTies.filter(t => t.scope !== "paralela" || data.cupConfig.repechageEnabled);
+  if (ties.length) throw new Error("Resolva os empates de campanha antes de gerar as eliminatórias.");
+  const count = createCearenseGroups(data.players.teams.length).length;
+  const plan = playRankingMainBracketPlans[count];
+  const main = plan
+    ? buildCopinhaBracketFromPlan(qualified.main, "main", data.cupConfig.mainBracketName, expandBracketPlanWithVisualByes(plan))
+    : buildCearenseEliminationRounds(qualified.main, "main", data.cupConfig.mainBracketName, true);
+  const consolation = data.cupConfig.repechageEnabled ? buildCearenseEliminationRounds(qualified.repechage, "repechage", data.cupConfig.repechageName, false) : [];
+  const brackets = [...main, ...consolation].flatMap(round => round.games.map(game => makeTeamMatch({ ...game, roundName: round.title })));
+  const next = { ...data, brackets };
+  next.brackets = brackets.map(game => resolveBracketGame(game, brackets, next));
+  return next;
+}
+
+export function resolveTeamCupGame(data, game) {
+  return game.phase === "groups" ? game : resolveBracketGame(game, data.brackets, data);
+}
+export function teamLegAvailable(data, game, index) {
+  if (game.isBye || !game.ids1?.length || !game.ids2?.length) return false;
+  const state = teamMatchState(game, data.winningScore);
+  if (index === 2) return state.decider;
+  return index === 0 || teamSize(data) === 4 || Boolean(state.winners[0]);
+}
+
+export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
+  const next = structuredClone(data);
+  const game = teamCupGames(next).find(g => g.matchKey === key);
+  if (!game) throw new Error("Confronto não encontrado.");
+  const resolved = resolveTeamCupGame(next, game);
+  if (!teamLegAvailable(next, resolved, index)) throw new Error("Esta partida ainda não está liberada.");
+  if (game.phase === "groups" && next.brackets.length && ("s1" in patch || "s2" in patch)) throw new Error("Os grupos já definiram as eliminatórias. Seus placares estão protegidos.");
+  const leg = game.teamCupLegs[index];
+  const scoreEdit = "s1" in patch || "s2" in patch;
+  const wasFinished = teamLegWinner(leg, data.winningScore);
+  if (scoreEdit) {
+    for (const side of ["s1", "s2"]) if (side in patch) patch = { ...patch, [side]: normalizeScoreInput(patch[side], data.winningScore) };
+  }
+  if (patch.inProgress === true || ("courtNumberOverride" in patch && leg.inProgress)) {
+    if (wasFinished) throw new Error("A partida já foi finalizada.");
+    const court = String(patch.courtNumberOverride ?? leg.courtNumberOverride ?? "");
+    if (!court) throw new Error("Selecione a quadra antes de iniciar.");
+    for (const other of teamCupGames(next)) {
+      const otherResolved = resolveTeamCupGame(next, other);
+      for (const [i, active] of (other.teamCupLegs || []).entries()) {
+        if ((other.matchKey === key && i === index) || !active.inProgress || teamLegWinner(active, next.winningScore)) continue;
+        if (String(active.courtNumberOverride) === court) throw new Error("Esta quadra já está em uso.");
+        const sameTeam = [...resolved.ids1, ...resolved.ids2].some(id => [...(otherResolved.ids1 || []), ...(otherResolved.ids2 || [])].includes(id));
+        if (sameTeam && (other.matchKey !== key || teamSize(data) === 3 || index === 2 || i === 2)) throw new Error("Uma das equipes já está jogando.");
+      }
+    }
+  }
+  Object.assign(leg, patch);
+  if (scoreEdit || patch.inProgress === true) leg.teamCupSides = [resolved.ids1[0], resolved.ids2[0]];
+  if (patch.inProgress === true) startMatchTimer(leg, now);
+  if (patch.inProgress === false) stopMatchTimer(leg, { now });
+  const finished = teamLegWinner(leg, data.winningScore);
+  if (finished && (scoreEdit || leg.inProgress)) { stopMatchTimer(leg, { finished: true, now }); leg.inProgress = false; }
+  else if (scoreEdit && wasFinished && !finished) { delete leg.matchTimerFinishedAt; }
+  const state = teamMatchState(game, data.winningScore);
+  const third = game.teamCupLegs[2];
+  if (!state.decider && (third.s1 !== "" || third.s2 !== "" || third.matchTimerFirstStartedAt)) throw new Error("Essa correção invalidaria a terceira partida já registrada. Nenhum dado foi apagado.");
+  Object.assign(game, summarizeTeamMatch(game, next.winningScore));
+  // A changed upstream winner must never transfer a played score to new opponents.
+  for (const stored of next.brackets) {
+    const old = data.brackets.find(g => g.matchKey === stored.matchKey);
+    const current = resolveTeamCupGame(next, stored);
+    const before = old && resolveTeamCupGame(data, old);
+    if (before && JSON.stringify([before.ids1, before.ids2]) !== JSON.stringify([current.ids1, current.ids2])
+      && stored.teamCupLegs.some(l => l.s1 !== "" || l.s2 !== "" || l.matchTimerFirstStartedAt)) throw new Error("Essa correção mudaria os times de uma partida já registrada. Nenhum dado foi apagado.");
+    Object.assign(stored, current);
+  }
+  validateTeamCupMatchState(next);
+  return next;
+}
+
+export function validateTeamCupMatchState(data) {
+  const activeCourts = new Set();
+  const activeTeams = new Map();
+  for (const stored of teamCupGames(data)) {
+    const game = resolveTeamCupGame(data, stored), state = teamMatchState(game, data.winningScore);
+    for (const [i, leg] of (game.teamCupLegs || []).entries()) {
+      const used = leg.s1 !== "" || leg.s2 !== "" || leg.matchTimerFirstStartedAt;
+      if (used && leg.teamCupSides && JSON.stringify(leg.teamCupSides) !== JSON.stringify([game.ids1[0], game.ids2[0]]))
+        throw new Error("Times/Equipes: os adversários foram alterados durante o registro dos placares.");
+      if (used && i === 2 && !state.decider) throw new Error("Times/Equipes: o desempate registrado ficou incompatível com as duas primeiras partidas.");
+      if (used && i === 1 && teamSize(data) === 3 && !state.winners[0]) throw new Error("Times/Equipes: a primeira partida precisa estar concluída.");
+      if (leg.inProgress && !teamLegWinner(leg, data.winningScore)) {
+        if (activeCourts.has(leg.courtNumberOverride)) throw new Error("Times/Equipes: dois aparelhos iniciaram partidas na mesma quadra.");
+        activeCourts.add(leg.courtNumberOverride);
+        for (const id of [...game.ids1, ...game.ids2]) {
+          const previous = activeTeams.get(id);
+          if (previous && (previous.key !== game.matchKey || teamSize(data) !== 4 || i === 2 || previous.index === 2))
+            throw new Error("Times/Equipes: uma equipe foi iniciada em confrontos simultâneos.");
+          activeTeams.set(id, { key: game.matchKey, index: i });
+        }
+      }
+    }
+  }
+  return true;
+}

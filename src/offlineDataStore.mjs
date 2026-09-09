@@ -1,3 +1,4 @@
+import { isTeamCup, summarizeTeamMatch, validateTeamCupMatchState } from "./domain/teamCup.mjs";
 const DATABASE_NAME = "torneio360-offline-data";
 const DATABASE_VERSION = 1;
 const DASHBOARD_STORE = "dashboard_cache";
@@ -136,6 +137,17 @@ export function mergeConcurrentTournamentData(baseData, localData, remoteData) {
     conflicts
   );
 
+  if (isTeamCup(data)) {
+    const groupScores = value => JSON.stringify((value?.schedule || []).flat().map(game =>
+      (game.teamCupLegs || []).map(leg => [leg.s1, leg.s2])));
+    // Creating a bracket freezes its group qualification snapshot, including across devices.
+    const bracketSource = remoteData?.brackets?.length ? remoteData : localData?.brackets?.length ? localData : null;
+    if (bracketSource && groupScores(data) !== groupScores(bracketSource))
+      conflicts.push("Times/Equipes: os placares dos grupos mudaram durante a geração das eliminatórias.");
+    data.schedule = (data.schedule || []).map(round => round.map(game => summarizeTeamMatch(game, data.winningScore)));
+    data.brackets = (data.brackets || []).map(game => summarizeTeamMatch(game, data.winningScore));
+    try { validateTeamCupMatchState(data); } catch (error) { conflicts.push(error.message); }
+  }
   return { data, conflicts: [...new Set(conflicts)] };
 }
 
@@ -180,6 +192,13 @@ function listParticipantNames(data) {
 
 export function preservesTournamentCriticalData(beforeData, afterData) {
   if (!isPlainRecord(beforeData) || !isPlainRecord(afterData)) return false;
+  if (isTeamCup(beforeData)) {
+    if (!isTeamCup(afterData) || !valuesEqual(beforeData.teamCup, afterData.teamCup)
+      || !valuesEqual(beforeData.players?.teams, afterData.players?.teams)) return false;
+    const stripDerived = data => [...listValidScheduleGames(data), ...listValidScheduleGames(data, "brackets")]
+      .map(({ s1, s2, ...game }) => game);
+    return valuesEqual(stripDerived(beforeData), stripDerived(afterData));
+  }
 
   const beforeSchedule = listValidScheduleGames(beforeData, "schedule");
   const afterSchedule = listValidScheduleGames(afterData, "schedule");

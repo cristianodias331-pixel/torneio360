@@ -20,6 +20,14 @@ export function getWinningScore(data) {
 }
 
 export function getScoreWinnerSide(game, winningScore = 4) {
+  if (Array.isArray(game?.teamCupLegs)) {
+    const legWinner = leg => !leg || [leg.s1, leg.s2].some(v => v === "" || v == null || !Number.isFinite(Number(v)) || Number(v) < 0)
+      ? null : getScoreWinnerSide({ s1: leg.s1, s2: leg.s2 }, winningScore);
+    const first = game.teamCupLegs.slice(0, 2).map(legWinner);
+    if (first[0] && first[0] === first[1]) return first[0];
+    if (first[0] && first[1]) return legWinner(game.teamCupLegs[2]);
+    return null;
+  }
   const s1 = Number(game.s1);
   const s2 = Number(game.s2);
   const target = Number(winningScore || 4);

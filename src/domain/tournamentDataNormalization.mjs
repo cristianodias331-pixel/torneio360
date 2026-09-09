@@ -4,6 +4,7 @@ import {
   normalizeCourtNumbers,
 } from "./courtNumbers.mjs";
 import { modalityConfig } from "./modalityConfig.mjs";
+import { createTeamCupData, normalizeTeamCupData } from "./teamCup.mjs";
 import {
   isCupType,
   isFixedTeamType,
@@ -166,6 +167,7 @@ export function createInitialData(type, config) {
   if (!config) {
     return { ...base, players: [] };
   }
+  if (config.type === "teamCup") return createTeamCupData(base);
 
   if (isMixedType(config)) {
     return {
@@ -306,6 +308,8 @@ export function normalizeTournamentData(type, rawData) {
     participantGenders: normalizeParticipantGenderRegistry(source.participantGenders),
   };
   delete normalized.courtLabels;
+
+  if (config.type === "teamCup") return normalizeTeamCupData(normalized, defaults);
 
   if (isCupType(config)) {
     const sourceCupConfig = isTournamentDataObject(source.cupConfig) ? source.cupConfig : {};

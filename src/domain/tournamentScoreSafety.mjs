@@ -43,6 +43,9 @@ function hasCompleteScore(game) {
 function flattenGames(data, field) {
   const value = data?.[field];
   if (!Array.isArray(value)) return [];
+  if (data?.cupConfig?.format === "team-cup") {
+    return value.flat().flatMap(game => game.teamCupLegs || []);
+  }
   if (field === "schedule") return value.flatMap((round) => (Array.isArray(round) ? round : [round]));
   return value;
 }
