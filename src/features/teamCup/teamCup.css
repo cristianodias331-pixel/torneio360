@@ -1,98 +1,66 @@
-/* Styles are scoped to Times/Equipes; legacy cups are unaffected. */
-.tc-workspace { --tc-bg:#fff; --tc-soft:#f2f5fa; --tc-line:#c8d4e3; --tc-text:#16273d; --tc-muted:#50647b; --tc-accent:#6941c6; --tc-tint:#efe8ff; --tc-success:#116843; color:var(--tc-text); max-width:1180px; padding:24px; margin:auto; font-family:inherit; }
-html[data-theme="dark"] .tc-workspace { --tc-bg:#142131; --tc-soft:#0d1927; --tc-line:#354b64; --tc-text:#eef4fc; --tc-muted:#b6c7dc; --tc-accent:#c6abff; --tc-tint:#302148; --tc-success:#7ae5b0; }
-.tc-workspace *, .tc-workspace *::before, .tc-workspace *::after { box-sizing:border-box; }
-.tc-workspace { background:var(--tc-soft); min-height:70vh; border-radius:16px; }
-.tc-workspace .tc-score-table tr, .tc-workspace .tc-score-table tr:hover, .tc-workspace .tc-ranking tr, .tc-workspace .tc-ranking tr:hover { background:var(--tc-bg); }
-.tc-workspace .tc-ranking th, .tc-workspace .tc-ranking td { background:transparent; color:var(--tc-text); text-transform:none; }
-.tc-workspace .tc-score-table thead tr { background:var(--tc-soft); }
-.tc-workspace .tc-score-table th { text-transform:none; letter-spacing:normal; }
-.tc-workspace .tc-score-table .tc-winner { background:var(--tc-bg); }
-.tc-workspace h1 { font-size:clamp(22px,3vw,32px); margin:6px 0; color:var(--tc-text); }
-.tc-workspace h2 { font-size:19px; margin:0 0 16px; color:var(--tc-text); }
-.tc-workspace p { line-height:1.55; }
-.tc-workspace button, .tc-workspace input, .tc-workspace select { font:inherit; color:var(--tc-text); border:1px solid var(--tc-line); border-radius:9px; background:var(--tc-bg); min-height:44px; padding:9px 12px; box-shadow:none; margin:0; }
-.tc-workspace button { font-weight:650; cursor:pointer; text-transform:none; letter-spacing:normal; width:auto; }
-.tc-workspace button:hover:not(:disabled) { border-color:var(--tc-accent); background:var(--tc-tint); }
-.tc-workspace :focus-visible { outline:3px solid var(--tc-accent); outline-offset:2px; }
-.tc-workspace :disabled { opacity:.55; cursor:default; }
-.tc-workspace .tc-primary { background:var(--tc-tint); color:var(--tc-accent); border-color:var(--tc-accent); }
-.tc-page-header, .tc-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
-.tc-page-header { justify-content:space-between; margin-bottom:20px; }
-.tc-page-header p { color:var(--tc-muted); margin:4px 0; }
-.tc-eyebrow { color:var(--tc-accent); font-size:11px; font-weight:800; letter-spacing:1px; }
-.tc-save { font-size:12px; color:var(--tc-muted); }
-.tc-tabs { display:flex; flex-wrap:wrap; gap:8px; border-bottom:1px solid var(--tc-line); padding-bottom:14px; margin-bottom:24px; }
-.tc-tabs .tc-active { background:var(--tc-tint); color:var(--tc-accent); border-color:var(--tc-accent); }
-.tc-panel { padding:20px; background:var(--tc-bg); border:1px solid var(--tc-line); border-radius:15px; min-width:0; margin-bottom:18px; }
-.tc-fields, .tc-team-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
-.tc-field { display:flex; flex-direction:column; gap:7px; min-width:0; font-size:13px; font-weight:650; }
-.tc-field input, .tc-field select { width:100%; }
-.tc-help { color:var(--tc-muted); font-size:13px; }
-.tc-check { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; }
-.tc-workspace .tc-check input { min-height:20px; height:20px; width:20px; accent-color:var(--tc-accent); padding:0; flex-shrink:0; }
-.tc-pool { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 18px; margin:16px 0; }
-.tc-athlete { display:grid; grid-template-columns:18px minmax(90px,1fr) 53px 108px auto; gap:6px; align-items:center; margin:10px 0; }
-.tc-athlete input, .tc-athlete select { min-width:0; width:100%; padding:8px; font-size:13px; }
-.tc-athlete-index { font-size:12px; color:var(--tc-muted); }
+/* Only layout specific to team formation / three legs. Colors and controls come
+   from the existing cup, navigation and universal match-card styles. */
+.tc-workspace { min-width:0; }
+.tc-workspace .tc-fields { gap:16px; }
+.tc-field { display:flex; flex-direction:column; min-width:0; gap:6px; }
+.tc-field input, .tc-field select { width:100%; min-width:0; margin:0; }
+.tc-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.tc-panel { min-width:0; padding:16px; border:1px solid var(--ui-border, var(--line)); border-radius:14px; margin-bottom:16px; }
+.tc-panel h2 { font-size:18px; margin-top:0; }
+.tc-team-grid, .tc-pool, .tc-match-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.tc-help { font-size:13px; line-height:1.5; color:var(--ui-muted, var(--public-muted, var(--muted))); }
+.tc-format-explanation { margin:0 0 16px; }
+.tc-check { display:inline-flex; align-items:center; gap:6px; font-size:12px; }
+.tc-workspace .tc-check input { width:18px; min-width:18px; height:18px; min-height:18px; padding:0; margin:0; accent-color:var(--purple); }
+.tc-pool { margin:16px 0; }
+.tc-athlete { display:grid; grid-template-columns:18px minmax(90px,1fr) 55px 110px auto; gap:6px; align-items:center; margin:10px 0; }
+.tc-workspace .tc-athlete input, .tc-workspace .tc-athlete select { min-width:0; width:100%; padding:8px !important; margin:0; font-size:13px; }
+.tc-athlete-index { font-size:12px; color:var(--ui-muted, var(--muted)); }
 .tc-member-list { list-style:none; padding:0; margin:12px 0 0; }
-.tc-member-list li { padding:10px 0; border-bottom:1px solid var(--tc-line); display:flex; gap:10px; justify-content:space-between; overflow-wrap:anywhere; }
+.tc-member-list li { padding:10px 0; border-bottom:1px solid var(--ui-border, var(--line)); display:flex; gap:10px; justify-content:space-between; overflow-wrap:anywhere; }
 .tc-member-list li:last-child { border:0; }
-.tc-captain { color:var(--tc-accent); font-size:11px; white-space:nowrap; }
-.tc-bottom { padding:12px 0 24px; color:var(--tc-muted); font-size:13px; }
-.tc-round { margin:26px 0; }
-.tc-match { background:var(--tc-bg); border:1px solid var(--tc-line); border-radius:16px; margin:16px 0; overflow:hidden; }
-.tc-match-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:12px 18px; border-bottom:1px solid var(--tc-line); font-size:12px; font-weight:650; }
-.tc-status { color:var(--tc-muted); font-size:11px; }
-.tc-status.tc-done { color:var(--tc-success); }
-.tc-workspace .tc-score-table { width:100%; table-layout:fixed; border-collapse:collapse; margin:0; background:transparent; }
-.tc-score-table .tc-team-col { width:55%; }
-.tc-score-table th, .tc-score-table td { padding:12px 6px; text-align:center; vertical-align:middle; border-bottom:1px solid var(--tc-line); color:var(--tc-text); background:transparent; }
-.tc-score-table th:first-child { text-align:left; padding-left:18px; }
-.tc-score-table thead th { font-size:11px; font-weight:500; color:var(--tc-muted); }
-.tc-score-table small, .tc-ranking small { display:block; font-size:10px; font-weight:500; color:var(--tc-muted); margin-top:3px; }
-.tc-score-table thead button { border:0; width:100%; padding:4px 0; min-height:40px; background:transparent; font-size:13px; }
-.tc-score-table thead button[aria-pressed="true"] { background:var(--tc-tint); color:var(--tc-accent); }
-.tc-score-table tbody th strong { font-size:17px; display:block; overflow-wrap:anywhere; }
-.tc-roster { display:block; font-size:12px; font-weight:400; line-height:1.6; color:var(--tc-muted); margin-top:5px; overflow-wrap:anywhere; }
-.tc-score-table .tc-selected { background:var(--tc-soft); }
-.tc-score-table input { width:44px; height:44px; padding:0; text-align:center; font-size:19px; font-weight:750; line-height:44px; appearance:none; }
-.tc-score-table .tc-total { font-size:25px; font-weight:800; color:var(--tc-muted); }
-.tc-score-table .tc-winner .tc-total { color:var(--tc-success); }
-.tc-score-table .tc-winner th { box-shadow:inset 3px 0 var(--tc-success); }
-.tc-match-controls { display:flex; flex-wrap:wrap; gap:10px; padding:14px 18px; align-items:center; font-size:12px; }
-.tc-match-controls strong { color:var(--tc-accent); }
-.tc-match-controls small { flex-basis:100%; color:var(--tc-muted); }
-.tc-match-controls select { width:auto; max-width:100%; }
-.tc-timer { font-variant-numeric:tabular-nums; color:var(--tc-muted); }
-.tc-ranking { width:100%; border-collapse:collapse; font-size:14px; }
-.tc-ranking th, .tc-ranking td { padding:10px 5px; border-bottom:1px solid var(--tc-line); text-align:center; }
-.tc-ranking th:first-child { text-align:left; overflow-wrap:anywhere; }
-.tc-ranking small { color:var(--tc-accent); }
-.tc-message { position:sticky; top:8px; z-index:5; padding:14px; border:1px solid var(--tc-accent); border-radius:10px; color:var(--tc-text); background:var(--tc-tint); }
-.tc-tie { color:var(--tc-accent); font-size:13px; }
-@media (max-width:850px) {
-  .tc-workspace { padding:16px; }
-  .tc-team-grid, .tc-pool { grid-template-columns:1fr; }
-  .tc-score-table .tc-team-col { width:48%; }
+.tc-captain { font-size:11px; white-space:nowrap; }
+.tc-round { margin:20px 0; }
+.tc-round h3 { margin:12px 0; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchCardMeta { flex-wrap:wrap; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard select.courtNameBadge { width:auto; max-width:55%; min-width:0; margin:0; line-height:1.3; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-columns { display:grid; grid-template-columns:minmax(0,1fr) repeat(3,44px) 40px !important; gap:5px !important; align-items:center; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading { padding:0 7px 0 11px; font-size:11px; color:var(--match-card-muted); text-align:center; }
+.tc-score-heading > span:first-child { text-align:left; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button { display:flex !important; flex-direction:column; gap:0 !important; min-width:0; min-height:40px; margin:0; padding:4px 0 !important; border-radius:8px; font-size:12px; box-shadow:none; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button[aria-pressed="true"] { outline:2px solid var(--purple); outline-offset:-2px; }
+.tc-score-heading small { display:block; font-size:8px; line-height:1.25; margin-top:3px; font-weight:500; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchTeamName { display:block; -webkit-line-clamp:unset; }
+.tc-roster { display:block; font-size:11px; font-weight:500; line-height:1.5; color:inherit; margin-top:4px; overflow-wrap:anywhere; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchScoreCell { min-width:0; width:100%; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchScoreInput, .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchScoreOutput { width:40px !important; min-width:0 !important; height:40px !important; min-height:40px !important; font-size:15px !important; padding:0 !important; text-align:center !important; }
+.tc-total { text-align:center; font-size:20px; }
+.tc-match-note { display:grid; gap:4px; font-size:11px; line-height:1.4; color:var(--match-card-muted); }
+.tc-match-note small { font-size:11px; }
+.tc-message { padding:14px; border:1px solid var(--purple); border-radius:10px; }
+.tc-tie { font-size:13px; }
+.tc-team-grid > * { min-width:0; }
+@media (max-width:1100px) {
+  .tc-team-grid, .tc-pool, .tc-match-grid { grid-template-columns:1fr; }
+  .tc-workspace .schedule > .scheduleGroupSection { grid-template-columns:minmax(0,1fr) !important; }
 }
 @media (max-width:520px) {
-  .tc-workspace { padding:10px; }
-  .tc-panel { padding:14px; }
-  .tc-fields { grid-template-columns:1fr; }
-  .tc-tabs { display:grid; grid-template-columns:1fr 1fr; }
-  .tc-tabs button { padding:8px; font-size:12px; }
-  .tc-match-header { padding:10px; font-size:11px; }
-  .tc-score-table .tc-team-col { width:40%; }
-  .tc-score-table th, .tc-score-table td { padding:10px 1px; }
-  .tc-score-table th:first-child { padding-left:8px; }
-  .tc-score-table tbody th strong { font-size:14px; }
-  .tc-roster { font-size:11px; line-height:1.45; }
-  .tc-score-table input { width:100%; max-width:44px; }
-  .tc-score-table thead small { display:none; }
-  .tc-score-table .tc-total { font-size:23px; }
-  .tc-match-controls { padding:12px 9px; gap:8px; }
-  .tc-match-controls button { font-size:12px; padding:8px; flex-grow:1; }
-  .tc-athlete { grid-template-columns:15px minmax(65px,1fr) 47px 85px; }
+  .tc-workspace .tc-fields { grid-template-columns:1fr; }
+  .tc-panel { padding:12px; }
+  .tc-athlete { grid-template-columns:15px minmax(60px,1fr) 48px 85px; }
   .tc-athlete .tc-check { grid-column:2 / -1; }
+  .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-columns { grid-template-columns:minmax(0,1fr) repeat(3,32px) 28px !important; gap:3px !important; }
+  .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchScoreInput, .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchScoreOutput { width:30px !important; height:38px !important; min-height:38px !important; }
+  .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading { font-size:10px; padding-left:8px; }
+  .tc-score-heading button small { display:none; }
+  .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchTeamName { font-size:13px !important; }
+  .tc-roster { font-size:10px; }
+  .tc-total { font-size:17px; }
 }
+/* Legacy phone cards have two columns and reorder their children. Keep the
+   team-cup three-leg layout without changing those legacy rules. */
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .matchCardMeta { grid-area:auto !important; order:1 !important; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .matchCardControls { grid-area:auto !important; order:2 !important; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .tc-score-heading { grid-area:auto !important; order:3 !important; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .matchTeamStack { grid-area:auto !important; order:4 !important; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .tc-match-note { grid-area:auto !important; order:5 !important; }
