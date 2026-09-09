@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Flame, Grid3X3, Share2, Trophy, Users } from "lucide-react";
 import { RankingTable } from "../ranking/RankingTables.jsx";
+import CupPodiumView from "../ranking/CupPodiumView.jsx";
+import { CourtAssignmentModal } from "../matchOperations/MatchControls.jsx";
+import { teamCupPodium } from "../../domain/teamCupPodium.mjs";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import TeamCupParticipants from "./TeamCupParticipants.jsx";
 import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
+import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
+import { recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
 import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets,
-  TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup,
+  TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
   teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
 import "../../styles/31-matches-and-brackets.css";
@@ -14,9 +20,28 @@ import "./teamCup.css";
 const legTitles = kind => kind === "squad" ? ["Masculina", "Feminina", "Mista"] : ["1ª partida", "2ª partida", "Desempate"];
 function Field({ label, children }) { return <label className="tc-field"><span>{label}</span>{children}</label>; }
 
-export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegChange, readOnly = false, now = Date.now(), courtOptions = data.courtNumbers }) {
+export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegChange, onRegisterCourtNumber, readOnly = false, now = Date.now(), courtOptions = data.courtNumbers, unavailableCourts = [] }) {
   const [selected, setSelected] = useState(0);
+  const [courtEditorOpen, setCourtEditorOpen] = useState(false);
   const [announcementStatus, setAnnouncementStatus] = useState("");
+  useEffect(() => {
+    if (!courtEditorOpen) return;
+    const previous = document.activeElement, overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const dialog = document.querySelector('[aria-labelledby="court-editor-title"]');
+    dialog?.querySelector("button")?.focus();
+    function key(event) {
+      if (event.key === "Escape") { event.preventDefault(); setCourtEditorOpen(false); }
+      if (event.key === "Tab") {
+        const controls = [...(dialog?.querySelectorAll('button:not(:disabled), input:not(:disabled)') || [])].filter(e => e.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    }
+    document.addEventListener("keydown", key);
+    return () => { document.body.style.overflow = overflow; document.removeEventListener("keydown", key); previous?.focus?.(); };
+  }, [courtEditorOpen]);
   const game = resolveTeamCupGame(data, storedGame);
   const state = teamMatchState(game, data.winningScore);
   const labels = legTitles(data.teamCup.kind);
@@ -45,10 +70,10 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
     </div>
     {!game.isBye && <div className="matchCardControls">
       {readOnly ? <strong className="courtNameBadge">{leg.courtNumberOverride ? "Quadra " + leg.courtNumberOverride : "Quadra a definir"}</strong>
-        : <select className="courtNameBadge" aria-label={"Quadra · confronto " + number + " · " + labels[selected]} value={leg.courtNumberOverride || ""}
-          disabled={!playable || Boolean(finished) || lockedGroups} onChange={e => onLegChange(game.matchKey, selected, { courtNumberOverride: e.target.value })}>
-          <option value="">Escolher quadra</option>{[...new Set([...(courtOptions || []), leg.courtNumberOverride].filter(Boolean))].map(c => <option key={c} value={c}>Quadra {c}</option>)}
-        </select>}
+        : <button type="button" className="courtNameBadge" aria-label={"Quadra · confronto " + number + " · " + labels[selected]}
+          disabled={!playable || Boolean(finished) || lockedGroups} onClick={() => setCourtEditorOpen(true)}>
+          {leg.courtNumberOverride ? "Quadra " + leg.courtNumberOverride : "Escolher quadra"} <ChevronDown size={13} aria-hidden="true" />
+        </button>}
       {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || !leg.courtNumberOverride || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
     <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
@@ -75,10 +100,17 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
       {selected === 2 && !state.decider && <small>Disponível somente se as duas primeiras partidas terminarem em 1 a 1.</small>}
       {announcementStatus && <small role="status">{announcementStatus}</small>}
     </footer>}
+    {courtEditorOpen && !readOnly && createPortal(<CourtAssignmentModal editor={{ game: leg }}
+      courtNumbers={[...new Set([...(courtOptions || []), ...(data.courtNumbers || [])])]}
+      currentNumber={leg.courtNumberOverride} currentLabel={!leg.courtNumberOverride ? "A definir" : undefined}
+      unavailableNumbers={unavailableCourts}
+      usedNumbers={[...data.schedule.flat(), ...data.brackets].flatMap(g => (g.teamCupLegs || []).filter(l => l !== leg && l.inProgress && !teamLegWinner(l, data.winningScore)).map(l => l.courtNumberOverride))}
+      onSelect={value => { onLegChange(game.matchKey, selected, { courtNumberOverride: value }); onRegisterCourtNumber?.(value); setCourtEditorOpen(false); }}
+      onClose={() => setCourtEditorOpen(false)} />, document.body)}
   </article>;
 }
 
-export default function TeamCupWorkspace({ data, setData, tournament, onBack, onShare, onOpenCourtCenter, savingStatus = "", savingBadge, readOnly = false, unavailableCourts = [], courtOptions = data.courtNumbers }) {
+export default function TeamCupWorkspace({ data, setData, tournament, onBack, onShare, onOpenCourtCenter, onRegisterCourtNumber, savingStatus = "", savingBadge, readOnly = false, unavailableCourts = [], courtOptions = data.courtNumbers }) {
   const [tab, setTab] = useState(readOnly && data.schedule.length ? "games" : "teams");
   const [organizationTab, setOrganizationTab] = useState("format");
   const [matchesTab, setMatchesTab] = useState("groups");
@@ -92,7 +124,9 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   const teams = data.players.teams;
   const groups = locked ? teamCupRankings(data) : [];
   const groupsDone = locked && data.schedule.flat().every(g => teamMatchState(g, data.winningScore).winner);
-  const campaignTies = groupsDone && !groups.some(g => g.unresolvedTieIds.length) ? teamCupQualified(data).unresolvedCampaignTies.filter(t => t.scope !== "paralela" || data.cupConfig.repechageEnabled) : [];
+  const campaignTies = groupsDone && !groups.some(g => g.unresolvedTieIds.length) ? teamCupQualified(data).unresolvedCampaignTies : [];
+  const missingParallel = data.brackets.length > 0 && !data.brackets.some(g => g.phase === "repechage");
+  useEffect(() => { if (!data.cupConfig.repechageEnabled && matchesTab === "repechage") setMatchesTab("main"); }, [data.cupConfig.repechageEnabled, matchesTab]);
   function change(transform) {
     if (readOnly) return;
     setMessage("");
@@ -123,7 +157,8 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       const game = [...d.schedule.flat(), ...d.brackets].find(g => g.matchKey === key);
       const court = String(patch.courtNumberOverride ?? game?.teamCupLegs[i]?.courtNumberOverride ?? "");
       if ((patch.inProgress || ("courtNumberOverride" in patch && game?.teamCupLegs[i]?.inProgress)) && unavailableCourts.map(String).includes(court)) throw new Error("Essa quadra está indisponível ou em uso por outro torneio.");
-      return updateTeamCupLeg(d, key, i, patch);
+      const next = updateTeamCupLeg(d, key, i, patch);
+      return patch.courtNumberOverride ? { ...next, courtNumbers: [...new Set([...(next.courtNumbers || []), patch.courtNumberOverride])] } : next;
     });
   }
   function presentDraw(title, names, transform) {
@@ -139,17 +174,18 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   }
   function drawTie(field, key, ids) {
     presentDraw("Sorteando desempate...", ids.map(id => teamName(teams[id])), d => {
-      if (d.brackets.length) throw new Error("As eliminatórias já foram geradas.");
-      return { ...d, cupConfig: { ...d.cupConfig, [field]: { ...d.cupConfig[field], [key]: shuffleTeamCup(ids) } } };
+      if (d.brackets.length && !(field === "campaignTieBreakOverrides" && missingParallel && campaignTies.some(t => t.tieKey === key && t.scope === "paralela"))) throw new Error("As eliminatórias já foram geradas.");
+      const next = { ...d, cupConfig: { ...d.cupConfig, [field]: { ...d.cupConfig[field], [key]: shuffleTeamCup(ids) } } };
+      return setTeamCupConsolationEnabled(next, next.cupConfig.repechageEnabled);
     });
   }
   function generateGroups() {
-    if (data.teamCup.groupOrder) change(d => generateTeamCupGroups(d));
-    else presentDraw("Sorteando grupos...", teams.map(t => teamName(t)), d => generateTeamCupGroups(d));
+    if (data.teamCup.groupOrder) change(d => recordTeamCupGroupVideo(generateTeamCupGroups(d)));
+    else presentDraw("Sorteando grupos...", teams.map(t => teamName(t)), d => recordTeamCupGroupVideo(generateTeamCupGroups(d), "random"));
   }
   const bracketSections = [...new Set(data.brackets.map(g => g.phase + "|" + g.roundName))];
   const saveIndicator = readOnly ? null : savingBadge || <span className="savingBadge saved">💾 {savingStatus}</span>;
-  const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} readOnly={readOnly} courtOptions={courtOptions} />;
+  const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} onRegisterCourtNumber={onRegisterCourtNumber} readOnly={readOnly} courtOptions={courtOptions} unavailableCourts={unavailableCourts} />;
   return <><section className="appPage tc-workspace" inert={drawPresentation.busy}>
     <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
       <div><div className="tournamentHeaderTitleRow"><h1>{tournament.name}</h1></div>
@@ -181,20 +217,22 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
           ]} /></div>
         <div className="twoCols tc-fields">
           <div className="parallelDisputeChoice"><div className="parallelChoiceHeading"><strong>Realizar 1ª disputa paralela?</strong></div>
-            <div className="parallelChoiceOptions" role="radiogroup" aria-label="Realizar 1ª disputa paralela?">{[[true, "Sim"], [false, "Não"]].map(([enabled, label]) => <button key={label} type="button" role="radio" aria-checked={data.cupConfig.repechageEnabled === enabled} disabled={locked}
-              className={data.cupConfig.repechageEnabled === enabled ? "selected " + (enabled ? "yes" : "no") : ""} onClick={() => change(d => ({ ...d, cupConfig: { ...d.cupConfig, repechageEnabled: enabled } }))}>{label}</button>)}</div>
+            <div className="parallelChoiceOptions" role="radiogroup" aria-label="Realizar 1ª disputa paralela?">{[[true, "Sim"], [false, "Não"]].map(([enabled, label]) => <button key={label} type="button" role="radio" aria-checked={data.cupConfig.repechageEnabled === enabled}
+              className={data.cupConfig.repechageEnabled === enabled ? "selected " + (enabled ? "yes" : "no") : ""} onClick={() => change(d => setTeamCupConsolationEnabled(d, enabled))}>{label}</button>)}</div>
+            <p className="tc-help">A chave é preparada junto às eliminatórias. Sim exibe a disputa; Não apenas a oculta, sem apagar os placares.</p>
           </div>
-          {data.cupConfig.repechageEnabled && <Field label="Nome da 1ª disputa paralela"><input value={data.cupConfig.repechageName} disabled={locked} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, repechageName: e.target.value } }))} /></Field>}
+          {data.cupConfig.repechageEnabled && <Field label="Nome da 1ª disputa paralela"><input value={data.cupConfig.repechageName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, repechageName: e.target.value } }))} /></Field>}
         </div>
-        {locked && <p className="tc-help">Formação e regras protegidas: os grupos já foram gerados.</p>}
+        {locked && <p className="tc-help">Formação e regras protegidas: os grupos já foram gerados. A exibição da disputa paralela continua disponível.</p>}
       </div>}
-      {organizationTab === "players" && !readOnly && <div className="organizationPanel"><TeamCupParticipants data={data} onChange={change} /></div>}
+      {organizationTab === "players" && !readOnly && <div className="organizationPanel"><TeamCupParticipants data={data} tournament={tournament} onChange={change} /></div>}
       {readOnly && <div className="tc-team-grid">{teams.map(team => <section className="tc-panel" key={team.id}><h2>{teamName(team)}</h2>
         <ul className="tc-member-list">{team.athletes.map(a => <li key={a.id}>{a.name || "A definir"} {a.id === team.captainId && <span className="tc-captain">Capitão/ã</span>}</li>)}</ul>
       </section>)}</div>}
     </section>}
-    {(tab === "groups" || tab === "ranking") && <section className="card">
+    {tab === "groups" && <section className="card">
       <div className="cardTitleRow"><h2>{tab === "groups" ? "Grupos" : "Ranking"}</h2>{saveIndicator}</div>
+      {tab === "groups" && !readOnly && <TeamCupVideoActions data={data} tournament={tournament} only="groups" />}
       {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Salve a formação em Organizar grupos e depois gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={drawPresentation.busy || (random && data.teamCup.drawStage !== "complete")} onClick={generateGroups}>{data.teamCup.groupOrder ? "Gerar fase de grupos" : "Sortear grupos e gerar confrontos"}</button></div></>}
       <h3>Classificação dos grupos</h3>
       <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games das partidas concluídas de cada confronto finalizado, incluindo o desempate.</p>
@@ -203,8 +241,16 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
         {group.unresolvedTieIds.length > 0 && <div className="tc-tie"><p>Empate: {group.rows.filter(r => group.unresolvedTieIds.includes(r.id)).map(r => r.name).join(", ")}.</p>{!readOnly && !data.brackets.length && <button type="button" onClick={() => drawTie("tieBreakOverrides", String(group.id), group.unresolvedTieIds)}>Sortear desempate do grupo</button>}</div>}
       </section>)}</div>
-      {campaignTies.map(tie => <section className="tc-panel" key={tie.tieKey}><p>Empate de campanha ({tie.scope}): {tie.rows.map(r => r.name).join(", ")}.</p>{!readOnly && !data.brackets.length && <button type="button" onClick={() => drawTie("campaignTieBreakOverrides", tie.tieKey, tie.teamIds)}>Sortear ordem de campanha</button>}</section>)}
+      {campaignTies.map(tie => <section className="tc-panel" key={tie.tieKey}><p>Empate de campanha ({tie.scope === "paralela" ? "eliminados dos grupos" : tie.scope}): {tie.rows.map(r => r.name).join(", ")}.</p>{!readOnly && (!data.brackets.length || (missingParallel && tie.scope === "paralela")) && <button type="button" onClick={() => drawTie("campaignTieBreakOverrides", tie.tieKey, tie.teamIds)}>Sortear ordem de campanha</button>}</section>)}
       {!locked && <p className="tc-panel">A classificação aparece após gerar os grupos.</p>}
+    </section>}
+    {tab === "ranking" && <section className="card">
+      <div className="cardTitleRow"><h2>Ranking</h2>{saveIndicator}</div>
+      <div className="cupRankingSplit">{[["main", data.cupConfig.mainBracketName || "Principal"], ...(data.cupConfig.repechageEnabled ? [["repechage", data.cupConfig.repechageName || "Consolation"]] : [])].map(([phase, title]) => {
+        const podium = teamCupPodium(data, phase);
+        return <div className="cupRankingPanel" key={phase}><h3>{title}</h3>{podium.length ? <CupPodiumView podium={podium} title={title} variant={phase === "main" ? "main" : "parallel"}
+          shareContext={{ title: tournament.name, modalityName: `Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`, rankingCriteria: "wins_balance_points" }} /> : <p>Finalize {phase === "main" ? "a chave principal" : "a disputa paralela"} para ver o pódio.</p>}</div>;
+      })}</div>
     </section>}
     {tab === "games" && <section className="card tournamentMatchesSection">
       <div className="cardTitleRow"><h2>Partidas</h2>{saveIndicator}</div>
@@ -215,7 +261,8 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         {data.schedule.flatMap((games, r) => games.map((game, g) => game.groupName === name ? matchCard(game, g + 1, "Rodada " + (r + 1)) : null))}
       </section>)}</div> : <p>Os confrontos aparecem depois de formar as equipes e sortear os grupos.</p> : <>
       {!data.brackets.length && <><p>Conclua os grupos e resolva eventuais empates na aba Grupos. Depois, gere as chaves finais.</p>{!readOnly && <div className="actions"><button type="button" className="actionGenerateBtn" disabled={!groupsDone} onClick={() => change(d => generateTeamCupBrackets(d))}>Gerar chaves finais{data.cupConfig.repechageEnabled ? " e Consolation" : ""}</button></div>}</>}
-      {bracketSections.filter(section => section.startsWith(matchesTab + "|")).map(section => {
+      {matchesTab === "repechage" && missingParallel && <p>Resolva o empate de campanha dos eliminados na aba Grupos para definir os confrontos.</p>}
+      {bracketSections.filter(section => section.startsWith(matchesTab + "|") && (matchesTab !== "repechage" || data.cupConfig.repechageEnabled)).map(section => {
         const [phase, round] = section.split("|");
         const games = data.brackets.filter(g => g.phase === phase && g.roundName === round);
         return <section className="tc-round" key={section}><h3>{phase === "main" ? data.cupConfig.mainBracketName : data.cupConfig.repechageName} · {round}</h3><div className="tc-match-grid">{games.map((game, i) => matchCard(game, i + 1, round))}</div></section>;

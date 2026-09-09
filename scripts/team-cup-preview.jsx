@@ -6,16 +6,23 @@ import { createOrganizerWorkspace } from "../src/OrganizerWorkspace.jsx";
 import PublicTournamentScreen from "../src/features/publicArena/PublicTournamentScreen.jsx";
 import { createInitialData } from "../src/domain/tournamentDataNormalization.mjs";
 import { modalityConfig } from "../src/domain/modalityConfig.mjs";
-import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified, TEAM_LEVELS } from "../src/domain/teamCup.mjs";
+import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified, TEAM_LEVELS, drawTeamCaptains, drawTeamMembers } from "../src/domain/teamCup.mjs";
+import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo } from "../src/domain/teamCupVideo.mjs";
 const query = new URLSearchParams(location.search);
 const kind = query.get("kind") || "trio";
-const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "");
+const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "") + (query.has("videos") ? "-videos-v1" : "") + (query.has("podium") ? "-podium-v1" : "");
 function initial() {
   const base = createInitialData("Times/Equipes", modalityConfig["Times/Equipes"]);
   const data = createTeamCupData({ ...base, winningScore: 6 }, query.has("participants") ? 9 : 6, kind);
   if (query.has("setup") || query.has("empty")) return data;
   const names = ["Cristiano", "Danilo", "Cristian", "Layner", "Nicolas", "Guilherme", "Maria", "Ana", "Júlia", "Fernanda", "Beatriz", "Carolina"];
   data.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => a.name = names[(i * 3 + j) % names.length] + " " + (i + 1) + (j + 1)));
+  if (query.has("videos")) {
+    data.teamCup.formation = "random";
+    data.teamCup.pool = structuredClone(data.players.teams.flatMap(t => t.athletes));
+    const drawn = recordTeamCupMemberDraw(drawTeamMembers(recordTeamCupCaptainDraw(drawTeamCaptains(data))));
+    return recordTeamCupGroupVideo(generateTeamCupGroups(drawn), "random");
+  }
   if (query.has("participants")) {
     data.players.teams.forEach((team, i) => team.athletes.forEach((a, j) => {
       const examples = a.gender === "H" ? names.slice(0, 6) : names.slice(6);
@@ -25,7 +32,7 @@ function initial() {
     return data;
   }
   let fixture = generateTeamCupGroups(data, () => .4);
-  if (query.has("finals")) {
+  if (query.has("finals") || query.has("podium")) {
     fixture.cupConfig.repechageEnabled = true;
     for (const game of fixture.schedule.flat()) {
       const firstWins = game.ids1[0] < game.ids2[0];
@@ -33,6 +40,9 @@ function initial() {
     }
     for (const tie of teamCupQualified(fixture).unresolvedCampaignTies) fixture.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
     fixture = generateTeamCupBrackets(fixture);
+    if (query.has("podium")) for (const game of fixture.brackets) if (!game.isBye) {
+      for (let leg = 0; leg < 2; leg++) fixture = updateTeamCupLeg(fixture, game.matchKey, leg, { s1: "6", s2: "3" });
+    }
   }
   return fixture;
 }

@@ -23,7 +23,7 @@
 .tc-round { margin:20px 0; }
 .tc-round h3 { margin:12px 0; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchCardMeta { flex-wrap:wrap; }
-.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard select.courtNameBadge { width:auto; max-width:55%; min-width:0; margin:0; line-height:1.3; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard button.courtNameBadge { display:inline-flex; align-items:center; gap:7px; width:auto; max-width:55%; min-width:0; margin:0; line-height:1.3; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-columns { display:grid; grid-template-columns:minmax(0,1fr) repeat(3,44px) 40px !important; gap:5px !important; align-items:center; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading { padding:0 7px 0 11px; font-size:11px; color:var(--match-card-muted); text-align:center; }
 .tc-score-heading > span:first-child { text-align:left; }
@@ -64,3 +64,19 @@
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .tc-score-heading { grid-area:auto !important; order:3 !important; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .matchTeamStack { grid-area:auto !important; order:4 !important; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard > .tc-match-note { grid-area:auto !important; order:5 !important; }
+
+/* Keep the new three-leg controls legible without global button overrides. */
+:is(.proDashboard.theme-dark, [data-theme="dark"]) .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button {
+  background:#203349 !important; color:#edf3ff !important; border:1px solid #516984 !important;
+}
+:is(.proDashboard.theme-dark, [data-theme="dark"]) .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button small { color:#c3d2e7 !important; }
+:is(.proDashboard.theme-dark, [data-theme="dark"]) .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button[aria-pressed="true"] {
+  background:#41305f !important; color:#f4eaff !important; border-color:#bd91ff !important; outline-color:#bd91ff;
+}
+:is(.proDashboard.theme-dark, [data-theme="dark"]) .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchCardStatus.is-waiting {
+  background:#352749 !important; color:#eadcff !important; border-color:#ab7ee6 !important;
+}
+:is(.proDashboard.theme-dark, [data-theme="dark"]) .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchCallButton {
+  background:#203349 !important; color:#e0edff !important; border:1px solid #516984 !important;
+}
+:is(.proDashboard.theme-dark, [data-theme="dark"]) .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchCallButton:disabled { opacity:1; color:#a6b4c8 !important; background:#1c2939 !important; }

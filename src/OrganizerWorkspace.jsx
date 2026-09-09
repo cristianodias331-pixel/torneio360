@@ -10853,6 +10853,7 @@ if (config.type === "teamCup") return <>
   <NoticeModal notice={notice} onClose={() => setNotice(null)} />
   <TeamCupWorkspace data={data} setData={setData} tournament={tournament} onBack={onBack}
     savingStatus={savingStatus} savingBadge={<SavingStatusBadge />} onShare={enablePublicShare} onOpenCourtCenter={onOpenCourtCenter}
+    onRegisterCourtNumber={onRegisterCentralCourtNumber}
     courtOptions={operationalCourtNumbers}
     unavailableCourts={[...unavailableCentralCourtNumbers, ...(venueCourtUsages || []).filter(u => u.tournamentId !== tournament.id).map(u => u.courtNumber)]} />
 </>;

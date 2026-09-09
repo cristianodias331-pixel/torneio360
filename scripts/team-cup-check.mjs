@@ -146,7 +146,8 @@ export function runTeamCupChecks() {
   assert(mergeConcurrentTournamentData(baseGroups, changedGroups, generated).conflicts.length > 0);
   let knockout = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(), seed())));
   assert.throws(() => cup.updateTeamCupLeg(knockout, knockout.schedule[0][0].matchKey, 0, { s1: "0" }), /protegidos/);
-  assert(knockout.brackets.every(g => g.phase === "main"));
+  assert.equal(knockout.cupConfig.repechageEnabled, false);
+  assert(knockout.brackets.some(g => g.phase === "repechage"), "Hidden Consolation remains prepared");
   const semi = knockout.brackets.find(g => !g.isBye);
   knockout = finish(knockout, semi.matchKey);
   for (const g of knockout.brackets.filter(g => g.roundName !== "Final" && !g.isBye && g.matchKey !== semi.matchKey)) knockout = finish(knockout, g.matchKey);

@@ -97,7 +97,7 @@ function drawShuffleVideoImageCover(context, image, x, y, width, height) {
   context.drawImage(image, x - (drawWidth - width) / 2, y - (drawHeight - height) / 2, drawWidth, drawHeight);
 }
 
-function drawShuffleVideoBackground(context) {
+export function drawShuffleVideoBackground(context) {
   const gradient = context.createLinearGradient(0, 0, SHUFFLE_VIDEO_WIDTH, SHUFFLE_VIDEO_HEIGHT);
   gradient.addColorStop(0, "#06143d");
   gradient.addColorStop(0.54, "#12338d");
@@ -118,7 +118,7 @@ function drawShuffleVideoBackground(context) {
   context.restore();
 }
 
-function drawShuffleVideoHeader(context, snapshot, assets, arenaName) {
+export function drawShuffleVideoHeader(context, snapshot, assets, arenaName) {
   drawRoundedRect(context, 28, 24, 664, 214, 28, "rgba(4, 15, 48, 0.78)", "rgba(255, 255, 255, 0.16)");
 
   if (assets.logo) {
@@ -171,7 +171,7 @@ function drawShuffleVideoHeader(context, snapshot, assets, arenaName) {
   context.textAlign = "left";
   context.fillStyle = "#fbbf24";
   context.font = "900 14px Arial";
-  context.fillText("SORTEIO OFICIAL", 48, 166);
+  context.fillText(snapshot.headerLabel || "SORTEIO OFICIAL", 48, 166);
   context.fillStyle = "#ffffff";
   context.font = "900 27px Arial";
   context.fillText(truncateCanvasText(context, snapshot.tournamentName, 610), 48, 198);
@@ -180,7 +180,7 @@ function drawShuffleVideoHeader(context, snapshot, assets, arenaName) {
   context.fillText(truncateCanvasText(context, snapshot.modalityName, 610), 48, 222);
 }
 
-function drawShuffleVideoFooter(context, snapshot, pageLabel = "") {
+export function drawShuffleVideoFooter(context, snapshot, pageLabel = "") {
   context.fillStyle = "rgba(255, 255, 255, 0.8)";
   context.font = "700 13px Arial";
   context.textAlign = "left";
@@ -251,13 +251,13 @@ function getShuffleVideoMotionSlots(length, cardWidth) {
   }));
 }
 
-function drawShuffleVideoMotion(context, snapshot, elapsedMs) {
+export function drawShuffleVideoMotion(context, snapshot, elapsedMs) {
   drawRoundedRect(context, 36, 278, 648, 870, 32, "rgba(4, 15, 48, 0.7)", "rgba(255, 255, 255, 0.16)");
   const secondsLeft = Math.max(0, Math.ceil((5000 - elapsedMs) / 1000));
   context.textAlign = "left";
   context.fillStyle = "#67e8f9";
   context.font = "900 16px Arial";
-  context.fillText(snapshot.kind === "groups" ? "SORTEANDO OS GRUPOS" : "SORTEANDO OS NOMES", 64, 327);
+  context.fillText(snapshot.motionLabel || (snapshot.kind === "groups" ? "SORTEANDO OS GRUPOS" : "SORTEANDO OS NOMES"), 64, 327);
   context.fillStyle = "#ffffff";
   context.font = "900 30px Arial";
   context.fillText("Participantes em movimento", 64, 366);
@@ -368,7 +368,7 @@ function drawShuffleVideoResultPage(context, snapshot, sections, pageIndex, tota
   context.fillText("Sorteio concluído e registrado no Torneio360", 360, 1132);
 }
 
-function getShuffleVideoMimeType() {
+export function getShuffleVideoMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
   const candidates = [
     "video/mp4;codecs=avc1.42E01E",

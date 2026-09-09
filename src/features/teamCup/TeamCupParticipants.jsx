@@ -7,6 +7,8 @@ import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList,
   teamCupOrganizationGroups, teamLevelValue, updateTeamCupParticipant } from "../../domain/teamCupOrganization.mjs";
 import "./teamCupParticipants.css";
 import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
+import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
+import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
 
 function Dialog({ title, eyebrow, intro, onClose, children, footer, busy = false }) {
   const ref = useRef(null);
@@ -109,7 +111,7 @@ function ImportDialog({ data, onChange, onClose }) {
   </Dialog>;
 }
 
-function OrganizationDialog({ data, onChange, onClose }) {
+function OrganizationDialog({ data, tournament, onChange, onClose }) {
   const [draft, setDraft] = useState(() => structuredClone(data));
   const [signature] = useState(() => organizationSignature(data));
   const [stage, setStage] = useState("teams");
@@ -126,7 +128,7 @@ function OrganizationDialog({ data, onChange, onClose }) {
     if (locked || drawPresentation.busy) return;
     try {
       const captains = stage === "captains";
-      const next = captains ? drawTeamCaptains(draft) : drawTeamMembers(draft);
+      const next = captains ? recordTeamCupCaptainDraw(drawTeamCaptains(draft)) : recordTeamCupMemberDraw(drawTeamMembers(draft));
       const captainIds = new Set(draft.players.teams.map(t => t.captainId));
       const candidates = draft.teamCup.pool.filter(a => captains ? !draft.teamCup.designatedCaptains || a.captainCandidate : !captainIds.has(a.id));
       setError("");
@@ -145,7 +147,7 @@ function OrganizationDialog({ data, onChange, onClose }) {
   }
   function save() {
     try {
-      const next = { ...draft, teamCup: { ...draft.teamCup, groupOrder: groups.flatMap(g => g.teamIds) } };
+      const next = recordTeamCupGroupVideo({ ...draft, teamCup: { ...draft.teamCup, groupOrder: groups.flatMap(g => g.teamIds) } });
       applyTeamCupOrganization(data, next, signature);
       onChange(current => applyTeamCupOrganization(current, next, signature)); onClose();
     } catch (e) { setError(e.message); }
@@ -157,6 +159,7 @@ function OrganizationDialog({ data, onChange, onClose }) {
   return <><Dialog busy={drawPresentation.busy} title="Organizar equipes e grupos" eyebrow={`COPA · TIMES/EQUIPES · ${draft.teamCup.kind.toUpperCase()}`} intro="Primeiro, coloque os nomes em Colar lista ou manualmente. Depois, forme as equipes e organize os grupos da sua forma." onClose={onClose}
     footer={<><button type="button" onClick={onClose}>{locked ? "Fechar" : "Cancelar"}</button>{!locked && <button type="button" className="tcorg-save" onClick={save}><Check /> Salvar formação</button>}</>}>
     <nav className="tcorg-stages" aria-label="Etapas da organização"><button type="button" className={stage === "teams" ? "active" : ""} onClick={() => { setStage("teams"); setSelection(null); }}>1. Equipes e capitães</button><button type="button" className={stage === "groups" ? "active" : ""} onClick={() => { setStage("groups"); setSelection(null); }}>2. Grupos da copa</button></nav>
+    <TeamCupVideoActions data={draft} tournament={tournament} draft={!locked} only={stage === "teams" ? "teams" : "groups"} />
     {locked && <p className="tcorg-hint">Somente consulta: os jogos já foram gerados e a formação está protegida.</p>}
     <div className="tcorg-modes">{modes.map(([key, title, text, Icon]) => <button type="button" key={key} className={mode === key ? "selected" : ""} aria-pressed={mode === key} disabled={locked || (stage === "groups" && !formed)}
       onClick={() => { setSelection(null); edit(d => stage === "groups" ? organizeTeamCupGroups(d, key) : prepareTeamCupFormation(d, key)); }}><Icon /><span><b>{title}</b><small>{text}</small></span></button>)}</div>
@@ -189,7 +192,7 @@ function OrganizationDialog({ data, onChange, onClose }) {
   </Dialog>{drawPresentation.overlay}</>;
 }
 
-export default function TeamCupParticipants({ data, onChange }) {
+export default function TeamCupParticipants({ data, tournament, onChange }) {
   const [search, setSearch] = useState(""), [dialog, setDialog] = useState(null);
   const locked = organizationLocked(data), entries = participantEntries(data);
   const normalize = value => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
@@ -198,6 +201,7 @@ export default function TeamCupParticipants({ data, onChange }) {
   return <div className="tcp-participants">
     <div className="tcp-summary"><span><b>{filled}/{data.players.teams.length * teamSize(data)}</b> vagas preenchidas</span><span><b>{entries.filter(e => TEAM_LEVELS.includes(e.athlete.level)).length}</b> níveis definidos</span><span>{teamSize(data) === 4 ? "Squad · 2H + 2M" : "Trio · composição livre"}</span></div>
     <div className="tcp-toolbar"><button type="button" className="tcp-paste" disabled={locked} onClick={() => setDialog("paste")}><ClipboardPaste /> Colar lista</button><button type="button" className="tcp-organize" onClick={() => setDialog("organize")}><Grid3X3 /> Organizar grupos</button><label className="tcp-search"><Search /><input aria-label="Buscar pelo nome do atleta" placeholder="Buscar pelo nome do atleta" type="search" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
+    <TeamCupVideoActions data={data} tournament={tournament} />
     <p className="tc-help">{locked ? "Jogos gerados: nomes e formação protegidos. Você pode buscar atletas e consultar a organização." : "Preencha os atletas abaixo ou cole uma lista. Em Organizar grupos, defina equipes, capitães e a distribuição dos times."}</p>
     <div className="tcp-list">{filtered.map(({ athlete: a, team }, i) => <div className="tcp-row" key={a.id}>
       <span className="tcp-number">{i + 1}</span><label className="tcp-name"><span>{team ? teamName(team) : "Lista para sorteio"}{team?.captainId === a.id ? " · Capitão/ã" : ""}</span><input aria-label={`Nome de ${a.name || a.id}`} placeholder="Nome do atleta" maxLength={100} value={a.name} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { name: e.target.value }))} /></label>
@@ -205,6 +209,6 @@ export default function TeamCupParticipants({ data, onChange }) {
       <label className="tcp-level"><span>Nível</span><select aria-label={`Nível de ${a.name || a.id}`} value={a.level} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { level: e.target.value }))}><option value="">Não definido</option>{TEAM_LEVELS.map(level => <option key={level}>{level}</option>)}</select></label>
     </div>)}</div>{!filtered.length && <p className="tc-help">Nenhum atleta encontrado para essa busca.</p>}
     {dialog === "paste" && <ImportDialog data={data} onChange={onChange} onClose={() => setDialog(null)} />}
-    {dialog === "organize" && <OrganizationDialog data={data} onChange={onChange} onClose={() => setDialog(null)} />}
+    {dialog === "organize" && <OrganizationDialog data={data} tournament={tournament} onChange={onChange} onClose={() => setDialog(null)} />}
   </div>;
 }

@@ -120,6 +120,30 @@ html[data-theme="dark"] .tcorg-overlay { --org-bg:#081e2d; --org-surface:#0b2639
 .tc-draw-footer { display:flex; flex-direction:column; gap:10px; }
 .tc-draw-footer > button { align-self:flex-end; color:#fff; background:#143246; border:1px solid #507088; padding:8px 12px; border-radius:10px; cursor:pointer; }
 .tc-draw-overlay .shuffleHeader h2 { color:#fff; }
+.tc-video-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+.tc-video-actions svg { width:17px; height:17px; }
+.tc-video-actions small { flex-basis:100%; color:var(--org-muted, var(--ui-muted)); font-size:11px; }
+.tc-video-overlay { position:fixed; inset:0; z-index:22000; display:flex; align-items:center; justify-content:center; padding:16px; background:#020817d9; }
+.tc-video-dialog { width:min(850px,100%); max-height:calc(100dvh - 32px); display:flex; flex-direction:column; background:#f6f9ff; color:#192d47; border:1px solid #8f76b5; border-radius:20px; overflow:hidden; }
+.tc-video-dialog header { display:flex; gap:16px; justify-content:space-between; padding:20px; }
+.tc-video-dialog header span { color:#8559b6; font-size:11px; font-weight:800; }
+.tc-video-dialog h2 { margin:6px 0; font-size:22px; color:inherit; }
+.tc-video-dialog p { font-size:13px; line-height:1.5; }
+.tc-video-dialog button { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1px solid #527089; background:#e7effa; color:#163451; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:750; }
+.tc-video-dialog button:disabled { opacity:.55; cursor:default; }
+.tc-video-dialog button svg { width:18px; height:18px; }
+.tc-video-dialog header > button { align-self:flex-start; }
+.tc-video-body { overflow:auto; padding:0 20px 16px; min-height:0; }
+.tc-video-dialog footer { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1px solid #6c829a60; }
+.tc-video-dialog .tc-video-primary { background:#634493; color:white; border-color:#9472bb; }
+.tc-video-dialog video, .tc-video-canvas { display:block; max-height:46dvh; max-width:100%; width:auto; margin:auto; border-radius:12px; background:#081329; aspect-ratio:9/16; }
+.tc-video-canvas[hidden] { display:none; }
+.tc-video-dialog progress { display:block; width:100%; margin:10px 0; accent-color:#8e60c6; }
+.tc-video-warning { border:1px solid #ae873c; padding:10px; border-radius:10px; }
+html[data-theme="dark"] .tc-video-dialog { background:#092031; color:#eaf3ff; }
+html[data-theme="dark"] .tc-video-dialog button { background:#173448; color:#eaf3ff; }
+html[data-theme="dark"] .tc-video-dialog .tc-video-primary { background:#634493; }
+@media (max-width:600px) { .tc-video-dialog header { padding:14px; } .tc-video-dialog h2 { font-size:18px; } .tc-video-body { padding:0 14px 12px; } .tc-video-dialog footer { padding:12px; } }
 @media (prefers-reduced-motion:reduce) { .tc-draw-overlay .floatingName { transition:none; } }
 @media (max-width:850px) { .tcorg-group-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .tcorg-roster-grid { grid-template-columns:1fr; } .tcorg-candidates { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:600px) {

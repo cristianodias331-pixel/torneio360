@@ -105,7 +105,7 @@ export function CourtConfigPanel({ courtNumbers, onCommit, onReset, onOpenCourtC
   );
 }
 
-export function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers = [], currentNumber, usedNumbers = [], onSelect, onClose }) {
+export function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers = [], currentNumber, currentLabel, usedNumbers = [], onSelect, onClose }) {
   const [customNumber, setCustomNumber] = useState("");
   const [pendingSelection, setPendingSelection] = useState(null);
   const normalizedCurrent = normalizeCourtNumberValue(currentNumber);
@@ -188,7 +188,7 @@ export function CourtAssignmentModal({ editor, courtNumbers, unavailableNumbers 
 
         <div className="courtEditorCurrent">
           <small>Quadra atual</small>
-          <CourtBadge label={`Quadra ${normalizedCurrent || editor?.game?.court || 1}`} />
+          <CourtBadge label={currentLabel || `Quadra ${normalizedCurrent || editor?.game?.court || 1}`} />
         </div>
 
         {pendingSelection ? (

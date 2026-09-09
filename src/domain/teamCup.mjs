@@ -227,17 +227,34 @@ export function generateTeamCupBrackets(data) {
   if (!data.schedule.length || !data.schedule.flat().every(g => teamMatchState(g, data.winningScore).winner)) throw new Error("Conclua todos os confrontos dos grupos.");
   if (teamCupRankings(data).some(g => g.unresolvedTieIds.length)) throw new Error("Resolva os empates dos grupos antes de gerar as eliminatórias.");
   const qualified = teamCupQualified(data);
-  const ties = qualified.unresolvedCampaignTies.filter(t => t.scope !== "paralela" || data.cupConfig.repechageEnabled);
+  const ties = qualified.unresolvedCampaignTies;
   if (ties.length) throw new Error("Resolva os empates de campanha antes de gerar as eliminatórias.");
   const count = createCearenseGroups(data.players.teams.length).length;
   const plan = playRankingMainBracketPlans[count];
   const main = plan
     ? buildCopinhaBracketFromPlan(qualified.main, "main", data.cupConfig.mainBracketName, expandBracketPlanWithVisualByes(plan))
     : buildCearenseEliminationRounds(qualified.main, "main", data.cupConfig.mainBracketName, true);
-  const consolation = data.cupConfig.repechageEnabled ? buildCearenseEliminationRounds(qualified.repechage, "repechage", data.cupConfig.repechageName, false) : [];
+  const consolation = buildCearenseEliminationRounds(qualified.repechage, "repechage", data.cupConfig.repechageName, false);
   const brackets = [...main, ...consolation].flatMap(round => round.games.map(game => makeTeamMatch({ ...game, roundName: round.title })));
   const next = { ...data, brackets };
   next.brackets = brackets.map(game => resolveBracketGame(game, brackets, next));
+  return next;
+}
+
+// Visibility is independent from bracket creation. Never discard an existing
+// branch (including scores) when the organizer temporarily hides it.
+export function setTeamCupConsolationEnabled(data, enabled) {
+  let next = { ...data, cupConfig: { ...data.cupConfig, repechageEnabled: Boolean(enabled) } };
+  if (next.brackets.length && !next.brackets.some(g => g.phase === "repechage")) {
+    // Older local tournaments may have generated only the main bracket.
+    const qualified = teamCupQualified(next);
+    if (!qualified.unresolvedCampaignTies.some(t => t.scope === "paralela")) {
+      const rounds = buildCearenseEliminationRounds(qualified.repechage, "repechage", next.cupConfig.repechageName, false);
+      const added = rounds.flatMap(r => r.games.map(g => makeTeamMatch({ ...g, roundName: r.title })));
+      const brackets = [...next.brackets, ...added];
+      next = { ...next, brackets: [...next.brackets, ...added.map(g => resolveBracketGame(g, brackets, next))] };
+    }
+  }
   return next;
 }
 
