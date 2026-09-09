@@ -38,11 +38,17 @@ export const allowedByPlan = {
     "Campeonato Cearense",
     "Campeonato Cearense Individual",
     "Modelo Play Ranking",
+    "Times/Equipes",
     "Copa Sunset",
   ],
 };
 
 export const modalityConfig = {
+  "Times/Equipes": {
+    type: "teamCup", cupMode: "team-cup", defaultTeams: 6,
+    allowedTeamCounts: Array.from({ length: 29 }, (_, i) => i + 4).filter(n => n !== 5),
+    defaultMainBracketName: "Eliminatória Principal", defaultRepechageName: "Consolation", courts: 6,
+  },
   "Reizinho": {
     type: "reizinho",
     allowedPlayerCounts: [4, 6],

@@ -189,6 +189,13 @@ export function getRegisteredAthletesForPublic(data, config) {
     ];
   }
 
+  if (config?.type === "teamCup") {
+    return teams.map((team, index) => ({
+      title: team.name || team.a || "Time " + (index + 1),
+      names: (team.athletes || []).map((athlete, i) => (athlete.name || "Atleta " + (i + 1))
+        + (athlete.id === team.captainId ? " (capitão/ã)" : "")),
+    }));
+  }
   if (isFixedTeamType(config) || isCupType(config) || teams.length > 0) {
     return [
       {

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import TeamCupWorkspace from "./features/teamCup/TeamCupWorkspace.jsx";
 import { createPortal } from "react-dom";
 import "./styles/30-organizer-event-management.css";
 import "./styles/40-organizer-data-and-navigation.css";
@@ -9079,12 +9080,12 @@ function TournamentScreen({
   }
 
   const ranking = useMemo(
-    () => calculateRanking(data, tournament.type, data.rankingCriteria),
+    () => config.type === "teamCup" ? [] : calculateRanking(data, tournament.type, data.rankingCriteria),
     [data, tournament.type]
   );
 
   const cupGroupRankings = useMemo(
-    () => isCupType(config) && (data.groupsShuffled || data.schedule?.length > 0)
+    () => config.type !== "teamCup" && isCupType(config) && (data.groupsShuffled || data.schedule?.length > 0)
       ? calculateCupGroupRankings(data, data.rankingCriteria)
       : [],
     [data, config.type]
@@ -10847,6 +10848,14 @@ function clearTable() {
   setClearTableOpen(false);
   showNotice("success", "Jogos e placares apagados", "Todos os jogos e placares foram removidos. Os participantes foram mantidos.");
 }
+
+if (config.type === "teamCup") return <>
+  <NoticeModal notice={notice} onClose={() => setNotice(null)} />
+  <TeamCupWorkspace data={data} setData={setData} tournament={tournament} onBack={onBack}
+    savingStatus={savingStatus} onShare={enablePublicShare}
+    courtOptions={operationalCourtNumbers}
+    unavailableCourts={[...unavailableCentralCourtNumbers, ...(venueCourtUsages || []).filter(u => u.tournamentId !== tournament.id).map(u => u.courtNumber)]} />
+</>;
 
 const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
 const secondParallelVisible = isCearenseSecondParallelEnabled(data);

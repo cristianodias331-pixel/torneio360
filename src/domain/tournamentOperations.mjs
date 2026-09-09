@@ -18,6 +18,7 @@ import {
   isGameFinished,
 } from "./scoreRules.mjs";
 import { resolveBracketGame } from "./bracketProgression.mjs";
+import { isTeamCup, teamLegAvailable } from "./teamCup.mjs";
 
 export function createTournamentOperations({ syncCupBracketScores = (data) => data } = {}) {
   function isBracketPhaseEnabled(data, game) {
@@ -41,7 +42,7 @@ export function createTournamentOperations({ syncCupBracketScores = (data) => da
       ...(Array.isArray(data.brackets)
         ? data.brackets.filter((game) => isBracketPhaseEnabled(data, game))
         : []),
-    ];
+    ].flatMap(game => isTeamCup(data) ? (game.teamCupLegs || []) : [game]);
   }
 
   function getNextMatchTimerExpiryDelay(data = {}, now = Date.now()) {
@@ -127,6 +128,12 @@ export function createTournamentOperations({ syncCupBracketScores = (data) => da
       });
     });
 
+    if (isTeamCup(data)) return games.flatMap(item => (item.game.teamCupLegs || []).flatMap((leg, index) => {
+      if (!teamLegAvailable(data, item.game, index)) return [];
+      const storedLeg = (item.storedGame || item.game).teamCupLegs[index];
+      return [{ ...item, game: { ...leg, ids1: item.game.ids1, ids2: item.game.ids2, team1: item.game.team1, team2: item.game.team2 },
+        storedGame: storedLeg, key: item.key + ":leg:" + index, label: item.label + " · " + (index + 1) + "ª partida" }];
+    }));
     return games;
   }
 

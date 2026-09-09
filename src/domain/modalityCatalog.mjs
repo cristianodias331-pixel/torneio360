@@ -54,11 +54,12 @@ export const modalityPickerGroups = [
     id: "cups",
     title: "Copas e modelos",
     subtitle: "Formatos com grupos, eliminatórias ou regras especiais.",
-    types: ["Copa - 18 duplas", "Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking", "Copa Sunset"],
+    types: ["Copa - 18 duplas", "Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking", "Copa Sunset", "Times/Equipes"],
   },
 ];
 
 export const modalityPickerDescriptions = {
+  "Times/Equipes": "Trio ou Squad: grupos, eliminatórias e Consolation opcional, com capitães e formação fixa ou sorteada.",
   "Super 12 Mista (Dupla Fixa)": "6 duplas definidas e classificação por equipe.",
   "Super 16 Mista (Dupla Fixa)": "8 duplas definidas e classificação por equipe.",
   "Super 10 (Dupla Fixa)": "10 duplas fixas, 9 rodadas e 45 jogos sem repetir adversários.",
