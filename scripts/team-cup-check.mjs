@@ -86,7 +86,7 @@ export function runTeamCupChecks() {
   assert(d.players.teams.every(t => expected.has(t.captainId)));
   assert.throws(() => cup.drawTeamMembers(fixture()), /primeiro/);
   const bad = fixture(6, "squad"); bad.players.teams[0].athletes[3].gender = "H";
-  assert.throws(() => cup.validateTeamCupTeams(bad), /2 homens/);
+  assert.throws(() => cup.validateTeamCupTeams(bad), /2 atletas do masculino/);
   const duplicate = fixture(); duplicate.players.teams[0].athletes[1].name = duplicate.players.teams[0].athletes[0].name;
   assert.throws(() => cup.validateTeamCupTeams(duplicate), /repetidos/);
   d = cup.generateTeamCupGroups(fixture(), seed());

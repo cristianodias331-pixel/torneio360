@@ -91,7 +91,7 @@ function validateAthletes(athletes, balanced) {
   if (names.some(n => !n)) throw new Error("Preencha o nome de todos os atletas.");
   if (new Set(names).size !== names.length) throw new Error("Há nomes repetidos. Diferencie os atletas homônimos.");
   if (new Set(athletes.map(a => a.id)).size !== athletes.length) throw new Error("Um atleta aparece em mais de uma equipe.");
-  if (athletes.some(a => !["H", "M"].includes(a.gender))) throw new Error("Informe H ou M para cada atleta.");
+  if (athletes.some(a => !["H", "M"].includes(a.gender))) throw new Error("Informe Masculino ou Feminino para cada atleta.");
   if (balanced && athletes.some(a => !TEAM_LEVELS.includes(a.level))) throw new Error("Informe o nível de todos os atletas para equilibrar o sorteio.");
 }
 export function validateTeamCupTeams(data) {
@@ -102,7 +102,7 @@ export function validateTeamCupTeams(data) {
   if (teams.some(t => t.athletes.length !== teamSize(data))) throw new Error("Complete todos os integrantes de cada equipe.");
   validateAthletes(teams.flatMap(t => t.athletes), false);
   if (teams.some(t => !t.athletes.some(a => a.id === t.captainId))) throw new Error("Defina um capitão ou uma capitã por equipe.");
-  if (teamSize(data) === 4 && teams.some(t => t.athletes.filter(a => a.gender === "H").length !== 2)) throw new Error("Cada Squad precisa de 2 homens e 2 mulheres.");
+  if (teamSize(data) === 4 && teams.some(t => t.athletes.filter(a => a.gender === "H").length !== 2)) throw new Error("Cada Squad precisa de 2 atletas do masculino e 2 do feminino.");
   return true;
 }
 
@@ -113,7 +113,7 @@ export function drawTeamCaptains(data, rng = Math.random) {
   const count = data.players.teams.length;
   if (pool.length !== count * teamSize(data)) throw new Error("A quantidade de atletas precisa completar todas as equipes.");
   validateAthletes(pool, balanced);
-  if (teamSize(data) === 4 && pool.filter(a => a.gender === "H").length !== count * 2) throw new Error("O sorteio de Squad exige 2 homens e 2 mulheres por equipe.");
+  if (teamSize(data) === 4 && pool.filter(a => a.gender === "H").length !== count * 2) throw new Error("O sorteio de Squad exige 2 atletas do masculino e 2 do feminino por equipe.");
   const candidates = designatedCaptains ? pool.filter(a => a.captainCandidate) : pool;
   if (designatedCaptains && candidates.length !== count) throw new Error(`Marque exatamente ${count} capitães antes de sortear.`);
   const captains = shuffleTeamCup(candidates, rng).slice(0, count);

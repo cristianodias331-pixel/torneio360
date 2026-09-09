@@ -1,5 +1,6 @@
 import { createCearenseGroups } from "./cupGroups.mjs";
 import { TEAM_LEVELS, teamSize, validateTeamCupTeams } from "./teamCup.mjs";
+import { formatParticipantName } from "./participantNames.mjs";
 
 export const organizationLocked = data => Boolean(data.schedule?.length || data.brackets?.length);
 export function assertOrganizationEditable(data) {
@@ -23,31 +24,71 @@ export function updateTeamCupParticipant(data, id, patch) {
   return next;
 }
 const nameKey = name => String(name).trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-export function parseTeamCupList(text) {
-  return String(text).split(/\r?\n/).map(line => line.trim().replace(/^\s*(?:\d+[.)\-:]\s*|[-•*]\s*)/, ""))
-    .filter(Boolean).map(line => {
-      const [name, gender = "", level = ""] = line.split(";").map(s => s.trim());
-      if (!name || name.length > 100) throw new Error("Cada linha precisa de um nome com até 100 caracteres.");
-      const normalizedGender = gender.toUpperCase();
-      if (gender && !["H", "M"].includes(normalizedGender)) throw new Error(`Use H ou M após o nome de ${name}.`);
-      const normalizedLevel = TEAM_LEVELS.find(item => nameKey(item) === nameKey(level));
-      if (level && !normalizedLevel) throw new Error(`Nível inválido para ${name}. Use Principiante, Iniciante, D, C, B ou A.`);
-      if (line.split(";").length > 3) throw new Error("Use: Nome; H ou M; Nível. Um atleta por linha.");
-      return { name, ...(gender ? { gender: normalizedGender } : {}), ...(level ? { level: normalizedLevel } : {}) };
-    });
+// Match the individual-name cleanup of the existing import, without changing other modalities.
+function cleanImportedName(value) {
+  const prepared = String(value || "").normalize("NFKC")
+    .replace(/[0-9#*]\uFE0F?\u20E3/gu, " ")
+    .replace(/\p{Regional_Indicator}{2}/gu, " ")
+    .replace(/\p{Extended_Pictographic}|\p{Emoji_Modifier}|[\u200D\uFE0E\uFE0F]/gu, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s'’.\-:()[\]{}]/gu, " ").trim();
+  let name = prepared;
+  for (let i = 0; i < 5; i++) name = name.replace(/^\s*(?:(?:participante|atleta|jogador|masculino|feminino)\s*(?:n[º°o.]?\s*)?\p{N}{1,3}\s*[ºª°oa]?\s*[.)\-:]?\s*|\p{N}{1,3}\s*[ºª°oa]?\s*(?:[.)\-:]\s*|\s+)|[-–—•*▪◦]+\s*)/iu, "").trim();
+  return formatParticipantName(name.replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, " ")
+    .replace(/[^\p{L}\p{M}\s'’.]/gu, " ").replace(/\s+/g, " ").replace(/^[\s.'’]+|[\s.'’]+$/g, ""));
 }
-export function importTeamCupList(data, text) {
+function readTeamCupList(source) {
+  const rows = Array.isArray(source) ? source : String(source).split(/\r?\n/).map(line => {
+    const [name, gender = "", level = "", ...extra] = line.split(";").map(s => s.trim());
+    if (extra.length) throw new Error("Cole um atleta por linha, com os campos Nome, Masculino/Feminino e Nível.");
+    return { name, gender, level };
+  });
+  let ignored = 0;
+  const athletes = rows.flatMap(row => {
+    if (!String(row.name || "").trim()) return [];
+    const name = cleanImportedName(row.name);
+    if (!name) { ignored++; return []; }
+    if (name.length > 100) throw new Error("Cada linha precisa de um nome com até 100 caracteres.");
+    const gender = String(row.gender || "").trim(), level = String(row.level || "").trim();
+    const normalizedGender = ({ h: "H", m: "M", masculino: "H", feminino: "M" })[nameKey(gender)];
+    if (gender && !normalizedGender) throw new Error(`Selecione Masculino ou Feminino para ${name}.`);
+    const normalizedLevel = TEAM_LEVELS.find(item => nameKey(item) === nameKey(level));
+    if (level && !normalizedLevel) throw new Error(`Nível inválido para ${name}. Use Principiante, Iniciante, D, C, B ou A.`);
+    return [{ name, ...(gender ? { gender: normalizedGender } : {}), ...(level ? { level: normalizedLevel } : {}) }];
+  });
+  return { athletes, ignored };
+}
+export const parseTeamCupList = source => readTeamCupList(source).athletes;
+export const isTeamCupVacancy = athlete => !String(athlete.name || "").trim()
+  || /^(?:participante|jogador|atleta|masculino|feminino) \d+$/u.test(nameKey(athlete.name));
+export function buildTeamCupImportPreview(data, source, mode = "available") {
+  if (!["available", "replace"].includes(mode)) throw new Error("Modo de importação inválido.");
+  const { athletes, ignored } = readTeamCupList(source), replace = mode === "replace";
+  const entries = participantEntries(data), targets = entries.filter(e => replace || isTeamCupVacancy(e.athlete));
+  const patches = new Map(targets.map(({ athlete }, i) => [athlete.id, {
+    ...(replace ? { name: "", level: "", captainCandidate: false } : {}), ...(athletes[i] || {}),
+  }]));
+  const nextData = structuredClone(data);
+  for (const athlete of [...nextData.teamCup.pool, ...nextData.players.teams.flatMap(t => t.athletes)]) {
+    Object.assign(athlete, patches.get(athlete.id));
+  }
+  const result = participantEntries(nextData);
+  const keys = result.filter(e => !isTeamCupVacancy(e.athlete)).map(e => nameKey(e.athlete.name));
+  const imported = Math.min(athletes.length, targets.length);
+  return { nextData, entries: result, imported, preserved: entries.length - targets.length,
+    vacancies: targets.length - imported, overflow: Math.max(0, athletes.length - targets.length),
+    duplicates: keys.length - new Set(keys).size, ignored, total: athletes.length,
+    importedIds: targets.slice(0, imported).map(e => e.athlete.id) };
+}
+export function importTeamCupList(data, source, mode = "available", { replaceConfirmed = false, signature } = {}) {
   assertOrganizationEditable(data);
-  const names = parseTeamCupList(text);
-  if (!names.length) throw new Error("Cole pelo menos um nome.");
-  const entries = participantEntries(data);
-  const available = entries.filter(({ athlete }) => !athlete.name.trim());
-  if (names.length > available.length) throw new Error(`A lista tem ${names.length} atletas, mas há somente ${available.length} vagas vazias. Nenhum nome será substituído.`);
-  const keys = [...entries.map(e => e.athlete.name).filter(n => n.trim()), ...names.map(n => n.name)].map(nameKey);
-  if (new Set(keys).size !== keys.length) throw new Error("Há nomes repetidos. Diferencie os atletas homônimos antes de aplicar.");
-  let next = data;
-  names.forEach((patch, i) => { next = updateTeamCupParticipant(next, available[i].athlete.id, patch); });
-  return next;
+  if (data.teamCup.formation === "random" && data.teamCup.drawStage === "captains") throw new Error("Conclua o sorteio dos integrantes antes de editar a lista.");
+  if (signature !== undefined && organizationSignature(data) !== signature) throw new Error("A lista foi atualizada enquanto a janela estava aberta. Abra Colar lista novamente para revisar os participantes atuais.");
+  const preview = buildTeamCupImportPreview(data, source, mode);
+  if (!preview.total) throw new Error("Cole pelo menos um nome.");
+  if (preview.overflow) throw new Error(`A lista tem ${preview.total} atletas, mas há somente ${preview.imported} vagas disponíveis. Ajuste a lista antes de aplicar.`);
+  if (preview.duplicates) throw new Error("Há nomes repetidos. Diferencie os atletas homônimos antes de aplicar.");
+  if (mode === "replace" && !replaceConfirmed) throw new Error("Confirme a substituição de todos os participantes antes de aplicar.");
+  return preview.nextData;
 }
 export function teamCupOrganizationGroups(data) {
   const teams = data.players.teams;
@@ -102,7 +143,7 @@ export function swapTeamCupAthletes(data, firstId, secondId) {
   const second = next.players.teams.find(t => t.athletes.some(a => a.id === secondId));
   if (!first || !second) throw new Error("Atleta não encontrado na equipe.");
   const a = first.athletes.findIndex(p => p.id === firstId), b = second.athletes.findIndex(p => p.id === secondId);
-  if (teamSize(data) === 4 && first !== second && first.athletes[a].gender !== second.athletes[b].gender) throw new Error("Para manter 2 homens e 2 mulheres, troque atletas da mesma composição (H por H ou M por M).");
+  if (teamSize(data) === 4 && first !== second && first.athletes[a].gender !== second.athletes[b].gender) throw new Error("Para manter 2 atletas do masculino e 2 do feminino, troque atletas da mesma composição.");
   const firstCaptain = first.captainId === firstId, secondCaptain = second.captainId === secondId;
   [first.athletes[a], second.athletes[b]] = [second.athletes[b], first.athletes[a]];
   if (first !== second) {

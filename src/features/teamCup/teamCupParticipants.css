@@ -88,11 +88,39 @@ html[data-theme="dark"] .tcorg-overlay { --org-bg:#081e2d; --org-surface:#0b2639
 .tcorg-candidates label { display:flex; align-items:center; gap:6px; border:1px solid var(--org-line); border-radius:8px; padding:8px; font-size:11px; }
 .tcorg-candidates label span { overflow-wrap:anywhere; }
 .tcorg-candidates small { color:var(--org-muted); margin-left:auto; font-size:10px; }
-.tcorg-paste-label { display:grid; gap:8px; font-size:13px; }
-.tcorg-paste-label textarea { width:100%; min-height:180px; resize:vertical; line-height:1.6; }
-.tcorg-import-preview { max-height:220px; overflow:auto; padding-left:28px; }
-.tcorg-import-preview li { padding:6px; font-size:12px; }
-.tcorg-import-preview li span { margin-left:10px; color:var(--org-muted); }
+.tcorg-import-modes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.tcorg-import-modes button { display:block; text-align:left; background:var(--org-surface); }
+.tcorg-import-modes button.selected { border-color:var(--org-purple); box-shadow:inset 3px 0 var(--org-purple); background:var(--org-selected); }
+.tcorg-import-modes small { display:block; margin-top:6px; font-size:11px; color:var(--org-muted); line-height:1.4; }
+.tcorg-import-columns, .tcorg-import-row { display:grid; grid-template-columns:minmax(0,1fr) 180px 155px 36px; gap:8px; align-items:center; }
+.tcorg-import-columns { font-size:12px; margin-bottom:8px; padding-right:16px; }
+.tcorg-import-rows { max-height:232px; overflow:auto; scrollbar-gutter:stable; }
+.tcorg-import-row { margin-bottom:8px; }
+.tcorg-import-row label { min-width:0; }
+.tcorg-import-row label > span { display:none; }
+.tcorg-dialog .tcorg-import-row textarea, .tcorg-dialog .tcorg-import-row select { width:100%; height:44px; font-size:12px; line-height:22px; padding:10px; display:block; }
+.tcorg-import-row textarea { resize:vertical; min-height:44px; max-height:100px; }
+.tcorg-dialog .tcorg-remove-row { padding:8px; min-height:36px; }
+.tcorg-dialog .tcorg-add-row { color:var(--org-purple); margin-top:4px; }
+.tcorg-import-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
+.tcorg-import-summary > div { display:grid; gap:5px; padding:10px; border:1px solid var(--org-line); background:var(--org-surface); border-radius:10px; }
+.tcorg-import-summary b { color:var(--org-purple); font-size:15px; }
+.tcorg-import-summary span { color:var(--org-muted); font-size:11px; }
+.tcorg-import-preview { border:1px solid var(--org-line); border-radius:12px; overflow:hidden; }
+.tcorg-import-result { max-height:220px; overflow:auto; padding:0 12px; }
+.tcorg-import-result-row { display:grid; grid-template-columns:minmax(0,1fr) 160px 155px; gap:8px; align-items:center; border-bottom:1px solid var(--org-line); padding:10px 0; font-size:12px; }
+.tcorg-import-result-row:last-child { border-bottom:0; }
+.tcorg-import-result-row b { overflow-wrap:anywhere; }
+.tcorg-import-result-row small { display:block; color:var(--org-muted); font-size:10px; margin-top:4px; }
+.tcorg-import-result-row > span { color:var(--org-muted); font-size:11px; }
+.tcorg-dialog .tcorg-import-cancel { background:#d82b28; border-color:#e44b47; color:#fff; }
+.tcorg-dialog .tcorg-import-apply { background:#167c47; border-color:#37a46b; color:#fff; }
+.tcorg-error p { margin:0 0 6px; }
+.tcorg-error p:last-child { margin-bottom:0; }
+.tc-draw-footer { display:flex; flex-direction:column; gap:10px; }
+.tc-draw-footer > button { align-self:flex-end; color:#fff; background:#143246; border:1px solid #507088; padding:8px 12px; border-radius:10px; cursor:pointer; }
+.tc-draw-overlay .shuffleHeader h2 { color:#fff; }
+@media (prefers-reduced-motion:reduce) { .tc-draw-overlay .floatingName { transition:none; } }
 @media (max-width:850px) { .tcorg-group-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .tcorg-roster-grid { grid-template-columns:1fr; } .tcorg-candidates { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:600px) {
   .tcp-toolbar { grid-template-columns:1fr 1fr; } .tcp-search { grid-column:1 / -1; }
@@ -109,4 +137,14 @@ html[data-theme="dark"] .tcorg-overlay { --org-bg:#081e2d; --org-surface:#0b2639
   .tcorg-footer > div:first-child { display:none; } .tcorg-footer .tcorg-actions { width:100%; justify-content:flex-end; }
   .tcorg-roster-row { grid-template-columns:minmax(0,1fr) 105px; } .tcorg-captain { grid-column:1 / -1; }
   .tcorg-candidates { grid-template-columns:1fr; }
+  .tcorg-import-modes { grid-template-columns:1fr; gap:6px; }
+  .tcorg-import-columns { display:none; }
+  .tcorg-import-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px; padding-bottom:10px; border-bottom:1px solid var(--org-line); }
+  .tcorg-import-row > label:first-child { grid-column:1 / -1; }
+  .tcorg-import-row label > span { display:block; font-size:10px; color:var(--org-muted); margin-bottom:5px; }
+  .tcorg-import-row > button { align-self:end; }
+  .tcorg-dialog .tcorg-import-row select { padding:8px 4px; font-size:11px; }
+  .tcorg-import-summary > div { padding:8px; }
+  .tcorg-import-result-row { grid-template-columns:1fr 1fr; }
+  .tcorg-import-result-row > div { grid-column:1 / -1; }
 }

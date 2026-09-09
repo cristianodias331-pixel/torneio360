@@ -3,6 +3,7 @@ import { ChevronDown, Flame, Grid3X3, Share2, Trophy, Users } from "lucide-react
 import { RankingTable } from "../ranking/RankingTables.jsx";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import TeamCupParticipants from "./TeamCupParticipants.jsx";
+import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
 import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets,
   TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup,
   teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg } from "../../domain/teamCup.mjs";
@@ -83,6 +84,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   const [matchesTab, setMatchesTab] = useState("groups");
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const drawPresentation = useTeamCupDrawPresentation();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
   const locked = data.schedule.length > 0;
@@ -124,16 +126,31 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       return updateTeamCupLeg(d, key, i, patch);
     });
   }
+  function presentDraw(title, names, transform) {
+    if (readOnly || drawPresentation.busy) return;
+    try {
+      const source = JSON.stringify(data), next = transform(data);
+      setMessage("");
+      drawPresentation.present({ title, names, onReveal: () => change(current => {
+        if (JSON.stringify(current) !== source) throw new Error("Os dados foram atualizados durante o sorteio. Confira a situação atual e sorteie novamente.");
+        return next;
+      }) });
+    } catch (error) { setMessage(error.message); }
+  }
   function drawTie(field, key, ids) {
-    change(d => {
+    presentDraw("Sorteando desempate...", ids.map(id => teamName(teams[id])), d => {
       if (d.brackets.length) throw new Error("As eliminatórias já foram geradas.");
       return { ...d, cupConfig: { ...d.cupConfig, [field]: { ...d.cupConfig[field], [key]: shuffleTeamCup(ids) } } };
     });
   }
+  function generateGroups() {
+    if (data.teamCup.groupOrder) change(d => generateTeamCupGroups(d));
+    else presentDraw("Sorteando grupos...", teams.map(t => teamName(t)), d => generateTeamCupGroups(d));
+  }
   const bracketSections = [...new Set(data.brackets.map(g => g.phase + "|" + g.roundName))];
   const saveIndicator = readOnly ? null : savingBadge || <span className="savingBadge saved">💾 {savingStatus}</span>;
   const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} readOnly={readOnly} courtOptions={courtOptions} />;
-  return <section className="appPage tc-workspace">
+  return <><section className="appPage tc-workspace" inert={drawPresentation.busy}>
     <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
       <div><div className="tournamentHeaderTitleRow"><h1>{tournament.name}</h1></div>
         <div className="tournamentHeaderMeta" id="tc-header-details"><span><Trophy aria-hidden="true" /> Times/Equipes · {data.teamCup.kind === "squad" ? "Squad" : "Trio"}</span><span><Users aria-hidden="true" /> {teams.length} equipes · {teamSize(data)} atletas por equipe</span></div></div>
@@ -152,7 +169,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       {!readOnly && organizationTab === "format" && <div className="organizationPanel cupConfigBox"><div className="twoCols tc-fields">
         <Field label="Quantidade de equipes"><select value={teams.length} disabled={locked} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
         <Field label="Nome da chave principal"><input value={data.cupConfig.mainBracketName} maxLength={70} disabled={locked} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, mainBracketName: e.target.value } }))} /></Field>
-        <Field label="Formação da equipe"><select value={data.teamCup.kind} disabled={locked} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas, composição livre</option><option value="squad">Squad · 2 homens e 2 mulheres</option></select></Field>
+        <Field label="Formação da equipe"><select value={data.teamCup.kind} disabled={locked} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas, composição livre</option><option value="squad">Squad · 2 atletas do masculino e 2 do feminino</option></select></Field>
         <Field label="Formação"><select value={data.teamCup.formation} disabled={locked} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
         <Field label="Games por partida"><select value={data.winningScore} disabled={locked} onChange={e => change(d => ({ ...d, winningScore: Number(e.target.value) }))}><option value={4}>4 games</option><option value={6}>6 games</option></select></Field>
       </div>
@@ -178,7 +195,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
     </section>}
     {(tab === "groups" || tab === "ranking") && <section className="card">
       <div className="cardTitleRow"><h2>{tab === "groups" ? "Grupos" : "Ranking"}</h2>{saveIndicator}</div>
-      {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Salve a formação em Organizar grupos e depois gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={random && data.teamCup.drawStage !== "complete"} onClick={() => change(d => generateTeamCupGroups(d))}>{data.teamCup.groupOrder ? "Gerar fase de grupos" : "Sortear grupos e gerar confrontos"}</button></div></>}
+      {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Salve a formação em Organizar grupos e depois gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={drawPresentation.busy || (random && data.teamCup.drawStage !== "complete")} onClick={generateGroups}>{data.teamCup.groupOrder ? "Gerar fase de grupos" : "Sortear grupos e gerar confrontos"}</button></div></>}
       <h3>Classificação dos grupos</h3>
       <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games das partidas concluídas de cada confronto finalizado, incluindo o desempate.</p>
       <div className="tc-team-grid">{groups.map(group => <section key={group.id}>
@@ -205,5 +222,5 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       })}
       </>}
     </section>}
-  </section>;
+  </section>{drawPresentation.overlay}</>;
 }
