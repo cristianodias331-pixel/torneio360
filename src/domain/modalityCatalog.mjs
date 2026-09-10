@@ -37,7 +37,7 @@ export const modalityPickerGroups = [
     id: "individual",
     title: "Ranking individual",
     subtitle: "O desempenho é acumulado separadamente por atleta.",
-    types: ["Reizinho", "Super 08", "Super 12", "Simples 8"],
+    types: ["Reizinho", "Super 08", "Super 12", "Simples 8", "Rei do Sol"],
   },
   {
     id: "mixed",
@@ -58,6 +58,7 @@ export const modalityPickerGroups = [
 ];
 
 export const modalityPickerDescriptions = {
+  "Rei do Sol": "Duplas rotativas, ranking individual e finais Ouro, Prata, Bronze e Lango. A partir de 16 atletas.",
   "Times/Equipes": "Trio ou Squad: grupos, eliminatórias e Consolation opcional, com capitães e formação fixa ou sorteada.",
   "Super 12 Mista (Dupla Fixa)": "6 duplas definidas e classificação por equipe.",
   "Super 16 Mista (Dupla Fixa)": "8 duplas definidas e classificação por equipe.",

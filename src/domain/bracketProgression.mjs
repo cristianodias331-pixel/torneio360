@@ -28,6 +28,12 @@ export function getGameLoserId(game, data = null) {
 
 export function resolveBracketGame(game, allGames, data) {
   const copy = { ...game };
+  // Rei do Sol finals are direct rotating-doubles games, not knockout sources.
+  if (data?.reiDoSol && !copy.source1 && !copy.source2) return {
+    ...copy,
+    team1: (copy.ids1 || []).map(id => data.players[id] || ''),
+    team2: (copy.ids2 || []).map(id => data.players[id] || ''),
+  };
 
   if (copy.source1) {
     const sourceGame = allGames.find((item) => item.matchKey === copy.source1);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import TeamCupWorkspace from "../teamCup/TeamCupWorkspace.jsx";
+import ReiDoSolWorkspace from "../reiDoSol/ReiDoSolWorkspace.jsx";
 import {
   AtSign,
   CalendarDays,
@@ -127,6 +128,7 @@ export default function PublicTournamentScreenView({
 
   const publicInfo = data.publicInfo || {};
   if (config.type === "teamCup") return <div className="publicPage"><TeamCupWorkspace data={data} tournament={tournament} onBack={onBackToArena} readOnly /></div>;
+  if (config.type === "reiDoSol") return <div className="publicPage"><ReiDoSolWorkspace data={data} tournament={tournament} onBack={onBackToArena} readOnly /></div>;
   const publicVisibility = publicInfo.visibility || {};
   const storedOrganizer = publicInfo.organizer || {};
   const publicOrganizer = liveOrganizer

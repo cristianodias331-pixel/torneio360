@@ -8,6 +8,7 @@ import {
 } from "./rankingCalculation.mjs";
 import { defaultRankingCriteria } from "./rankingCriteria.mjs";
 import { getWinningScore } from "./scoreRules.mjs";
+import { phaseRanking } from "./reiDoSol.mjs";
 
 export function calculateTournamentRanking({
   data,
@@ -18,6 +19,7 @@ export function calculateTournamentRanking({
   const winningScore = getWinningScore(data);
 
   if (!data?.players) return [];
+  if (config?.type === "reiDoSol") return phaseRanking(data.players, data.schedule || [], winningScore, data.reiDoSol?.decisions?.qualifying).rows;
 
   if (isCupType(config)) {
     const qualified = getCupQualified(data);

@@ -46,10 +46,13 @@ async function createCupPodiumShareFile({
   arenaPhotoUrl,
   podium = [],
   podiumVariant = "main",
+  podiumPalette = null,
+  podiumHeadingLabel = "",
   tournamentDurationSeconds = 0,
   showPlayTime = true,
 }) {
   const visiblePodium = podium.slice(0, podiumVariant === "parallel" ? 1 : 3);
+  const palette = visiblePodium.length === 1 ? podiumPalette : null;
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = RANKING_SHARE_CANVAS_HEIGHT;
@@ -127,7 +130,8 @@ async function createCupPodiumShareFile({
   context.textAlign = "left";
   context.fillStyle = "#fbbf24";
   context.font = "900 18px Arial";
-  context.fillText(podiumVariant === "parallel" ? "CAMPEÃ DA DISPUTA PARALELA" : "PÓDIO OFICIAL", 88, 257);
+  context.fillStyle = palette?.accent || "#fbbf24";
+  context.fillText(podiumHeadingLabel || (podiumVariant === "parallel" ? "CAMPEÃ DA DISPUTA PARALELA" : "PÓDIO OFICIAL"), 88, 257);
   context.fillStyle = "#ffffff";
   context.font = "900 40px Arial";
   context.fillText(truncateCanvasText(context, title || "Pódio", 850), 88, 315);
@@ -137,7 +141,7 @@ async function createCupPodiumShareFile({
 
   const singleChampion = visiblePodium.length === 1;
   const podiumLayout = singleChampion
-    ? [{ place: 1, x: 540, y: 610, radius: 142, colorStart: "#fde047", colorEnd: "#f59e0b", nameWidth: 720 }]
+    ? [{ place: 1, x: 540, y: 610, radius: 142, colorStart: palette?.start || "#fde047", colorEnd: palette?.end || "#f59e0b", nameWidth: 720 }]
     : [
         { place: 1, x: 540, y: 565, radius: 112, colorStart: "#fde047", colorEnd: "#f59e0b", nameWidth: 340 },
         { place: 2, x: 235, y: 690, radius: 88, colorStart: "#f8fafc", colorEnd: "#94a3b8", nameWidth: 290 },
@@ -148,7 +152,7 @@ async function createCupPodiumShareFile({
     const layout = podiumLayout.find((entry) => entry.place === index + 1);
     if (!layout) return;
     if (layout.place === 1) {
-      context.fillStyle = "#fbbf24";
+      context.fillStyle = palette?.accent || "#fbbf24";
       context.font = singleChampion ? "900 76px Arial" : "900 58px Arial";
       context.textAlign = "center";
       context.fillText("♛", layout.x, layout.y - layout.radius - 24);
@@ -170,14 +174,14 @@ async function createCupPodiumShareFile({
     context.lineWidth = 8;
     context.stroke();
 
-    context.fillStyle = layout.place === 1 ? "#5b21b6" : "#172554";
+    context.fillStyle = palette?.ink || (layout.place === 1 ? "#5b21b6" : "#172554");
     context.font = `900 ${singleChampion ? 62 : layout.place === 1 ? 52 : 42}px Arial`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(getPodiumInitials(item.name), layout.x, layout.y + 4);
 
     const labelY = layout.y + layout.radius + 42;
-    context.fillStyle = layout.place === 1 ? "#fde68a" : "#ffffff";
+    context.fillStyle = palette?.accent || (layout.place === 1 ? "#fde68a" : "#ffffff");
     context.font = `900 ${singleChampion ? 30 : 24}px Arial`;
     context.fillText(layout.place === 1 ? "🏆 Campeão" : layout.place === 2 ? "🥈 Vice-campeão" : "🥉 3º lugar", layout.x, labelY);
     drawCenteredCanvasLines(context, item.name, layout.x, labelY + (singleChampion ? 58 : 48), layout.nameWidth, {
@@ -202,10 +206,10 @@ async function createCupPodiumShareFile({
 
   if (singleChampion) {
     const stepGradient = context.createLinearGradient(230, 0, 850, 0);
-    stepGradient.addColorStop(0, "#f59e0b");
-    stepGradient.addColorStop(1, "#facc15");
+    stepGradient.addColorStop(0, palette?.end || "#f59e0b");
+    stepGradient.addColorStop(1, palette?.start || "#facc15");
     drawRoundedRect(context, 230, 1010, 620, 245, 30, stepGradient);
-    context.fillStyle = "#ffffff";
+    context.fillStyle = palette?.ink || "#ffffff";
     context.font = "900 92px Arial";
     context.textAlign = "center";
     context.fillText("1", 540, 1155);
@@ -369,15 +373,15 @@ async function createRankingShareFile({
 
     group.rows.forEach((row, index) => {
       const absoluteIndex = Number(group.startIndex || 0) + index;
-      const rowFill = absoluteIndex === 0
+      const rowFill = row.badge?.background || (absoluteIndex === 0
         ? "#fff4c2"
         : absoluteIndex === 1
           ? "#eef2f7"
           : absoluteIndex === 2
             ? "#ffeadb"
-            : absoluteIndex % 2 === 0 ? "#f6f8fc" : "#ffffff";
+            : absoluteIndex % 2 === 0 ? "#f6f8fc" : "#ffffff");
       drawRoundedRect(context, 72, y, 936, 56, 14, rowFill);
-      const medalColor = absoluteIndex === 0 ? "#d97706" : absoluteIndex === 1 ? "#64748b" : absoluteIndex === 2 ? "#c2410c" : "#334155";
+      const medalColor = row.badge?.color || (absoluteIndex === 0 ? "#d97706" : absoluteIndex === 1 ? "#64748b" : absoluteIndex === 2 ? "#c2410c" : "#334155");
       context.fillStyle = medalColor;
       context.font = `900 ${absoluteIndex < 3 ? 20 : 18}px Arial`;
       context.textAlign = "center";
@@ -385,7 +389,12 @@ async function createRankingShareFile({
       context.fillStyle = "#111827";
       context.font = "800 18px Arial";
       context.textAlign = "left";
-      context.fillText(truncateCanvasText(context, row.name, 365), 154, y + 35);
+      context.fillText(truncateCanvasText(context, row.name, 365), 154, y + (row.badge ? 23 : 35));
+      if (row.badge) {
+        context.fillStyle = row.badge.color || "#334155";
+        context.font = "800 14px Arial";
+        context.fillText(truncateCanvasText(context, row.badge.label, 365), 154, y + 44);
+      }
 
       const stats = exportColumns
         .filter(({ key }) => row[key] !== undefined)
