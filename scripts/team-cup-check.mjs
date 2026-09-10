@@ -33,6 +33,53 @@ export function finishGroups(data) {
   for (const tie of cup.teamCupQualified(data).unresolvedCampaignTies) data.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
   return data;
 }
+function checkSetTimers() {
+  for (const kind of ["trio", "squad"]) for (const phase of ["groups", "main", "repechage"]) for (const split of [false, true]) {
+    let data = cup.generateTeamCupGroups(fixture(6, kind), seed());
+    if (phase !== "groups") data = cup.generateTeamCupBrackets(finishGroups(data));
+    const key = cup.teamCupGames(data).find(g => g.phase === phase && !g.isBye).matchKey;
+    const game = () => cup.resolveTeamCupGame(data, cup.teamCupGames(data).find(g => g.matchKey === key));
+    const edit = (index, patch, now) => { data = cup.updateTeamCupLeg(data, key, index, patch, now); };
+    assert.equal(cup.teamCupNextLeg(data, game()), 0);
+    edit(0, { inProgress: true }, 1000000);
+    const startedAt = game().teamCupLegs[0].matchTimerStartedAt;
+    edit(0, { inProgress: true }, 1010000);
+    assert.equal(game().teamCupLegs[0].matchTimerStartedAt, startedAt, "Repeating a call never resets the clock");
+    edit(0, { s1: "6" }, 1020000);
+    assert(game().teamCupLegs[0].inProgress, "A partial score does not finish the set");
+    edit(0, { s2: "2" }, 1030000);
+    assert.equal(getMatchElapsedSeconds(game().teamCupLegs[0], 1500000), 30);
+    assert.equal(game().teamCupLegs[0].inProgress, false);
+    assert.equal(cup.teamCupNextLeg(data, game()), 1);
+    assert.equal(getMatchElapsedSeconds(game().teamCupLegs[1], 1500000), 0);
+    assert(!game().teamCupLegs[1].matchTimerStartedAt, "The next set waits for a new call, excluding the interval");
+    edit(1, { inProgress: true }, 1600000);
+    edit(1, { s1: split ? "2" : "6", s2: split ? "6" : "2" }, 1645000);
+    assert.equal(getMatchElapsedSeconds(game().teamCupLegs[1], 2000000), 45);
+    assert.equal(cup.teamCupNextLeg(data, game()), split ? 2 : null, "No third set is called after 2–0");
+    if (split) {
+      assert(!game().teamCupLegs[2].matchTimerStartedAt);
+      edit(2, { inProgress: true }, 2200000);
+      edit(2, { s1: "6", s2: "4" }, 2260000);
+    }
+    const hydrated = normalizeTournamentData(cup.TEAM_CUP_TYPE, JSON.parse(JSON.stringify(data)));
+    const saved = cup.teamCupGames(hydrated).find(g => g.matchKey === key);
+    assert.deepEqual(saved.teamCupLegs.map(leg => getMatchElapsedSeconds(leg, 3000000)), [30, 45, split ? 60 : 0], "Each saved duration survives hydration without counting intervals");
+    assert.equal(cup.teamCupNextLeg(hydrated, saved), null);
+  }
+  let squad = cup.generateTeamCupGroups(fixture(6, "squad"), seed());
+  const key = squad.schedule[0][0].matchKey;
+  squad = cup.updateTeamCupLeg(squad, key, 0, { inProgress: true, courtNumberOverride: "1" }, 1000000);
+  squad = cup.updateTeamCupLeg(squad, key, 1, { inProgress: true, courtNumberOverride: "2" }, 1010000);
+  squad = cup.updateTeamCupLeg(squad, key, 1, { s1: "2", s2: "6" }, 1040000);
+  assert.equal(cup.teamCupNextLeg(squad, squad.schedule[0][0]), 0, "When the second Squad set finishes first, return to the first set still in progress");
+  assert(squad.schedule[0][0].teamCupLegs[0].inProgress);
+  assert.equal(getMatchElapsedSeconds(squad.schedule[0][0].teamCupLegs[0], 1050000), 50);
+  squad = cup.updateTeamCupLeg(squad, key, 0, { s1: "6", s2: "2" }, 1060000);
+  assert.deepEqual(squad.schedule[0][0].teamCupLegs.map(l => getMatchElapsedSeconds(l, 2000000)), [60, 30, 0]);
+  assert.equal(cup.teamCupNextLeg(squad, squad.schedule[0][0]), 2);
+}
+
 function checkConsolationByes() {
   const opening = entries => buildCearenseEliminationRounds(entries, "repechage", "Consolation", false, { preserveByes: true })[0].games;
   const byeIds = games => games.filter(g => g.isBye).flatMap(g => [...g.ids1, ...g.ids2]);
@@ -92,6 +139,7 @@ function checkConsolationByes() {
   console.log("Consolation: BYEs preservados em 672 distribuições, sem duplicações e com ajustes de confronto somente entre equipes sem BYE.");
 }
 export function runTeamCupChecks() {
+  checkSetTimers();
   checkConsolationByes();
   const initial = createInitialData(cup.TEAM_CUP_TYPE, modalityConfig[cup.TEAM_CUP_TYPE]);
   assert.equal(initial.players.teams.length, 6);

@@ -15,7 +15,7 @@ import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
 import { recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
 import { reconfigureTeamCup, teamCupFormatChangeNeedsConfirmation, setTeamCupFormation, generateTeamCupGroups, generateTeamCupBrackets,
   TEAM_COUNTS, TEAM_CUP_GROUP_RANKING_LABEL, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
-  teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg, teamCupCourtNumber } from "../../domain/teamCup.mjs";
+  teamLegAvailable, teamLegWinner, teamMatchState, teamCupNextLeg, resolveTeamCupGame, updateTeamCupLeg, teamCupCourtNumber } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
 import "../../styles/31-matches-and-brackets.css";
 import "./teamCup.css";
@@ -24,10 +24,24 @@ const legTitles = kind => kind === "squad" ? ["1º set masculino", "2º set femi
 function Field({ label, children }) { return <label className="tc-field"><span>{label}</span>{children}</label>; }
 
 export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegChange, onRegisterCourtNumber, readOnly = false, now = Date.now(), courtOptions = data.courtNumbers, unavailableCourts = [] }) {
-  const [selected, setSelected] = useState(0);
+  const game = resolveTeamCupGame(data, storedGame);
+  const state = teamMatchState(game, data.winningScore);
+  const [selected, setSelected] = useState(() => teamCupNextLeg(data, game) ?? (state.decider ? 2 : state.winner ? 1 : 0));
   const [courtEditorOpen, setCourtEditorOpen] = useState(false);
   const [announcementStatus, setAnnouncementStatus] = useState("");
   const scoreInputs = useRef({});
+  const previousWinners = useRef(state.winners);
+  useEffect(() => {
+    const before = previousWinners.current;
+    previousWinners.current = state.winners;
+    // Advance only when the selected set has just finished. Reviewing an old
+    // score must still show that set's saved time without jumping away.
+    if (!before[selected] && state.winners[selected]) {
+      const next = teamCupNextLeg(data, game);
+      if (next !== null) setSelected(next);
+    }
+  }, [data, game, selected]);
+  useEffect(() => { setAnnouncementStatus(""); }, [selected]);
   useEffect(() => {
     if (!courtEditorOpen) return;
     const previous = document.activeElement, overflow = document.body.style.overflow;
@@ -46,8 +60,6 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
     document.addEventListener("keydown", key);
     return () => { document.body.style.overflow = overflow; document.removeEventListener("keydown", key); previous?.focus?.(); };
   }, [courtEditorOpen]);
-  const game = resolveTeamCupGame(data, storedGame);
-  const state = teamMatchState(game, data.winningScore);
   const labels = legTitles(data.teamCup.kind);
   const leg = game.teamCupLegs[selected];
   const courtNumber = teamCupCourtNumber(data, game, selected, courtOptions);
@@ -74,6 +86,9 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
     });
   };
   const call = () => {
+    // Repeating an announcement leaves a running timer untouched. A paused
+    // set resumes its saved duration, even when voice playback is unavailable.
+    if (!leg.inProgress && onLegChange(game.matchKey, selected, { inProgress: true }) === false) return;
     const names = [game.ids1[0], game.ids2[0]].map(i => teamName(data.players.teams[i]));
     if ("speechSynthesis" in window) {
       const speech = new SpeechSynthesisUtterance(labels[selected] + ". " + names[0] + " contra " + names[1] + ". Quadra " + courtNumber + ".");
@@ -193,13 +208,21 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
     change(d => setTeamCupFormation(d, value));
   }
   function onLegChange(key, i, patch) {
-    change(d => {
+    if (readOnly) return false;
+    const changedAt = Date.now();
+    const transform = d => {
       const game = [...d.schedule.flat(), ...d.brackets].find(g => g.matchKey === key);
       const court = String(patch.courtNumberOverride || teamCupCourtNumber(d, game, i, courtOptions));
       if ((patch.inProgress || ("courtNumberOverride" in patch && game?.teamCupLegs[i]?.inProgress)) && unavailableCourts.map(String).includes(court)) throw new Error("Essa quadra está indisponível ou em uso por outro torneio.");
-      const next = updateTeamCupLeg(d, key, i, patch.inProgress ? { ...patch, courtNumberOverride: court } : patch);
+      const next = updateTeamCupLeg(d, key, i, patch.inProgress ? { ...patch, courtNumberOverride: court } : patch, changedAt);
       return patch.courtNumberOverride ? { ...next, courtNumbers: [...new Set([...(next.courtNumbers || []), patch.courtNumberOverride])] } : next;
-    });
+    };
+    // Return a synchronous rejection to the card so an unavailable court does
+    // not trigger a voice call or move score focus. Revalidate the latest data
+    // in the functional update to preserve concurrent changes.
+    try { transform(data); } catch (error) { setMessage(error.message); return false; }
+    change(transform);
+    return true;
   }
   function presentDraw(title, names, transform) {
     if (readOnly || drawPresentation.busy) return;

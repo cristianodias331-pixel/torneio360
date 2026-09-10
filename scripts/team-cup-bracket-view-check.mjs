@@ -14,6 +14,19 @@ try {
   const { default: CupPodiumView } = await server.ssrLoadModule("/src/features/ranking/CupPodiumView.jsx");
   const { default: TeamCupRoster } = await server.ssrLoadModule("/src/features/teamCup/TeamCupRoster.jsx");
   const { drawPodiumParticipantRows } = await server.ssrLoadModule("/src/features/rankingShare/rankingShareExport.mjs");
+  for (const kind of ["trio", "squad"]) {
+    let data = cup.generateTeamCupGroups(fixture(6, kind), () => .4);
+    const key = data.schedule[0][0].matchKey;
+    data = cup.updateTeamCupLeg(data, key, 0, { inProgress: true }, 1000000);
+    data = cup.updateTeamCupLeg(data, key, 0, { s1: "6", s2: "2" }, 1030000);
+    const waiting = renderToStaticMarkup(React.createElement(TeamCupMatchCard, { data, game: data.schedule[0][0], number: 1, round: "Rodada 1", now: 1500000 }));
+    assert(waiting.includes(`aria-label="2º set${kind === "squad" ? " feminino" : ""} · Iniciar cronômetro"`), "Reopening the card selects the next waiting set");
+    assert(waiting.includes("▷ A chamar") && waiting.includes('<time class="matchStatusTimer">00:00</time>'));
+    data = cup.updateTeamCupLeg(data, key, 1, { inProgress: true }, 1600000);
+    data = cup.updateTeamCupLeg(data, key, 1, { s1: "6", s2: "2" }, 1645000);
+    const completed = renderToStaticMarkup(React.createElement(TeamCupMatchCard, { data, game: data.schedule[0][0], number: 1, round: "Rodada 1", now: 2000000 }));
+    assert(completed.includes("Finalizado") && completed.includes('<time class="matchStatusTimer">00:45</time>'), "A completed confrontation displays the last played set's saved duration");
+  }
   for (const kind of ["trio", "squad"]) for (const count of cup.TEAM_COUNTS) {
     const data = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(count, kind), () => .4)));
     const original = JSON.stringify(data);

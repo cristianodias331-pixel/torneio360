@@ -395,6 +395,14 @@ export function teamLegAvailable(data, game, index) {
   return index === 0 || teamSize(data) === 4 || Boolean(state.winners[0]);
 }
 
+// Prefer an already running set (Squad can have two), then the next waiting
+// set. Selecting it never starts its clock; each set needs its own call.
+export function teamCupNextLeg(data, game) {
+  const pending = (game.teamCupLegs || []).map((leg, index) => ({ leg, index }))
+    .filter(({ leg, index }) => teamLegAvailable(data, game, index) && !teamLegWinner(leg, data.winningScore));
+  return (pending.find(({ leg }) => leg.inProgress) || pending[0])?.index ?? null;
+}
+
 export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
   const next = structuredClone(data);
   const game = teamCupGames(next).find(g => g.matchKey === key);
