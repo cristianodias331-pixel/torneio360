@@ -52,6 +52,7 @@ function ImportDialog({ data, onChange, onClose }) {
   try { preview = buildTeamCupImportPreview(data, rows, mode); }
   catch (e) { parseError = e.message; preview = buildTeamCupImportPreview(data, [], mode); }
   const canApply = preview.imported > 0 && !preview.overflow && !preview.duplicates && !parseError;
+  const showPasteArea = rows.length === 1 && !rows[0].name.trim();
   function editRows(next) { setRows(next); setReplaceConfirmed(false); setError(""); }
   function editRow(key, patch) { editRows(rows.map(row => row.key === key ? { ...row, ...patch } : row)); }
   function pasteNames(index, text) {
@@ -90,7 +91,7 @@ function ImportDialog({ data, onChange, onClose }) {
     <div className={`tcorg-import-editor${fixedGender ? " tcorg-inherited-gender" : ""}`} aria-label="Lista a importar">
       <div className="tcorg-import-columns" aria-hidden="true"><b>Nome do atleta</b>{!fixedGender && <b>Masculino/Feminino</b>}<b>Nível</b></div>
       <div className="tcorg-import-rows">{rows.map((row, i) => <div className="tcorg-import-row" key={row.key}>
-        <label><span>Nome do atleta</span><textarea rows={i === 0 ? 6 : 1} className={i === 0 ? "tcorg-paste-names" : undefined} aria-label={`Nome do atleta ${i + 1}`} placeholder={i === 0 ? "Cole os nomes aqui, um por linha\n\n1. Ana Silva\n2. João Souza\n3. Maria Santos" : "Nome e sobrenome"} value={row.name}
+        <label><span>Nome do atleta</span><textarea rows={showPasteArea ? 6 : 1} className={showPasteArea ? "tcorg-paste-names" : undefined} aria-label={`Nome do atleta ${i + 1}`} placeholder={showPasteArea ? "Cole os nomes aqui, um por linha\n\n1. Ana Silva\n2. João Souza\n3. Maria Santos" : "Nome e sobrenome"} value={row.name}
           onPaste={e => { const text = e.clipboardData.getData("text/plain"); if (/[\n\t;]/.test(text)) { e.preventDefault(); readPaste(i, text); } }}
           onChange={e => /[\n\t;]/.test(e.target.value) ? readPaste(i, e.target.value) : editRow(row.key, { name: e.target.value })} /></label>
         {!fixedGender && <label><span>Masculino/Feminino</span><select aria-label={`Masculino ou Feminino do atleta ${i + 1}`} value={row.gender} onChange={e => editRow(row.key, { gender: e.target.value })}><option value="">Conforme vaga</option><option value="H">Masculino</option><option value="M">Feminino</option></select></label>}
