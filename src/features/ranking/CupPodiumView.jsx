@@ -4,7 +4,7 @@ import { getPodiumInitials } from "../media/canvasTools.mjs";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { TournamentCircuitButton } from "../circuitManagement/TournamentCircuitManager.jsx";
 
-export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null }) {
+export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null, renderParticipants = null, showPlayTime = true }) {
   if (!podium || podium.length === 0) return null;
 
   const podiumLimit = variant === "parallel" ? 1 : 3;
@@ -18,11 +18,27 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
     presentation: "podium",
     podium: podiumPlaces,
     podiumVariant: variant,
+    showPlayTime,
     groups: [{
       title: `Pódio da ${title}`,
-      rows: podiumPlaces.map((item) => ({ name: item.name, playTimeSeconds: item.playTimeSeconds })),
+      rows: podiumPlaces.map((item) => ({ name: item.name, ...(showPlayTime ? { playTimeSeconds: item.playTimeSeconds } : {}) })),
     }],
   } : null;
+
+  const podiumGrid = <div className={`cupPodiumGrid ${podiumPlaces.length === 1 ? "singleChampion" : ""}`}>
+        {displayOrder.map((item) => (
+          <div className={`cupPodiumItem cupPodiumPlace${item.place}`} key={`${item.position}-${item.name}`}>
+            <span className="cupPodiumCrown" aria-hidden="true">{item.place === 1 ? "♛" : ""}</span>
+            <span className="cupPodiumAvatar">{getPodiumInitials(item.name)}</span>
+            <strong>{item.position}</strong>
+            <span className={`cupPodiumName${renderParticipants ? " cupPodiumNameWithRoster" : ""}`}>{item.name}{renderParticipants?.(item)}</span>
+            {showPlayTime && Number(item.playTimeSeconds || 0) > 0 ? (
+              <span className="cupPodiumTime">Tempo em jogo: {formatMatchTotalDuration(item.playTimeSeconds)}</span>
+            ) : null}
+            <span className="cupPodiumStep" aria-hidden="true">{item.place}</span>
+          </div>
+        ))}
+      </div>;
 
   return (
     <div className={`cupPodiumBox ${variant === "parallel" ? "parallelPodiumBox" : "mainPodiumBox"}`}>
@@ -36,21 +52,7 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
           {circuitAction ? <TournamentCircuitButton {...circuitAction} /> : null}
         </div>
       </div>
-
-      <div className={`cupPodiumGrid ${podiumPlaces.length === 1 ? "singleChampion" : ""}`}>
-        {displayOrder.map((item) => (
-          <div className={`cupPodiumItem cupPodiumPlace${item.place}`} key={`${item.position}-${item.name}`}>
-            <span className="cupPodiumCrown" aria-hidden="true">{item.place === 1 ? "♛" : ""}</span>
-            <span className="cupPodiumAvatar">{getPodiumInitials(item.name)}</span>
-            <strong>{item.position}</strong>
-            <span className="cupPodiumName">{item.name}</span>
-            {Number(item.playTimeSeconds || 0) > 0 ? (
-              <span className="cupPodiumTime">Tempo em jogo: {formatMatchTotalDuration(item.playTimeSeconds)}</span>
-            ) : null}
-            <span className="cupPodiumStep" aria-hidden="true">{item.place}</span>
-          </div>
-        ))}
-      </div>
+      {renderParticipants ? <div className="cupPodiumRosterViewport" tabIndex="0" aria-label={`Pódio ${title}. Role horizontalmente se necessário para ver todas as equipes.`}>{podiumGrid}</div> : podiumGrid}
     </div>
   );
 }

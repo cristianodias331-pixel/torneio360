@@ -23,6 +23,22 @@ const RANKING_SHARE_CONTENT_HEIGHT = 850;
 const RANKING_SHARE_ROW_HEIGHT = 64;
 const RANKING_SHARE_GROUP_OVERHEAD = 64;
 
+export function drawPodiumParticipantRows(context, participants, centerX, startY, maxWidth, fontSize = 24) {
+  if (!Array.isArray(participants) || !participants.length) return;
+  const rows = [];
+  for (let index = 0; index < participants.length; index += 2) rows.push(participants.slice(index, index + 2).join(" | "));
+  context.save();
+  context.font = `400 ${fontSize}px Arial`;
+  const widest = Math.max(...rows.map(row => context.measureText(row).width), 1);
+  const fittedSize = Math.min(fontSize, fontSize * maxWidth / widest);
+  context.font = `400 ${fittedSize}px Arial`;
+  context.fillStyle = "#ffffff";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  rows.forEach((row, index) => context.fillText(row, centerX, startY + index * (fontSize + 6)));
+  context.restore();
+}
+
 async function createCupPodiumShareFile({
   title,
   subtitle,
@@ -31,6 +47,7 @@ async function createCupPodiumShareFile({
   podium = [],
   podiumVariant = "main",
   tournamentDurationSeconds = 0,
+  showPlayTime = true,
 }) {
   const visiblePodium = podium.slice(0, podiumVariant === "parallel" ? 1 : 3);
   const canvas = document.createElement("canvas");
@@ -169,7 +186,10 @@ async function createCupPodiumShareFile({
       lineHeight: singleChampion ? 49 : 38,
       maxLines: 2,
     });
-    if (Number(item.playTimeSeconds || 0) > 0) {
+    // Side rosters must stay clear of the raised champion's podium step.
+    const rosterWidth = singleChampion ? 780 : layout.place === 1 ? 380 : 250;
+    drawPodiumParticipantRows(context, item.participants, layout.x, labelY + 140, rosterWidth, singleChampion ? 30 : 24);
+    if (showPlayTime && Number(item.playTimeSeconds || 0) > 0) {
       context.fillStyle = "#a5f3fc";
       context.font = `800 ${singleChampion ? 22 : 17}px Arial`;
       context.fillText(
@@ -207,7 +227,7 @@ async function createCupPodiumShareFile({
   context.font = "700 17px Arial";
   context.textAlign = "center";
   context.fillText(
-    Number(tournamentDurationSeconds || 0) > 0
+    showPlayTime && Number(tournamentDurationSeconds || 0) > 0
       ? `Tempo geral do torneio: ${formatMatchTotalDuration(tournamentDurationSeconds)} • Torneio360`
       : "Gerado pelo Torneio360 • torneio360.com",
     canvas.width / 2,

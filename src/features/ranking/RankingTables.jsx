@@ -61,6 +61,8 @@ export function RankingTable({
   showPodium = true,
   shareConfig = null,
   columns = null,
+  nameColumnLabel = "Nome",
+  renderName = null,
   showGames = true,
   circuitAction = null,
   CircuitButton,
@@ -171,7 +173,7 @@ export function RankingTable({
           <thead>
             <tr>
               <th className="rankingRankCell">#</th>
-              <th className="rankingNameCell">Nome</th>
+              <th className="rankingNameCell">{nameColumnLabel}</th>
               {visibleColumns.map(({ key, label }) => (
                 <th className="rankingStatCell" key={key}>{label}</th>
               ))}
@@ -186,7 +188,7 @@ export function RankingTable({
               return (
               <tr key={p.id || `${p.name}-${displayIndex}`}>
                 <td className="rankingRankCell">{showPodium ? podium(displayIndex) : displayIndex + 1}</td>
-                <td className="rankingNameCell">{p.name}</td>
+                <td className="rankingNameCell">{renderName ? renderName(p) : p.name}</td>
                 {visibleColumns.map(({ key }) => (
                   <td className="rankingStatCell" key={key}>{formatRankingMetricValue(key, p[key])}</td>
                 ))}

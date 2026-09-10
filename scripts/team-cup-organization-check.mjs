@@ -1,0 +1,342 @@
+import assert from "node:assert/strict";
+import { TEAM_LEVELS, createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups, generateTeamCupBrackets, teamCupQualified, updateTeamCupLeg, reconfigureTeamCup, setTeamCupFormation, teamCupFormatChangeNeedsConfirmation } from "../src/domain/teamCup.mjs";
+import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, organizeTeamCupGroups, organizationSignature, parseTeamCupList, participantEntries,
+  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupManualData, applyTeamCupManualEdit, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant, updateTeamCupTeamName } from "../src/domain/teamCupOrganization.mjs";
+import { normalizeTournamentData } from "../src/domain/tournamentDataNormalization.mjs";
+import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
+import { applyTeamCupComposition, setTeamCupTrioComposition, teamCupGenderQuota } from "../src/domain/teamCupComposition.mjs";
+
+for (const kind of ["trio", "squad"]) {
+  for (const count of [4, 6, 7, 8, 9, 32]) {
+    const empty = createTeamCupData({ winningScore: 6 }, count, kind);
+    const list = participantEntries(empty).map(({ athlete }, i) => `Atleta ${String.fromCharCode(65 + Math.floor(i / 26), 65 + i % 26)}; ${athlete.gender}; ${TEAM_LEVELS[i % 6]}`).join("\n");
+    const filled = importTeamCupList(empty, list);
+    assert.equal(participantEntries(empty).filter(e => e.athlete.name).length, 0, "Import must be immutable");
+    assert.equal(participantEntries(filled).filter(e => e.athlete.name).length, count * (kind === "trio" ? 3 : 4));
+    assert.throws(() => importTeamCupList(filled, "Outro atleta"), /vagas/);
+    assert.throws(() => importTeamCupList(empty, "João\nJoao"), /repetidos/);
+    assert.throws(() => importTeamCupList(empty, "Maria; X"), /Masculino ou Feminino/);
+    assert.throws(() => importTeamCupList(empty, "Maria; M; Z"), /Nível inválido/);
+    for (const mode of ["manual", "balanced", "similar"]) {
+      const draft = organizeTeamCupGroups(filled, mode);
+      const saved = applyTeamCupOrganization(filled, draft, organizationSignature(filled));
+      const generated = generateTeamCupGroups(saved, () => 0);
+      assert.deepEqual(generated.players.teams.map(t => t.id), saved.teamCup.groupOrder, "Generating must preserve approved group order");
+      const groups = teamCupOrganizationGroups(saved);
+      for (const group of groups) {
+        const games = generated.schedule.flat().filter(g => g.groupId === group.id);
+        const actual = new Set(games.flatMap(g => [generated.players.teams[g.ids1[0]].id, generated.players.teams[g.ids2[0]].id]));
+        assert.deepEqual([...actual].sort(), [...group.teamIds].sort());
+        assert([3, 4].includes(group.teamIds.length));
+      }
+      assert.deepEqual(normalizeTournamentData("Times/Equipes", saved).teamCup.groupOrder, saved.teamCup.groupOrder);
+      assert.deepEqual(applyTeamCupOrganization(generated, saved, organizationSignature(generated)).schedule, generated.schedule);
+      assert.throws(() => importTeamCupList(generated, "Outro"), /vagas/);
+      assert.deepEqual(organizeTeamCupGroups(teamCupOrganizationDraft(generated), "manual").teamCup.groupOrder, generated.players.teams.map(t => t.id));
+      assert.equal(participantEntries(updateTeamCupParticipant(generated, "athlete-0-0", { name: "Outro" })).find(e => e.athlete.id === "athlete-0-0").athlete.name, "Outro");
+      assert.deepEqual(filled.players, saved.players, "Grouping never changes athletes or captains");
+    }
+    assert.throws(() => applyTeamCupOrganization(filled, filled, "stale"), /atualizada/);
+    const swapped = swapTeamCupGroupItems(filled, { kind: "team", id: "team-0" }, { kind: "team", id: "team-1" });
+    assert.equal(swapped.teamCup.groupOrder[0], "team-1");
+    assert.deepEqual(swapped.players, filled.players);
+    const a = filled.players.teams[0].athletes[0], b = filled.players.teams[1].athletes[0];
+    const roster = swapTeamCupAthletes(filled, a.id, b.id);
+    assert.equal(roster.players.teams[0].captainId, b.id);
+    assert.equal(roster.players.teams[1].captainId, a.id);
+    if (kind === "squad") assert.throws(() => swapTeamCupAthletes(filled, a.id, filled.players.teams[1].athletes[2].id), /mesma composição/);
+    const random = prepareTeamCupFormation(filled, "balanced");
+    const captains = drawTeamCaptains(random, () => .3);
+    const members = drawTeamMembers(captains, () => .3);
+    for (const state of [filled, random, captains, members]) {
+      const original = structuredClone(state);
+      const manual = teamCupManualData(state);
+      const roster = participantEntries(manual);
+      assert.equal(manual.teamCup.formation, "fixed");
+      assert.equal(roster.length, count * (kind === "trio" ? 3 : 4));
+      assert(roster.every(entry => entry.team), "Manual participants never become a flat draw pool");
+      assert.deepEqual(roster.map(e => e.athlete.id).sort(), participantEntries(filled).map(e => e.athlete.id).sort(), "Every athlete is preserved exactly once even during a partial draw");
+      assert.deepEqual(roster.map(e => e.athlete.name).sort(), participantEntries(filled).map(e => e.athlete.name).sort());
+      assert.deepEqual(manual.players.teams.map(t => t.captainId), state.players.teams.map(t => t.captainId), "Existing captains do not change when they are moved to the first visible row");
+      assert(manual.players.teams.every(t => t.athletes[0].id === t.captainId));
+      if (kind === "squad") assert(manual.players.teams.every(t => t.athletes.filter(a => a.gender === "H").length === 2));
+      const editedManual = updateTeamCupParticipant(manual, manual.players.teams[0].captainId, { name: "Capitão Editado" });
+      assert.equal(editedManual.players.teams[0].athletes[0].name, "Capitão Editado");
+      assert.deepEqual(state, original, "Opening manual participants never mutates the saved draw or roster");
+      assert.deepEqual(normalizeTournamentData("Times/Equipes", editedManual).players, editedManual.players);
+      const athleteId = roster.at(-1).athlete.id;
+      const edit = transform => applyTeamCupManualEdit(state, transform);
+      const changedName = edit(d => updateTeamCupParticipant(d, athleteId, { name: "Nome Manual Mantido" }));
+      const changedGender = edit(d => updateTeamCupParticipant(d, athleteId, { gender: "M" }));
+      const changedLevel = edit(d => updateTeamCupParticipant(d, athleteId, { level: "A" }));
+      const changedTeam = edit(d => updateTeamCupTeamName(d, state.players.teams[0].id, "Equipe Manual Mantida"));
+      const replaced = edit(d => importTeamCupList(d, [{ name: "Nova Pessoa", level: "B" }], "replace", { replaceConfirmed: true, signature: organizationSignature(manual) }));
+      for (const changed of [changedName, changedGender, changedLevel, changedTeam, replaced]) {
+        assert.equal(changed.teamCup.formation, state.teamCup.formation, "Manual edits and imports never switch formation");
+        assert.equal(changed.teamCup.drawStage, state.teamCup.drawStage, "Manual edits never reset or complete a draw");
+        assert.equal(changed.teamCup.balanced, state.teamCup.balanced);
+        assert.equal(changed.teamCup.designatedCaptains, state.teamCup.designatedCaptains);
+        assert.deepEqual(changed.teamCup.pool.map(a => a.id), state.teamCup.pool.map(a => a.id), "Keep the draw pool order");
+        assert.deepEqual(changed.players.teams.map(t => [t.id, t.captainId, t.athletes.map(a => a.id)]), state.players.teams.map(t => [t.id, t.captainId, t.athletes.map(a => a.id)]), "Do not persist provisional member assignments");
+        assert.deepEqual(changed.schedule, state.schedule);
+        assert.deepEqual(changed.brackets, state.brackets);
+        const reloaded = normalizeTournamentData("Times/Equipes", changed);
+        assert.equal(reloaded.teamCup.formation, state.teamCup.formation);
+        assert.equal(reloaded.teamCup.drawStage, state.teamCup.drawStage);
+      }
+      const findAthlete = data => participantEntries(teamCupManualData(data)).find(e => e.athlete.id === athleteId).athlete;
+      assert.equal(findAthlete(changedName).name, "Nome Manual Mantido");
+      assert.equal(findAthlete(changedGender).gender, "M");
+      assert.equal(findAthlete(changedLevel).level, "A");
+      assert.equal(changedTeam.players.teams[0].name, "Equipe Manual Mantida");
+      if (state.teamCup.drawStage === "captains") {
+        const continued = drawTeamMembers(changedName, () => .3);
+        assert.equal(continued.teamCup.drawStage, "complete", "Member draw still works after editing provisional manual rows");
+        assert.equal(findAthlete(continued).name, "Nome Manual Mantido");
+      }
+      assert.deepEqual(state, original, "Manual saves do not mutate their source");
+    }
+    assert.equal(members.teamCup.drawStage, "complete");
+    assert.equal(new Set(members.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, participantEntries(filled).length);
+    const edited = updateTeamCupParticipant(members, a.id, { name: "Novo nome" });
+    assert.equal(edited.teamCup.pool.find(p => p.id === a.id).name, "Novo nome");
+    assert.equal(edited.players.teams.flatMap(t => t.athletes).find(p => p.id === a.id).name, "Novo nome");
+  }
+}
+const differentSizes = createTeamCupData({}, 7);
+assert.throws(() => swapTeamCupGroupItems(differentSizes, { kind: "group", id: 0 }, { kind: "group", id: 1 }), /diferentes/);
+const sameSizes = createTeamCupData({}, 9);
+const groupSwap = swapTeamCupGroupItems(sameSizes, { kind: "group", id: 0 }, { kind: "group", id: 1 });
+assert.deepEqual(groupSwap.teamCup.groupOrder.slice(0, 3), ["team-3", "team-4", "team-5"]);
+assert.throws(() => organizeTeamCupGroups(sameSizes, "balanced"), /nome/);
+const columnList = [{ name: "1. 🏆 CRISTIANO da SILVA ✅", gender: "Masculino", level: "C" }, { name: "2. Maria ⭐ Santos", gender: "Feminino", level: "Iniciante" }];
+assert.deepEqual(parseTeamCupList(columnList), [{ name: "Cristiano da Silva", gender: "H", level: "C" }, { name: "Maria Santos", gender: "M", level: "Iniciante" }]);
+for (const kind of ["trio", "squad"]) {
+  let data = createTeamCupData({}, 4, kind);
+  data = updateTeamCupParticipant(data, "athlete-0-0", { name: "Nome Preservado", level: "A", gender: "M" });
+  const before = structuredClone(data);
+  const preview = buildTeamCupImportPreview(data, columnList);
+  assert.equal(preview.imported, 2);
+  assert.equal(preview.preserved, 1);
+  assert.equal(preview.vacancies, 4 * (kind === "trio" ? 3 : 4) - 3);
+  assert.deepEqual(data, before, "Preview cannot mutate saved participants");
+  assert.equal(preview.entries[0].athlete.name, "Nome Preservado");
+  assert.equal(preview.entries[0].athlete.level, "A");
+  const replacePreview = buildTeamCupImportPreview(data, columnList, "replace");
+  assert.equal(replacePreview.preserved, 0);
+  assert.equal(replacePreview.entries[0].athlete.name, "Cristiano da Silva");
+  assert.equal(replacePreview.entries[0].athlete.gender, "H");
+  assert.equal(replacePreview.entries[0].athlete.level, "C");
+  assert.throws(() => importTeamCupList(data, columnList, "replace"), /Confirme/);
+  const replaced = importTeamCupList(data, columnList, "replace", { replaceConfirmed: true, signature: organizationSignature(data) });
+  assert.deepEqual(replaced, replacePreview.nextData, "Applied list must match the entire preview");
+  assert.equal(participantEntries(replaced).filter(e => e.athlete.name).length, 2);
+  assert.deepEqual(replaced.players.teams.map(t => [t.id, t.name, t.captainId]), data.players.teams.map(t => [t.id, t.name, t.captainId]));
+  assert.deepEqual(normalizeTournamentData("Times/Equipes", replaced).players, replaced.players);
+  assert.deepEqual(mergeConcurrentTournamentData(data, replaced, data).data.players, replaced.players);
+  assert.throws(() => importTeamCupList(data, columnList, "replace", { replaceConfirmed: true, signature: "stale" }), /atualizada/);
+  const noLevel = importTeamCupList(data, [{ name: "Outra Pessoa" }], "replace", { replaceConfirmed: true });
+  assert.equal(participantEntries(noLevel)[0].athlete.level, "", "Replacement must not inherit previous athlete's level");
+  assert.equal(participantEntries(noLevel)[0].athlete.gender, "M", "Unselected composition follows the previewed slot");
+  const cleared = importTeamCupList(replaced, [{ name: "Pessoa Nova" }], "replace", { replaceConfirmed: true });
+  assert.equal(participantEntries(cleared)[1].athlete.name, "", "All non-imported names must clear in replacement mode");
+  assert.equal(participantEntries(cleared)[1].athlete.level, "");
+  const duplicate = buildTeamCupImportPreview(data, [{ name: "Nome Preservado" }]);
+  assert.equal(duplicate.duplicates, 1);
+  assert.throws(() => importTeamCupList(data, [{ name: "Nome Preservado" }]), /repetidos/);
+  const placeholders = updateTeamCupParticipant(data, "athlete-0-1", { name: "Jogador 2" });
+  assert.equal(buildTeamCupImportPreview(placeholders, columnList).preserved, 1);
+  const ignored = buildTeamCupImportPreview(data, [{ name: "✅ 123" }, { name: "Pessoa Válida" }]);
+  assert.equal(ignored.ignored, 1);
+  assert.equal(ignored.imported, 1);
+  const random = prepareTeamCupFormation(replaced, "random");
+  const poolReplaced = importTeamCupList(random, columnList, "replace", { replaceConfirmed: true });
+  assert.equal(poolReplaced.teamCup.pool[1].name, "Maria Santos");
+  assert.equal(poolReplaced.players.teams[0].athletes[1].name, "Maria Santos");
+  const locked = { ...data, schedule: [[{ matchKey: "existing", s1: "6", s2: "4" }]] };
+  assert.deepEqual(importTeamCupList(locked, columnList, "replace", { replaceConfirmed: true }).schedule, locked.schedule);
+  assert.equal(locked.schedule[0][0].s1, "6");
+}
+for (const kind of ["trio", "squad"]) {
+  let current = createTeamCupData({ winningScore: 6 }, 9, kind);
+  current.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => { a.name = `Atleta ${i}-${j}`; a.level = TEAM_LEVELS[(i + j) % 6]; }));
+  current = generateTeamCupGroups(current, () => .4);
+  for (const game of current.schedule.flat()) for (const leg of [0, 1]) current = updateTeamCupLeg(current, game.matchKey, leg, { s1: "6", s2: "2" });
+  for (const tie of teamCupQualified(current).unresolvedCampaignTies) current.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
+  current = generateTeamCupBrackets(current);
+  current.cupConfig.mainBracketName = "Chave principal personalizada";
+  current.cupConfig.repechageName = "Paralela personalizada";
+  current.cupConfig.repechageEnabled = true;
+  current.players.teams.find(t => t.id === "team-0").name = "Equipe personalizada";
+  current.players.teams.find(t => t.id === "team-0").a = "Equipe personalizada";
+  const sourceTeams = [...current.players.teams].sort((a, b) => a.id.localeCompare(b.id, "pt-BR", { numeric: true }));
+  for (const nextCount of [4, 6, 12, 32]) for (const nextKind of ["trio", "squad"]) {
+    assert.equal(teamCupFormatChangeNeedsConfirmation(current, nextCount, nextKind), true);
+    const beforeConfiguration = structuredClone(current);
+    assert.throws(() => reconfigureTeamCup(current, nextCount, nextKind), /Confirme/);
+    assert.deepEqual(current, beforeConfiguration, "Opening or cancelling format changes preserves every result");
+    const configured = reconfigureTeamCup(current, nextCount, nextKind, { confirmed: true });
+    const nextSize = nextKind === "trio" ? 3 : 4;
+    assert.equal(configured.players.teams.length, nextCount);
+    assert.equal(configured.teamCup.kind, nextKind);
+    assert(configured.players.teams.every(t => t.athletes.length === nextSize && t.athletes.some(a => a.id === t.captainId)));
+    for (let i = 0; i < Math.min(nextCount, sourceTeams.length); i++) {
+      assert.equal(configured.players.teams[i].name, sourceTeams[i].name, "Custom team names survive reconfiguration");
+      assert.deepEqual(configured.players.teams[i].athletes.slice(0, Math.min(nextSize, sourceTeams[i].athletes.length)), sourceTeams[i].athletes.slice(0, nextSize));
+    }
+    assert.equal(configured.cupConfig.mainBracketName, current.cupConfig.mainBracketName);
+    assert.equal(configured.cupConfig.repechageName, current.cupConfig.repechageName);
+    assert.equal(configured.cupConfig.repechageEnabled, true);
+    assert.equal(configured.winningScore, current.winningScore);
+    assert.deepEqual(configured.schedule, []);
+    assert.deepEqual(configured.brackets, []);
+    assert.equal(configured.teamCup.groupOrder, undefined);
+    assert.equal(configured.teamCup.groupVideo, undefined);
+    assert.equal(configured.teamCup.drawVideo, undefined);
+    assert.deepEqual(configured.cupConfig.campaignTieBreakOverrides, {});
+    assert.deepEqual(configured.teamCup.pool, configured.players.teams.flatMap(t => t.athletes));
+    assert.equal(new Set(configured.players.teams.map(t => t.id)).size, nextCount);
+    assert.equal(new Set(configured.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, nextCount * nextSize);
+    assert.deepEqual(normalizeTournamentData("Times/Equipes", configured).players, configured.players);
+    assert.deepEqual(mergeConcurrentTournamentData(current, configured, current).conflicts, []);
+  }
+  assert.equal(reconfigureTeamCup(current, 9, kind), current, "Reselecting the same format must not erase anything");
+  const switched = setTeamCupFormation(current, "random");
+  assert.equal(switched.teamCup.formation, "random");
+  assert.equal(switched.teamCup.drawStage, "complete");
+  assert.deepEqual(switched.players, current.players);
+  assert.deepEqual(switched.schedule, current.schedule);
+  assert.deepEqual(switched.brackets, current.brackets);
+  assert.deepEqual(switched.teamCup.pool, current.players.teams.flatMap(t => t.athletes));
+  const fixedAgain = setTeamCupFormation(switched, "fixed");
+  assert.equal(fixedAgain.teamCup.formation, "fixed");
+  assert.deepEqual(fixedAgain.players, current.players);
+  assert.deepEqual(fixedAgain.schedule, current.schedule);
+  assert.deepEqual(mergeConcurrentTournamentData(current, switched, current).conflicts, []);
+  const reduced = reconfigureTeamCup(switched, 4, "trio", { confirmed: true });
+  const expanded = reconfigureTeamCup(reduced, 12, "squad");
+  assert.equal(new Set(expanded.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, 48, "Repeated count/size changes never duplicate athlete identities");
+  assert.deepEqual(expanded.players.teams[0].athletes.slice(0, 3), reduced.players.teams[0].athletes);
+  const original = structuredClone(current), signature = organizationSignature(current);
+  const manualWithResults = teamCupManualData(setTeamCupFormation(current, "random"));
+  const randomWithResults = setTeamCupFormation(current, "random");
+  const preservedMode = applyTeamCupManualEdit(randomWithResults, d => updateTeamCupParticipant(d, d.players.teams[0].captainId, { name: "Capitão Sem Trocar Formação" }));
+  assert.equal(preservedMode.teamCup.formation, "random");
+  assert.equal(preservedMode.teamCup.drawStage, "complete");
+  assert.deepEqual(preservedMode.schedule, randomWithResults.schedule);
+  assert.deepEqual(preservedMode.brackets, randomWithResults.brackets);
+  const captainId = manualWithResults.players.teams[0].captainId;
+  const manualEdited = updateTeamCupParticipant(manualWithResults, captainId, { name: "Capitão Manual" });
+  assert.deepEqual(manualEdited.schedule, current.schedule);
+  assert.deepEqual(manualEdited.brackets, current.brackets);
+  assert.deepEqual(manualEdited.players.teams.map(t => t.id), current.players.teams.map(t => t.id));
+  assert.deepEqual(mergeConcurrentTournamentData(current, manualEdited, current).conflicts, []);
+  const inlineTeamId = current.players.teams[0].id;
+  const inlineRenamed = updateTeamCupTeamName(current, inlineTeamId, "Nome direto na lista");
+  assert.equal(inlineRenamed.players.teams[0].name, "Nome direto na lista");
+  assert.equal(inlineRenamed.players.teams[0].a, "Nome direto na lista");
+  assert.deepEqual(inlineRenamed.players.teams[0].athletes, current.players.teams[0].athletes);
+  assert.equal(inlineRenamed.players.teams[0].captainId, current.players.teams[0].captainId);
+  assert.deepEqual(inlineRenamed.players.teams.slice(1), current.players.teams.slice(1));
+  assert.equal(inlineRenamed.schedule, current.schedule);
+  assert.equal(inlineRenamed.brackets, current.brackets);
+  assert.equal(inlineRenamed.teamCup, current.teamCup);
+  assert.deepEqual(current, original);
+  assert.deepEqual(mergeConcurrentTournamentData(current, inlineRenamed, current).conflicts, []);
+  assert.equal(normalizeTournamentData("Times/Equipes", inlineRenamed).players.teams[0].name, "Nome direto na lista");
+  assert.throws(() => updateTeamCupTeamName(current, "inexistente", "Novo nome"), /não encontrada/);
+  let draft = teamCupOrganizationDraft(current);
+  assert.equal(draft.schedule.length, 0);
+  assert.deepEqual(current, original, "Opening organization does not mutate games or results");
+  draft.players.teams[0].name = "Nome escolhido pelo organizador";
+  draft.players.teams[0].a = draft.players.teams[0].name;
+  draft.players.teams[0].captainId = draft.players.teams[0].athletes[1].id;
+  draft = swapTeamCupAthletes(draft, draft.players.teams[0].athletes[0].id, draft.players.teams[1].athletes[0].id);
+  draft = updateTeamCupParticipant(draft, draft.players.teams[0].athletes[0].id, { name: "Nome Corrigido", level: "A" });
+  const edited = applyTeamCupOrganization(current, draft, signature);
+  assert.deepEqual(edited.schedule, original.schedule);
+  assert.deepEqual(edited.brackets, original.brackets);
+  assert.deepEqual(edited.players.teams.map(t => t.id), original.players.teams.map(t => t.id));
+  assert.equal(edited.players.teams[0].name, "Nome escolhido pelo organizador");
+  assert.deepEqual(mergeConcurrentTournamentData(current, edited, current).conflicts, []);
+  const live = updateTeamCupLeg({ ...current, brackets: [] }, current.schedule[0][0].matchKey, 0, { s1: "6", s2: "3" });
+  const savedOverLive = applyTeamCupOrganization(live, draft, signature);
+  assert.deepEqual(savedOverLive.schedule, live.schedule, "Roster-only changes preserve scores updated while dialog was open");
+  const rerolled = drawTeamMembers(drawTeamCaptains(prepareTeamCupFormation(teamCupOrganizationDraft(current), "balanced"), () => .3), () => .3);
+  assert.deepEqual(applyTeamCupOrganization(current, rerolled, signature).schedule, current.schedule, "Redrawing rosters does not erase results assigned to teams");
+  const regrouped = swapTeamCupGroupItems(teamCupOrganizationDraft(current), { kind: "team", id: current.players.teams[0].id }, { kind: "team", id: current.players.teams[3].id });
+  assert.equal(teamCupOrganizationNeedsRegeneration(current, regrouped), true);
+  assert.throws(() => applyTeamCupOrganization(current, regrouped, signature), /Confirme/);
+  assert.deepEqual(current, original, "Cancelling leaves all data unchanged");
+  const options = { regenerateConfirmed: true, resultsSignature: teamCupResultsSignature(current) };
+  assert.throws(() => applyTeamCupOrganization(live, regrouped, signature, options), /atualizados/);
+  const rebuilt = applyTeamCupOrganization(current, regrouped, signature, options);
+  assert.equal(rebuilt.brackets.length, 0);
+  assert(rebuilt.schedule.flat().every(g => g.teamCupLegs.every(leg => leg.s1 === "" && leg.s2 === "" && !leg.inProgress)));
+  assert.deepEqual(rebuilt.players.teams.map(t => t.id), regrouped.teamCup.groupOrder);
+  assert(rebuilt.schedule.flat().every(g => !current.schedule.flat().some(old => old.matchKey === g.matchKey)));
+  assert.deepEqual(rebuilt.cupConfig.tieBreakOverrides, {});
+  assert.deepEqual(rebuilt.cupConfig.campaignTieBreakOverrides, {});
+  assert.deepEqual(mergeConcurrentTournamentData(current, rebuilt, current).conflicts, [], "Explicit regeneration remains saveable with old finals removed");
+  assert(mergeConcurrentTournamentData(current, rebuilt, live).conflicts.length > 0, "Concurrent old-generation scores cannot silently attach to new games");
+  assert.deepEqual(normalizeTournamentData("Times/Equipes", rebuilt).schedule, rebuilt.schedule);
+  const legacy = structuredClone(current);
+  delete legacy.teamCup.defaultTeamNamesVersion;
+  legacy.players.teams.forEach(t => { t.name = `Time ${String.fromCharCode(65 + Number(t.id.slice(5)))}`; t.a = t.name; });
+  legacy.players.teams[0].name = "Os Campeões";
+  const migrated = normalizeTournamentData("Times/Equipes", legacy);
+  assert.equal(migrated.players.teams[0].name, "Os Campeões");
+  assert.equal(migrated.players.teams[1].name, `Time ${Number(migrated.players.teams[1].id.slice(5)) + 1}`);
+  assert.deepEqual(migrated.schedule, legacy.schedule);
+  migrated.players.teams[1].name = "Time " + String.fromCharCode(65 + Number(migrated.players.teams[1].id.slice(5)));
+  assert.equal(normalizeTournamentData("Times/Equipes", migrated).players.teams[1].name, migrated.players.teams[1].name, "Organizer can choose any custom name after the one-time default upgrade");
+}
+for (const kind of ["trio", "squad"]) for (const mode of ["masculino", "feminino", "mista"]) {
+  for (const composition of kind === "trio" && mode === "mista" ? ["2H1M", "1H2M"] : [null]) {
+    // Creation currently attaches category settings after creating empty slots.
+    const raw = { ...createTeamCupData({ winningScore: 4 }, 6, kind), participantGenderMode: mode };
+    let empty = normalizeTournamentData("Times/Equipes", raw);
+    if (composition) empty = setTeamCupTrioComposition(empty, composition);
+    const quota = teamCupGenderQuota(empty);
+    const assertQuota = data => data.players.teams.forEach(team => {
+      assert.equal(team.athletes.filter(a => a.gender === "H").length, quota.H);
+      assert.equal(team.athletes.filter(a => a.gender === "M").length, quota.M);
+    });
+    assertQuota(empty);
+    assertQuota(reconfigureTeamCup(empty, 9, kind));
+    const source = JSON.stringify(empty);
+    const rows = empty.players.teams.flatMap(t => t.athletes).map((a, i) => ({ name: `Pessoa ${String.fromCharCode(65 + Math.floor(i / 26), 65 + i % 26)}`, level: TEAM_LEVELS[i % 6] }));
+    const filled = importTeamCupList(empty, rows);
+    assertQuota(filled);
+    assert.equal(JSON.stringify(empty), source, "Import never changes the source tournament");
+    assertQuota(normalizeTournamentData("Times/Equipes", filled));
+    for (const drawMode of ["random", "balanced"]) for (const seed of [.01, .3, .7, .99]) {
+      const drawn = drawTeamMembers(drawTeamCaptains(prepareTeamCupFormation(filled, drawMode), () => seed), () => seed);
+      assertQuota(drawn);
+      assert.equal(new Set(drawn.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, rows.length);
+    }
+    let played = generateTeamCupGroups(filled, () => .4);
+    played = updateTeamCupLeg(played, played.schedule[0][0].matchKey, 0, { s1: "4", s2: "2" });
+    const normalized = normalizeTournamentData("Times/Equipes", played);
+    assert.equal(normalized.winningScore, 4, "Games per set is inherited, not reset by the team format");
+    assert.deepEqual(normalized.schedule, played.schedule, "Composition inheritance preserves scores and timers");
+    if (mode !== "mista") {
+      const gender = mode === "masculino" ? "H" : "M", opposite = gender === "H" ? "M" : "H";
+      const edited = updateTeamCupParticipant(played, played.players.teams[0].athletes[0].id, { gender: opposite, name: "Nome Corrigido" });
+      assertQuota(edited);
+      assert.deepEqual(edited.schedule, played.schedule);
+      const pasted = importTeamCupList(empty, [{ name: "Nome Importado", gender: opposite, level: "B" }]);
+      assert.equal(pasted.players.teams[0].athletes[0].gender, gender, "Tournament composition wins over a pasted per-name value");
+      assert.equal(importTeamCupList(empty, "Nome Importado; B").players.teams[0].athletes[0].level, "B", "Single-gender paste accepts Name and Level columns");
+    } else if (kind === "trio") {
+      const swapped = setTeamCupTrioComposition(played, composition === "2H1M" ? "1H2M" : "2H1M");
+      assert.deepEqual(swapped.players, played.players, "Changing mixed quotas preserves named athletes and captains");
+      assert.deepEqual(swapped.schedule, played.schedule);
+      assert.throws(() => generateTeamCupGroups({ ...swapped, schedule: [], brackets: [] }), /composição/);
+      assert.throws(() => drawTeamCaptains(prepareTeamCupFormation({ ...swapped, schedule: [], brackets: [] }, "random")), /sorteio exige/);
+      const vacancyEdit = updateTeamCupParticipant(empty, empty.players.teams[0].athletes[0].id, { gender: "M" });
+      assert.equal(applyTeamCupComposition(vacancyEdit).players.teams[0].athletes[0].gender, "M", "Mixed participant choices are not reset during normalization");
+    }
+  }
+}
+console.log("Times/Equipes organização: composição herdada, proporções do trio misto, sorteios, importação, placares e persistência aprovados.");

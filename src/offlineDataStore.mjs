@@ -142,7 +142,7 @@ export function mergeConcurrentTournamentData(baseData, localData, remoteData) {
       (game.teamCupLegs || []).map(leg => [leg.s1, leg.s2])));
     // Creating a bracket freezes its group qualification snapshot, including across devices.
     const bracketSource = remoteData?.brackets?.length ? remoteData : localData?.brackets?.length ? localData : null;
-    if (bracketSource && groupScores(data) !== groupScores(bracketSource))
+    if (data.brackets?.length && bracketSource && groupScores(data) !== groupScores(bracketSource))
       conflicts.push("Times/Equipes: os placares dos grupos mudaram durante a geração das eliminatórias.");
     data.schedule = (data.schedule || []).map(round => round.map(game => summarizeTeamMatch(game, data.winningScore)));
     data.brackets = (data.brackets || []).map(game => summarizeTeamMatch(game, data.winningScore));
