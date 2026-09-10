@@ -10,12 +10,22 @@ import { prepareTeamCupFormation } from "../src/domain/teamCupOrganization.mjs";
 const server = await createServer({ configFile: false, logLevel: "error", server: { middlewareMode: true, hmr: false }, appType: "custom" });
 try {
   const { default: TeamCupBracketView } = await server.ssrLoadModule("/src/features/teamCup/TeamCupBracketView.jsx");
-  const { TeamCupMatchCard } = await server.ssrLoadModule("/src/features/teamCup/TeamCupWorkspace.jsx");
+  const { default: TeamCupWorkspace, TeamCupMatchCard } = await server.ssrLoadModule("/src/features/teamCup/TeamCupWorkspace.jsx");
   const { BracketColumn } = await server.ssrLoadModule("/src/features/brackets/CupBracketView.jsx");
   const { default: CupPodiumView } = await server.ssrLoadModule("/src/features/ranking/CupPodiumView.jsx");
   const { default: TeamCupRoster } = await server.ssrLoadModule("/src/features/teamCup/TeamCupRoster.jsx");
   const { default: TeamCupParticipants } = await server.ssrLoadModule("/src/features/teamCup/TeamCupParticipants.jsx");
   const { drawPodiumParticipantRows } = await server.ssrLoadModule("/src/features/rankingShare/rankingShareExport.mjs");
+  for (const kind of ["trio", "squad"]) for (const mode of ["masculino", "feminino", "mista"]) {
+    const data = cup.createTeamCupData({ winningScore: 4, participantGenderMode: mode }, 6, kind);
+    const participants = renderToStaticMarkup(React.createElement(TeamCupParticipants, { data, onChange() {} }));
+    assert.equal((participants.match(/class="tcp-gender"/g) || []).length, mode === "mista" ? 6 * cup.teamSize(data) : 0);
+    assert.equal((participants.match(/class="tcp-level"/g) || []).length, 6 * cup.teamSize(data));
+    const format = renderToStaticMarkup(React.createElement(TeamCupWorkspace, { data, setData() {}, tournament: { name: "Teste de composição" } }));
+    assert.equal(format.includes("Composição do trio"), mode === "mista" && kind === "trio");
+    assert(!format.includes("Games por set"), "No duplicate games selector inside the tournament");
+    assert.equal(data.winningScore, 4);
+  }
   for (const kind of ["trio", "squad"]) {
     const fixed = fixture(9, kind);
     fixed.players.teams.forEach(team => { team.captainId = team.athletes.at(-1).id; });

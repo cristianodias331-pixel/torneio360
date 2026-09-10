@@ -4,6 +4,7 @@ import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList,
   prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupManualData, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant, updateTeamCupTeamName } from "../src/domain/teamCupOrganization.mjs";
 import { normalizeTournamentData } from "../src/domain/tournamentDataNormalization.mjs";
 import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
+import { applyTeamCupComposition, setTeamCupTrioComposition, teamCupGenderQuota } from "../src/domain/teamCupComposition.mjs";
 
 for (const kind of ["trio", "squad"]) {
   for (const count of [4, 6, 7, 8, 9, 32]) {
@@ -253,4 +254,52 @@ for (const kind of ["trio", "squad"]) {
   migrated.players.teams[1].name = "Time " + String.fromCharCode(65 + Number(migrated.players.teams[1].id.slice(5)));
   assert.equal(normalizeTournamentData("Times/Equipes", migrated).players.teams[1].name, migrated.players.teams[1].name, "Organizer can choose any custom name after the one-time default upgrade");
 }
-console.log("Times/Equipes organização: edição após gerar jogos, confirmação de redistribuição, preservação de placares, nomes numéricos, importação, sorteios e persistência aprovados.");
+for (const kind of ["trio", "squad"]) for (const mode of ["masculino", "feminino", "mista"]) {
+  for (const composition of kind === "trio" && mode === "mista" ? ["2H1M", "1H2M"] : [null]) {
+    // Creation currently attaches category settings after creating empty slots.
+    const raw = { ...createTeamCupData({ winningScore: 4 }, 6, kind), participantGenderMode: mode };
+    let empty = normalizeTournamentData("Times/Equipes", raw);
+    if (composition) empty = setTeamCupTrioComposition(empty, composition);
+    const quota = teamCupGenderQuota(empty);
+    const assertQuota = data => data.players.teams.forEach(team => {
+      assert.equal(team.athletes.filter(a => a.gender === "H").length, quota.H);
+      assert.equal(team.athletes.filter(a => a.gender === "M").length, quota.M);
+    });
+    assertQuota(empty);
+    assertQuota(reconfigureTeamCup(empty, 9, kind));
+    const source = JSON.stringify(empty);
+    const rows = empty.players.teams.flatMap(t => t.athletes).map((a, i) => ({ name: `Pessoa ${String.fromCharCode(65 + Math.floor(i / 26), 65 + i % 26)}`, level: TEAM_LEVELS[i % 6] }));
+    const filled = importTeamCupList(empty, rows);
+    assertQuota(filled);
+    assert.equal(JSON.stringify(empty), source, "Import never changes the source tournament");
+    assertQuota(normalizeTournamentData("Times/Equipes", filled));
+    for (const drawMode of ["random", "balanced"]) for (const seed of [.01, .3, .7, .99]) {
+      const drawn = drawTeamMembers(drawTeamCaptains(prepareTeamCupFormation(filled, drawMode), () => seed), () => seed);
+      assertQuota(drawn);
+      assert.equal(new Set(drawn.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, rows.length);
+    }
+    let played = generateTeamCupGroups(filled, () => .4);
+    played = updateTeamCupLeg(played, played.schedule[0][0].matchKey, 0, { s1: "4", s2: "2" });
+    const normalized = normalizeTournamentData("Times/Equipes", played);
+    assert.equal(normalized.winningScore, 4, "Games per set is inherited, not reset by the team format");
+    assert.deepEqual(normalized.schedule, played.schedule, "Composition inheritance preserves scores and timers");
+    if (mode !== "mista") {
+      const gender = mode === "masculino" ? "H" : "M", opposite = gender === "H" ? "M" : "H";
+      const edited = updateTeamCupParticipant(played, played.players.teams[0].athletes[0].id, { gender: opposite, name: "Nome Corrigido" });
+      assertQuota(edited);
+      assert.deepEqual(edited.schedule, played.schedule);
+      const pasted = importTeamCupList(empty, [{ name: "Nome Importado", gender: opposite, level: "B" }]);
+      assert.equal(pasted.players.teams[0].athletes[0].gender, gender, "Tournament composition wins over a pasted per-name value");
+      assert.equal(importTeamCupList(empty, "Nome Importado; B").players.teams[0].athletes[0].level, "B", "Single-gender paste accepts Name and Level columns");
+    } else if (kind === "trio") {
+      const swapped = setTeamCupTrioComposition(played, composition === "2H1M" ? "1H2M" : "2H1M");
+      assert.deepEqual(swapped.players, played.players, "Changing mixed quotas preserves named athletes and captains");
+      assert.deepEqual(swapped.schedule, played.schedule);
+      assert.throws(() => generateTeamCupGroups({ ...swapped, schedule: [], brackets: [] }), /composição/);
+      assert.throws(() => drawTeamCaptains(prepareTeamCupFormation({ ...swapped, schedule: [], brackets: [] }, "random")), /sorteio exige/);
+      const vacancyEdit = updateTeamCupParticipant(empty, empty.players.teams[0].athletes[0].id, { gender: "M" });
+      assert.equal(applyTeamCupComposition(vacancyEdit).players.teams[0].athletes[0].gender, "M", "Mixed participant choices are not reset during normalization");
+    }
+  }
+}
+console.log("Times/Equipes organização: composição herdada, proporções do trio misto, sorteios, importação, placares e persistência aprovados.");

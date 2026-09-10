@@ -10,6 +10,7 @@ import { resolveBracketGame } from "./bracketProgression.mjs";
 import { getScoreWinnerSide, normalizeScoreInput } from "./scoreRules.mjs";
 import { startMatchTimer, stopMatchTimer, resetMatchTimer } from "./matchTimer.mjs";
 import { getGameCourtNumber } from "./courtNumbers.mjs";
+import { applyTeamCupComposition, teamCupGenderQuota, teamCupCompositionLabel } from "./teamCupComposition.mjs";
 
 export const TEAM_CUP_TYPE = "Times/Equipes";
 export const TEAM_CUP_GROUP_RANKING_LABEL = "Vitórias → saldo de sets → confronto direto → coeficiente → saldo de games";
@@ -42,13 +43,13 @@ const blankTeam = (i, size) => ({
 });
 
 export function createTeamCupData(base = {}, count = 6, kind = "trio") {
-  return {
+  return applyTeamCupComposition({
     ...base, rankingCriteria: "wins_balance_points",
     cupConfig: { format: "team-cup", teamCount: count, mainBracketName: "Eliminatória Principal", repechageName: "Consolation", repechageEnabled: false, tieBreakOverrides: {}, campaignTieBreakOverrides: {} },
     teamCup: { version: 1, defaultTeamNamesVersion: 2, kind, formation: "fixed", balanced: false, designatedCaptains: false, drawStage: "pending", pool: [] },
     players: { teams: Array.from({ length: count }, (_, i) => blankTeam(i, kind === "squad" ? 4 : 3)) },
     schedule: [], brackets: [], groupsShuffled: false,
-  };
+  });
 }
 
 export function teamCupFormatChangeNeedsConfirmation(data, count, kind) {
@@ -84,9 +85,9 @@ export function reconfigureTeamCup(data, count, kind, { confirmed = false } = {}
       captainId: athletes.some(a => a.id === previous?.captainId) ? previous.captainId : athletes[0].id };
   });
   const { groupOrder, groupMode, drawVideo, groupVideo, ...settings } = data.teamCup;
-  return { ...data, players: { ...data.players, teams }, schedule: [], brackets: [], groupsShuffled: false,
-    teamCup: { ...settings, kind, drawStage: "pending", pool: structuredClone(teams.flatMap(t => t.athletes)) },
-    cupConfig: { ...data.cupConfig, teamCount: count, tieBreakOverrides: {}, campaignTieBreakOverrides: {} } };
+  return applyTeamCupComposition({ ...data, players: { ...data.players, teams }, schedule: [], brackets: [], groupsShuffled: false,
+    teamCup: { ...settings, kind, compositionDefaultsKey: "", drawStage: "pending", pool: structuredClone(teams.flatMap(t => t.athletes)) },
+    cupConfig: { ...data.cupConfig, teamCount: count, tieBreakOverrides: {}, campaignTieBreakOverrides: {} } });
 }
 
 export function normalizeTeamCupData(data, defaults) {
@@ -108,14 +109,15 @@ export function normalizeTeamCupData(data, defaults) {
   if (upgradeNames && settings.groupVideo) settings.groupVideo = { ...settings.groupVideo,
     groups: settings.groupVideo.groups.map(group => ({ ...group, teams: group.teams.map(receiptTeam) })) };
   // Never truncate saved rosters, scores or captains during hydration.
-  return { ...data, cupConfig: cup, teamCup: settings,
+  return applyTeamCupComposition({ ...data, cupConfig: cup, teamCup: settings,
     players: { ...data.players, teams: teams.map((team, i) => ({ ...team, name: displayName(team, i), a: displayName(team, i), b: "", athletes: Array.isArray(team.athletes) ? team.athletes : [] })) },
     schedule: (data.schedule || []).map(round => round.map(game => summarizeTeamMatch(game, data.winningScore))),
     brackets: (data.brackets || []).map(game => summarizeTeamMatch(game, data.winningScore)),
-  };
+  });
 }
 
 export function setTeamCupFormation(data, formation) {
+  data = applyTeamCupComposition(data);
   if (!["fixed", "random"].includes(formation)) throw new Error("Escolha uma formação válida.");
   if (formation === data.teamCup.formation) return data;
   const pool = structuredClone(data.teamCup.formation === "random" && data.teamCup.drawStage !== "complete"
@@ -181,18 +183,21 @@ export function validateTeamCupTeams(data) {
   if (teams.some(t => t.athletes.length !== teamSize(data))) throw new Error("Complete todos os integrantes de cada equipe.");
   validateAthletes(teams.flatMap(t => t.athletes), false);
   if (teams.some(t => !t.athletes.some(a => a.id === t.captainId))) throw new Error("Defina um capitão ou uma capitã por equipe.");
-  if (teamSize(data) === 4 && teams.some(t => t.athletes.filter(a => a.gender === "H").length !== 2)) throw new Error("Cada Squad precisa de 2 atletas do masculino e 2 do feminino.");
+  const quota = teamCupGenderQuota(data);
+  if (quota && teams.some(t => t.athletes.filter(a => a.gender === "H").length !== quota.H)) throw new Error(quota.H === 2 && quota.M === 2 ? "Cada Squad precisa de 2 atletas do masculino e 2 do feminino." : `Cada equipe precisa respeitar a composição: ${teamCupCompositionLabel(data)}.`);
   return true;
 }
 
 export function drawTeamCaptains(data, rng = Math.random) {
+  data = applyTeamCupComposition(data);
   if (data.schedule.length) throw new Error("As equipes estão vinculadas aos jogos; o sorteio não pode ser refeito.");
   if (data.teamCup.drawStage !== "pending") throw new Error("Os capitães já foram sorteados.");
   const { pool, designatedCaptains, balanced } = data.teamCup;
   const count = data.players.teams.length;
   if (pool.length !== count * teamSize(data)) throw new Error("A quantidade de atletas precisa completar todas as equipes.");
   validateAthletes(pool, balanced);
-  if (teamSize(data) === 4 && pool.filter(a => a.gender === "H").length !== count * 2) throw new Error("O sorteio de Squad exige 2 atletas do masculino e 2 do feminino por equipe.");
+  const quota = teamCupGenderQuota(data);
+  if (quota && pool.filter(a => a.gender === "H").length !== count * quota.H) throw new Error(`O sorteio exige ${teamCupCompositionLabel(data)} por equipe. Confira a composição dos participantes.`);
   const candidates = designatedCaptains ? pool.filter(a => a.captainCandidate) : pool;
   if (designatedCaptains && candidates.length !== count) throw new Error(`Marque exatamente ${count} capitães antes de sortear.`);
   const captains = shuffleTeamCup(candidates, rng).slice(0, count);
@@ -201,16 +206,18 @@ export function drawTeamCaptains(data, rng = Math.random) {
 }
 
 export function drawTeamMembers(data, rng = Math.random) {
+  data = applyTeamCupComposition(data);
   if (data.schedule.length || data.teamCup.drawStage !== "captains") throw new Error("Sorteie primeiro os capitães.");
   const teams = structuredClone(data.players.teams);
   const captainIds = new Set(teams.map(t => t.captainId));
   const members = shuffleTeamCup(data.teamCup.pool.filter(a => !captainIds.has(a.id)), rng);
   const strength = a => TEAM_LEVELS.indexOf(a.level) + 1;
   const total = t => t.athletes.reduce((sum, a) => sum + strength(a), 0);
+  const quota = teamCupGenderQuota(data);
   if (data.teamCup.balanced) members.sort((a, b) => strength(b) - strength(a));
   for (const athlete of members) {
     const options = shuffleTeamCup(teams.filter(t => t.athletes.length < teamSize(data)
-      && (teamSize(data) !== 4 || t.athletes.filter(a => a.gender === athlete.gender).length < 2)), rng);
+      && (!quota || t.athletes.filter(a => a.gender === athlete.gender).length < quota[athlete.gender])), rng);
     if (data.teamCup.balanced) options.sort((a, b) => total(a) - total(b));
     if (!options.length) throw new Error("Não foi possível completar o sorteio com essa composição.");
     options[0].athletes.push({ ...athlete });
@@ -222,7 +229,7 @@ export function drawTeamMembers(data, rng = Math.random) {
       for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) {
         for (let a = 1; a < teams[i].athletes.length; a++) for (let b = 1; b < teams[j].athletes.length; b++) {
           const x = teams[i].athletes[a], y = teams[j].athletes[b];
-          if (teamSize(data) === 4 && x.gender !== y.gender) continue;
+          if (quota && x.gender !== y.gender) continue;
           const diff = total(teams[i]) - total(teams[j]), change = strength(y) - strength(x);
           if (Math.abs(diff + 2 * change) < Math.abs(diff)) {
             [teams[i].athletes[a], teams[j].athletes[b]] = [y, x]; improved = true;
@@ -238,6 +245,7 @@ export function drawTeamMembers(data, rng = Math.random) {
 }
 
 export function generateTeamCupGroups(data, rng = Math.random) {
+  data = applyTeamCupComposition(data);
   if (data.schedule.length || data.brackets.length) throw new Error("Os grupos já foram gerados. Jogos existentes serão preservados.");
   validateTeamCupTeams(data);
   const order = data.teamCup.groupOrder;

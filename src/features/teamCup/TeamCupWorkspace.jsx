@@ -17,10 +17,11 @@ import { reconfigureTeamCup, teamCupFormatChangeNeedsConfirmation, setTeamCupFor
   TEAM_COUNTS, TEAM_CUP_GROUP_RANKING_LABEL, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
   teamLegAvailable, teamLegWinner, teamMatchState, teamCupNextLeg, resolveTeamCupGame, updateTeamCupLeg, teamCupCourtNumber } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
+import { teamCupIsMixed, teamCupFixedGender, teamCupTrioComposition, setTeamCupTrioComposition, teamCupMixedSquad, teamCupCompositionLabel } from "../../domain/teamCupComposition.mjs";
 import "../../styles/31-matches-and-brackets.css";
 import "./teamCup.css";
 
-const legTitles = kind => kind === "squad" ? ["1º set masculino", "2º set feminino", "3º set misto de desempate"] : ["1º set", "2º set", "3º set de desempate"];
+const legTitles = data => teamCupMixedSquad(data) ? ["1º set masculino", "2º set feminino", "3º set misto de desempate"] : ["1º set", "2º set", "3º set de desempate"];
 function Field({ label, children }) { return <label className="tc-field"><span>{label}</span>{children}</label>; }
 
 export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegChange, onRegisterCourtNumber, readOnly = false, now = Date.now(), courtOptions = data.courtNumbers, unavailableCourts = [] }) {
@@ -60,7 +61,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
     document.addEventListener("keydown", key);
     return () => { document.body.style.overflow = overflow; document.removeEventListener("keydown", key); previous?.focus?.(); };
   }, [courtEditorOpen]);
-  const labels = legTitles(data.teamCup.kind);
+  const labels = legTitles(data);
   const leg = game.teamCupLegs[selected];
   const courtNumber = teamCupCourtNumber(data, game, selected, courtOptions);
   const playable = teamLegAvailable(data, game, selected);
@@ -120,7 +121,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
     })}</div> : <div className="tc-score-scroll"><div className="tc-score-table">
     <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
       <button type="button" key={label} title={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i === 2 ? "3º Set" : `${i + 1}º`}</b><small className="tc-set-label">{i < 2 && "Set"}
-        {data.teamCup.kind === "squad" && <span className="tc-set-detail">{["Masculino", "Feminino", "Misto"][i]}</span>}
+        {teamCupMixedSquad(data) && <span className="tc-set-detail">{["Masculino", "Feminino", "Misto"][i]}</span>}
         {i === 2 && <span className="tc-set-detail tc-set-decider">Desempate</span>}
       </small></button>)}</div>
     <div className="matchTeamStack">{[1, 2].map(side => {
@@ -283,17 +284,17 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         {onOpenCourtCenter && <button type="button" className="organizationCourtCenterShortcut" onClick={onOpenCourtCenter}><Grid3X3 aria-hidden="true" /> Quadras</button>}
       </nav>}
       {!readOnly && organizationTab === "format" && <div className="organizationPanel cupConfigBox"><div className="twoCols tc-fields">
-        <Field label="Formação da equipe"><select value={data.teamCup.kind} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas, composição livre</option><option value="squad">Squad · 2 atletas do masculino e 2 do feminino</option></select></Field>
+        <Field label="Formação da equipe"><select value={data.teamCup.kind} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas{teamCupIsMixed(data) ? ", composição mista" : teamCupFixedGender(data) ? `, ${teamCupCompositionLabel(data)}` : ", composição livre"}</option><option value="squad">{teamCupFixedGender(data) ? `Squad · 4 atletas, ${teamCupCompositionLabel(data)}` : "Squad · 2 atletas do masculino e 2 do feminino"}</option></select></Field>
+        {data.teamCup.kind === "trio" && teamCupIsMixed(data) && <Field label="Composição do trio"><select value={teamCupTrioComposition(data)} onChange={e => change(d => setTeamCupTrioComposition(d, e.target.value))}><option value="2H1M">2 homens e 1 mulher</option><option value="1H2M">2 mulheres e 1 homem</option></select><small>Válida para todas as equipes e para o sorteio. Ao alterar, confira os participantes já cadastrados.</small></Field>}
         <Field label="Quantidade de equipes"><select value={teams.length} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
         <Field label="Formação"><select value={data.teamCup.formation} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
         <Field label="Nome da chave principal"><input value={data.cupConfig.mainBracketName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, mainBracketName: e.target.value } }))} /></Field>
-        <Field label="Games por set"><select value={data.winningScore} onChange={e => change(d => ({ ...d, winningScore: Number(e.target.value) }))}><option value={4}>4 games</option><option value={6}>6 games</option></select></Field>
       </div>
         <div className="tc-format-explanation"><FormatExplanationButton label={`Como funciona com ${teams.length} equipes`} eyebrow={`Formato calculado para ${teams.length} equipes`} title={`Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`}
           sections={[
             { title: "Grupos e classificação", content: <p>Grupos de 3, usando grupos de 4 quando necessário. Os dois melhores de cada grupo avançam. Somente os eliminados dos grupos entram no Consolation, quando habilitado.</p> },
             { title: "Critérios de classificação", content: <p>{TEAM_CUP_GROUP_RANKING_LABEL}. Se todos empatarem, sorteio. O total de games é apenas estatística.</p> },
-            { title: "Sets da partida", content: <p>{data.teamCup.kind === "squad" ? "O 1º set (masculino) e o 2º set (feminino) podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, a equipe escolhe a dupla mista para o 3º set de desempate." : "1º set e 2º set em sequência; o 3º set de desempate ocorre somente em caso de empate em 1 a 1. As duplas e substituições ficam a cargo da equipe."}</p> },
+            { title: "Sets da partida", content: <p>{teamCupMixedSquad(data) ? "O 1º set (masculino) e o 2º set (feminino) podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, a equipe escolhe a dupla mista para o 3º set de desempate." : data.teamCup.kind === "squad" ? "O 1º e o 2º set podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, ocorre o 3º set de desempate. Todos os atletas seguem a composição escolhida na criação." : "1º set e 2º set em sequência; o 3º set de desempate ocorre somente em caso de empate em 1 a 1. As duplas e substituições ficam a cargo da equipe."}</p> },
             { title: "Resultado e capitães", content: <p>Os três sets usam a mesma regra de games. Quem vencer dois sets ganha a partida entre as equipes. O capitão ou a capitã faz parte da equipe.</p> },
           ]} /></div>
         <div className="twoCols tc-fields">

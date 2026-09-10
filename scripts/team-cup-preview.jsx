@@ -14,7 +14,8 @@ const count = TEAM_COUNTS.includes(Number(query.get("count"))) ? Number(query.ge
 const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "") + (query.has("videos") ? "-videos-v1" : "") + (query.has("podium") ? "-podium-v1" : "") + (query.has("focus") ? "-focus-test" : "") + (query.has("count") ? `-${count}-teams` : "");
 function initial() {
   const base = createInitialData("Times/Equipes", modalityConfig["Times/Equipes"]);
-  const data = createTeamCupData({ ...base, winningScore: 6 }, count, kind);
+  const data = createTeamCupData({ ...base, winningScore: query.get("games") === "4" ? 4 : 6,
+    ...(query.has("composition") ? { participantGenderMode: query.get("composition") } : {}) }, count, kind);
   if (query.has("setup") || query.has("empty")) return data;
   const names = ["Cristiano", "Danilo", "Cristian", "Layner", "Nicolas", "Guilherme", "Maria", "Ana", "Júlia", "Fernanda", "Beatriz", "Carolina"];
   data.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => a.name = names[(i * 3 + j) % names.length] + " " + (i + 1) + (j + 1)));

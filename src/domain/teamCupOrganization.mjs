@@ -1,14 +1,15 @@
 import { createCearenseGroups } from "./cupGroups.mjs";
 import { TEAM_LEVELS, generateTeamCupGroups, teamSize, validateTeamCupTeams } from "./teamCup.mjs";
 import { formatParticipantName } from "./participantNames.mjs";
+import { applyTeamCupComposition, teamCupFixedGender, teamCupGenderQuota, teamCupCompositionLabel } from "./teamCupComposition.mjs";
 
 export const organizationLocked = data => Boolean(data.schedule?.length || data.brackets?.length);
 export function assertOrganizationEditable(data) {
   if (organizationLocked(data)) throw new Error("A formação está protegida porque os jogos já foram gerados. Nenhum jogo ou placar será alterado.");
 }
-export const organizationSignature = data => JSON.stringify([data.players, data.teamCup, data.cupConfig?.teamCount]);
+export const organizationSignature = data => JSON.stringify([data.players, data.teamCup, data.cupConfig?.teamCount, data.participantGenderMode, data.genderMode, data.gender]);
 export function teamCupOrganizationDraft(data) {
-  const draft = structuredClone(data);
+  const draft = structuredClone(applyTeamCupComposition(data));
   // Work on formation without touching the competition's existing games.
   if (organizationLocked(data)) draft.teamCup.groupOrder = data.players.teams.map(team => team.id);
   return { ...draft, schedule: [], brackets: [] };
@@ -24,6 +25,7 @@ export function participantEntries(data) {
 // rendering this projection never changes saved data; an explicit manual edit
 // applies it. Draws continue to use their own pool inside OrganizationDialog.
 export function teamCupManualData(data) {
+  data = applyTeamCupComposition(data);
   const captainFirst = team => ({ ...team, athletes: [...team.athletes]
     .sort((a, b) => Number(b.id === team.captainId) - Number(a.id === team.captainId)) });
   if (data.teamCup.formation !== "random") {
@@ -42,7 +44,8 @@ export function teamCupManualData(data) {
   const remaining = pending ? [...pool.values()].filter(athlete => !assigned.has(athlete.id)) : [];
   for (const team of teams) {
     while (team.athletes.length < teamSize(data) && remaining.length) {
-      let index = teamSize(data) === 4 ? remaining.findIndex(athlete => team.athletes.filter(a => a.gender === athlete.gender).length < 2) : 0;
+      const quota = teamCupGenderQuota(data);
+      let index = quota ? remaining.findIndex(athlete => team.athletes.filter(a => a.gender === athlete.gender).length < quota[athlete.gender]) : 0;
       if (index < 0) index = 0;
       team.athletes.push({ ...remaining.splice(index, 1)[0] });
     }
@@ -60,7 +63,7 @@ export function updateTeamCupParticipant(data, id, patch) {
   for (const athlete of [...next.teamCup.pool, ...next.players.teams.flatMap(t => t.athletes)]) {
     if (athlete.id === id) Object.assign(athlete, patch);
   }
-  return next;
+  return applyTeamCupComposition(next);
 }
 export function updateTeamCupTeamName(data, id, name) {
   if (!data.players.teams.some(team => team.id === id)) throw new Error("Equipe não encontrada.");
@@ -80,10 +83,11 @@ function cleanImportedName(value) {
   return formatParticipantName(name.replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, " ")
     .replace(/[^\p{L}\p{M}\s'’.]/gu, " ").replace(/\s+/g, " ").replace(/^[\s.'’]+|[\s.'’]+$/g, ""));
 }
-function readTeamCupList(source) {
+function readTeamCupList(source, fixedGender = "") {
   const rows = Array.isArray(source) ? source : String(source).split(/\r?\n/).map(line => {
-    const [name, gender = "", level = "", ...extra] = line.split(";").map(s => s.trim());
+    let [name, gender = "", level = "", ...extra] = line.split(";").map(s => s.trim());
     if (extra.length) throw new Error("Cole um atleta por linha, com os campos Nome, Masculino/Feminino e Nível.");
+    if (fixedGender && !level && TEAM_LEVELS.some(item => nameKey(item) === nameKey(gender))) { level = gender; gender = ""; }
     return { name, gender, level };
   });
   let ignored = 0;
@@ -92,7 +96,7 @@ function readTeamCupList(source) {
     const name = cleanImportedName(row.name);
     if (!name) { ignored++; return []; }
     if (name.length > 100) throw new Error("Cada linha precisa de um nome com até 100 caracteres.");
-    const gender = String(row.gender || "").trim(), level = String(row.level || "").trim();
+    const gender = fixedGender || String(row.gender || "").trim(), level = String(row.level || "").trim();
     const normalizedGender = ({ h: "H", m: "M", masculino: "H", feminino: "M" })[nameKey(gender)];
     if (gender && !normalizedGender) throw new Error(`Selecione Masculino ou Feminino para ${name}.`);
     const normalizedLevel = TEAM_LEVELS.find(item => nameKey(item) === nameKey(level));
@@ -105,16 +109,18 @@ export const parseTeamCupList = source => readTeamCupList(source).athletes;
 export const isTeamCupVacancy = athlete => !String(athlete.name || "").trim()
   || /^(?:participante|jogador|atleta|masculino|feminino) \d+$/u.test(nameKey(athlete.name));
 export function buildTeamCupImportPreview(data, source, mode = "available") {
+  data = applyTeamCupComposition(data);
   if (!["available", "replace"].includes(mode)) throw new Error("Modo de importação inválido.");
-  const { athletes, ignored } = readTeamCupList(source), replace = mode === "replace";
+  const { athletes, ignored } = readTeamCupList(source, teamCupFixedGender(data)), replace = mode === "replace";
   const entries = participantEntries(data), targets = entries.filter(e => replace || isTeamCupVacancy(e.athlete));
   const patches = new Map(targets.map(({ athlete }, i) => [athlete.id, {
     ...(replace ? { name: "", level: "", captainCandidate: false } : {}), ...(athletes[i] || {}),
   }]));
-  const nextData = structuredClone(data);
+  let nextData = structuredClone(data);
   for (const athlete of [...nextData.teamCup.pool, ...nextData.players.teams.flatMap(t => t.athletes)]) {
     Object.assign(athlete, patches.get(athlete.id));
   }
+  nextData = applyTeamCupComposition(nextData);
   const result = participantEntries(nextData);
   const keys = result.filter(e => !isTeamCupVacancy(e.athlete)).map(e => nameKey(e.athlete.name));
   const imported = Math.min(athletes.length, targets.length);
@@ -186,7 +192,7 @@ export function swapTeamCupAthletes(data, firstId, secondId) {
   const second = next.players.teams.find(t => t.athletes.some(a => a.id === secondId));
   if (!first || !second) throw new Error("Atleta não encontrado na equipe.");
   const a = first.athletes.findIndex(p => p.id === firstId), b = second.athletes.findIndex(p => p.id === secondId);
-  if (teamSize(data) === 4 && first !== second && first.athletes[a].gender !== second.athletes[b].gender) throw new Error("Para manter 2 atletas do masculino e 2 do feminino, troque atletas da mesma composição.");
+  if (teamCupGenderQuota(data) && first !== second && first.athletes[a].gender !== second.athletes[b].gender) throw new Error(`Para manter ${teamCupCompositionLabel(data)}, troque atletas da mesma composição.`);
   const firstCaptain = first.captainId === firstId, secondCaptain = second.captainId === secondId;
   [first.athletes[a], second.athletes[b]] = [second.athletes[b], first.athletes[a]];
   if (first !== second) {
@@ -221,6 +227,7 @@ export function applyTeamCupOrganization(current, draft, signature, { regenerate
   return rebuilt;
 }
 export function prepareTeamCupFormation(data, mode) {
+  data = applyTeamCupComposition(data);
   assertOrganizationEditable(data);
   const pool = structuredClone(data.teamCup.formation === "random" && data.teamCup.drawStage !== "complete" ? data.teamCup.pool : data.players.teams.flatMap(t => t.athletes));
   const teams = data.players.teams.map((team, i) => {

@@ -11,6 +11,7 @@ import "./teamCupParticipants.css";
 import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
 import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
 import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
+import { teamCupFixedGender, teamCupCompositionLabel } from "../../domain/teamCupComposition.mjs";
 
 function Dialog({ title, eyebrow, intro, onClose, children, footer, busy = false, suspended = false }) {
   const ref = useRef(null);
@@ -41,6 +42,7 @@ function Dialog({ title, eyebrow, intro, onClose, children, footer, busy = false
 }
 
 function ImportDialog({ data, onChange, onClose }) {
+  const fixedGender = teamCupFixedGender(data);
   const [rows, setRows] = useState([{ key: 0, name: "", gender: "", level: "" }]);
   const rowKey = useRef(1);
   const [mode, setMode] = useState("available"), [replaceConfirmed, setReplaceConfirmed] = useState(false);
@@ -54,8 +56,9 @@ function ImportDialog({ data, onChange, onClose }) {
   function editRow(key, patch) { editRows(rows.map(row => row.key === key ? { ...row, ...patch } : row)); }
   function pasteNames(index, text) {
     const pasted = text.split(/\r?\n/).filter(line => line.trim()).map(line => {
-      const [name, gender = "", level = "", ...extra] = line.split(/\t|;/);
+      let [name, gender = "", level = "", ...extra] = line.split(/\t|;/);
       if (extra.length) throw new Error("Use somente as três colunas: Nome, Masculino/Feminino e Nível.");
+      if (fixedGender && !level.trim() && TEAM_LEVELS.some(l => l.toLocaleLowerCase("pt-BR") === gender.trim().toLocaleLowerCase("pt-BR"))) { level = gender; gender = ""; }
       const genders = { masculino: "H", feminino: "M", h: "H", m: "M" };
       return { key: rowKey.current++, name, gender: genders[gender.trim().toLocaleLowerCase("pt-BR")] || gender.trim(),
         level: TEAM_LEVELS.find(l => l.toLocaleLowerCase("pt-BR") === level.trim().toLocaleLowerCase("pt-BR")) || level.trim() };
@@ -78,25 +81,25 @@ function ImportDialog({ data, onChange, onClose }) {
     }
     catch (e) { setError(e.message); }
   }
-  return <Dialog title="Colar lista de participantes" eyebrow="TIMES/EQUIPES" intro="Cole a lista na coluna Nome, com um atleta por linha. Depois selecione Masculino/Feminino e Nível nas colunas ao lado. Numeração, marcadores e emojis são retirados na prévia." onClose={onClose}
+  return <Dialog title="Colar lista de participantes" eyebrow="TIMES/EQUIPES" intro={`Cole a lista na coluna Nome, com um atleta por linha. Depois selecione ${fixedGender ? "o Nível" : "Masculino/Feminino e Nível"} ao lado. ${fixedGender ? `A composição (${teamCupCompositionLabel(data)}) é herdada da criação do torneio. ` : ""}Numeração, marcadores e emojis são retirados na prévia.`} onClose={onClose}
     footer={<><button type="button" className="tcorg-import-cancel" onClick={onClose}>Cancelar</button><button type="button" className="tcorg-import-apply" disabled={!canApply} onClick={apply}><Check /> {mode === "replace" ? replaceConfirmed ? "Sim, substituir todos" : "Revisar substituição" : "Aplicar lista"}</button></>}>
     <div className="tcorg-import-modes" aria-label="Modo da importação">{[
       ["available", "Preencher vagas ainda não editadas", "Recomendado — preserva todos os nomes digitados."],
       ["replace", "Substituir todos os participantes", "Substitui os nomes atuais e exige confirmação."],
     ].map(([key, title, description]) => <button type="button" key={key} className={mode === key ? "selected" : ""} aria-pressed={mode === key} onClick={() => { setMode(key); setReplaceConfirmed(false); setError(""); }}><strong>{title}</strong><small>{description}</small></button>)}</div>
-    <div className="tcorg-import-editor" aria-label="Lista a importar">
-      <div className="tcorg-import-columns" aria-hidden="true"><b>Nome do atleta</b><b>Masculino/Feminino</b><b>Nível</b></div>
+    <div className={`tcorg-import-editor${fixedGender ? " tcorg-inherited-gender" : ""}`} aria-label="Lista a importar">
+      <div className="tcorg-import-columns" aria-hidden="true"><b>Nome do atleta</b>{!fixedGender && <b>Masculino/Feminino</b>}<b>Nível</b></div>
       <div className="tcorg-import-rows">{rows.map((row, i) => <div className="tcorg-import-row" key={row.key}>
         <label><span>Nome do atleta</span><textarea rows={i === 0 ? 6 : 1} className={i === 0 ? "tcorg-paste-names" : undefined} aria-label={`Nome do atleta ${i + 1}`} placeholder={i === 0 ? "Cole os nomes aqui, um por linha\n\n1. Ana Silva\n2. João Souza\n3. Maria Santos" : "Nome e sobrenome"} value={row.name}
           onPaste={e => { const text = e.clipboardData.getData("text/plain"); if (/[\n\t;]/.test(text)) { e.preventDefault(); readPaste(i, text); } }}
           onChange={e => /[\n\t;]/.test(e.target.value) ? readPaste(i, e.target.value) : editRow(row.key, { name: e.target.value })} /></label>
-        <label><span>Masculino/Feminino</span><select aria-label={`Masculino ou Feminino do atleta ${i + 1}`} value={row.gender} onChange={e => editRow(row.key, { gender: e.target.value })}><option value="">Conforme vaga</option><option value="H">Masculino</option><option value="M">Feminino</option></select></label>
+        {!fixedGender && <label><span>Masculino/Feminino</span><select aria-label={`Masculino ou Feminino do atleta ${i + 1}`} value={row.gender} onChange={e => editRow(row.key, { gender: e.target.value })}><option value="">Conforme vaga</option><option value="H">Masculino</option><option value="M">Feminino</option></select></label>}
         <label><span>Nível</span><select aria-label={`Nível do atleta ${i + 1}`} value={row.level} onChange={e => editRow(row.key, { level: e.target.value })}><option value="">{mode === "replace" ? "Não definido" : "Conforme vaga"}</option>{TEAM_LEVELS.map(level => <option key={level}>{level}</option>)}</select></label>
         <button type="button" className="tcorg-remove-row" aria-label={`Remover linha ${i + 1}`} onClick={() => editRows(rows.length === 1 ? [{ key: rowKey.current++, name: "", gender: "", level: "" }] : rows.filter(r => r.key !== row.key))}><X /></button>
       </div>)}</div>
       <button type="button" className="tcorg-add-row" onClick={() => editRows([...rows, { key: rowKey.current++, name: "", gender: "", level: "" }])}>+ Adicionar atleta</button>
     </div>
-    <p className="tcorg-hint">“Conforme vaga” mantém a composição da posição disponível, sem inferir pelo nome. Na substituição, os níveis anteriores são apagados; confira a prévia. Nomes dos times e posições dos capitães são mantidos.</p>
+    <p className="tcorg-hint">{fixedGender ? "A composição é aplicada automaticamente a todos os nomes, conforme a criação do torneio." : "“Conforme vaga” mantém a composição da posição disponível, sem inferir pelo nome."} Na substituição, os níveis anteriores são apagados; confira a prévia. Nomes dos times e posições dos capitães são mantidos.</p>
     <div className="tcorg-import-summary" aria-live="polite"><div><b>{preview.imported}</b><span>nomes a preencher</span></div><div><b>{preview.preserved}</b><span>nomes preservados</span></div><div><b>{preview.vacancies}</b><span>vagas restantes</span></div></div>
     {(error || parseError || preview.overflow > 0 || preview.duplicates > 0 || preview.ignored > 0 || replaceConfirmed) && <div className="tcorg-error" role="alert">
       {(error || parseError) && <p>{error || parseError}</p>}
@@ -105,10 +108,10 @@ function ImportDialog({ data, onChange, onClose }) {
       {preview.ignored > 0 && <p>{preview.ignored} linha(s) ignorada(s) por não conter um nome válido.</p>}
       {replaceConfirmed && <p><b>Confirmação final:</b> os nomes e níveis atuais serão substituídos pela prévia abaixo. As vagas restantes ficarão sem nome. Clique em “Sim, substituir todos” para confirmar.</p>}
     </div>}
-    <section className="tcorg-import-preview"><div className="tcorg-preview-bar"><b>Prévia antes de aplicar</b><small>É assim que os participantes ficarão.</small></div>
+    <section className={`tcorg-import-preview${fixedGender ? " tcorg-inherited-gender" : ""}`}><div className="tcorg-preview-bar"><b>Prévia antes de aplicar</b><small>É assim que os participantes ficarão.</small></div>
       <div className="tcorg-import-result">{preview.entries.map(({ athlete: a, team }, i) => <div className="tcorg-import-result-row" key={a.id}>
         <div><b>{i + 1}. {isTeamCupVacancy(a) ? "Vaga disponível" : a.name}</b><small>{team ? teamName(team) + (team.captainId === a.id ? " · Capitão/ã" : "") : "Lista para sorteio"} · {isTeamCupVacancy(a) ? "Vaga" : preview.importedIds.includes(a.id) ? "Novo" : "Preservado"}</small></div>
-        <span>{a.gender === "H" ? "Masculino" : "Feminino"}</span><span>{a.level || "Nível não definido"}</span>
+        {!fixedGender && <span>{a.gender === "H" ? "Masculino" : "Feminino"}</span>}<span>{a.level || "Nível não definido"}</span>
       </div>)}</div>
     </section>
   </Dialog>;
@@ -203,7 +206,7 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
             onClick={() => { setCaptainEligibility(value); edit(d => ({ ...d, teamCup: { ...d.teamCup, designatedCaptains: value === "selected" } })); }}><Icon /><b>{label}</b></button>)}
         </div>
         {!captainEligibility ? <p>Escolha uma opção acima para visualizar os participantes do sorteio.</p> : <>
-          <p>O capitão integra o time. {captainEligibility === "selected" ? `Marque exatamente ${teams.length} participantes abaixo, um capitão por equipe.` : "Todos os participantes abaixo estarão no sorteio, que escolhe um capitão por equipe."} {draft.teamCup.kind === "squad" && "Squad mantém 2 atletas do masculino e 2 do feminino."}</p>
+          <p>O capitão integra o time. {captainEligibility === "selected" ? `Marque exatamente ${teams.length} participantes abaixo, um capitão por equipe.` : "Todos os participantes abaixo estarão no sorteio, que escolhe um capitão por equipe."} Composição das equipes: {teamCupCompositionLabel(draft)}.</p>
           <section className="tcorg-candidates" aria-label="Participantes para o sorteio de capitães">{draft.teamCup.pool.map(a => captainEligibility === "selected"
             ? <label key={a.id}><input type="checkbox" aria-label={`Permitir ${a.name || a.id} como capitão`} checked={Boolean(a.captainCandidate)} disabled={draft.teamCup.drawStage !== "pending"} onChange={e => edit(d => updateTeamCupParticipant(d, a.id, { captainCandidate: e.target.checked }))} /><span>{a.name || "Nome não preenchido"}</span><small>{a.gender === "H" ? "Masculino" : "Feminino"} · {a.level || "Sem nível"}</small></label>
             : <div className="tcorg-candidate" key={a.id}><span>{a.name || "Nome não preenchido"}</span><small>{a.gender === "H" ? "Masculino" : "Feminino"} · {a.level || "Sem nível"}</small></div>)}</section>
@@ -226,6 +229,7 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
 export default function TeamCupParticipants({ data, tournament, onChange }) {
   const [search, setSearch] = useState(""), [dialog, setDialog] = useState(null);
   const hasGames = organizationLocked(data), manualData = teamCupManualData(data);
+  const fixedGender = teamCupFixedGender(data);
   // Keep the saved team indices and captain identities intact. Only the editor
   // order changes: captain first, followed by that team's other participants.
   const displayedTeams = [...manualData.players.teams]
@@ -243,11 +247,11 @@ export default function TeamCupParticipants({ data, tournament, onChange }) {
   }
   const participantRow = ({ athlete: a, team }, i) => <div className="tcp-row" key={a.id}>
     <span className="tcp-number">{i + 1}</span><label className="tcp-name"><span>{team.captainId === a.id ? <span className="tcp-captain-label"><Crown aria-hidden="true" /> Nome · Capitão/ã</span> : "Nome"}</span><input aria-label={`Nome de ${a.name || a.id}`} placeholder="Nome do atleta" maxLength={100} value={a.name} onChange={e => manualChange(d => updateTeamCupParticipant(d, a.id, { name: e.target.value }))} /></label>
-    <label className="tcp-gender"><span>Masculino/Feminino</span><select aria-label={`Composição de ${a.name || a.id}`} value={a.gender} onChange={e => manualChange(d => updateTeamCupParticipant(d, a.id, { gender: e.target.value }))}><option value="H">Masculino</option><option value="M">Feminino</option></select></label>
+    {!fixedGender && <label className="tcp-gender"><span>Masculino/Feminino</span><select aria-label={`Composição de ${a.name || a.id}`} value={a.gender} onChange={e => manualChange(d => updateTeamCupParticipant(d, a.id, { gender: e.target.value }))}><option value="H">Masculino</option><option value="M">Feminino</option></select></label>}
     <label className="tcp-level"><span>Nível</span><select aria-label={`Nível de ${a.name || a.id}`} value={a.level} onChange={e => manualChange(d => updateTeamCupParticipant(d, a.id, { level: e.target.value }))}><option value="">Não definido</option>{TEAM_LEVELS.map(level => <option key={level}>{level}</option>)}</select></label>
   </div>;
-  return <div className="tcp-participants">
-    <div className="tcp-summary"><span><b>{filled}/{data.players.teams.length * teamSize(data)}</b> vagas preenchidas</span><span><b>{entries.filter(e => TEAM_LEVELS.includes(e.athlete.level)).length}</b> níveis definidos</span><span>{teamSize(data) === 4 ? "Squad · 2H + 2M" : "Trio · composição livre"}</span></div>
+  return <div className={`tcp-participants${fixedGender ? " tcp-inherited-gender" : ""}`}>
+    <div className="tcp-summary"><span><b>{filled}/{data.players.teams.length * teamSize(data)}</b> vagas preenchidas</span><span><b>{entries.filter(e => TEAM_LEVELS.includes(e.athlete.level)).length}</b> níveis definidos</span><span>{teamSize(data) === 4 ? "Squad" : "Trio"} · {teamCupCompositionLabel(data)}{fixedGender && " · herdado da criação"}</span></div>
     <div className="tcp-toolbar"><button type="button" className="tcp-paste" onClick={() => setDialog("paste")}><ClipboardPaste /> Colar lista</button><button type="button" className="tcp-organize" onClick={() => setDialog("organize")}><Grid3X3 /> Organizar grupos</button><label className="tcp-search"><Search /><input aria-label="Buscar pelo nome do atleta" placeholder="Buscar pelo nome do atleta" type="search" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
     <TeamCupVideoActions data={data} tournament={tournament} />
     <p className="tc-help">Monte e edite cada time abaixo. O primeiro nome é sempre o capitão ou a capitã. {data.teamCup.formation === "random" ? "Os sorteios ficam em Organizar grupos." : "Em Organizar grupos, distribua as equipes já definidas."}{hasGames && " Editar estes dados mantém os jogos e placares; redistribuir os grupos pede confirmação."}</p>
