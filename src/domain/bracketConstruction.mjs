@@ -53,7 +53,7 @@ export function createCopinhaBracketGame({
   };
 }
 
-export function avoidSameGroupOpeningMatches(slots) {
+export function avoidSameGroupOpeningMatches(slots, { preserveByes = false } = {}) {
   const arranged = [...slots];
 
   for (let index = 0; index < arranged.length; index += 2) {
@@ -73,6 +73,9 @@ export function avoidSameGroupOpeningMatches(slots) {
 
       const candidatePairIndex = candidateIndex % 2 === 0 ? candidateIndex + 1 : candidateIndex - 1;
       const candidateOpponent = arranged[candidatePairIndex];
+      // A campaign-earned BYE must not be traded for an opening match merely
+      // to separate teams from the same group. Only swap playing teams.
+      if (preserveByes && !candidateOpponent) continue;
 
       if (!candidateOpponent || candidateOpponent.groupId !== second.groupId) {
         swapIndex = candidateIndex;
@@ -88,13 +91,14 @@ export function avoidSameGroupOpeningMatches(slots) {
   return arranged;
 }
 
-export function buildCearenseEliminationRounds(entries, bracketType, bracketTitle, includeThirdPlace = false) {
+export function buildCearenseEliminationRounds(entries, bracketType, bracketTitle, includeThirdPlace = false, { preserveByes = false } = {}) {
   if (!Array.isArray(entries) || entries.length < 2) return [];
 
   const bracketSize = getNextPowerOfTwo(entries.length);
   const seedOrder = getBracketSeedOrder(bracketSize);
   const seededSlots = avoidSameGroupOpeningMatches(
-    seedOrder.map((seed) => entries[seed - 1] || null)
+    seedOrder.map((seed) => entries[seed - 1] || null),
+    { preserveByes }
   );
   const openingRoundName = getEliminationRoundName(bracketSize);
   const openingGames = [];

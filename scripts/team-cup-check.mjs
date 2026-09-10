@@ -5,6 +5,8 @@ import { modalityConfig } from "../src/domain/modalityConfig.mjs";
 import { createCearenseGroups } from "../src/domain/cupGroups.mjs";
 import { getScoreWinnerSide } from "../src/domain/scoreRules.mjs";
 import { getGameWinnerId } from "../src/domain/bracketProgression.mjs";
+import { buildCearenseEliminationRounds, avoidSameGroupOpeningMatches } from "../src/domain/bracketConstruction.mjs";
+import { getBracketSeedOrder, getNextPowerOfTwo } from "../src/domain/bracketBasics.mjs";
 import { getMatchElapsedSeconds } from "../src/domain/matchTimer.mjs";
 import { getTournamentCompletionState } from "../src/domain/tournamentLifecycle.mjs";
 import { createTournamentOperations } from "../src/domain/tournamentOperations.mjs";
@@ -31,7 +33,66 @@ export function finishGroups(data) {
   for (const tie of cup.teamCupQualified(data).unresolvedCampaignTies) data.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
   return data;
 }
+function checkConsolationByes() {
+  const opening = entries => buildCearenseEliminationRounds(entries, "repechage", "Consolation", false, { preserveByes: true })[0].games;
+  const byeIds = games => games.filter(g => g.isBye).flatMap(g => [...g.ids1, ...g.ids2]);
+  const five = [1, 2, 3, 0, 0].map((groupId, id) => ({ id, groupId, groupPosition: id === 4 ? 4 : 3 }));
+  const fixedFive = opening(five);
+  assert.deepEqual(byeIds(fixedFive).sort((a, b) => a - b), [0, 1, 2], "The best three campaigns keep their BYEs, even when seeds four and five share a group");
+  assert.deepEqual(fixedFive.filter(g => !g.isBye).map(g => [...g.ids1, ...g.ids2]), [[3, 4]], "An unavoidable same-group game is allowed without stealing a BYE");
+
+  const six = [9, 8, 0, 1, 1, 2].map((groupId, id) => ({ id, groupId, groupPosition: id === 4 ? 4 : 3 }));
+  const fixedSix = opening(six);
+  assert.deepEqual(byeIds(fixedSix).sort((a, b) => a - b), [0, 1]);
+  assert(fixedSix.filter(g => !g.isBye).every(g => six[g.ids1[0]].groupId !== six[g.ids2[0]].groupId), "Playing teams are still rearranged to avoid same-group opponents when possible");
+
+  for (const count of cup.TEAM_COUNTS) for (let iteration = 1; iteration <= 24; iteration++) {
+    const eligible = createCearenseGroups(count).flatMap(group => group.teamIds.slice(2).map((id, index) => ({ id, groupId: group.id, groupPosition: index + 3 })));
+    const ranked = cup.shuffleTeamCup(eligible, seed(count * 100 + iteration));
+    const expectedByes = ranked.slice(0, getNextPowerOfTwo(ranked.length) - ranked.length).map(e => e.id).sort((a, b) => a - b);
+    const original = JSON.stringify(ranked);
+    const slots = getBracketSeedOrder(getNextPowerOfTwo(ranked.length)).map(n => ranked[n - 1] || null);
+    const adjusted = avoidSameGroupOpeningMatches(slots, { preserveByes: true });
+    for (let index = 0; index < slots.length; index += 2) {
+      if (!slots[index] || !slots[index + 1]) assert.deepEqual(adjusted.slice(index, index + 2), slots.slice(index, index + 2), "BYE slots and recipients remain fixed");
+    }
+    const games = opening(ranked);
+    assert.deepEqual(byeIds(games).sort((a, b) => a - b), expectedByes, `Campaign BYEs preserved for ${count} teams, permutation ${iteration}`);
+    assert.deepEqual(games.flatMap(g => [...g.ids1, ...g.ids2]).sort((a, b) => a - b), ranked.map(e => e.id).sort((a, b) => a - b), "Every eligible team appears exactly once");
+    const playing = games.filter(g => !g.isBye);
+    const byId = new Map(ranked.map(e => [e.id, e]));
+    if (playing.length > 1) assert(playing.every(g => byId.get(g.ids1[0]).groupId !== byId.get(g.ids2[0]).groupId), "With another playable pair, same-group opening games are avoided");
+    assert.equal(JSON.stringify(ranked), original, "Bracket construction does not mutate campaign entries");
+  }
+
+  for (const kind of ["trio", "squad"]) {
+    let data = cup.generateTeamCupGroups(fixture(13, kind), seed());
+    for (const game of data.schedule.flat()) {
+      const [a, b] = [game.ids1[0], game.ids2[0]].sort((x, y) => x - y);
+      const winner = game.groupId === 0 ? a : b - a === 2 ? b : a;
+      const pair = game.ids1[0] === winner ? [6, 2] : [2, 6];
+      data = finish(data, game.matchKey, [pair, pair]);
+    }
+    for (const group of cup.teamCupRankings(data)) if (group.unresolvedTieIds.length) data.cupConfig.tieBreakOverrides[group.id] = group.unresolvedTieIds;
+    for (const tie of cup.teamCupQualified(data).unresolvedCampaignTies) data.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
+    const qualified = cup.teamCupQualified(data);
+    assert.deepEqual(qualified.repechage.slice(3).map(e => e.groupId), [0, 0], "Reproduce the five-team Consolation case from real group results");
+    const expectedByes = qualified.repechage.slice(0, 3).map(e => e.id).sort((a, b) => a - b);
+    const original = JSON.stringify(data);
+    const generated = cup.generateTeamCupBrackets(data);
+    assert.deepEqual(byeIds(generated.brackets.filter(g => g.phase === "repechage")).sort((a, b) => a - b), expectedByes);
+    assert.equal(JSON.stringify(data), original, "Generating the fixed bracket preserves all group results");
+    const mainOnly = { ...generated, brackets: generated.brackets.filter(g => g.phase === "main") };
+    const repaired = cup.setTeamCupConsolationEnabled(mainOnly, true);
+    assert.deepEqual(repaired.brackets.filter(g => g.phase === "main"), mainOnly.brackets, "Adding a missing Consolation never rewrites the main bracket");
+    assert.deepEqual(byeIds(repaired.brackets.filter(g => g.phase === "repechage")).sort((a, b) => a - b), expectedByes, "Missing Consolation repair uses the same BYE protection");
+    const stored = structuredClone(repaired.brackets);
+    assert.deepEqual(cup.setTeamCupConsolationEnabled(repaired, false).brackets, stored, "Toggling visibility does not redistribute existing BYEs or games");
+  }
+  console.log("Consolation: BYEs preservados em 672 distribuições, sem duplicações e com ajustes de confronto somente entre equipes sem BYE.");
+}
 export function runTeamCupChecks() {
+  checkConsolationByes();
   const initial = createInitialData(cup.TEAM_CUP_TYPE, modalityConfig[cup.TEAM_CUP_TYPE]);
   assert.equal(initial.players.teams.length, 6);
   assert.equal(initial.players.teams[0].athletes.length, 3);

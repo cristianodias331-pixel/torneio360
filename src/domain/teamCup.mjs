@@ -361,7 +361,7 @@ export function generateTeamCupBrackets(data) {
   const main = plan
     ? buildCopinhaBracketFromPlan(qualified.main, "main", data.cupConfig.mainBracketName, expandBracketPlanWithVisualByes(plan))
     : buildCearenseEliminationRounds(qualified.main, "main", data.cupConfig.mainBracketName, true);
-  const consolation = buildCearenseEliminationRounds(qualified.repechage, "repechage", data.cupConfig.repechageName, false);
+  const consolation = buildCearenseEliminationRounds(qualified.repechage, "repechage", data.cupConfig.repechageName, false, { preserveByes: true });
   const brackets = [...main, ...consolation].flatMap(round => round.games.map(game => makeTeamMatch({ ...game, roundName: round.title })));
   const next = { ...data, brackets };
   next.brackets = brackets.map(game => resolveBracketGame(game, brackets, next));
@@ -376,7 +376,7 @@ export function setTeamCupConsolationEnabled(data, enabled) {
     // Older local tournaments may have generated only the main bracket.
     const qualified = teamCupQualified(next);
     if (!qualified.unresolvedCampaignTies.some(t => t.scope === "paralela")) {
-      const rounds = buildCearenseEliminationRounds(qualified.repechage, "repechage", next.cupConfig.repechageName, false);
+      const rounds = buildCearenseEliminationRounds(qualified.repechage, "repechage", next.cupConfig.repechageName, false, { preserveByes: true });
       const added = rounds.flatMap(r => r.games.map(g => makeTeamMatch({ ...g, roundName: r.title })));
       const brackets = [...next.brackets, ...added];
       next = { ...next, brackets: [...next.brackets, ...added.map(g => resolveBracketGame(g, brackets, next))] };
