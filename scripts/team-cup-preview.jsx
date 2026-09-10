@@ -10,6 +10,8 @@ import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, upda
 import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo, getTeamCupVideoSnapshot, teamCupVideoScenes } from "../src/domain/teamCupVideo.mjs";
 import { drawTeamCupVideoFrame } from "../src/features/teamCup/teamCupVideoExport.mjs";
 import { loadShareImage, TORNEIO360_LOGO } from "../src/features/media/canvasTools.mjs";
+import { inferTournamentGenderMode } from "../src/domain/participantGenderRegistry.mjs";
+import { getStoredTournamentGenderFields } from "../src/domain/tournamentGenderConfig.mjs";
 const query = new URLSearchParams(location.search);
 const kind = query.get("kind") || "trio";
 const count = TEAM_COUNTS.includes(Number(query.get("count"))) ? Number(query.get("count")) : query.has("participants") ? 9 : 6;
@@ -95,6 +97,11 @@ function Preview() {
   }
   return <><aside style={{ padding: 12, display: "flex", flexWrap: "wrap", gap: 12 }}><strong>PRÉVIA LOCAL · sem banco de dados</strong>
     <button onClick={() => { const next = theme === "dark" ? "light" : "dark"; setTheme(next); document.documentElement.dataset.theme = next; }}>Alternar tema</button>
+    <label style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>Composição da prévia
+      <select aria-label="Composição da prévia" value={inferTournamentGenderMode(record.data)} onChange={event => save({ data: { ...record.data, ...getStoredTournamentGenderFields(record.type, event.target.value) } })}>
+        <option value="">Não definida</option><option value="outro">Outra</option><option value="livre">Livre</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option><option value="mista">Mista</option>
+      </select>
+    </label>
     <a href="?participants=1">Participantes Trio</a><a href="?participants=1&kind=squad">Participantes Squad</a><a href="?participants=1&empty=1">Testar Colar lista</a><a href="?kind=trio">Trio</a><a href="?kind=squad">Squad</a><a href="?setup=1">Cadastro vazio</a><a href="?kind=squad&setup=1">Cadastro Squad</a><a href={"?finals=1&kind=" + kind}>Chaves prontas</a><a href={"?public=1&kind=" + kind}>Visão pública</a><span role="status">Salvamentos locais: {saves}</span></aside>
     {query.has("public") ? <PublicTournamentScreen tournament={record} runtime={{}} />
       : <div className={`proDashboard playAppShell theme-${theme}`}><main className="playMain"><div className="tournamentWorkspaceContent"><TournamentScreen tournament={record} userId="fixture-user" onBack={() => {}} onSave={save} onOpenCourtCenter={() => alert("Central de Quadras · prévia local")} centralCourtNumbers={["1", "2", "3", "4", "5", "6"]} /></div></main></div>}
