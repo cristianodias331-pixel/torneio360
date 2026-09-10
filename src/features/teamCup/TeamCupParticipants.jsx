@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ClipboardPaste, Crown, GripVertical, Grid3X3, Layers, Search, Shuffle, SlidersHorizontal, Users, X } from "lucide-react";
-import { TEAM_LEVELS, drawTeamCaptains, drawTeamMembers, teamName, teamSize } from "../../domain/teamCup.mjs";
+import { TEAM_LEVELS, TEAM_CUP_GROUP_RANKING_LABEL, drawTeamCaptains, drawTeamMembers, teamName, teamSize } from "../../domain/teamCup.mjs";
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, isTeamCupVacancy, organizeTeamCupGroups, organizationLocked, organizationSignature,
   participantEntries, prepareTeamCupFormation, swapTeamCupGroupItems,
   teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature,
@@ -188,7 +188,7 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
             return <div className="tcorg-team-slot" key={id}><span className="tcorg-slot-number">{i + 1}</span><button type="button" className={`tcorg-team-tile ${selection?.kind === "team" && selection.id === id ? "selected" : ""}`} aria-label={`Trocar ${teamName(team)}`} onClick={() => swap({ kind: "team", id })} {...dragProps({ kind: "team", id })}><GripVertical /><span><b>{teamName(team)}</b><small>{team.athletes.map(a => (a.name || "A definir") + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</small></span></button><div className="tcorg-team-level"><small>NÍVEL MÉDIO</small><span>{completeLevels ? TEAM_LEVELS[Math.round(value) - 1] : "A definir"}</span></div></div>;
           })}
         </section>)}</div>
-        <p className="tcorg-hint">Os níveis individuais são editados na lista de Participantes. Aqui, cada time permanece inteiro. O equilíbrio é aproximado; não muda a classificação V → SG → total de games.</p>
+        <p className="tcorg-hint">Os níveis individuais são editados na lista de Participantes. Aqui, cada time permanece inteiro. O equilíbrio é aproximado; não muda os critérios: {TEAM_CUP_GROUP_RANKING_LABEL}.</p>
       </div>}
     </> : <>
       {!random && <p className="tcorg-hint">Escolha um dos sorteios acima para formar as equipes. Se os times já estão definidos, siga para “Grupos da copa”.</p>}

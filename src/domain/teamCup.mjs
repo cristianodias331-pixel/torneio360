@@ -1,7 +1,7 @@
 import { generateCearenseGroupSchedule } from "./cupGroupSchedule.mjs";
 import { createCearenseGroups } from "./cupGroups.mjs";
 import { calculateCupGroupRankings } from "./cupGroupRanking.mjs";
-import { rankCearenseCampaignEntries } from "./campaignRanking.mjs";
+import { getReducedRatio } from "./campaignRanking.mjs";
 import { getCopinhaManualTieOrder } from "./groupRankingRules.mjs";
 import { playRankingMainBracketPlans } from "./cupBracketPlans.mjs";
 import { buildCopinhaBracketFromPlan, expandBracketPlanWithVisualByes } from "./cupBracketConstruction.mjs";
@@ -12,6 +12,7 @@ import { startMatchTimer, stopMatchTimer } from "./matchTimer.mjs";
 import { getGameCourtNumber } from "./courtNumbers.mjs";
 
 export const TEAM_CUP_TYPE = "Times/Equipes";
+export const TEAM_CUP_GROUP_RANKING_LABEL = "Vitórias → saldo de sets → confronto direto → coeficiente → saldo de games";
 export const TEAM_LEVELS = ["Principiante", "Iniciante", "D", "C", "B", "A"];
 // Cinco times não permitem exclusivamente grupos de três ou quatro.
 export const TEAM_COUNTS = Array.from({ length: 29 }, (_, i) => i + 4).filter(n => n !== 5);
@@ -255,12 +256,16 @@ export function teamCupRankingData(data) {
     schedule: data.schedule.map(round => round.map(game => summarizeTeamMatch(game, data.winningScore))) };
 }
 export function rankTeamCupRows(rows, games, target, storedOrder) {
-  const ordered = [...rows].sort((a, b) => b.w - a.w || b.bal - a.bal || b.pts - a.pts || a.name.localeCompare(b.name));
-  if (!games.length || !games.every(g => teamMatchState(g, target).winner)) return { rows: ordered, unresolvedTieIds: [] };
+  const primary = (a, b) => b.w - a.w || (b.setBalance || 0) - (a.setBalance || 0);
+  const secondary = (a, b) => compareTeamCupCoefficient(a, b) || b.bal - a.bal;
+  const ordered = [...rows].sort((a, b) => primary(a, b) || secondary(a, b) || a.name.localeCompare(b.name));
+  const complete = games.length > 0 && games.length === rows.length * (rows.length - 1) / 2
+    && games.every(g => teamMatchState(g, target).winner);
+  if (!complete) return { rows: ordered, unresolvedTieIds: [] };
   const result = [], unresolvedTieIds = [];
   for (let start = 0; start < ordered.length;) {
     let end = start + 1;
-    while (end < ordered.length && ["w", "bal", "pts"].every(k => ordered[start][k] === ordered[end][k])) end++;
+    while (end < ordered.length && primary(ordered[start], ordered[end]) === 0) end++;
     const tied = ordered.slice(start, end);
     const directWins = new Map(tied.map(row => [row.id, 0]));
     for (const game of games) {
@@ -269,10 +274,12 @@ export function rankTeamCupRows(rows, games, target, storedOrder) {
       const id = winner === "team1" ? game.ids1[0] : game.ids2[0];
       directWins.set(id, directWins.get(id) + 1);
     }
-    tied.sort((a, b) => directWins.get(b.id) - directWins.get(a.id));
+    // A circular head-to-head tie falls through to coefficient, then games balance.
+    tied.sort((a, b) => directWins.get(b.id) - directWins.get(a.id) || secondary(a, b) || a.name.localeCompare(b.name));
     for (let i = 0; i < tied.length;) {
       let j = i + 1;
-      while (j < tied.length && directWins.get(tied[j].id) === directWins.get(tied[i].id)) j++;
+      while (j < tied.length && directWins.get(tied[j].id) === directWins.get(tied[i].id)
+        && secondary(tied[i], tied[j]) === 0) j++;
       const remaining = tied.slice(i, j), order = getCopinhaManualTieOrder(remaining, storedOrder);
       if (remaining.length > 1 && !order) unresolvedTieIds.push(...remaining.map(r => r.id));
       result.push(...(order ? remaining.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)) : remaining));
@@ -283,18 +290,60 @@ export function rankTeamCupRows(rows, games, target, storedOrder) {
   return { rows: result, unresolvedTieIds };
 }
 export function teamCupRankings(data) {
-  return calculateCupGroupRankings(teamCupRankingData(data)).map(group => ({
-    ...group, ...rankTeamCupRows(group.rows, data.schedule.flat().filter(g => g.groupId === group.id),
-      data.winningScore, data.cupConfig.tieBreakOverrides?.[String(group.id)]),
-  }));
+  return calculateCupGroupRankings(teamCupRankingData(data)).map(group => {
+    const games = data.schedule.flat().filter(g => g.groupId === group.id);
+    const rows = group.rows.map(row => ({ ...row, setsWon: 0, setsLost: 0, setBalance: 0 }));
+    const byId = new Map(rows.map(row => [row.id, row]));
+    for (const game of games) {
+      const state = teamMatchState(game, data.winningScore);
+      if (!state.winner) continue;
+      for (const side of [0, 1]) {
+        const row = byId.get(game["ids" + (side + 1)][0]);
+        row.setsWon += state.wins[side];
+        row.setsLost += state.wins[1 - side];
+        row.setBalance = row.setsWon - row.setsLost;
+      }
+    }
+    return { ...group, ...rankTeamCupRows(rows, games, data.winningScore, data.cupConfig.tieBreakOverrides?.[String(group.id)]) };
+  });
+}
+function compareTeamCupCoefficient(a, b) {
+  const difference = Number(b.coefficient || 0) - Number(a.coefficient || 0);
+  return Math.abs(difference) < 1e-12 ? 0 : difference;
+}
+export function rankTeamCupCampaignEntries(entries, storedOverrides = {}, scope = "campeoes") {
+  const compare = (a, b) => {
+    const playedA = Math.max(1, Number(a.played) || 0), playedB = Math.max(1, Number(b.played) || 0);
+    const proportional = key => Number(b[key] || 0) * playedA - Number(a[key] || 0) * playedB;
+    return proportional("w") || proportional("setBalance") || compareTeamCupCoefficient(a, b) || proportional("bal");
+  };
+  // Different groups have no head-to-head result. Normalize totals so a group
+  // of four does not gain an extra match's worth of wins, sets or games balance.
+  const ordered = [...entries].sort((a, b) => compare(a, b)
+    || (a.groupId === b.groupId ? a.groupPosition - b.groupPosition : a.name.localeCompare(b.name)));
+  const rows = [], unresolvedTies = [];
+  for (let start = 0; start < ordered.length;) {
+    let end = start + 1;
+    while (end < ordered.length && compare(ordered[start], ordered[end]) === 0) end++;
+    const tied = ordered.slice(start, end), row = tied[0];
+    if (tied.length > 1 && new Set(tied.map(entry => entry.groupId)).size > 1) {
+      const tieKey = `team-cup-sets-v1:${scope}:${getReducedRatio(row.w, row.played)}:${getReducedRatio(row.setBalance, row.played)}:${Number(row.coefficient || 0).toFixed(12)}:${getReducedRatio(row.bal, row.played)}`;
+      const order = getCopinhaManualTieOrder(tied, storedOverrides[tieKey]);
+      if (order) tied.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+      else unresolvedTies.push({ tieKey, scope, teamIds: tied.map(entry => entry.id), rows: tied });
+    }
+    rows.push(...tied);
+    start = end;
+  }
+  return { rows, unresolvedTies };
 }
 export function teamCupQualified(data) {
   const groups = teamCupRankings(data);
   const overrides = data.cupConfig.campaignTieBreakOverrides || {};
-  const champions = rankCearenseCampaignEntries(groups.map(g => ({ ...g.rows[0], groupPosition: 1 })), overrides, "campeoes");
+  const champions = rankTeamCupCampaignEntries(groups.map(g => ({ ...g.rows[0], groupPosition: 1 })), overrides, "campeoes");
   const groupRank = new Map(champions.rows.map((r, i) => [r.groupId, i + 1]));
   const runners = groups.map(g => ({ ...g.rows[1], groupPosition: 2, groupRank: groupRank.get(g.id) }));
-  const eliminated = rankCearenseCampaignEntries(groups.flatMap(g => g.rows.slice(2).map((r, i) => ({ ...r, groupPosition: i + 3 }))), overrides, "paralela");
+  const eliminated = rankTeamCupCampaignEntries(groups.flatMap(g => g.rows.slice(2).map((r, i) => ({ ...r, groupPosition: i + 3 }))), overrides, "paralela");
   return { main: [...champions.rows.map((r, i) => ({ ...r, groupRank: i + 1 })), ...runners],
     repechage: eliminated.rows.map((r, i) => ({ ...r, groupRank: i + 1 })),
     unresolvedCampaignTies: [...champions.unresolvedTies, ...eliminated.unresolvedTies] };

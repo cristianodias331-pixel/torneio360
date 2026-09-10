@@ -12,7 +12,7 @@ import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
 import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
 import { recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
 import { reconfigureTeamCup, teamCupFormatChangeNeedsConfirmation, setTeamCupFormation, generateTeamCupGroups, generateTeamCupBrackets,
-  TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
+  TEAM_COUNTS, TEAM_CUP_GROUP_RANKING_LABEL, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
   teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg, teamCupCourtNumber } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
 import "../../styles/31-matches-and-brackets.css";
@@ -244,6 +244,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         <div className="tc-format-explanation"><FormatExplanationButton label={`Como funciona com ${teams.length} equipes`} eyebrow={`Formato calculado para ${teams.length} equipes`} title={`Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`}
           sections={[
             { title: "Grupos e classificação", content: <p>Grupos de 3, usando grupos de 4 quando necessário. Os dois melhores de cada grupo avançam. Somente os eliminados dos grupos entram no Consolation, quando habilitado.</p> },
+            { title: "Critérios de classificação", content: <p>{TEAM_CUP_GROUP_RANKING_LABEL}. Se todos empatarem, sorteio. O total de games é apenas estatística.</p> },
             { title: "Sets da partida", content: <p>{data.teamCup.kind === "squad" ? "O 1º set (masculino) e o 2º set (feminino) podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, a equipe escolhe a dupla mista para o 3º set de desempate." : "1º set e 2º set em sequência; o 3º set de desempate ocorre somente em caso de empate em 1 a 1. As duplas e substituições ficam a cargo da equipe."}</p> },
             { title: "Resultado e capitães", content: <p>Os três sets usam a mesma regra de games. Quem vencer dois sets ganha a partida entre as equipes. O capitão ou a capitã faz parte da equipe.</p> },
           ]} /></div>
@@ -266,7 +267,12 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       {tab === "groups" && !readOnly && <TeamCupVideoActions data={data} tournament={tournament} only="groups" />}
       {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Salve a formação em Organizar grupos e depois gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={drawPresentation.busy || (random && data.teamCup.drawStage !== "complete")} onClick={generateGroups}>{data.teamCup.groupOrder ? "Gerar fase de grupos" : "Sortear grupos e gerar confrontos"}</button></div></>}
       <h3>Classificação dos grupos</h3>
-      <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games dos sets concluídos de cada partida finalizada, incluindo o desempate.</p>
+      <p className="tc-help tc-ranking-order">{TEAM_CUP_GROUP_RANKING_LABEL}</p>
+      <p className="tc-help">Cada critério só é usado se houver empate no anterior. Persistindo o empate, sorteio. Só contam partidas finalizadas, incluindo o 3º set quando houver.</p>
+      <details className="tc-ranking-help"><summary>Como os critérios são calculados?</summary>
+        <p className="tc-help">Vitórias: partidas vencidas pela equipe. Saldo de sets: sets ganhos menos sets perdidos. Confronto direto: resultados entre as equipes empatadas; em empate circular, passa ao coeficiente. Coeficiente: média, por partida, dos games ganhos divididos pelo total de games disputados. Saldo de games: games ganhos menos games perdidos. O total de games é apenas estatística.</p>
+        <p className="tc-help">Entre grupos: percentual de vitórias → saldo médio de sets → coeficiente → saldo médio de games → sorteio. Não há confronto direto entre grupos; o segundo colocado acompanha a posição do campeão do seu grupo na chave principal.</p>
+      </details>
       <div className="tc-team-grid">{groups.map(group => <section key={group.id}>
         <RankingTable title={group.name} rows={group.rows} rankingCriteria="wins_balance_points" showPodium={false}
           nameColumnLabel="Equipe" renderName={row => {
@@ -274,7 +280,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
             return <div className="tc-group-team"><span>{row.name}</span>
               {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</span>}
             </div>;
-          }} columns={[{ key: "w", label: "Vitórias" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
+          }} columns={[{ key: "w", label: "Vitórias" }, { key: "setBalance", label: "Saldo de sets" }, { key: "coefficient", label: "Coeficiente" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games (estatística)" }]} />
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
         {group.unresolvedTieIds.length > 0 && <div className="tc-tie"><p>Empate: {group.rows.filter(r => group.unresolvedTieIds.includes(r.id)).map(r => r.name).join(", ")}.</p>{!readOnly && !data.brackets.length && <button type="button" onClick={() => drawTie("tieBreakOverrides", String(group.id), group.unresolvedTieIds)}>Sortear desempate do grupo</button>}</div>}
       </section>)}</div>
@@ -286,7 +292,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       <div className="cupRankingSplit">{[["main", data.cupConfig.mainBracketName || "Principal"], ...(data.cupConfig.repechageEnabled ? [["repechage", data.cupConfig.repechageName || "Consolation"]] : [])].map(([phase, title]) => {
         const podium = teamCupPodium(data, phase);
         return <div className="cupRankingPanel" key={phase}><h3>{title}</h3>{podium.length ? <CupPodiumView podium={podium} title={title} variant={phase === "main" ? "main" : "parallel"}
-          shareContext={{ title: tournament.name, modalityName: `Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`, rankingCriteria: "wins_balance_points" }} /> : <p>Finalize {phase === "main" ? "a chave principal" : "a disputa paralela"} para ver o pódio.</p>}</div>;
+          shareContext={{ title: tournament.name, modalityName: `Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`, rankingCriteria: "wins_balance_points", criteriaLabel: "Pódio definido pelas eliminatórias" }} /> : <p>Finalize {phase === "main" ? "a chave principal" : "a disputa paralela"} para ver o pódio.</p>}</div>;
       })}</div>
     </section>}
     {tab === "games" && <section className="card tournamentMatchesSection">

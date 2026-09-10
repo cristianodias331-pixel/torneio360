@@ -126,6 +126,21 @@ export function runTeamCupChecks() {
   const rows = cup.teamCupRankings(won).flatMap(g => g.rows);
   assert.equal(rows.reduce((n, r) => n + r.w, 0), 1);
   assert.equal(rows.reduce((n, r) => n + r.bal, 0), 0);
+  assert.equal(rows.reduce((n, r) => n + r.setBalance, 0), 0);
+  const winnerRow = rows.find(r => r.id === won.schedule[0][0].ids1[0]);
+  assert.equal(winnerRow.setsWon, 2);
+  assert.equal(winnerRow.setsLost, 1);
+  assert.equal(winnerRow.setBalance, 1);
+  assert.equal(winnerRow.coefficient, 13 / 25);
+  assert(cup.teamCupRankings(split).flatMap(g => g.rows).every(r => r.played === 0 && r.setBalance === 0 && r.coefficient === 0), "Unfinished deciding sets do not enter ranking metrics");
+  const straightRows = cup.teamCupRankings(finish(d, key)).flatMap(g => g.rows);
+  assert.equal(straightRows.find(r => r.id === winnerRow.id).setBalance, 2);
+  assert.equal(straightRows.find(r => r.id === won.schedule[0][0].ids2[0]).setBalance, -2);
+  const negativeBalanceWin = finish(d, key, [[6, 4], [0, 6], [6, 4]]);
+  const negativeWinner = cup.teamCupRankings(negativeBalanceWin).flatMap(g => g.rows).find(r => r.id === winnerRow.id);
+  assert.equal(negativeWinner.w, 1, "Winning two sets counts as a victory even with fewer games");
+  assert.equal(negativeWinner.bal, -2);
+  assert.equal(negativeWinner.setBalance, 1);
   assert.throws(() => cup.updateTeamCupLeg(finish(d, key), key, 2, { s1: "6" }), /set ainda não está liberado/);
   const lostLegs = structuredClone(won); lostLegs.schedule[0][0].teamCupLegs[2].s1 = "";
   assert(inspectTournamentScoreRegression(won, lostLegs).unsafe);
@@ -144,17 +159,69 @@ export function runTeamCupChecks() {
   assert.throws(() => cup.updateTeamCupLeg(squad, sk, 1, { courtNumberOverride: "1", inProgress: true }), /em uso/);
   squad = cup.updateTeamCupLeg(squad, sk, 1, { courtNumberOverride: "2", inProgress: true });
   assert.equal(ops.getTournamentActiveCourtUsages({ id: "test" }, squad).length, 2);
-  const metricRows = [{ id: 0, name: "A", w: 2, bal: 4, pts: 20 }, { id: 1, name: "B", w: 2, bal: 4, pts: 24 }];
-  assert.equal(cup.rankTeamCupRows(metricRows, [], 6).rows[0].id, 1);
+  const metricRows = [{ id: 0, name: "A", w: 2, setBalance: 2, coefficient: 0.6, bal: 4, pts: 20 }, { id: 1, name: "B", w: 2, setBalance: 2, coefficient: 0.6, bal: 4, pts: 24 }];
+  assert.equal(cup.rankTeamCupRows(metricRows, [], 6).rows[0].id, 0, "Total games is only a statistic, never a tie-break");
   const directGame = cup.makeTeamMatch({ matchKey: "direct", ids1: [0], ids2: [1] });
   directGame.teamCupLegs[0] = { s1: "6", s2: "0" };
   directGame.teamCupLegs[1] = { s1: "6", s2: "0" };
-  const tiedRows = metricRows.map(row => ({ ...row, pts: 24 }));
-  assert.equal(cup.rankTeamCupRows(tiedRows, [directGame], 6, [1, 0]).rows[0].id, 0, "Direct confrontation precedes an old draw order");
-  const threeRows = [0, 1, 2].map(id => ({ id, name: String(id), w: 1, bal: 0, pts: 12 }));
+  const strongerLoser = metricRows.map(row => ({ ...row, coefficient: row.id ? 0.9 : 0.5, bal: row.id ? 20 : 0 }));
+  assert.equal(cup.rankTeamCupRows(strongerLoser, [directGame], 6, [1, 0]).rows[0].id, 0, "Head-to-head precedes coefficient, games balance and an old draw order");
+  const setPriority = metricRows.map(row => ({ ...row, setBalance: row.id ? 3 : 2 }));
+  assert.equal(cup.rankTeamCupRows(setPriority, [directGame], 6).rows[0].id, 1, "Sets balance precedes head-to-head");
+  const winPriority = setPriority.map(row => ({ ...row, w: row.id ? 1 : 2 }));
+  assert.equal(cup.rankTeamCupRows(winPriority, [directGame], 6).rows[0].id, 0, "Match wins precede sets balance");
+  const threeRows = [0, 1, 2].map(id => ({ id, name: String(id), w: 1, setBalance: 0, coefficient: 0.5, bal: 0, pts: 12 + id }));
   const cycleGames = [[0, 1], [1, 2], [2, 0]].map(([a, b]) => ({ ...directGame, ids1: [a], ids2: [b] }));
-  assert.equal(cup.rankTeamCupRows(threeRows, cycleGames, 6).unresolvedTieIds.length, 3);
+  const coefficientPriority = threeRows.map((row, i) => ({ ...row, coefficient: [0.75, 16 / 22, 0.4][i], bal: [8, 10, 0][i] }));
+  assert.deepEqual(cup.rankTeamCupRows(coefficientPriority, cycleGames, 6, [2, 1, 0]).rows.map(r => r.id), [0, 1, 2], "Circular head-to-head uses coefficient before games balance");
+  const gamesPriority = threeRows.map((row, i) => ({ ...row, coefficient: i === 2 ? 0.4 : 0.5, bal: [5, 10, 0][i] }));
+  assert.deepEqual(cup.rankTeamCupRows(gamesPriority, cycleGames, 6).rows.map(r => r.id), [1, 0, 2], "Games balance resolves a coefficient tie");
+  assert.equal(cup.rankTeamCupRows(threeRows, cycleGames, 6).unresolvedTieIds.length, 3, "An exact tie requires a draw, not total games or alphabetical qualification");
   assert.deepEqual(cup.rankTeamCupRows(threeRows, cycleGames, 6, [2, 0, 1]).rows.map(r => r.id), [2, 0, 1]);
+  assert.deepEqual(cup.rankTeamCupRows(threeRows, cycleGames.slice(0, 2), 6).unresolvedTieIds, [], "Incomplete groups do not request a final draw");
+  const roundingTie = threeRows.map((row, i) => ({ ...row, coefficient: 0.5 + i * 1e-16, bal: i }));
+  assert.equal(cup.rankTeamCupRows(roundingTie, cycleGames, 6).rows[0].id, 2, "Floating point noise does not decide coefficient ties");
+
+  let averages = cup.generateTeamCupGroups(fixture(), seed());
+  const teamGames = averages.schedule.flat().filter(g => [...g.ids1, ...g.ids2].includes(0));
+  for (const [index, game] of teamGames.entries()) {
+    const pairs = index === 0 ? [[6, 4], [6, 4]] : [[6, 0], [4, 6], [6, 0]];
+    averages = finish(averages, game.matchKey, game.ids1[0] === 0 ? pairs : pairs.map(([a, b]) => [b, a]));
+  }
+  const originalAverages = JSON.stringify(averages);
+  const averageRow = cup.teamCupRankings(averages).flatMap(g => g.rows).find(r => r.id === 0);
+  assert(Math.abs(averageRow.coefficient - (12 / 20 + 16 / 22) / 2) < 1e-12, "Coefficient is an equal-weight mean per completed match, not an aggregate of all games");
+  assert.equal(averageRow.setBalance, 3);
+  assert.equal(averageRow.pts, 28);
+  assert.equal(averageRow.played, 2);
+  assert.equal(JSON.stringify(averages), originalAverages, "Reading rankings does not mutate scores");
+
+  let circularGroup = cup.generateTeamCupGroups(fixture(), seed());
+  for (const game of circularGroup.schedule.flat().filter(g => g.groupId === 0)) {
+    const ids = [...game.ids1, ...game.ids2];
+    const [winner, loserGames] = !ids.includes(2) ? [0, 0] : !ids.includes(0) ? [1, 4] : [2, 2];
+    const pair = game.ids1[0] === winner ? [6, loserGames] : [loserGames, 6];
+    circularGroup = finish(circularGroup, game.matchKey, [pair, pair]);
+  }
+  const circularRows = cup.teamCupRankings(circularGroup).find(g => g.id === 0).rows;
+  assert.deepEqual(circularRows.map(r => r.id), [0, 2, 1], "A real three-team circular tie is resolved by coefficient, not total games");
+  assert(circularRows.every(r => r.w === 1 && r.setBalance === 0));
+  assert.equal(circularRows[0].coefficient, 0.625);
+  assert.equal(circularRows[1].pts, 20);
+  assert.equal(circularRows[0].pts, 16);
+
+  const campaigns = [
+    { id: 0, name: "A", groupId: 0, groupPosition: 1, played: 2, w: 2, setBalance: 4, coefficient: 0.6, bal: 8, pts: 24 },
+    { id: 1, name: "B", groupId: 1, groupPosition: 1, played: 3, w: 3, setBalance: 6, coefficient: 0.6, bal: 12, pts: 44 },
+  ];
+  const campaignTie = cup.rankTeamCupCampaignEntries(campaigns);
+  assert.equal(campaignTie.unresolvedTies.length, 1, "Proportional campaigns tie across groups of three and four, regardless of total games");
+  assert.deepEqual(cup.rankTeamCupCampaignEntries(campaigns, { [campaignTie.unresolvedTies[0].tieKey]: [1, 0] }).rows.map(r => r.id), [1, 0]);
+  assert.equal(cup.rankTeamCupCampaignEntries(campaigns.map((row, i) => ({ ...row, w: 2, setBalance: i ? 9 : 4 }))).rows[0].id, 0, "Campaign win percentage comes first");
+  assert.equal(cup.rankTeamCupCampaignEntries(campaigns.map((row, i) => ({ ...row, setBalance: i ? 3 : 4, coefficient: i ? 0.9 : 0.5 }))).rows[0].id, 0, "Campaign sets balance is normalized and precedes coefficient");
+  assert.equal(cup.rankTeamCupCampaignEntries(campaigns.map((row, i) => ({ ...row, coefficient: i ? 0.5 : 0.6, bal: i ? 90 : 8 }))).rows[0].id, 0, "Campaign coefficient precedes games balance");
+  assert.equal(cup.rankTeamCupCampaignEntries(campaigns.map((row, i) => ({ ...row, bal: i ? 11 : 8 }))).rows[0].id, 0, "Campaign games balance is also normalized");
+  assert.deepEqual(cup.rankTeamCupCampaignEntries(campaigns.map((row, i) => ({ ...row, groupId: 0, groupPosition: i ? 3 : 4 }))).rows.map(r => r.id), [1, 0], "Equal campaigns from the same group preserve group placement");
   const baseGroups = finishGroups(cup.generateTeamCupGroups(fixture(), seed()));
   const generated = cup.generateTeamCupBrackets(baseGroups);
   const changedGroups = cup.updateTeamCupLeg(baseGroups, baseGroups.schedule[0][0].matchKey, 0, { s2: "1" });
