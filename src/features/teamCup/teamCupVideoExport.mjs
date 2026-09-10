@@ -1,4 +1,5 @@
 import { teamCupVideoScenes } from "../../domain/teamCupVideo.mjs";
+import { teamCupVideoCardLayout, TEAM_CUP_VIDEO_CARD_WIDTH, TEAM_CUP_VIDEO_CARD_GAP } from "../../domain/teamCupVideoLayout.mjs";
 import { TORNEIO360_LOGO, drawRoundedRect, loadShareImage, truncateCanvasText } from "../media/canvasTools.mjs";
 import { drawShuffleVideoBackground, drawShuffleVideoHeader, drawShuffleVideoFooter, drawShuffleVideoMotion, getShuffleVideoMimeType } from "../media/shuffleVideoExport.mjs";
 
@@ -30,26 +31,21 @@ export function drawTeamCupVideoFrame(ctx, snapshot, scene, elapsed, assets, pag
     lines(ctx, new Date(snapshot.createdAt).toLocaleString("pt-BR"), 56, 770, 600, "700 22px Arial");
     return;
   }
-  const title = scene.type === "captains" ? "1. Capitães sorteados" : scene.type === "teams" ? "2. Times completos" : scene.items[0].title;
+  const title = scene.type === "captains" ? "1. Capitães sorteados" : scene.type === "teams" ? "2. Times completos" : scene.items[0].title + (scene.groupPages > 1 ? ` · ${scene.groupPage}/${scene.groupPages}` : "");
   lines(ctx, title, 52, 316, 614, "900 29px Arial");
   const teams = scene.type === "groups" ? scene.items[0].teams : scene.items;
-  const cardHeight = scene.type === "teams" ? 390 : 190;
+  let y = 352;
   teams.forEach((team, i) => {
-    const y = 360 + i * (cardHeight + 14);
-    drawRoundedRect(ctx, 48, y, 624, cardHeight, 18, i % 2 ? "#f1eafa" : "#e7f0ff", "#c2d3ed");
-    lines(ctx, team.name, 66, y + 32, 582, "900 23px Arial", "#423380");
-    const captain = team.athletes.find(a => a.id === team.captainId);
-    if (scene.type === "teams") {
-      team.athletes.forEach((a, j) => {
-        const ay = y + 87 + j * 72;
-        lines(ctx, a.name, 70, ay, 572, "800 20px Arial");
-        const label = [a.id === team.captainId ? "CAPITÃO/Ã" : "INTEGRANTE", a.gender === "H" ? "Masculino" : "Feminino", a.level].filter(Boolean).join(" · ");
-        lines(ctx, label, 70, ay + 46, 572, "700 14px Arial", "#526887");
-      });
-    } else {
-      lines(ctx, captain?.name || "Capitão/ã", 70, y + 91, 570, "800 22px Arial");
-      lines(ctx, "CAPITÃO/Ã" + (captain?.level ? ` · ${captain.level}` : ""), 70, y + 147, 570, "700 16px Arial", "#526887");
+    const layout = scene.cardLayouts?.[i] || teamCupVideoCardLayout(team, { captainsOnly: scene.type === "captains", measure: (text, font) => { ctx.font = font; return ctx.measureText(text).width; } });
+    drawRoundedRect(ctx, 48, y, TEAM_CUP_VIDEO_CARD_WIDTH, layout.height, 18, i % 2 ? "#f1eafa" : "#e7f0ff", "#c2d3ed");
+    ctx.save(); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    for (const row of layout.rows) {
+      ctx.font = row.font;
+      ctx.fillStyle = row.role === "team" ? "#423380" : row.role === "label" ? "#526887" : "#13213d";
+      ctx.fillText(row.text, 70, y + row.y);
     }
+    ctx.restore();
+    y += layout.height + TEAM_CUP_VIDEO_CARD_GAP;
   });
 }
 
@@ -62,7 +58,7 @@ export async function createTeamCupVideoFile({ snapshot, onProgress, onScene, si
   const canvas = previewCanvas || document.createElement("canvas"); canvas.width = 720; canvas.height = 1280;
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) throw new Error("Não foi possível preparar o vídeo.");
-  const scenes = teamCupVideoScenes(snapshot), total = scenes.reduce((sum, s) => sum + s.duration, 0);
+  const scenes = teamCupVideoScenes(snapshot, { measure: (text, font) => { ctx.font = font; return ctx.measureText(text).width; } }), total = scenes.reduce((sum, s) => sum + s.duration, 0);
   const stream = canvas.captureStream(24), chunks = [], mimeType = getShuffleVideoMimeType();
   let recorder, frame, cancelRecording, abort, visibility;
   try {

@@ -1,5 +1,6 @@
 import { createCearenseGroups } from "./cupGroups.mjs";
 import { teamName, validateTeamCupTeams } from "./teamCup.mjs";
+import { teamCupVideoCardLayout, TEAM_CUP_VIDEO_CONTENT_HEIGHT, TEAM_CUP_VIDEO_CARD_GAP } from "./teamCupVideoLayout.mjs";
 
 const receipt = () => ({ id: `T360-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`, createdAt: new Date().toISOString() });
 const roster = data => data.players.teams.map(team => ({ id: team.id, name: teamName(team), captainId: team.captainId,
@@ -47,20 +48,33 @@ export function getTeamCupVideoSnapshot(data, tournament, kind) {
   return structuredClone({ ...base, ...record, kind: "team-cup-groups", headerLabel: record.mode === "random" ? "SORTEIO DOS GRUPOS" : "FORMAÇÃO DOS GRUPOS" });
 }
 
-export function teamCupVideoScenes(snapshot) {
+export function teamCupVideoScenes(snapshot, { measure } = {}) {
   const scenes = [{ type: "intro", duration: 1200, title: snapshot.headerLabel }];
   const pages = (items, size, type, duration) => {
-    for (let i = 0; i < items.length; i += size) scenes.push({ type, duration, items: items.slice(i, i + size) });
+    const result = [];
+    let page = null, height = 0;
+    for (const team of items) {
+      const layout = teamCupVideoCardLayout(team, { captainsOnly: type === "captains", measure });
+      if (!page || page.items.length === size || height + TEAM_CUP_VIDEO_CARD_GAP + layout.height > TEAM_CUP_VIDEO_CONTENT_HEIGHT) {
+        page = { type, duration, items: [], cardLayouts: [] }; result.push(page); height = 0;
+      }
+      height += (page.items.length ? TEAM_CUP_VIDEO_CARD_GAP : 0) + layout.height;
+      page.items.push(team); page.cardLayouts.push(layout);
+    }
+    return result;
   };
   if (snapshot.kind === "team-cup-teams") {
-    scenes.push({ type: "motion", duration: 5000, title: "SORTEIO DOS CAPITÃES", names: snapshot.captains.map(t => t.athletes[0].name) });
-    pages(snapshot.captains, 4, "captains", 3500);
+    scenes.push({ type: "motion", duration: 5000, title: "SORTEIO DOS CAPITÃES", names: snapshot.captains.map(t => t.athletes.find(a => a.id === t.captainId)?.name || "A definir") });
+    scenes.push(...pages(snapshot.captains, 4, "captains", 3500));
     scenes.push({ type: "motion", duration: 5000, title: "SORTEIO DOS INTEGRANTES", names: snapshot.teams.flatMap(t => t.athletes.filter(a => a.id !== t.captainId).map(a => a.name)) });
-    pages(snapshot.teams, 2, "teams", 5000);
+    scenes.push(...pages(snapshot.teams, 2, "teams", 6500));
   } else {
     // A manual/level-based arrangement is never presented as a random draw.
     if (snapshot.mode === "random") scenes.push({ type: "motion", duration: 5000, title: "SORTEIO DOS GRUPOS", names: snapshot.groups.flatMap(g => g.teams.map(t => t.name)) });
-    pages(snapshot.groups, 1, "groups", 5500);
+    for (const group of snapshot.groups) {
+      const groupPages = pages(group.teams, 2, "groups", 6500);
+      scenes.push(...groupPages.map((page, index) => ({ ...page, items: [{ ...group, teams: page.items }], groupPage: index + 1, groupPages: groupPages.length })));
+    }
   }
   return scenes;
 }

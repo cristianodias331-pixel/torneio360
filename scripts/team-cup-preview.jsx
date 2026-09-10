@@ -1,13 +1,15 @@
 // Local fixture only. Never imports the production client or contacts Supabase.
 import "../src/style.css";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createOrganizerWorkspace } from "../src/OrganizerWorkspace.jsx";
 import PublicTournamentScreen from "../src/features/publicArena/PublicTournamentScreen.jsx";
 import { createInitialData } from "../src/domain/tournamentDataNormalization.mjs";
 import { modalityConfig } from "../src/domain/modalityConfig.mjs";
 import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified, TEAM_COUNTS, TEAM_LEVELS, drawTeamCaptains, drawTeamMembers } from "../src/domain/teamCup.mjs";
-import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo } from "../src/domain/teamCupVideo.mjs";
+import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo, getTeamCupVideoSnapshot, teamCupVideoScenes } from "../src/domain/teamCupVideo.mjs";
+import { drawTeamCupVideoFrame } from "../src/features/teamCup/teamCupVideoExport.mjs";
+import { loadShareImage, TORNEIO360_LOGO } from "../src/features/media/canvasTools.mjs";
 const query = new URLSearchParams(location.search);
 const kind = query.get("kind") || "trio";
 const count = TEAM_COUNTS.includes(Number(query.get("count"))) ? Number(query.get("count")) : query.has("participants") ? 9 : 6;
@@ -19,6 +21,10 @@ function initial() {
   if (query.has("setup") || query.has("empty")) return data;
   const names = ["Cristiano", "Danilo", "Cristian", "Layner", "Nicolas", "Guilherme", "Maria", "Ana", "Júlia", "Fernanda", "Beatriz", "Carolina"];
   data.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => a.name = names[(i * 3 + j) % names.length] + " " + (i + 1) + (j + 1)));
+  if (query.has("video-frames")) data.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => {
+    a.level = TEAM_LEVELS[(i + j) % TEAM_LEVELS.length];
+    if (query.has("long-names")) a.name = "W".repeat(98) + String.fromCharCode(65 + i, 65 + j);
+  }));
   if (query.has("videos")) {
     data.teamCup.formation = "random";
     data.teamCup.pool = structuredClone(data.players.teams.flatMap(t => t.athletes));
@@ -50,11 +56,37 @@ function initial() {
 }
 const mockSupabase = { from: () => ({ upsert: async () => ({ error: null }) }) };
 const { TournamentScreen } = createOrganizerWorkspace({ supabase: mockSupabase });
+function VideoFramePreview({ data, tournament }) {
+  const canvas = useRef(null);
+  const [kind, setKind] = useState("teams"), [page, setPage] = useState(0), [count, setCount] = useState(1);
+  useEffect(() => {
+    let cancelled = false;
+    async function render() {
+      await document.fonts?.ready;
+      const logo = await loadShareImage(TORNEIO360_LOGO);
+      if (cancelled) return;
+      const snapshot = getTeamCupVideoSnapshot(data, tournament, kind), ctx = canvas.current.getContext("2d");
+      const scenes = teamCupVideoScenes(snapshot, { measure: (text, font) => { ctx.font = font; return ctx.measureText(text).width; } });
+      const frames = scenes.filter(s => s.type === (kind === "teams" ? "teams" : "groups"));
+      setCount(frames.length);
+      const scene = frames[Math.min(page, frames.length - 1)];
+      drawTeamCupVideoFrame(ctx, snapshot, scene, 0, { logo }, scenes.indexOf(scene), scenes.length);
+    }
+    render();
+    return () => { cancelled = true; };
+  }, [data, tournament, kind, page]);
+  return <main style={{ padding: 16, background: "#102137", color: "white" }}><h1>Quadros reais do vídeo · teste local</h1>
+    <div style={{ display: "flex", gap: 12, marginBottom: 12 }}><button onClick={() => { setKind("teams"); setPage(0); }}>Vídeo dos times</button><button onClick={() => { setKind("groups"); setPage(0); }}>Vídeo dos grupos</button>
+      <button disabled={!page} onClick={() => setPage(page - 1)}>Anterior</button><button disabled={page >= count - 1} onClick={() => setPage(page + 1)}>Próxima</button><span>{page + 1}/{count}</span></div>
+    <canvas ref={canvas} width={720} height={1280} style={{ display: "block", width: 360, maxWidth: "100%" }} aria-label="Quadro do vídeo" />
+  </main>;
+}
 function Preview() {
   const [record, setRecord] = useState(() => ({ id: fixtureKey, type: "Times/Equipes", name: "Copa Times/Equipes · teste local",
     user_id: "fixture-user", revision: 1, updated_at: "2026-09-09T12:00:00Z", data: (!query.has("focus") && JSON.parse(localStorage.getItem(fixtureKey) || "null")) || initial() }));
   const [theme, setTheme] = useState("dark");
   const [saves, setSaves] = useState(0);
+  if (query.has("video-frames")) return <VideoFramePreview data={record.data} tournament={record} />;
   async function save(payload) {
     const tournament = { ...record, data: payload.data, last_change_id: payload.changeId, revision: (record.revision || 1) + 1, updated_at: new Date().toISOString() };
     if (!query.has("focus")) localStorage.setItem(fixtureKey, JSON.stringify(tournament.data));
