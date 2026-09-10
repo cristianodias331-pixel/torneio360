@@ -9,6 +9,7 @@ import { buildCearenseEliminationRounds } from "./bracketConstruction.mjs";
 import { resolveBracketGame } from "./bracketProgression.mjs";
 import { getScoreWinnerSide, normalizeScoreInput } from "./scoreRules.mjs";
 import { startMatchTimer, stopMatchTimer } from "./matchTimer.mjs";
+import { getGameCourtNumber } from "./courtNumbers.mjs";
 
 export const TEAM_CUP_TYPE = "Times/Equipes";
 export const TEAM_LEVELS = ["Principiante", "Iniciante", "D", "C", "B", "A"];
@@ -81,7 +82,14 @@ export function summarizeTeamMatch(game, target = 4) {
 }
 
 export function makeTeamMatch(game) {
-  return { ...game, teamCupLegs: Array.from({ length: 3 }, (_, i) => ({ matchKey: `${game.matchKey}_leg${i + 1}`, s1: "", s2: "", court: 1, courtNumberOverride: "", inProgress: false })) };
+  return { ...game, teamCupLegs: Array.from({ length: 3 }, (_, i) => ({ matchKey: `${game.matchKey}_leg${i + 1}`, s1: "", s2: "", court: game.court || 1, courtNumberOverride: "", inProgress: false })) };
+}
+
+export function teamCupCourtNumber(data, game, index, courtNumbers = data.courtNumbers || []) {
+  const leg = game?.teamCupLegs?.[index];
+  // Old matches stored court=1 on every leg. The parent game retains the
+  // original court assignment, while an explicit leg override always wins.
+  return getGameCourtNumber({ ...leg, court: game?.court || leg?.court || 1 }, courtNumbers || []);
 }
 export const teamCupGames = data => [...(data.schedule || []).flat(), ...(data.brackets || [])];
 export const hasTeamCupActivity = data => teamCupGames(data).some(game => game.teamCupLegs?.some(leg => leg.s1 !== "" || leg.s2 !== "" || leg.matchTimerFirstStartedAt));
@@ -283,22 +291,23 @@ export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
   }
   if (patch.inProgress === true || ("courtNumberOverride" in patch && leg.inProgress)) {
     if (wasFinished) throw new Error("A partida já foi finalizada.");
-    const court = String(patch.courtNumberOverride ?? leg.courtNumberOverride ?? "");
-    if (!court) throw new Error("Selecione a quadra antes de iniciar.");
+    const court = String(patch.courtNumberOverride || teamCupCourtNumber(next, game, index));
+    patch = { ...patch, courtNumberOverride: court };
     for (const other of teamCupGames(next)) {
       const otherResolved = resolveTeamCupGame(next, other);
       for (const [i, active] of (other.teamCupLegs || []).entries()) {
         if ((other.matchKey === key && i === index) || !active.inProgress || teamLegWinner(active, next.winningScore)) continue;
-        if (String(active.courtNumberOverride) === court) throw new Error("Esta quadra já está em uso.");
+        if (teamCupCourtNumber(next, other, i) === court) throw new Error("Esta quadra já está em uso.");
         const sameTeam = [...resolved.ids1, ...resolved.ids2].some(id => [...(otherResolved.ids1 || []), ...(otherResolved.ids2 || [])].includes(id));
         if (sameTeam && (other.matchKey !== key || teamSize(data) === 3 || index === 2 || i === 2)) throw new Error("Uma das equipes já está jogando.");
       }
     }
   }
+  // Capture elapsed time while inProgress is still true, before pausing.
+  if (patch.inProgress === false) stopMatchTimer(leg, { now });
   Object.assign(leg, patch);
   if (scoreEdit || patch.inProgress === true) leg.teamCupSides = [resolved.ids1[0], resolved.ids2[0]];
   if (patch.inProgress === true) startMatchTimer(leg, now);
-  if (patch.inProgress === false) stopMatchTimer(leg, { now });
   const finished = teamLegWinner(leg, data.winningScore);
   if (finished && (scoreEdit || leg.inProgress)) { stopMatchTimer(leg, { finished: true, now }); leg.inProgress = false; }
   else if (scoreEdit && wasFinished && !finished) { delete leg.matchTimerFinishedAt; }

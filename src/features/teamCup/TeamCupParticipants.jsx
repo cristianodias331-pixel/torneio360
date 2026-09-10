@@ -198,16 +198,27 @@ export default function TeamCupParticipants({ data, tournament, onChange }) {
   const normalize = value => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
   const filtered = entries.filter(e => normalize(e.athlete.name + " " + (e.team ? teamName(e.team) : "")).includes(normalize(search)));
   const filled = entries.filter(e => e.athlete.name.trim()).length;
+  const hasTeams = entries.some(e => e.team);
+  // Display only: keep each team's roster together without changing saved
+  // team order, group seeds or athlete identities.
+  const displayedTeams = [...data.players.teams]
+    .sort((a, b) => a.id.localeCompare(b.id, "pt-BR", { numeric: true }))
+    .map(team => ({ team, rows: filtered.filter(e => e.team?.id === team.id) }))
+    .filter(section => section.rows.length);
+  const participantRow = ({ athlete: a, team }, i) => <div className="tcp-row" key={a.id}>
+    <span className="tcp-number">{i + 1}</span><label className="tcp-name"><span>{team?.captainId === a.id ? "Nome · Capitão/ã" : "Nome"}</span><input aria-label={`Nome de ${a.name || a.id}`} placeholder="Nome do atleta" maxLength={100} value={a.name} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { name: e.target.value }))} /></label>
+    <label className="tcp-gender"><span>Masculino/Feminino</span><select aria-label={`Composição de ${a.name || a.id}`} value={a.gender} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { gender: e.target.value }))}><option value="H">Masculino</option><option value="M">Feminino</option></select></label>
+    <label className="tcp-level"><span>Nível</span><select aria-label={`Nível de ${a.name || a.id}`} value={a.level} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { level: e.target.value }))}><option value="">Não definido</option>{TEAM_LEVELS.map(level => <option key={level}>{level}</option>)}</select></label>
+  </div>;
   return <div className="tcp-participants">
     <div className="tcp-summary"><span><b>{filled}/{data.players.teams.length * teamSize(data)}</b> vagas preenchidas</span><span><b>{entries.filter(e => TEAM_LEVELS.includes(e.athlete.level)).length}</b> níveis definidos</span><span>{teamSize(data) === 4 ? "Squad · 2H + 2M" : "Trio · composição livre"}</span></div>
     <div className="tcp-toolbar"><button type="button" className="tcp-paste" disabled={locked} onClick={() => setDialog("paste")}><ClipboardPaste /> Colar lista</button><button type="button" className="tcp-organize" onClick={() => setDialog("organize")}><Grid3X3 /> Organizar grupos</button><label className="tcp-search"><Search /><input aria-label="Buscar pelo nome do atleta" placeholder="Buscar pelo nome do atleta" type="search" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
     <TeamCupVideoActions data={data} tournament={tournament} />
     <p className="tc-help">{locked ? "Jogos gerados: nomes e formação protegidos. Você pode buscar atletas e consultar a organização." : "Preencha os atletas abaixo ou cole uma lista. Em Organizar grupos, defina equipes, capitães e a distribuição dos times."}</p>
-    <div className="tcp-list">{filtered.map(({ athlete: a, team }, i) => <div className="tcp-row" key={a.id}>
-      <span className="tcp-number">{i + 1}</span><label className="tcp-name"><span>{team ? teamName(team) : "Lista para sorteio"}{team?.captainId === a.id ? " · Capitão/ã" : ""}</span><input aria-label={`Nome de ${a.name || a.id}`} placeholder="Nome do atleta" maxLength={100} value={a.name} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { name: e.target.value }))} /></label>
-      <label className="tcp-gender"><span>Masculino/Feminino</span><select aria-label={`Composição de ${a.name || a.id}`} value={a.gender} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { gender: e.target.value }))}><option value="H">Masculino</option><option value="M">Feminino</option></select></label>
-      <label className="tcp-level"><span>Nível</span><select aria-label={`Nível de ${a.name || a.id}`} value={a.level} disabled={locked || data.teamCup.drawStage === "captains"} onChange={e => onChange(d => updateTeamCupParticipant(d, a.id, { level: e.target.value }))}><option value="">Não definido</option>{TEAM_LEVELS.map(level => <option key={level}>{level}</option>)}</select></label>
-    </div>)}</div>{!filtered.length && <p className="tc-help">Nenhum atleta encontrado para essa busca.</p>}
+    {hasTeams ? <div className="tcp-list">{displayedTeams.map(({ team, rows }) => <section className="tcp-team" key={team.id} aria-label={`Participantes · ${teamName(team)}`}>
+      <h3>{teamName(team)}</h3>{rows.map(entry => participantRow(entry, team.athletes.findIndex(a => a.id === entry.athlete.id)))}
+    </section>)}</div> : <><h3 className="tcp-pool-title">Lista para sorteio</h3><div className="tcp-list tcp-pool-list">{filtered.map(entry => participantRow(entry, entries.indexOf(entry)))}</div></>}
+    {!filtered.length && <p className="tc-help">Nenhum atleta encontrado para essa busca.</p>}
     {dialog === "paste" && <ImportDialog data={data} onChange={onChange} onClose={() => setDialog(null)} />}
     {dialog === "organize" && <OrganizationDialog data={data} tournament={tournament} onChange={onChange} onClose={() => setDialog(null)} />}
   </div>;

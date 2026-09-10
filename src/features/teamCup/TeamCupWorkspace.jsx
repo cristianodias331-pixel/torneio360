@@ -12,7 +12,7 @@ import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
 import { recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
 import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets,
   TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
-  teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg } from "../../domain/teamCup.mjs";
+  teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg, teamCupCourtNumber } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
 import "../../styles/31-matches-and-brackets.css";
 import "./teamCup.css";
@@ -46,6 +46,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const state = teamMatchState(game, data.winningScore);
   const labels = legTitles(data.teamCup.kind);
   const leg = game.teamCupLegs[selected];
+  const courtNumber = teamCupCourtNumber(data, game, selected, courtOptions);
   const playable = teamLegAvailable(data, game, selected);
   const finished = teamLegWinner(leg, data.winningScore);
   const lockedGroups = game.phase === "groups" && data.brackets.length > 0;
@@ -54,9 +55,9 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const call = () => {
     const names = [game.ids1[0], game.ids2[0]].map(i => teamName(data.players.teams[i]));
     if ("speechSynthesis" in window) {
-      const speech = new SpeechSynthesisUtterance(labels[selected] + ". " + names[0] + " contra " + names[1] + ". Quadra " + leg.courtNumberOverride + ".");
+      const speech = new SpeechSynthesisUtterance(labels[selected] + ". " + names[0] + " contra " + names[1] + ". Quadra " + courtNumber + ".");
       speech.onerror = () => setAnnouncementStatus("Não foi possível reproduzir a chamada. Verifique o áudio do navegador.");
-      setAnnouncementStatus("Chamada: " + names.join(" × ") + " · Quadra " + leg.courtNumberOverride);
+      setAnnouncementStatus("Chamada: " + names.join(" × ") + " · Quadra " + courtNumber);
       speech.lang = "pt-BR"; window.speechSynthesis.speak(speech);
     } else setAnnouncementStatus("Este navegador não oferece chamada por voz. Use os times e a quadra exibidos no card.");
   };
@@ -69,12 +70,12 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         onClick={() => onLegChange(game.matchKey, selected, { inProgress: !leg.inProgress })}>{timerContent}</button> : <span className={timerClass}>{timerContent}</span>}
     </div>
     {!game.isBye && <div className="matchCardControls">
-      {readOnly ? <strong className="courtNameBadge">{leg.courtNumberOverride ? "Quadra " + leg.courtNumberOverride : "Quadra a definir"}</strong>
+      {readOnly ? <strong className="courtNameBadge">Quadra {courtNumber}</strong>
         : <button type="button" className="courtNameBadge" aria-label={"Quadra · confronto " + number + " · " + labels[selected]}
           disabled={!playable || Boolean(finished) || lockedGroups} onClick={() => setCourtEditorOpen(true)}>
-          {leg.courtNumberOverride ? "Quadra " + leg.courtNumberOverride : "Escolher quadra"} <ChevronDown size={13} aria-hidden="true" />
+          Quadra {courtNumber} <ChevronDown size={13} aria-hidden="true" />
         </button>}
-      {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || !leg.courtNumberOverride || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
+      {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
     <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
       <button type="button" key={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i + 1}ª</b><small>{label}</small></button>)}<span>Total<small>vitórias</small></span></div>
@@ -100,11 +101,11 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
       {selected === 2 && !state.decider && <small>Disponível somente se as duas primeiras partidas terminarem em 1 a 1.</small>}
       {announcementStatus && <small role="status">{announcementStatus}</small>}
     </footer>}
-    {courtEditorOpen && !readOnly && createPortal(<CourtAssignmentModal editor={{ game: leg }}
+    {courtEditorOpen && !readOnly && createPortal(<CourtAssignmentModal editor={{ game: { ...leg, court: game.court || leg.court } }}
       courtNumbers={[...new Set([...(courtOptions || []), ...(data.courtNumbers || [])])]}
-      currentNumber={leg.courtNumberOverride} currentLabel={!leg.courtNumberOverride ? "A definir" : undefined}
+      currentNumber={courtNumber}
       unavailableNumbers={unavailableCourts}
-      usedNumbers={[...data.schedule.flat(), ...data.brackets].flatMap(g => (g.teamCupLegs || []).filter(l => l !== leg && l.inProgress && !teamLegWinner(l, data.winningScore)).map(l => l.courtNumberOverride))}
+      usedNumbers={[...data.schedule.flat(), ...data.brackets].flatMap(g => (g.teamCupLegs || []).flatMap((l, i) => l !== leg && l.inProgress && !teamLegWinner(l, data.winningScore) ? [teamCupCourtNumber(data, g, i, courtOptions)] : []))}
       onSelect={value => { onLegChange(game.matchKey, selected, { courtNumberOverride: value }); onRegisterCourtNumber?.(value); setCourtEditorOpen(false); }}
       onClose={() => setCourtEditorOpen(false)} />, document.body)}
   </article>;
@@ -155,9 +156,9 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   function onLegChange(key, i, patch) {
     change(d => {
       const game = [...d.schedule.flat(), ...d.brackets].find(g => g.matchKey === key);
-      const court = String(patch.courtNumberOverride ?? game?.teamCupLegs[i]?.courtNumberOverride ?? "");
+      const court = String(patch.courtNumberOverride || teamCupCourtNumber(d, game, i, courtOptions));
       if ((patch.inProgress || ("courtNumberOverride" in patch && game?.teamCupLegs[i]?.inProgress)) && unavailableCourts.map(String).includes(court)) throw new Error("Essa quadra está indisponível ou em uso por outro torneio.");
-      const next = updateTeamCupLeg(d, key, i, patch);
+      const next = updateTeamCupLeg(d, key, i, patch.inProgress ? { ...patch, courtNumberOverride: court } : patch);
       return patch.courtNumberOverride ? { ...next, courtNumbers: [...new Set([...(next.courtNumbers || []), patch.courtNumberOverride])] } : next;
     });
   }

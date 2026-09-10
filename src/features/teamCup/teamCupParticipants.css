@@ -8,12 +8,23 @@
 .proDashboard.playAppShell .tcp-toolbar button.tcp-organize { background:#f3edfc !important; border-color:#9773c4 !important; color:#593286 !important; min-height:44px !important; }
 .tcp-search { display:flex; align-items:center; gap:10px; border:1px solid var(--ui-border, #cbd5e1); border-radius:11px; padding:0 12px; min-width:0; color:var(--ui-muted, #64748b); }
 .proDashboard.playAppShell .tcp-search input { width:100%; min-width:0; padding:10px 0 !important; margin:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
-.tcp-list { display:grid; gap:0; }
-.tcp-row { display:grid; grid-template-columns:26px minmax(140px,1fr) 120px 150px; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ui-border, #cbd5e1); }
+.tcp-participants { container-type:inline-size; container-name:teamParticipants; }
+.tcp-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
+.tcp-team { min-width:0; border:1px solid var(--ui-border, #cbd5e1); border-radius:12px; padding:12px; }
+.tcp-team h3, .tcp-pool-title { margin:0 0 4px; font-size:15px; overflow-wrap:anywhere; }
+.tcp-team .tcp-row:last-child { border-bottom:0; padding-bottom:0; }
+.tcp-row { display:grid; grid-template-columns:18px minmax(110px,1fr) 108px 114px; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--ui-border, #cbd5e1); min-width:0; }
+.tcp-row select { padding-left:8px !important; padding-right:22px !important; font-size:12px !important; }
 .tcp-row label { min-width:0; margin:0; display:grid; gap:6px; }
 .tcp-row label > span { font-size:11px; color:var(--ui-muted, #64748b); }
 .tcp-row input, .tcp-row select { margin:0; min-width:0; width:100%; }
 .tcp-number { color:var(--ui-muted, #64748b); font-size:12px; }
+@container teamParticipants (max-width:800px) { .tcp-list { grid-template-columns:1fr; } }
+@container teamParticipants (max-width:430px) {
+  .tcp-row { grid-template-columns:18px minmax(0,1fr) minmax(0,1fr); }
+  .tcp-name { grid-column:2 / -1; }
+  .tcp-gender { grid-column:2; }
+}
 html[data-theme="dark"] .proDashboard.playAppShell .tcp-toolbar button.tcp-organize { background:#2b203e !important; color:#e4d3ff !important; border-color:#8662b8 !important; }
 
 .tcorg-overlay { --org-bg:#fff; --org-surface:#f5f9fd; --org-card:#fff; --org-line:#c5d6e5; --org-text:#182e45; --org-muted:#5f798e; --org-purple:#7744a9; --org-selected:#f0e7fc; --org-green:#14633f; --org-green-bg:#e1f6e9; position:fixed; inset:0; z-index:14000; background:rgba(2,8,16,.78); display:flex; align-items:center; justify-content:center; padding:16px; font-family:Inter,"Segoe UI",sans-serif; }
