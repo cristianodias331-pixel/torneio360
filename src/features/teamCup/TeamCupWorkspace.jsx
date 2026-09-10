@@ -76,8 +76,10 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         </button>}
       {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
-    <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
-      <button type="button" key={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i + 1}ª</b><small>{label}</small></button>)}<span>Total<small>vitórias</small></span></div>
+    <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) => {
+      const isTrioPartida = data.teamCup.kind === "trio" && i < 2;
+      return <button type="button" key={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i + 1}ª</b><small className={isTrioPartida ? "tc-partida-label" : undefined}>{isTrioPartida ? "Partida" : label}</small></button>;
+    })}<span>Total<small>vitórias</small></span></div>
     <div className="matchTeamStack">{[1, 2].map((side, row) => {
         const team = data.players.teams[game["ids" + side]?.[0]];
         return <React.Fragment key={side}>{side === 2 && <div className="matchVsDivider" aria-hidden="true"><span>VS</span></div>}
