@@ -4014,7 +4014,7 @@ const expectedModalityLabels = [
   "Super 20 mista",
   "Simples (1 contra 1 por jogo)",
   "Torneio modelo Campeonato Cearense",
-  "Torneio modelo Campeonato Cearense — Individual",
+  "Simples/Individual",
   "Modelo Torneio 360",
 ];
 
@@ -4023,12 +4023,20 @@ for (const label of expectedModalityLabels) {
 }
 
 const premiumModalities = allowedByPlan.premium;
+for (const retiredType of ["Copa - 18 duplas", "Super 10 Mista (Dupla Aleatória)"]) {
+  assert.ok(Object.values(allowedByPlan).every(types => !types.includes(retiredType)), `${retiredType} ainda pode ser criada em algum plano.`);
+  assert.ok(modalityPickerGroups.every(group => !group.types.includes(retiredType)), `${retiredType} ainda aparece no catálogo de criação.`);
+  assert.ok(modalityConfig[retiredType], `${retiredType} precisa continuar reconhecida nos torneios já salvos.`);
+  const retiredLabel = getModalityDisplayName(retiredType);
+  assert.ok(!loginScreenSource.includes(`title="${retiredLabel}"`) && !mainSource.includes(`title="${retiredLabel}"`), `${retiredType} ainda é oferecida como modalidade disponível.`);
+}
+assert.equal(getModalityDisplayName("Campeonato Cearense Individual"), "Simples/Individual", "O modelo individual deve usar o novo nome sem alterar sua identidade salva.");
+assert.ok(premiumModalities.includes("Campeonato Cearense Individual"), "Simples/Individual deve continuar disponível para criação.");
 const premiumOrder = [
   "Super 12 Mista (Dupla Fixa)",
   "Super 08",
   "Super 16 Mista (Dupla Fixa)",
   "Super 12",
-  "Super 10 Mista (Dupla Aleatória)",
   "Super 12 Mista (Dupla Aleatória)",
   "Super 16 Mista (Dupla Aleatória)",
   "Super 20 Mista (Dupla Aleatória)",

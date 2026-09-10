@@ -8037,13 +8037,6 @@ setNewPublicInfo({
       />
     )}
 
-    {allowedTypes.includes("Super 10 Mista (Dupla Aleatória)") && (
-      <Info
-        title="Super 10 mista"
-        text="Formato misto com 10 participantes: 5 homens e 5 mulheres. São 5 rodadas, com 2 jogos por rodada, e em cada rodada descansam 1 homem e 1 mulher. Ao final, todos jogam 4 partidas e descansam 1 vez. O sistema monta automaticamente as duplas mistas, organiza as quadras, registra os placares e calcula rankings separados masculino e feminino. É ideal para torneios de hoje, eventos rápidos e grupos menores, mantendo equilíbrio de jogos entre todos os atletas."
-      />
-    )}
-
     {allowedTypes.includes("Super 12 Mista (Dupla Aleatória)") && (
       <Info
         title="Super 12 mista"
@@ -8069,13 +8062,6 @@ setNewPublicInfo({
       <Info
         title="Simples (1 contra 1 por jogo)"
         text="Formato individual para 4, 6, 8, 10, 12 ou 14 jogadores. O organizador escolhe a quantidade e o sistema monta automaticamente todos contra todos: cada atleta enfrenta todos os demais exatamente uma vez, sem folgas nas rodadas. O ranking geral individual acompanha vitórias, total de games e saldo de games."
-      />
-    )}
-
-    {allowedTypes.includes("Copa - 18 duplas") && (
-      <Info
-        title="Copa - 18 duplas"
-        text="Formato de Copa com 18 duplas, dividido em 6 grupos de 3 duplas. Cada grupo joga sua fase classificatória, e o sistema calcula a classificação com base nos critérios definidos. Os melhores avançam para a chave principal; os 2 melhores gerais podem receber BYE, entrando em fase mais avançada. Também há disputa paralela para duplas específicas, como terceiros colocados, permitindo manter mais atletas em atividade. É um formato ideal para torneios grandes, com organização mais profissional e várias fases."
       />
     )}
 
