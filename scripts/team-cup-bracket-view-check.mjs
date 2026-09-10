@@ -30,6 +30,12 @@ try {
   for (const kind of ["trio", "squad"]) for (const count of cup.TEAM_COUNTS) {
     const data = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(count, kind), () => .4)));
     const original = JSON.stringify(data);
+    const groupGame = data.schedule[0][0];
+    const groupMarkup = renderToStaticMarkup(React.createElement(TeamCupMatchCard, { data, game: groupGame, number: 1, round: "Rodada 1", onLegChange() {} }));
+    assert.equal((groupMarkup.match(/<input/g) || []).length, 4);
+    assert(!/<input[^>]*disabled/.test(groupMarkup), "Completed group scores remain editable after generating both brackets");
+    const publicGroup = renderToStaticMarkup(React.createElement(TeamCupMatchCard, { data, game: groupGame, number: 1, round: "Rodada 1", readOnly: true }));
+    assert(!publicGroup.includes("<input"), "Unlocking organizer scores never enables public editing");
     for (const phase of ["main", "repechage"]) for (const readOnly of [false, true]) {
       const games = data.brackets.filter(game => game.phase === phase);
       const placement = games.filter(game => game.roundName.includes("3º"));

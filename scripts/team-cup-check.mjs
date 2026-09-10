@@ -33,6 +33,62 @@ export function finishGroups(data) {
   for (const tie of cup.teamCupQualified(data).unresolvedCampaignTies) data.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
   return data;
 }
+function checkScoreCorrections() {
+  const confirmationRequired = error => error.code === "TEAM_CUP_SCORE_CONFIRMATION" && error.impacts.length > 0;
+  for (const kind of ["trio", "squad"]) {
+    const groups = finishGroups(cup.generateTeamCupGroups(fixture(6, kind), seed()));
+    const generated = cup.generateTeamCupBrackets(groups);
+    const game = groups.schedule[0][0], key = game.matchKey;
+    const side = game.teamCupLegs[0].s1 === "2" ? "s1" : "s2";
+    const patch = { [side]: "3" };
+    assert.equal(cup.updateTeamCupLeg(generated, key, 0, { [side]: "2" }), generated, "An unchanged score does not clear brackets");
+    const edited = cup.updateTeamCupLeg(generated, key, 0, patch);
+    assert.equal(edited.brackets.length, 0, "Like Copa, unplayed brackets can be generated again after a group correction");
+    assert.equal(edited.schedule[0][0].teamCupLegs[0][side], "3");
+    assert.deepEqual(edited.players, generated.players);
+    assert.deepEqual(edited.schedule.flat().slice(1), generated.schedule.flat().slice(1));
+    assert.deepEqual(edited.schedule[0][0].teamCupLegs.slice(1), game.teamCupLegs.slice(1));
+    assert(generated.brackets.length > 0, "The source is never modified by planning a correction");
+    for (const phase of ["main", "repechage"]) {
+      const opening = generated.brackets.find(g => g.phase === phase && !g.isBye);
+      const played = cup.updateTeamCupLeg(generated, opening.matchKey, 0, { inProgress: true }, 1000000);
+      const original = JSON.stringify(played);
+      assert.throws(() => cup.updateTeamCupLeg(played, key, 0, patch), confirmationRequired, "Even a called match with no score must be confirmed before clearing");
+      assert.equal(JSON.stringify(played), original, "Canceling keeps every score and timer untouched");
+      const confirmed = cup.updateTeamCupLeg(played, key, 0, patch, 1005000, { confirmedScoreChange: true });
+      assert.equal(confirmed.brackets.length, 0);
+      assert.deepEqual(confirmed.schedule, edited.schedule);
+      assert.deepEqual(confirmed.players, played.players);
+    }
+    let split = cup.generateTeamCupGroups(fixture(6, kind), seed());
+    const sk = split.schedule[0][0].matchKey;
+    split = finish(split, sk, [[6, 2], [2, 6], [6, 3]]);
+    assert.throws(() => cup.updateTeamCupLeg(split, sk, 1, { s1: "6", s2: "2" }), confirmationRequired);
+    const straight = cup.updateTeamCupLeg(split, sk, 1, { s1: "6", s2: "2" }, 1000000, { confirmedScoreChange: true });
+    assert.equal(cup.teamMatchState(straight.schedule[0][0], 6).winner, "team1");
+    assert.deepEqual(straight.schedule[0][0].teamCupLegs[2], cup.makeTeamMatch(split.schedule[0][0]).teamCupLegs[2]);
+    assert.deepEqual(straight.schedule[0][0].teamCupLegs[0], split.schedule[0][0].teamCupLegs[0]);
+    const reopened = cup.updateTeamCupLeg(split, sk, 0, { s1: "" }, 1000000, { confirmedScoreChange: true });
+    assert.equal(reopened.schedule[0][0].teamCupLegs[0].s1, "");
+    assert.equal(reopened.schedule[0][0].teamCupLegs[1].s1, kind === "trio" ? "" : "2", "Squad keeps its independent second set");
+    assert.equal(reopened.schedule[0][0].teamCupLegs[2].s1, "");
+    assert(cup.validateTeamCupMatchState(reopened));
+
+    let completed = generated;
+    for (const bracket of completed.brackets) if (!bracket.isBye) completed = finish(completed, bracket.matchKey);
+    const semi = completed.brackets.find(g => g.phase === "main" && g.roundName !== "Final" && !g.isBye);
+    const original = JSON.stringify(completed);
+    assert.throws(() => cup.updateTeamCupLeg(completed, semi.matchKey, 0, { s1: "2", s2: "6" }), confirmationRequired);
+    assert.equal(JSON.stringify(completed), original);
+    const corrected = cup.updateTeamCupLeg(completed, semi.matchKey, 0, { s1: "2", s2: "6" }, 1000000, { confirmedScoreChange: true });
+    const affected = corrected.brackets.filter(g => g.source1 === semi.matchKey || g.source2 === semi.matchKey);
+    assert(affected.length > 0 && affected.every(g => g.teamCupLegs.every(l => l.s1 === "" && l.s2 === "" && !l.matchTimerStartedAt)), "Changed opponents never inherit old scores or clocks");
+    assert.deepEqual(corrected.brackets.filter(g => g.phase === "repechage"), completed.brackets.filter(g => g.phase === "repechage"), "An unrelated parallel branch is preserved");
+    assert.deepEqual(corrected.schedule, completed.schedule);
+    assert(cup.validateTeamCupMatchState(corrected));
+  }
+}
+
 function checkSetTimers() {
   for (const kind of ["trio", "squad"]) for (const phase of ["groups", "main", "repechage"]) for (const split of [false, true]) {
     let data = cup.generateTeamCupGroups(fixture(6, kind), seed());
@@ -48,6 +104,9 @@ function checkSetTimers() {
     edit(0, { s1: "6" }, 1020000);
     assert(game().teamCupLegs[0].inProgress, "A partial score does not finish the set");
     edit(0, { s2: "2" }, 1030000);
+    const finishedAt = game().teamCupLegs[0].matchTimerFinishedAt;
+    edit(0, { s2: "3" }, 1300000);
+    assert.equal(game().teamCupLegs[0].matchTimerFinishedAt, finishedAt, "Correcting a completed score keeps its recorded end time");
     assert.equal(getMatchElapsedSeconds(game().teamCupLegs[0], 1500000), 30);
     assert.equal(game().teamCupLegs[0].inProgress, false);
     assert.equal(cup.teamCupNextLeg(data, game()), 1);
@@ -139,6 +198,7 @@ function checkConsolationByes() {
   console.log("Consolation: BYEs preservados em 672 distribuições, sem duplicações e com ajustes de confronto somente entre equipes sem BYE.");
 }
 export function runTeamCupChecks() {
+  checkScoreCorrections();
   checkSetTimers();
   checkConsolationByes();
   const initial = createInitialData(cup.TEAM_CUP_TYPE, modalityConfig[cup.TEAM_CUP_TYPE]);
@@ -231,7 +291,7 @@ export function runTeamCupChecks() {
   assert.equal(getScoreWinnerSide(won.schedule[0][0], 6), "team1");
   assert.equal(won.schedule[0][0].s1, "13");
   assert.equal(won.schedule[0][0].s2, "12");
-  assert.throws(() => cup.updateTeamCupLeg(won, key, 1, { s1: "6", s2: "0" }), /invalidaria/);
+  assert.throws(() => cup.updateTeamCupLeg(won, key, 1, { s1: "6", s2: "0" }), { code: "TEAM_CUP_SCORE_CONFIRMATION" });
   const rows = cup.teamCupRankings(won).flatMap(g => g.rows);
   assert.equal(rows.reduce((n, r) => n + r.w, 0), 1);
   assert.equal(rows.reduce((n, r) => n + r.bal, 0), 0);
@@ -336,7 +396,7 @@ export function runTeamCupChecks() {
   const changedGroups = cup.updateTeamCupLeg(baseGroups, baseGroups.schedule[0][0].matchKey, 0, { s2: "1" });
   assert(mergeConcurrentTournamentData(baseGroups, changedGroups, generated).conflicts.length > 0);
   let knockout = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(), seed())));
-  assert.throws(() => cup.updateTeamCupLeg(knockout, knockout.schedule[0][0].matchKey, 0, { s1: "0" }), /protegidos/);
+  assert.equal(cup.updateTeamCupLeg(knockout, knockout.schedule[0][0].matchKey, 0, { s2: "3" }).brackets.length, 0, "Group scores stay editable after bracket generation");
   assert.equal(knockout.cupConfig.repechageEnabled, false);
   assert(knockout.brackets.some(g => g.phase === "repechage"), "Hidden Consolation remains prepared");
   const semi = knockout.brackets.find(g => !g.isBye);
@@ -344,7 +404,7 @@ export function runTeamCupChecks() {
   for (const g of knockout.brackets.filter(g => g.roundName !== "Final" && !g.isBye && g.matchKey !== semi.matchKey)) knockout = finish(knockout, g.matchKey);
   const final = knockout.brackets.find(g => g.roundName === "Final");
   knockout = cup.updateTeamCupLeg(knockout, final.matchKey, 0, { s1: "6", s2: "0" });
-  assert.throws(() => finish(knockout, semi.matchKey, [[0, 6], [0, 6]]), /mudaria|registrada/);
+  assert.throws(() => finish(knockout, semi.matchKey, [[0, 6], [0, 6]]), { code: "TEAM_CUP_SCORE_CONFIRMATION" });
   console.log("Times/Equipes: formação, 56 torneios completos, ranking, Consolation, timers, concorrência e preservação de dados aprovados.");
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) runTeamCupChecks();

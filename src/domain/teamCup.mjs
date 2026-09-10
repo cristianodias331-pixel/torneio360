@@ -8,7 +8,7 @@ import { buildCopinhaBracketFromPlan, expandBracketPlanWithVisualByes } from "./
 import { buildCearenseEliminationRounds } from "./bracketConstruction.mjs";
 import { resolveBracketGame } from "./bracketProgression.mjs";
 import { getScoreWinnerSide, normalizeScoreInput } from "./scoreRules.mjs";
-import { startMatchTimer, stopMatchTimer } from "./matchTimer.mjs";
+import { startMatchTimer, stopMatchTimer, resetMatchTimer } from "./matchTimer.mjs";
 import { getGameCourtNumber } from "./courtNumbers.mjs";
 
 export const TEAM_CUP_TYPE = "Times/Equipes";
@@ -403,18 +403,36 @@ export function teamCupNextLeg(data, game) {
   return (pending.find(({ leg }) => leg.inProgress) || pending[0])?.index ?? null;
 }
 
-export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
+const legHasActivity = leg => leg.s1 !== "" || leg.s2 !== "" || leg.inProgress || Boolean(leg.matchTimerFirstStartedAt);
+function clearTeamCupLeg(leg) {
+  const cleared = resetMatchTimer({ ...leg, s1: "", s2: "", inProgress: false });
+  delete cleared.teamCupSides;
+  return cleared;
+}
+
+export function updateTeamCupLeg(data, key, index, patch, now = Date.now(), { confirmedScoreChange = false } = {}) {
   const next = structuredClone(data);
   const game = teamCupGames(next).find(g => g.matchKey === key);
   if (!game) throw new Error("Confronto não encontrado.");
   const resolved = resolveTeamCupGame(next, game);
   if (!teamLegAvailable(next, resolved, index)) throw new Error("Este set ainda não está liberado.");
-  if (game.phase === "groups" && next.brackets.length && ("s1" in patch || "s2" in patch)) throw new Error("Os grupos já definiram as eliminatórias. Seus placares estão protegidos.");
   const leg = game.teamCupLegs[index];
   const scoreEdit = "s1" in patch || "s2" in patch;
+  const impacts = [];
   const wasFinished = teamLegWinner(leg, data.winningScore);
   if (scoreEdit) {
     for (const side of ["s1", "s2"]) if (side in patch) patch = { ...patch, [side]: normalizeScoreInput(patch[side], data.winningScore) };
+    if (Object.keys(patch).every(field => leg[field] === patch[field])) return data;
+    // Match the existing Copa flow: group edits invalidate generated brackets.
+    // Played or called brackets require the standard confirmation first.
+    if (game.phase === "groups" && next.brackets.length) {
+      if (next.brackets.some(g => g.teamCupLegs.some(legHasActivity))) {
+        impacts.push("As chaves finais e a disputa paralela serão removidas, incluindo seus placares e cronômetros, para serem geradas novamente após a correção.");
+      }
+      next.brackets = [];
+      next.cupConfig.tieBreakOverrides = {};
+      next.cupConfig.campaignTieBreakOverrides = {};
+    }
   }
   if (patch.inProgress === true || ("courtNumberOverride" in patch && leg.inProgress)) {
     if (wasFinished) throw new Error("O set já foi finalizado.");
@@ -436,11 +454,21 @@ export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
   if (scoreEdit || patch.inProgress === true) leg.teamCupSides = [resolved.ids1[0], resolved.ids2[0]];
   if (patch.inProgress === true) startMatchTimer(leg, now);
   const finished = teamLegWinner(leg, data.winningScore);
-  if (finished && (scoreEdit || leg.inProgress)) { stopMatchTimer(leg, { finished: true, now }); leg.inProgress = false; }
+  if (finished && (scoreEdit || leg.inProgress)) {
+    if (!wasFinished || leg.inProgress) stopMatchTimer(leg, { finished: true, now });
+    leg.inProgress = false;
+  }
   else if (scoreEdit && wasFinished && !finished) { delete leg.matchTimerFinishedAt; }
   const state = teamMatchState(game, data.winningScore);
-  const third = game.teamCupLegs[2];
-  if (!state.decider && (third.s1 !== "" || third.s2 !== "" || third.matchTimerFirstStartedAt)) throw new Error("Essa correção invalidaria o terceiro set já registrado. Nenhum dado foi apagado.");
+  if (scoreEdit) {
+    for (const i of [1, 2]) {
+      const invalidated = i === 1 ? teamSize(data) === 3 && !state.winners[0] : !state.decider;
+      if (invalidated && legHasActivity(game.teamCupLegs[i])) {
+        impacts.push(`O ${i + 1}º set deste confronto ficará incompatível com o novo placar. Seu placar e cronômetro serão removidos para um novo registro.`);
+        game.teamCupLegs[i] = clearTeamCupLeg(game.teamCupLegs[i]);
+      }
+    }
+  }
   Object.assign(game, summarizeTeamMatch(game, next.winningScore));
   // A changed upstream winner must never transfer a played score to new opponents.
   for (const stored of next.brackets) {
@@ -448,8 +476,16 @@ export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
     const current = resolveTeamCupGame(next, stored);
     const before = old && resolveTeamCupGame(data, old);
     if (before && JSON.stringify([before.ids1, before.ids2]) !== JSON.stringify([current.ids1, current.ids2])
-      && stored.teamCupLegs.some(l => l.s1 !== "" || l.s2 !== "" || l.matchTimerFirstStartedAt)) throw new Error("Essa correção mudaria os times de uma partida já registrada. Nenhum dado foi apagado.");
+      && stored.teamCupLegs.some(legHasActivity)) {
+      if (!scoreEdit) throw new Error("Essa alteração mudaria os times de uma partida já registrada.");
+      impacts.push(`${stored.roundName}: os adversários de um confronto já registrado mudarão. Os placares e cronômetros desse confronto serão removidos.`);
+      current.teamCupLegs = current.teamCupLegs.map(clearTeamCupLeg);
+      current.s1 = ""; current.s2 = "";
+    }
     Object.assign(stored, current);
+  }
+  if (impacts.length && !confirmedScoreChange) {
+    throw Object.assign(new Error("Confirme a correção do placar e os resultados afetados."), { code: "TEAM_CUP_SCORE_CONFIRMATION", impacts });
   }
   validateTeamCupMatchState(next);
   return next;

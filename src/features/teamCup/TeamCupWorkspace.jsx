@@ -65,7 +65,6 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const courtNumber = teamCupCourtNumber(data, game, selected, courtOptions);
   const playable = teamLegAvailable(data, game, selected);
   const finished = teamLegWinner(leg, data.winningScore);
-  const lockedGroups = game.phase === "groups" && data.brackets.length > 0;
   const advanceScoreFocus = (index, side, currentInput) => {
     const otherInput = scoreInputs.current[`${index}-${side === 1 ? 2 : 1}`];
     if (otherInput && !otherInput.disabled && otherInput.value === "") {
@@ -101,17 +100,17 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const timerContent = <><span>{game.isBye ? "BYE" : finished ? "Finalizado" : !playable ? "Aguardando" : leg.inProgress ? "● Em jogo" : "▷ A chamar"}</span>{!game.isBye && <time className="matchStatusTimer">{formatMatchDuration(getMatchElapsedSeconds(leg, now))}</time>}</>;
   return <article className={`gameCard universalMatchCard tc-match ${state.winner || game.isBye ? "gameFinished" : "gameWaiting"} ${game.isBye ? "universalMatchCard--bye" : ""}`} aria-label={round + " · Confronto " + number}>
     <div className="matchCardMeta"><span className="matchCardPhase">{round}</span>
-      {!readOnly && playable && !finished && !lockedGroups ? <button type="button" className={timerClass} aria-pressed={Boolean(leg.inProgress)}
+      {!readOnly && playable && !finished ? <button type="button" className={timerClass} aria-pressed={Boolean(leg.inProgress)}
         title={leg.inProgress ? "Pausar cronômetro" : "Iniciar cronômetro"} aria-label={labels[selected] + (leg.inProgress ? " · Pausar cronômetro" : " · Iniciar cronômetro")}
         onClick={() => onLegChange(game.matchKey, selected, { inProgress: !leg.inProgress })}>{timerContent}</button> : <span className={timerClass}>{timerContent}</span>}
     </div>
     {!game.isBye && <div className="matchCardControls">
       {readOnly ? <strong className="courtNameBadge">Quadra {courtNumber}</strong>
         : <button type="button" className="courtNameBadge" aria-label={"Quadra · confronto " + number + " · " + labels[selected]}
-          disabled={!playable || Boolean(finished) || lockedGroups} onClick={() => setCourtEditorOpen(true)}>
+          disabled={!playable || Boolean(finished)} onClick={() => setCourtEditorOpen(true)}>
           Quadra {courtNumber} <ChevronDown size={13} aria-hidden="true" />
         </button>}
-      {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
+      {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished)} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
     {game.isBye ? <div className="matchTeamStack">{[...game.ids1, ...game.ids2].map(id => {
       const team = data.players.teams[id];
@@ -137,7 +136,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
                 ref={input => { scoreInputs.current[`${i}-${side}`] = input; }}
                 enterKeyHint={part["s" + (side === 1 ? 2 : 1)] === "" ? "next" : "done"}
                 aria-label={(team ? teamName(team) : "Aguardando") + " · " + labels[i] + " · games"}
-                value={part["s" + side]} disabled={!teamLegAvailable(data, game, i) || lockedGroups}
+                value={part["s" + side]} disabled={!teamLegAvailable(data, game, i)}
                 onFocus={() => setSelected(i)}
                 onChange={e => changeScore(e, i, side)}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); advanceScoreFocus(i, side, e.currentTarget); } }} />}
@@ -165,6 +164,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [formatConfirmation, setFormatConfirmation] = useState(null);
+  const [scoreConfirmation, setScoreConfirmation] = useState(null);
   const drawPresentation = useTeamCupDrawPresentation();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
@@ -207,22 +207,40 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   function formation(value) {
     change(d => setTeamCupFormation(d, value));
   }
-  function onLegChange(key, i, patch) {
+  function onLegChange(key, i, patch, { confirmedScoreChange = false, source } = {}) {
     if (readOnly) return false;
     const changedAt = Date.now();
+    const scoreEdit = "s1" in patch || "s2" in patch;
     const transform = d => {
+      if (source && JSON.stringify(d) !== source) throw new Error("Os dados foram atualizados. Confira o placar e faça a correção novamente.");
       const game = [...d.schedule.flat(), ...d.brackets].find(g => g.matchKey === key);
       const court = String(patch.courtNumberOverride || teamCupCourtNumber(d, game, i, courtOptions));
       if ((patch.inProgress || ("courtNumberOverride" in patch && game?.teamCupLegs[i]?.inProgress)) && unavailableCourts.map(String).includes(court)) throw new Error("Essa quadra está indisponível ou em uso por outro torneio.");
-      const next = updateTeamCupLeg(d, key, i, patch.inProgress ? { ...patch, courtNumberOverride: court } : patch, changedAt);
+      const next = updateTeamCupLeg(d, key, i, patch.inProgress ? { ...patch, courtNumberOverride: court } : patch, changedAt, { confirmedScoreChange });
       return patch.courtNumberOverride ? { ...next, courtNumbers: [...new Set([...(next.courtNumbers || []), patch.courtNumberOverride])] } : next;
     };
     // Return a synchronous rejection to the card so an unavailable court does
     // not trigger a voice call or move score focus. Revalidate the latest data
     // in the functional update to preserve concurrent changes.
-    try { transform(data); } catch (error) { setMessage(error.message); return false; }
-    change(transform);
+    try { transform(data); } catch (error) {
+      if (error.code === "TEAM_CUP_SCORE_CONFIRMATION") {
+        setScoreConfirmation({ key, i, patch, source: JSON.stringify(data),
+          title: "Alterar o placar?",
+          message: "Esta correção afeta resultados que já foram registrados.",
+          impacts: ["O novo placar será salvo.", ...error.impacts, "Os participantes e os demais placares dos grupos serão mantidos."],
+          confirmLabel: "Sim, corrigir placar" });
+      } else setMessage(error.message);
+      return false;
+    }
+    // A direct organizer edit, including erasing a score, must also persist
+    // through the same critical-data guard used by the other modalities.
+    change(transform, { allowScoreRegression: scoreEdit });
     return true;
+  }
+  function confirmScoreChange() {
+    const { key, i, patch, source } = scoreConfirmation;
+    setScoreConfirmation(null);
+    onLegChange(key, i, patch, { confirmedScoreChange: true, source });
   }
   function presentDraw(title, names, transform) {
     if (readOnly || drawPresentation.busy) return;
@@ -248,7 +266,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   }
   const saveIndicator = readOnly ? null : savingBadge || <span className="savingBadge saved">💾 {savingStatus}</span>;
   const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} onRegisterCourtNumber={onRegisterCourtNumber} readOnly={readOnly} courtOptions={courtOptions} unavailableCourts={unavailableCourts} />;
-  return <><section className="appPage tc-workspace" inert={drawPresentation.busy || Boolean(formatConfirmation)}>
+  return <><section className="appPage tc-workspace" inert={drawPresentation.busy || Boolean(formatConfirmation) || Boolean(scoreConfirmation)}>
     <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
       <div><div className="tournamentHeaderTitleRow"><h1>{tournament.name}</h1></div>
         <div className="tournamentHeaderMeta" id="tc-header-details"><span><Trophy aria-hidden="true" /> Times/Equipes · {data.teamCup.kind === "squad" ? "Squad" : "Trio"}</span><span><Users aria-hidden="true" /> {teams.length} equipes · {teamSize(data)} atletas por equipe</span></div></div>
@@ -341,5 +359,6 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         title={matchesTab === "main" ? data.cupConfig.mainBracketName : data.cupConfig.repechageName} />}
       </>}
     </section>}
-  </section><ConfirmRegenerationModal confirmation={formatConfirmation} onCancel={() => setFormatConfirmation(null)} onConfirm={confirmFormatChange} />{drawPresentation.overlay}</>;
+  </section><ConfirmRegenerationModal confirmation={formatConfirmation} onCancel={() => setFormatConfirmation(null)} onConfirm={confirmFormatChange} />
+    <ConfirmRegenerationModal confirmation={scoreConfirmation} onCancel={() => setScoreConfirmation(null)} onConfirm={confirmScoreChange} />{drawPresentation.overlay}</>;
 }
