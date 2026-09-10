@@ -4,12 +4,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 import { fixture, finishGroups } from "./team-cup-check.mjs";
 import * as cup from "../src/domain/teamCup.mjs";
+import { teamCupPodium } from "../src/domain/teamCupPodium.mjs";
 
 const server = await createServer({ configFile: false, logLevel: "error", server: { middlewareMode: true, hmr: false }, appType: "custom" });
 try {
   const { default: TeamCupBracketView } = await server.ssrLoadModule("/src/features/teamCup/TeamCupBracketView.jsx");
   const { TeamCupMatchCard } = await server.ssrLoadModule("/src/features/teamCup/TeamCupWorkspace.jsx");
   const { BracketColumn } = await server.ssrLoadModule("/src/features/brackets/CupBracketView.jsx");
+  const { default: CupPodiumView } = await server.ssrLoadModule("/src/features/ranking/CupPodiumView.jsx");
+  const { default: TeamCupRoster } = await server.ssrLoadModule("/src/features/teamCup/TeamCupRoster.jsx");
   for (const kind of ["trio", "squad"]) for (const count of cup.TEAM_COUNTS) {
     const data = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(count, kind), () => .4)));
     const original = JSON.stringify(data);
@@ -46,7 +49,29 @@ try {
     speakBracketRound() {}, stopSpeech() {},
   }));
   assert(classic.includes("Chamar fase") && classic.includes("Parar"), "Existing Copa actions keep their default behavior");
-  console.log("Team cup bracket view: 56 formats, main/parallel/public trees, compact BYEs and preserved data approved.");
+  for (const kind of ["trio", "squad"]) {
+    let data = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(6, kind), () => .4)));
+    data = cup.setTeamCupConsolationEnabled(data, true);
+    for (const game of data.brackets) if (!game.isBye) {
+      for (let set = 0; set < 2; set++) data = cup.updateTeamCupLeg(data, game.matchKey, set, { s1: "6", s2: "2" });
+    }
+    const original = JSON.stringify(data);
+    for (const phase of ["main", "repechage"]) {
+      const podium = teamCupPodium(data, phase), variant = phase === "main" ? "main" : "parallel";
+      const shown = podium.slice(0, phase === "main" ? 3 : 1);
+      const markup = renderToStaticMarkup(React.createElement(CupPodiumView, { podium, variant,
+        renderParticipants: item => React.createElement(TeamCupRoster, { team: data.players.teams[item.id] }),
+      }));
+      assert.equal((markup.match(/class="tc-roster-member"/g) || []).length, shown.length * cup.teamSize(data));
+      assert.equal((markup.match(/cupPodiumNameWithRoster/g) || []).length, shown.length);
+      assert(markup.includes("cupPodiumRosterViewport"));
+      for (const item of shown) for (const athlete of data.players.teams[item.id].athletes) assert(markup.includes(athlete.name), "Podium includes each winning team's complete roster");
+      const legacy = renderToStaticMarkup(React.createElement(CupPodiumView, { podium, variant }));
+      assert(!legacy.includes("tc-roster") && !legacy.includes("cupPodiumRosterViewport"), "Other modalities retain their original podium layout");
+    }
+    assert.equal(JSON.stringify(data), original, "Adding roster labels does not alter ranking results");
+  }
+  console.log("Team cup bracket view: 56 formats, main/parallel/public trees, compact BYEs, podium rosters and preserved data approved.");
 } finally {
   await server.close();
 }

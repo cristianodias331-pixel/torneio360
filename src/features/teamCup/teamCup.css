@@ -44,6 +44,14 @@
 .tc-roster.tc-roster-paired { display:grid; grid-template-columns:repeat(2,max-content); width:max-content; gap:2px 0; overflow-wrap:normal; }
 .tc-roster-paired .tc-roster-member { white-space:nowrap; overflow-wrap:normal; }
 .tc-roster-separator { white-space:pre; }
+/* Preserve the podium's own name size, including its larger single champion. */
+.tc-workspace .cupRankingSplit { grid-template-columns:repeat(auto-fit,minmax(min(100%,720px),1fr)); }
+.tc-workspace .cupPodiumRosterViewport { min-width:0; overflow-x:auto; scrollbar-width:thin; }
+.tc-workspace .cupPodiumRosterViewport .cupPodiumGrid { grid-template-columns:repeat(3,minmax(max-content,1fr)) !important; width:100%; min-width:max-content; }
+.tc-workspace .cupPodiumRosterViewport .cupPodiumGrid.singleChampion { grid-template-columns:minmax(max-content,430px) !important; }
+.tc-workspace .cupPodiumNameWithRoster { display:block; overflow:visible; -webkit-line-clamp:unset; }
+.tc-workspace .cupPodiumNameWithRoster .tc-roster { margin:6px auto 0; text-align:left; }
+.tc-workspace .cupPodiumNameWithRoster span { font-size:inherit; font-weight:inherit; line-height:inherit; color:inherit !important; }
 .tc-score-scroll { min-width:0; overflow-x:auto; scrollbar-width:thin; }
 .tc-score-table { display:grid; grid-template-columns:minmax(max-content,1fr) repeat(2,52px) 73px; gap:5px; width:100%; min-width:max-content; }
 .tc-score-table > .matchTeamStack { display:contents; }
