@@ -119,6 +119,8 @@ html[data-theme="dark"] .tcorg-overlay { --org-bg:#081e2d; --org-surface:#0b2639
 .tcorg-import-row label > span { display:none; }
 .tcorg-dialog .tcorg-import-row textarea, .tcorg-dialog .tcorg-import-row select { width:100%; height:44px; font-size:12px; line-height:22px; padding:10px; display:block; }
 .tcorg-import-row textarea { resize:vertical; min-height:44px; max-height:100px; }
+.tcorg-dialog .tcorg-import-row textarea.tcorg-paste-names { height:150px; min-height:150px; max-height:320px; padding:13px 14px; border-radius:14px; font-size:13px; line-height:1.55; }
+.tcorg-import-row:has(.tcorg-paste-names) { align-items:start; }
 .tcorg-dialog .tcorg-remove-row { padding:8px; min-height:36px; }
 .tcorg-dialog .tcorg-add-row { color:var(--org-purple); margin-top:4px; }
 .tcorg-import-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
