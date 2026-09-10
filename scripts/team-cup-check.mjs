@@ -92,7 +92,7 @@ export function runTeamCupChecks() {
   assert.throws(() => cup.validateTeamCupTeams(duplicate), /repetidos/);
   d = cup.generateTeamCupGroups(fixture(), seed());
   const key = d.schedule[0][0].matchKey;
-  assert.throws(() => cup.updateTeamCupLeg(d, key, 1, { s1: "6", s2: "0" }), /liberada/);
+  assert.throws(() => cup.updateTeamCupLeg(d, key, 1, { s1: "6", s2: "0" }), /set ainda não está liberado/);
   const defaultStarted = cup.updateTeamCupLeg(d, key, 0, { inProgress: true }, 1000000);
   assert.equal(defaultStarted.schedule[0][0].teamCupLegs[0].courtNumberOverride, "1");
   assert.equal(getMatchElapsedSeconds(defaultStarted.schedule[0][0].teamCupLegs[0], 1006000), 6);
@@ -126,7 +126,7 @@ export function runTeamCupChecks() {
   const rows = cup.teamCupRankings(won).flatMap(g => g.rows);
   assert.equal(rows.reduce((n, r) => n + r.w, 0), 1);
   assert.equal(rows.reduce((n, r) => n + r.bal, 0), 0);
-  assert.throws(() => cup.updateTeamCupLeg(finish(d, key), key, 2, { s1: "6" }), /liberada/);
+  assert.throws(() => cup.updateTeamCupLeg(finish(d, key), key, 2, { s1: "6" }), /set ainda não está liberado/);
   const lostLegs = structuredClone(won); lostLegs.schedule[0][0].teamCupLegs[2].s1 = "";
   assert(inspectTournamentScoreRegression(won, lostLegs).unsafe);
   assert(!preservesTournamentCriticalData(won, lostLegs));

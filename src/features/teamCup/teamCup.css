@@ -27,10 +27,11 @@
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-columns { display:grid; grid-template-columns:minmax(0,1fr) repeat(3,44px) 40px !important; gap:5px !important; align-items:center; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading { padding:0 7px 0 11px; font-size:11px; color:var(--match-card-muted); text-align:center; }
 .tc-score-heading > span:first-child { text-align:left; }
-.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button { display:flex !important; flex-direction:column; gap:0 !important; min-width:0; min-height:40px; margin:0; padding:4px 0 !important; border-radius:8px; font-size:12px; box-shadow:none; }
+.tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button { display:flex !important; flex-direction:column; gap:0 !important; min-width:0; min-height:40px; height:100%; margin:0; padding:4px 0 !important; border-radius:8px; font-size:12px; box-shadow:none; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .tc-score-heading button[aria-pressed="true"] { outline:2px solid var(--purple); outline-offset:-2px; }
 .tc-score-heading small { display:block; font-size:8px; line-height:1.25; margin-top:3px; font-weight:500; }
-.tc-score-heading small.tc-partida-label { font-size:11px; font-weight:600; }
+.tc-score-heading small.tc-set-label { font-size:11px; font-weight:600; }
+.tc-set-detail { display:block; font-size:8px; line-height:1.25; margin-top:1px; font-weight:500; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchTeamName { display:block; -webkit-line-clamp:unset; }
 .tc-workspace.appPage .tournamentMatchesSection .tc-match.gameCard.universalMatchCard .matchTeamRow { min-height:62px; padding-block:10px; }
 .tc-team-identity { min-width:0; }

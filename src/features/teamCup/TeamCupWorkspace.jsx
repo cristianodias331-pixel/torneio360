@@ -18,7 +18,7 @@ import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchT
 import "../../styles/31-matches-and-brackets.css";
 import "./teamCup.css";
 
-const legTitles = kind => kind === "squad" ? ["Masculina", "Feminina", "Mista"] : ["1ª partida", "2ª partida", "Desempate"];
+const legTitles = kind => kind === "squad" ? ["1º set masculino", "2º set feminino", "3º set misto de desempate"] : ["1º set", "2º set", "3º set de desempate"];
 function Field({ label, children }) { return <label className="tc-field"><span>{label}</span>{children}</label>; }
 
 export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegChange, onRegisterCourtNumber, readOnly = false, now = Date.now(), courtOptions = data.courtNumbers, unavailableCourts = [] }) {
@@ -76,10 +76,11 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         </button>}
       {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
-    <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) => {
-      const isTrioPartida = data.teamCup.kind === "trio" && i < 2;
-      return <button type="button" key={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i + 1}ª</b><small className={isTrioPartida ? "tc-partida-label" : undefined}>{isTrioPartida ? "Partida" : label}</small></button>;
-    })}<span>Total<small>vitórias</small></span></div>
+    <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
+      <button type="button" key={label} title={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i + 1}º</b><small className="tc-set-label">Set
+        {data.teamCup.kind === "squad" && <span className="tc-set-detail">{["Masculino", "Feminino", "Misto"][i]}</span>}
+        {i === 2 && <span className="tc-set-detail">Desempate</span>}
+      </small></button>)}<span>Total<small>sets</small></span></div>
     <div className="matchTeamStack">{[1, 2].map((side, row) => {
         const team = data.players.teams[game["ids" + side]?.[0]];
         return <React.Fragment key={side}>{side === 2 && <div className="matchVsDivider" aria-hidden="true"><span>VS</span></div>}
@@ -98,7 +99,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         </div></React.Fragment>;
       })}</div>
     {!game.isBye && ((selected === 2 && !state.decider) || announcementStatus) && <footer className="tc-match-note">
-      {selected === 2 && !state.decider && <small>Disponível somente se as duas primeiras partidas terminarem em 1 a 1.</small>}
+      {selected === 2 && !state.decider && <small>3º set de desempate disponível somente em caso de empate em 1 a 1 nos sets.</small>}
       {announcementStatus && <small role="status">{announcementStatus}</small>}
     </footer>}
     {courtEditorOpen && !readOnly && createPortal(<CourtAssignmentModal editor={{ game: { ...leg, court: game.court || leg.court } }}
@@ -215,13 +216,13 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         <Field label="Quantidade de equipes"><select value={teams.length} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
         <Field label="Formação"><select value={data.teamCup.formation} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
         <Field label="Nome da chave principal"><input value={data.cupConfig.mainBracketName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, mainBracketName: e.target.value } }))} /></Field>
-        <Field label="Games por partida"><select value={data.winningScore} onChange={e => change(d => ({ ...d, winningScore: Number(e.target.value) }))}><option value={4}>4 games</option><option value={6}>6 games</option></select></Field>
+        <Field label="Games por set"><select value={data.winningScore} onChange={e => change(d => ({ ...d, winningScore: Number(e.target.value) }))}><option value={4}>4 games</option><option value={6}>6 games</option></select></Field>
       </div>
         <div className="tc-format-explanation"><FormatExplanationButton label={`Como funciona com ${teams.length} equipes`} eyebrow={`Formato calculado para ${teams.length} equipes`} title={`Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`}
           sections={[
             { title: "Grupos e classificação", content: <p>Grupos de 3, usando grupos de 4 quando necessário. Os dois melhores de cada grupo avançam. Somente os eliminados dos grupos entram no Consolation, quando habilitado.</p> },
-            { title: "Partidas do confronto", content: <p>{data.teamCup.kind === "squad" ? "Masculina e feminina podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, a equipe escolhe a dupla mista para o desempate." : "Duas partidas em sequência; a terceira ocorre somente em caso de empate em 1 a 1. As duplas e substituições ficam a cargo da equipe."}</p> },
-            { title: "Resultado e capitães", content: <p>As três partidas usam a mesma regra de games. Quem vencer duas ganha o confronto. O capitão ou a capitã faz parte da equipe.</p> },
+            { title: "Sets da partida", content: <p>{data.teamCup.kind === "squad" ? "O 1º set (masculino) e o 2º set (feminino) podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, a equipe escolhe a dupla mista para o 3º set de desempate." : "1º set e 2º set em sequência; o 3º set de desempate ocorre somente em caso de empate em 1 a 1. As duplas e substituições ficam a cargo da equipe."}</p> },
+            { title: "Resultado e capitães", content: <p>Os três sets usam a mesma regra de games. Quem vencer dois sets ganha a partida entre as equipes. O capitão ou a capitã faz parte da equipe.</p> },
           ]} /></div>
         <div className="twoCols tc-fields">
           <div className="parallelDisputeChoice"><div className="parallelChoiceHeading"><strong>Realizar 1ª disputa paralela?</strong></div>
@@ -242,7 +243,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       {tab === "groups" && !readOnly && <TeamCupVideoActions data={data} tournament={tournament} only="groups" />}
       {tab === "groups" && !readOnly && !locked && <><p>Forme as equipes em Organização → Participantes. Salve a formação em Organizar grupos e depois gere os confrontos.</p><div className="actions"><button type="button" className="actionGenerateBtn" disabled={drawPresentation.busy || (random && data.teamCup.drawStage !== "complete")} onClick={generateGroups}>{data.teamCup.groupOrder ? "Gerar fase de grupos" : "Sortear grupos e gerar confrontos"}</button></div></>}
       <h3>Classificação dos grupos</h3>
-      <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games das partidas concluídas de cada confronto finalizado, incluindo o desempate.</p>
+      <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games dos sets concluídos de cada partida finalizada, incluindo o desempate.</p>
       <div className="tc-team-grid">{groups.map(group => <section key={group.id}>
         <RankingTable title={group.name} rows={group.rows} rankingCriteria="wins_balance_points" showPodium={false}
           nameColumnLabel="Equipe" renderName={row => {

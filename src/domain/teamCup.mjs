@@ -351,7 +351,7 @@ export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
   const game = teamCupGames(next).find(g => g.matchKey === key);
   if (!game) throw new Error("Confronto não encontrado.");
   const resolved = resolveTeamCupGame(next, game);
-  if (!teamLegAvailable(next, resolved, index)) throw new Error("Esta partida ainda não está liberada.");
+  if (!teamLegAvailable(next, resolved, index)) throw new Error("Este set ainda não está liberado.");
   if (game.phase === "groups" && next.brackets.length && ("s1" in patch || "s2" in patch)) throw new Error("Os grupos já definiram as eliminatórias. Seus placares estão protegidos.");
   const leg = game.teamCupLegs[index];
   const scoreEdit = "s1" in patch || "s2" in patch;
@@ -360,7 +360,7 @@ export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
     for (const side of ["s1", "s2"]) if (side in patch) patch = { ...patch, [side]: normalizeScoreInput(patch[side], data.winningScore) };
   }
   if (patch.inProgress === true || ("courtNumberOverride" in patch && leg.inProgress)) {
-    if (wasFinished) throw new Error("A partida já foi finalizada.");
+    if (wasFinished) throw new Error("O set já foi finalizado.");
     const court = String(patch.courtNumberOverride || teamCupCourtNumber(next, game, index));
     patch = { ...patch, courtNumberOverride: court };
     for (const other of teamCupGames(next)) {
@@ -383,7 +383,7 @@ export function updateTeamCupLeg(data, key, index, patch, now = Date.now()) {
   else if (scoreEdit && wasFinished && !finished) { delete leg.matchTimerFinishedAt; }
   const state = teamMatchState(game, data.winningScore);
   const third = game.teamCupLegs[2];
-  if (!state.decider && (third.s1 !== "" || third.s2 !== "" || third.matchTimerFirstStartedAt)) throw new Error("Essa correção invalidaria a terceira partida já registrada. Nenhum dado foi apagado.");
+  if (!state.decider && (third.s1 !== "" || third.s2 !== "" || third.matchTimerFirstStartedAt)) throw new Error("Essa correção invalidaria o terceiro set já registrado. Nenhum dado foi apagado.");
   Object.assign(game, summarizeTeamMatch(game, next.winningScore));
   // A changed upstream winner must never transfer a played score to new opponents.
   for (const stored of next.brackets) {
@@ -407,10 +407,10 @@ export function validateTeamCupMatchState(data) {
       const used = leg.s1 !== "" || leg.s2 !== "" || leg.matchTimerFirstStartedAt;
       if (used && leg.teamCupSides && JSON.stringify(leg.teamCupSides) !== JSON.stringify([game.ids1[0], game.ids2[0]]))
         throw new Error("Times/Equipes: os adversários foram alterados durante o registro dos placares.");
-      if (used && i === 2 && !state.decider) throw new Error("Times/Equipes: o desempate registrado ficou incompatível com as duas primeiras partidas.");
-      if (used && i === 1 && teamSize(data) === 3 && !state.winners[0]) throw new Error("Times/Equipes: a primeira partida precisa estar concluída.");
+      if (used && i === 2 && !state.decider) throw new Error("Times/Equipes: o desempate registrado ficou incompatível com os dois primeiros sets.");
+      if (used && i === 1 && teamSize(data) === 3 && !state.winners[0]) throw new Error("Times/Equipes: o primeiro set precisa estar concluído.");
       if (leg.inProgress && !teamLegWinner(leg, data.winningScore)) {
-        if (activeCourts.has(leg.courtNumberOverride)) throw new Error("Times/Equipes: dois aparelhos iniciaram partidas na mesma quadra.");
+        if (activeCourts.has(leg.courtNumberOverride)) throw new Error("Times/Equipes: dois aparelhos iniciaram sets na mesma quadra.");
         activeCourts.add(leg.courtNumberOverride);
         for (const id of [...game.ids1, ...game.ids2]) {
           const previous = activeTeams.get(id);
