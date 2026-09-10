@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { TEAM_LEVELS, createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups, generateTeamCupBrackets, teamCupQualified, updateTeamCupLeg } from "../src/domain/teamCup.mjs";
+import { TEAM_LEVELS, createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups, generateTeamCupBrackets, teamCupQualified, updateTeamCupLeg, reconfigureTeamCup, setTeamCupFormation, teamCupFormatChangeNeedsConfirmation } from "../src/domain/teamCup.mjs";
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, organizeTeamCupGroups, organizationSignature, parseTeamCupList, participantEntries,
-  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant } from "../src/domain/teamCupOrganization.mjs";
+  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant, updateTeamCupTeamName } from "../src/domain/teamCupOrganization.mjs";
 import { normalizeTournamentData } from "../src/domain/tournamentDataNormalization.mjs";
 import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
 
@@ -115,7 +115,74 @@ for (const kind of ["trio", "squad"]) {
   for (const game of current.schedule.flat()) for (const leg of [0, 1]) current = updateTeamCupLeg(current, game.matchKey, leg, { s1: "6", s2: "2" });
   for (const tie of teamCupQualified(current).unresolvedCampaignTies) current.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
   current = generateTeamCupBrackets(current);
+  current.cupConfig.mainBracketName = "Chave principal personalizada";
+  current.cupConfig.repechageName = "Paralela personalizada";
+  current.cupConfig.repechageEnabled = true;
+  current.players.teams.find(t => t.id === "team-0").name = "Equipe personalizada";
+  current.players.teams.find(t => t.id === "team-0").a = "Equipe personalizada";
+  const sourceTeams = [...current.players.teams].sort((a, b) => a.id.localeCompare(b.id, "pt-BR", { numeric: true }));
+  for (const nextCount of [4, 6, 12, 32]) for (const nextKind of ["trio", "squad"]) {
+    assert.equal(teamCupFormatChangeNeedsConfirmation(current, nextCount, nextKind), true);
+    const beforeConfiguration = structuredClone(current);
+    assert.throws(() => reconfigureTeamCup(current, nextCount, nextKind), /Confirme/);
+    assert.deepEqual(current, beforeConfiguration, "Opening or cancelling format changes preserves every result");
+    const configured = reconfigureTeamCup(current, nextCount, nextKind, { confirmed: true });
+    const nextSize = nextKind === "trio" ? 3 : 4;
+    assert.equal(configured.players.teams.length, nextCount);
+    assert.equal(configured.teamCup.kind, nextKind);
+    assert(configured.players.teams.every(t => t.athletes.length === nextSize && t.athletes.some(a => a.id === t.captainId)));
+    for (let i = 0; i < Math.min(nextCount, sourceTeams.length); i++) {
+      assert.equal(configured.players.teams[i].name, sourceTeams[i].name, "Custom team names survive reconfiguration");
+      assert.deepEqual(configured.players.teams[i].athletes.slice(0, Math.min(nextSize, sourceTeams[i].athletes.length)), sourceTeams[i].athletes.slice(0, nextSize));
+    }
+    assert.equal(configured.cupConfig.mainBracketName, current.cupConfig.mainBracketName);
+    assert.equal(configured.cupConfig.repechageName, current.cupConfig.repechageName);
+    assert.equal(configured.cupConfig.repechageEnabled, true);
+    assert.equal(configured.winningScore, current.winningScore);
+    assert.deepEqual(configured.schedule, []);
+    assert.deepEqual(configured.brackets, []);
+    assert.equal(configured.teamCup.groupOrder, undefined);
+    assert.equal(configured.teamCup.groupVideo, undefined);
+    assert.equal(configured.teamCup.drawVideo, undefined);
+    assert.deepEqual(configured.cupConfig.campaignTieBreakOverrides, {});
+    assert.deepEqual(configured.teamCup.pool, configured.players.teams.flatMap(t => t.athletes));
+    assert.equal(new Set(configured.players.teams.map(t => t.id)).size, nextCount);
+    assert.equal(new Set(configured.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, nextCount * nextSize);
+    assert.deepEqual(normalizeTournamentData("Times/Equipes", configured).players, configured.players);
+    assert.deepEqual(mergeConcurrentTournamentData(current, configured, current).conflicts, []);
+  }
+  assert.equal(reconfigureTeamCup(current, 9, kind), current, "Reselecting the same format must not erase anything");
+  const switched = setTeamCupFormation(current, "random");
+  assert.equal(switched.teamCup.formation, "random");
+  assert.equal(switched.teamCup.drawStage, "complete");
+  assert.deepEqual(switched.players, current.players);
+  assert.deepEqual(switched.schedule, current.schedule);
+  assert.deepEqual(switched.brackets, current.brackets);
+  assert.deepEqual(switched.teamCup.pool, current.players.teams.flatMap(t => t.athletes));
+  const fixedAgain = setTeamCupFormation(switched, "fixed");
+  assert.equal(fixedAgain.teamCup.formation, "fixed");
+  assert.deepEqual(fixedAgain.players, current.players);
+  assert.deepEqual(fixedAgain.schedule, current.schedule);
+  assert.deepEqual(mergeConcurrentTournamentData(current, switched, current).conflicts, []);
+  const reduced = reconfigureTeamCup(switched, 4, "trio", { confirmed: true });
+  const expanded = reconfigureTeamCup(reduced, 12, "squad");
+  assert.equal(new Set(expanded.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, 48, "Repeated count/size changes never duplicate athlete identities");
+  assert.deepEqual(expanded.players.teams[0].athletes.slice(0, 3), reduced.players.teams[0].athletes);
   const original = structuredClone(current), signature = organizationSignature(current);
+  const inlineTeamId = current.players.teams[0].id;
+  const inlineRenamed = updateTeamCupTeamName(current, inlineTeamId, "Nome direto na lista");
+  assert.equal(inlineRenamed.players.teams[0].name, "Nome direto na lista");
+  assert.equal(inlineRenamed.players.teams[0].a, "Nome direto na lista");
+  assert.deepEqual(inlineRenamed.players.teams[0].athletes, current.players.teams[0].athletes);
+  assert.equal(inlineRenamed.players.teams[0].captainId, current.players.teams[0].captainId);
+  assert.deepEqual(inlineRenamed.players.teams.slice(1), current.players.teams.slice(1));
+  assert.equal(inlineRenamed.schedule, current.schedule);
+  assert.equal(inlineRenamed.brackets, current.brackets);
+  assert.equal(inlineRenamed.teamCup, current.teamCup);
+  assert.deepEqual(current, original);
+  assert.deepEqual(mergeConcurrentTournamentData(current, inlineRenamed, current).conflicts, []);
+  assert.equal(normalizeTournamentData("Times/Equipes", inlineRenamed).players.teams[0].name, "Nome direto na lista");
+  assert.throws(() => updateTeamCupTeamName(current, "inexistente", "Novo nome"), /não encontrada/);
   let draft = teamCupOrganizationDraft(current);
   assert.equal(draft.schedule.length, 0);
   assert.deepEqual(current, original, "Opening organization does not mutate games or results");

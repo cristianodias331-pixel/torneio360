@@ -5,7 +5,7 @@ import { TEAM_LEVELS, drawTeamCaptains, drawTeamMembers, teamName, teamSize } fr
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, isTeamCupVacancy, organizeTeamCupGroups, organizationLocked, organizationSignature,
   participantEntries, prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems,
   teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature,
-  teamCupOrganizationGroups, teamLevelValue, updateTeamCupParticipant } from "../../domain/teamCupOrganization.mjs";
+  teamCupOrganizationGroups, teamLevelValue, updateTeamCupParticipant, updateTeamCupTeamName } from "../../domain/teamCupOrganization.mjs";
 import { ConfirmRegenerationModal } from "../dialogs/ConfirmationDialogs.jsx";
 import "./teamCupParticipants.css";
 import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
@@ -228,7 +228,8 @@ export default function TeamCupParticipants({ data, tournament, onChange }) {
     <TeamCupVideoActions data={data} tournament={tournament} />
     <p className="tc-help">{hasGames ? "Você pode editar participantes, equipes e capitães mesmo após gerar os jogos. Os resultados são mantidos; redistribuir os grupos pede confirmação." : "Preencha os atletas abaixo ou cole uma lista. Em Organizar grupos, defina equipes, capitães e a distribuição dos times."}</p>
     {hasTeams ? <div className="tcp-list">{displayedTeams.map(({ team, rows }) => <section className="tcp-team" key={team.id} aria-label={`Participantes · ${teamName(team)}`}>
-      <h3>{teamName(team)}</h3>{rows.map(entry => participantRow(entry, team.athletes.findIndex(a => a.id === entry.athlete.id)))}
+      <h3><input className="tcp-team-name" aria-label={`Nome da equipe ${teamName(team)}`} placeholder="Nome da equipe" maxLength={60} value={teamName(team)}
+        onChange={e => onChange(d => updateTeamCupTeamName(d, team.id, e.target.value))} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></h3>{rows.map(entry => participantRow(entry, team.athletes.findIndex(a => a.id === entry.athlete.id)))}
     </section>)}</div> : <><h3 className="tcp-pool-title">Lista para sorteio</h3><div className="tcp-list tcp-pool-list">{filtered.map(entry => participantRow(entry, entries.indexOf(entry)))}</div></>}
     {!filtered.length && <p className="tc-help">Nenhum atleta encontrado para essa busca.</p>}
     {dialog === "paste" && <ImportDialog data={data} onChange={onChange} onClose={() => setDialog(null)} />}

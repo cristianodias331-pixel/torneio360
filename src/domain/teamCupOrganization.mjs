@@ -28,6 +28,11 @@ export function updateTeamCupParticipant(data, id, patch) {
   }
   return next;
 }
+export function updateTeamCupTeamName(data, id, name) {
+  if (!data.players.teams.some(team => team.id === id)) throw new Error("Equipe não encontrada.");
+  return { ...data, players: { ...data.players, teams: data.players.teams.map(team => team.id === id
+    ? { ...team, name, a: name } : team) } };
+}
 const nameKey = name => String(name).trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 // Match the individual-name cleanup of the existing import, without changing other modalities.
 function cleanImportedName(value) {

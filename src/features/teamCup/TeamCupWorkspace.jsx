@@ -7,10 +7,11 @@ import { CourtAssignmentModal } from "../matchOperations/MatchControls.jsx";
 import { teamCupPodium } from "../../domain/teamCupPodium.mjs";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import TeamCupParticipants from "./TeamCupParticipants.jsx";
+import { ConfirmRegenerationModal } from "../dialogs/ConfirmationDialogs.jsx";
 import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
 import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
 import { recordTeamCupGroupVideo } from "../../domain/teamCupVideo.mjs";
-import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets,
+import { reconfigureTeamCup, teamCupFormatChangeNeedsConfirmation, setTeamCupFormation, generateTeamCupGroups, generateTeamCupBrackets,
   TEAM_COUNTS, teamSize, teamName, teamCupRankings, teamCupQualified, shuffleTeamCup, setTeamCupConsolationEnabled,
   teamLegAvailable, teamLegWinner, teamMatchState, resolveTeamCupGame, updateTeamCupLeg, teamCupCourtNumber } from "../../domain/teamCup.mjs";
 import { formatMatchDuration, getMatchElapsedSeconds } from "../../domain/matchTimer.mjs";
@@ -117,6 +118,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   const [matchesTab, setMatchesTab] = useState("groups");
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [formatConfirmation, setFormatConfirmation] = useState(null);
   const drawPresentation = useTeamCupDrawPresentation();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
@@ -136,22 +138,28 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
     }, options);
   }
   function reconfigure(count, kind) {
-    if (locked) return;
-    const hasNames = teams.some(t => t.athletes.some(a => a.name.trim())) || data.teamCup.pool.some(a => a.name.trim());
-    if (hasNames && !window.confirm("Alterar a quantidade ou o formato reinicia somente o cadastro desta nova competição. Continuar?")) return;
-    change(d => createTeamCupData(d, count, kind));
+    if (teamCupFormatChangeNeedsConfirmation(data, count, kind)) {
+      setFormatConfirmation({ count, kind, source: JSON.stringify(data),
+        title: "Alterar a configuração das equipes?",
+        message: `O torneio passará a ter ${count} equipes no formato ${kind === "squad" ? "Squad" : "Trio"}.`,
+        impacts: ["As rodadas, os jogos, os placares e as chaves atuais serão apagados.",
+          "Os nomes que couberem nas novas vagas serão preservados; vagas removidas sairão desta competição.",
+          "Será necessário criar novamente as rodadas e os jogos."],
+        confirmLabel: "Sim, alterar configuração" });
+      return;
+    }
+    change(d => reconfigureTeamCup(d, count, kind));
+  }
+  function confirmFormatChange() {
+    const { count, kind, source } = formatConfirmation;
+    setFormatConfirmation(null);
+    change(d => {
+      if (JSON.stringify(d) !== source) throw new Error("Os dados foram atualizados. Confira a configuração atual e selecione a alteração novamente.");
+      return reconfigureTeamCup(d, count, kind, { confirmed: true });
+    }, { allowScoreRegression: true });
   }
   function formation(value) {
-    if (locked || value === data.teamCup.formation) return;
-    if (data.teamCup.drawStage !== "pending" && !window.confirm("Reiniciar a formação? Os atletas serão mantidos na lista do sorteio.")) return;
-    change(d => {
-      const pool = d.teamCup.formation === "fixed" ? d.players.teams.flatMap(t => t.athletes) : d.teamCup.pool;
-      let nextTeams = d.players.teams;
-      if (value === "fixed" && nextTeams.some(t => t.athletes.length !== teamSize(d))) {
-        nextTeams = nextTeams.map((t, i) => ({ ...t, athletes: pool.slice(i * teamSize(d), (i + 1) * teamSize(d)), captainId: pool[i * teamSize(d)]?.id }));
-      }
-      return { ...d, players: { ...d.players, teams: nextTeams }, teamCup: { ...d.teamCup, formation: value, pool: structuredClone(pool), drawStage: "pending" } };
-    });
+    change(d => setTeamCupFormation(d, value));
   }
   function onLegChange(key, i, patch) {
     change(d => {
@@ -187,7 +195,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   const bracketSections = [...new Set(data.brackets.map(g => g.phase + "|" + g.roundName))];
   const saveIndicator = readOnly ? null : savingBadge || <span className="savingBadge saved">💾 {savingStatus}</span>;
   const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} onRegisterCourtNumber={onRegisterCourtNumber} readOnly={readOnly} courtOptions={courtOptions} unavailableCourts={unavailableCourts} />;
-  return <><section className="appPage tc-workspace" inert={drawPresentation.busy}>
+  return <><section className="appPage tc-workspace" inert={drawPresentation.busy || Boolean(formatConfirmation)}>
     <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
       <div><div className="tournamentHeaderTitleRow"><h1>{tournament.name}</h1></div>
         <div className="tournamentHeaderMeta" id="tc-header-details"><span><Trophy aria-hidden="true" /> Times/Equipes · {data.teamCup.kind === "squad" ? "Squad" : "Trio"}</span><span><Users aria-hidden="true" /> {teams.length} equipes · {teamSize(data)} atletas por equipe</span></div></div>
@@ -204,11 +212,11 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         {onOpenCourtCenter && <button type="button" className="organizationCourtCenterShortcut" onClick={onOpenCourtCenter}><Grid3X3 aria-hidden="true" /> Quadras</button>}
       </nav>}
       {!readOnly && organizationTab === "format" && <div className="organizationPanel cupConfigBox"><div className="twoCols tc-fields">
-        <Field label="Quantidade de equipes"><select value={teams.length} disabled={locked} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
-        <Field label="Nome da chave principal"><input value={data.cupConfig.mainBracketName} maxLength={70} disabled={locked} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, mainBracketName: e.target.value } }))} /></Field>
-        <Field label="Formação da equipe"><select value={data.teamCup.kind} disabled={locked} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas, composição livre</option><option value="squad">Squad · 2 atletas do masculino e 2 do feminino</option></select></Field>
-        <Field label="Formação"><select value={data.teamCup.formation} disabled={locked} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
-        <Field label="Games por partida"><select value={data.winningScore} disabled={locked} onChange={e => change(d => ({ ...d, winningScore: Number(e.target.value) }))}><option value={4}>4 games</option><option value={6}>6 games</option></select></Field>
+        <Field label="Formação da equipe"><select value={data.teamCup.kind} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas, composição livre</option><option value="squad">Squad · 2 atletas do masculino e 2 do feminino</option></select></Field>
+        <Field label="Quantidade de equipes"><select value={teams.length} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
+        <Field label="Formação"><select value={data.teamCup.formation} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
+        <Field label="Nome da chave principal"><input value={data.cupConfig.mainBracketName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, mainBracketName: e.target.value } }))} /></Field>
+        <Field label="Games por partida"><select value={data.winningScore} onChange={e => change(d => ({ ...d, winningScore: Number(e.target.value) }))}><option value={4}>4 games</option><option value={6}>6 games</option></select></Field>
       </div>
         <div className="tc-format-explanation"><FormatExplanationButton label={`Como funciona com ${teams.length} equipes`} eyebrow={`Formato calculado para ${teams.length} equipes`} title={`Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`}
           sections={[
@@ -224,7 +232,6 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
           </div>
           {data.cupConfig.repechageEnabled && <Field label="Nome da 1ª disputa paralela"><input value={data.cupConfig.repechageName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, repechageName: e.target.value } }))} /></Field>}
         </div>
-        {locked && <p className="tc-help">Formação e regras protegidas: os grupos já foram gerados. A exibição da disputa paralela continua disponível.</p>}
       </div>}
       {organizationTab === "players" && !readOnly && <div className="organizationPanel"><TeamCupParticipants data={data} tournament={tournament} onChange={change} /></div>}
       {readOnly && <div className="tc-team-grid">{teams.map(team => <section className="tc-panel" key={team.id}><h2>{teamName(team)}</h2>
@@ -270,5 +277,5 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       })}
       </>}
     </section>}
-  </section>{drawPresentation.overlay}</>;
+  </section><ConfirmRegenerationModal confirmation={formatConfirmation} onCancel={() => setFormatConfirmation(null)} onConfirm={confirmFormatChange} />{drawPresentation.overlay}</>;
 }

@@ -50,6 +50,44 @@ export function createTeamCupData(base = {}, count = 6, kind = "trio") {
   };
 }
 
+export function teamCupFormatChangeNeedsConfirmation(data, count, kind) {
+  if (count === data.players.teams.length && kind === data.teamCup.kind) return false;
+  const removesSlots = count < data.players.teams.length || (kind === "trio" && teamSize(data) === 4);
+  return Boolean(data.schedule.length || data.brackets.length
+    || (removesSlots && [...data.teamCup.pool, ...data.players.teams.flatMap(t => t.athletes)].some(a => a.name.trim())));
+}
+
+// Use the existing regeneration confirmation, then keep registrations that fit
+// the new format instead of recreating the entire competition from scratch.
+export function reconfigureTeamCup(data, count, kind, { confirmed = false } = {}) {
+  if (!TEAM_COUNTS.includes(count) || !["trio", "squad"].includes(kind)) throw new Error("Escolha uma configuração válida de equipes.");
+  if (count === data.players.teams.length && kind === data.teamCup.kind) return data;
+  if (teamCupFormatChangeNeedsConfirmation(data, count, kind) && !confirmed) throw new Error("Confirme a alteração do formato antes de substituir os jogos ou reduzir as vagas.");
+  const size = kind === "squad" ? 4 : 3;
+  const existing = [...data.players.teams].sort((a, b) => a.id.localeCompare(b.id, "pt-BR", { numeric: true }));
+  const usedTeamIds = new Set(existing.map(t => t.id));
+  const usedAthleteIds = new Set([...data.teamCup.pool, ...existing.flatMap(t => t.athletes)].map(a => a.id));
+  const teams = Array.from({ length: count }, (_, i) => {
+    let number = i;
+    while (!existing[i] && usedTeamIds.has(`team-${number}`)) number++;
+    const template = blankTeam(number, size), previous = existing[i];
+    usedTeamIds.add(template.id);
+    const athletes = Array.from({ length: size }, (_, j) => {
+      if (previous?.athletes[j]) return structuredClone(previous.athletes[j]);
+      const athlete = { ...template.athletes[j] };
+      if (usedAthleteIds.has(athlete.id)) athlete.id = `athlete-${globalThis.crypto.randomUUID()}`;
+      usedAthleteIds.add(athlete.id);
+      return athlete;
+    });
+    return { ...(previous || template), athletes,
+      captainId: athletes.some(a => a.id === previous?.captainId) ? previous.captainId : athletes[0].id };
+  });
+  const { groupOrder, groupMode, drawVideo, groupVideo, ...settings } = data.teamCup;
+  return { ...data, players: { ...data.players, teams }, schedule: [], brackets: [], groupsShuffled: false,
+    teamCup: { ...settings, kind, drawStage: "pending", pool: structuredClone(teams.flatMap(t => t.athletes)) },
+    cupConfig: { ...data.cupConfig, teamCount: count, tieBreakOverrides: {}, campaignTieBreakOverrides: {} } };
+}
+
 export function normalizeTeamCupData(data, defaults) {
   const cup = { ...defaults.cupConfig, ...data.cupConfig, format: "team-cup" };
   const settings = { ...defaults.teamCup, ...data.teamCup, defaultTeamNamesVersion: 2 };
@@ -74,6 +112,21 @@ export function normalizeTeamCupData(data, defaults) {
     schedule: (data.schedule || []).map(round => round.map(game => summarizeTeamMatch(game, data.winningScore))),
     brackets: (data.brackets || []).map(game => summarizeTeamMatch(game, data.winningScore)),
   };
+}
+
+export function setTeamCupFormation(data, formation) {
+  if (!["fixed", "random"].includes(formation)) throw new Error("Escolha uma formação válida.");
+  if (formation === data.teamCup.formation) return data;
+  const pool = structuredClone(data.teamCup.formation === "random" && data.teamCup.drawStage !== "complete"
+    ? data.teamCup.pool : data.players.teams.flatMap(t => t.athletes));
+  const teams = data.players.teams.map((team, i) => {
+    const athletes = team.athletes.length === teamSize(data) ? structuredClone(team.athletes) : pool.slice(i * teamSize(data), (i + 1) * teamSize(data));
+    return { ...team, athletes, captainId: athletes.some(a => a.id === team.captainId) ? team.captainId : athletes[0]?.id };
+  });
+  // Selecting a method does not redraw teams or erase results. New draws are
+  // staged in Participants > Organize groups, as with existing team edits.
+  const drawStage = formation === "random" && (data.schedule.length || data.brackets.length) ? "complete" : "pending";
+  return { ...data, players: { ...data.players, teams }, teamCup: { ...data.teamCup, formation, pool, drawStage } };
 }
 
 export function teamLegWinner(leg, target = 4) {
