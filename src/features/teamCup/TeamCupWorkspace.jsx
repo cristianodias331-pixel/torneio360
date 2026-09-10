@@ -278,7 +278,9 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
           nameColumnLabel="Equipe" renderName={row => {
             const team = teams[row.id];
             return <div className="tc-group-team"><span>{row.name}</span>
-              {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</span>}
+              {team && <span className="tc-roster tc-roster-paired">{team.athletes.map((a, index) => <span className="tc-roster-member" key={a.id}>
+                {index % 2 === 1 && <span className="tc-roster-separator" aria-hidden="true"> | </span>}{a.name}{a.id === team.captainId ? " (C)" : ""}
+              </span>)}</span>}
             </div>;
           }} columns={[{ key: "w", label: "Vitórias" }, { key: "setBalance", label: "Saldo de sets" }, { key: "coefficient", label: "Coeficiente" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
