@@ -4,7 +4,7 @@ import { getPodiumInitials } from "../media/canvasTools.mjs";
 import RankingShareButton from "../rankingShare/RankingShareButton.jsx";
 import { TournamentCircuitButton } from "../circuitManagement/TournamentCircuitManager.jsx";
 
-export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null, renderParticipants = null }) {
+export default function CupPodiumView({ podium, title = "Principal", variant = "main", shareContext = null, circuitAction = null, renderParticipants = null, showPlayTime = true }) {
   if (!podium || podium.length === 0) return null;
 
   const podiumLimit = variant === "parallel" ? 1 : 3;
@@ -18,9 +18,10 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
     presentation: "podium",
     podium: podiumPlaces,
     podiumVariant: variant,
+    showPlayTime,
     groups: [{
       title: `Pódio da ${title}`,
-      rows: podiumPlaces.map((item) => ({ name: item.name, playTimeSeconds: item.playTimeSeconds })),
+      rows: podiumPlaces.map((item) => ({ name: item.name, ...(showPlayTime ? { playTimeSeconds: item.playTimeSeconds } : {}) })),
     }],
   } : null;
 
@@ -31,7 +32,7 @@ export default function CupPodiumView({ podium, title = "Principal", variant = "
             <span className="cupPodiumAvatar">{getPodiumInitials(item.name)}</span>
             <strong>{item.position}</strong>
             <span className={`cupPodiumName${renderParticipants ? " cupPodiumNameWithRoster" : ""}`}>{item.name}{renderParticipants?.(item)}</span>
-            {Number(item.playTimeSeconds || 0) > 0 ? (
+            {showPlayTime && Number(item.playTimeSeconds || 0) > 0 ? (
               <span className="cupPodiumTime">Tempo em jogo: {formatMatchTotalDuration(item.playTimeSeconds)}</span>
             ) : null}
             <span className="cupPodiumStep" aria-hidden="true">{item.place}</span>

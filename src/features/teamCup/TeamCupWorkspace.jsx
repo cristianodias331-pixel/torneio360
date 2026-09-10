@@ -299,7 +299,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       <div className="cupRankingSplit">{[["main", data.cupConfig.mainBracketName || "Principal"], ...(data.cupConfig.repechageEnabled ? [["repechage", data.cupConfig.repechageName || "Consolation"]] : [])].map(([phase, title]) => {
         const podium = teamCupPodium(data, phase);
         return <div className="cupRankingPanel" key={phase}><h3>{title}</h3>{podium.length ? <CupPodiumView podium={podium} title={title} variant={phase === "main" ? "main" : "parallel"}
-          renderParticipants={item => teams[item.id] ? <TeamCupRoster team={teams[item.id]} /> : null}
+          showPlayTime={false} renderParticipants={item => teams[item.id] ? <TeamCupRoster team={teams[item.id]} /> : null}
           shareContext={{ title: tournament.name, modalityName: `Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`, rankingCriteria: "wins_balance_points", criteriaLabel: "Pódio definido pelas eliminatórias" }} /> : <p>Finalize {phase === "main" ? "a chave principal" : "a disputa paralela"} para ver o pódio.</p>}</div>;
       })}</div>
     </section>}

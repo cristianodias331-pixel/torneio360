@@ -13,6 +13,7 @@ try {
   const { BracketColumn } = await server.ssrLoadModule("/src/features/brackets/CupBracketView.jsx");
   const { default: CupPodiumView } = await server.ssrLoadModule("/src/features/ranking/CupPodiumView.jsx");
   const { default: TeamCupRoster } = await server.ssrLoadModule("/src/features/teamCup/TeamCupRoster.jsx");
+  const { drawPodiumParticipantRows } = await server.ssrLoadModule("/src/features/rankingShare/rankingShareExport.mjs");
   for (const kind of ["trio", "squad"]) for (const count of cup.TEAM_COUNTS) {
     const data = cup.generateTeamCupBrackets(finishGroups(cup.generateTeamCupGroups(fixture(count, kind), () => .4)));
     const original = JSON.stringify(data);
@@ -57,19 +58,33 @@ try {
     }
     const original = JSON.stringify(data);
     for (const phase of ["main", "repechage"]) {
-      const podium = teamCupPodium(data, phase), variant = phase === "main" ? "main" : "parallel";
+      const podium = teamCupPodium(data, phase).map(item => ({ ...item, playTimeSeconds: 123 })), variant = phase === "main" ? "main" : "parallel";
       const shown = podium.slice(0, phase === "main" ? 3 : 1);
-      const markup = renderToStaticMarkup(React.createElement(CupPodiumView, { podium, variant,
+      const markup = renderToStaticMarkup(React.createElement(CupPodiumView, { podium, variant, showPlayTime: false,
         renderParticipants: item => React.createElement(TeamCupRoster, { team: data.players.teams[item.id] }),
       }));
       assert.equal((markup.match(/class="tc-roster-member"/g) || []).length, shown.length * cup.teamSize(data));
       assert.equal((markup.match(/cupPodiumNameWithRoster/g) || []).length, shown.length);
       assert(markup.includes("cupPodiumRosterViewport"));
+      assert(!markup.includes("Tempo em jogo"), "Team podium hides play time without deleting timer data");
+      for (const item of shown) assert.deepEqual(item.participants, data.players.teams[item.id].athletes.map(a => a.name + (a.id === data.players.teams[item.id].captainId ? " (C)" : "")), "PNG receives full participant names and captain markers");
       for (const item of shown) for (const athlete of data.players.teams[item.id].athletes) assert(markup.includes(athlete.name), "Podium includes each winning team's complete roster");
       const legacy = renderToStaticMarkup(React.createElement(CupPodiumView, { podium, variant }));
+      assert(legacy.includes("Tempo em jogo"), "Other modalities retain their play time by default");
       assert(!legacy.includes("tc-roster") && !legacy.includes("cupPodiumRosterViewport"), "Other modalities retain their original podium layout");
     }
     assert.equal(JSON.stringify(data), original, "Adding roster labels does not alter ranking results");
+  }
+  for (const names of [["Danilo Sousa (C)", "Nicolas Ferreira", "Cristian Munos"], ["Danilo Sousa (C)", "Nicolas Ferreira", "Cristian Munos", "Maria Oliveira"]]) {
+    const drawn = [];
+    const context = { font: "", save() {}, restore() {},
+      measureText(text) { return { width: text.length * parseFloat(this.font.split(" ")[1]) * .6 }; },
+      fillText(text, x, y) { drawn.push({ text, x, y, font: this.font, width: this.measureText(text).width }); },
+    };
+    drawPodiumParticipantRows(context, names, 235, 960, 250);
+    assert.deepEqual(drawn.map(row => row.text), [names.slice(0, 2).join(" | "), names.slice(2).join(" | ")]);
+    assert(drawn.every(row => row.font.startsWith("400 ") && row.width <= 250.001), "PNG uses normal-weight names and keeps full rows inside their podium space");
+    assert.equal(drawn[1].y - drawn[0].y, 30);
   }
   console.log("Team cup bracket view: 56 formats, main/parallel/public trees, compact BYEs, podium rosters and preserved data approved.");
 } finally {

@@ -18,7 +18,11 @@ export function teamCupPodium(data, phase = "main") {
     const seconds = (game.teamCupLegs || []).reduce((sum, leg) => sum + (teamLegWinner(leg, data.winningScore) ? getMatchElapsedSeconds(leg) : 0), 0);
     for (const id of [...game.ids1, ...game.ids2]) times.set(id, (times.get(id) || 0) + seconds);
   }
-  const entry = (id, position) => ({ id, position, name: teamName(data.players.teams[id]), playTimeSeconds: times.get(id) || 0 });
+  const entry = (id, position) => {
+    const team = data.players.teams[id];
+    return { id, position, name: teamName(team), playTimeSeconds: times.get(id) || 0,
+      participants: team.athletes.map(athlete => athlete.name + (athlete.id === team.captainId ? " (C)" : "")) };
+  };
   const podium = [entry(champion, "🏆 Campeão"), entry(runner, "🥈 Vice")];
   const third = data.brackets.find(g => g.phase === phase && g.roundName === "3º lugar");
   const bronze = third ? getGameWinnerId(resolveTeamCupGame(data, third), data) : null;
