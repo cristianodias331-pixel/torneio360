@@ -7,6 +7,8 @@ import { CourtAssignmentModal } from "../matchOperations/MatchControls.jsx";
 import { teamCupPodium } from "../../domain/teamCupPodium.mjs";
 import FormatExplanationButton from "../tournamentConfig/FormatExplanationButton.jsx";
 import TeamCupParticipants from "./TeamCupParticipants.jsx";
+import TeamCupBracketView from "./TeamCupBracketView.jsx";
+import TeamCupRoster from "./TeamCupRoster.jsx";
 import { ConfirmRegenerationModal } from "../dialogs/ConfirmationDialogs.jsx";
 import { useTeamCupDrawPresentation } from "./TeamCupDrawPresentation.jsx";
 import TeamCupVideoActions from "./TeamCupVideoActions.jsx";
@@ -96,6 +98,12 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         </button>}
       {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
+    {game.isBye ? <div className="matchTeamStack">{[...game.ids1, ...game.ids2].map(id => {
+      const team = data.players.teams[id];
+      return team ? <div className="matchTeamRow tc-bye-team" key={id}><div className="tc-team-identity">
+        <span className="matchTeamName">{teamName(team)}</span><TeamCupRoster team={team} />
+      </div></div> : null;
+    })}</div> : <div className="tc-score-scroll"><div className="tc-score-table">
     <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
       <button type="button" key={label} title={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i === 2 ? "3º Set" : `${i + 1}º`}</b><small className="tc-set-label">{i < 2 && "Set"}
         {data.teamCup.kind === "squad" && <span className="tc-set-detail">{["Masculino", "Feminino", "Misto"][i]}</span>}
@@ -106,7 +114,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         return <React.Fragment key={side}>{side === 2 && <div className="matchVsDivider" aria-hidden="true"><span>VS</span></div>}
           <div className={`matchTeamRow tc-score-columns ${state.winner === "team" + side ? "is-winner" : state.winner ? "is-loser" : ""} ${game.isBye && !team ? "is-bye" : ""}`}>
           <div className="tc-team-identity"><span className="matchTeamName">{team ? teamName(team) : game.isBye ? "BYE" : "Aguardando"}</span>
-            {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</span>}</div>
+            {team && <TeamCupRoster team={team} />}</div>
           {game.teamCupLegs.map((part, i) => <span key={i} className="matchScoreCell">
             {game.isBye || (i === 2 && !state.decider) ? <span title={i === 2 ? "Somente em caso de empate em 1 a 1" : "Avanço direto"}>—</span>
               : readOnly ? <output className="matchScoreOutput">{part["s" + side] === "" ? "—" : part["s" + side]}</output>
@@ -120,7 +128,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); advanceScoreFocus(i, side, e.currentTarget); } }} />}
           </span>)}
         </div></React.Fragment>;
-      })}</div>
+      })}</div></div></div>}
     {!game.isBye && ((selected === 2 && !state.decider) || announcementStatus) && <footer className="tc-match-note">
       {selected === 2 && !state.decider && <small>3º set de desempate disponível somente em caso de empate em 1 a 1 nos sets.</small>}
       {announcementStatus && <small role="status">{announcementStatus}</small>}
@@ -215,7 +223,6 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
     if (data.teamCup.groupOrder) change(d => recordTeamCupGroupVideo(generateTeamCupGroups(d)));
     else presentDraw("Sorteando grupos...", teams.map(t => teamName(t)), d => recordTeamCupGroupVideo(generateTeamCupGroups(d), "random"));
   }
-  const bracketSections = [...new Set(data.brackets.map(g => g.phase + "|" + g.roundName))];
   const saveIndicator = readOnly ? null : savingBadge || <span className="savingBadge saved">💾 {savingStatus}</span>;
   const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} onRegisterCourtNumber={onRegisterCourtNumber} readOnly={readOnly} courtOptions={courtOptions} unavailableCourts={unavailableCourts} />;
   return <><section className="appPage tc-workspace" inert={drawPresentation.busy || Boolean(formatConfirmation)}>
@@ -278,9 +285,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
           nameColumnLabel="Equipe" renderName={row => {
             const team = teams[row.id];
             return <div className="tc-group-team"><span>{row.name}</span>
-              {team && <span className="tc-roster tc-roster-paired">{team.athletes.map((a, index) => <span className="tc-roster-member" key={a.id}>
-                {index % 2 === 1 && <span className="tc-roster-separator" aria-hidden="true"> | </span>}{a.name}{a.id === team.captainId ? " (C)" : ""}
-              </span>)}</span>}
+              {team && <TeamCupRoster team={team} />}
             </div>;
           }} columns={[{ key: "w", label: "Vitórias" }, { key: "setBalance", label: "Saldo de sets" }, { key: "coefficient", label: "Coeficiente" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
@@ -307,11 +312,9 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       </section>)}</div> : <p>Os confrontos aparecem depois de formar as equipes e sortear os grupos.</p> : <>
       {!data.brackets.length && <><p>Conclua os grupos e resolva eventuais empates na aba Grupos. Depois, gere as chaves finais.</p>{!readOnly && <div className="actions"><button type="button" className="actionGenerateBtn" disabled={!groupsDone} onClick={() => change(d => generateTeamCupBrackets(d))}>Gerar chaves finais{data.cupConfig.repechageEnabled ? " e Consolation" : ""}</button></div>}</>}
       {matchesTab === "repechage" && missingParallel && <p>Resolva o empate de campanha dos eliminados na aba Grupos para definir os confrontos.</p>}
-      {bracketSections.filter(section => section.startsWith(matchesTab + "|") && (matchesTab !== "repechage" || data.cupConfig.repechageEnabled)).map(section => {
-        const [phase, round] = section.split("|");
-        const games = data.brackets.filter(g => g.phase === phase && g.roundName === round);
-        return <section className="tc-round" key={section}><h3>{phase === "main" ? data.cupConfig.mainBracketName : data.cupConfig.repechageName} · {round}</h3><div className="tc-match-grid">{games.map((game, i) => matchCard(game, i + 1, round))}</div></section>;
-      })}
+      {(matchesTab !== "repechage" || data.cupConfig.repechageEnabled) && <TeamCupBracketView
+        brackets={data.brackets} phase={matchesTab} renderMatch={matchCard}
+        title={matchesTab === "main" ? data.cupConfig.mainBracketName : data.cupConfig.repechageName} />}
       </>}
     </section>}
   </section><ConfirmRegenerationModal confirmation={formatConfirmation} onCancel={() => setFormatConfirmation(null)} onConfirm={confirmFormatChange} />{drawPresentation.overlay}</>;

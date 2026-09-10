@@ -144,6 +144,8 @@ export function BracketColumn({
   speakGame,
   speakBracketRound,
   stopSpeech,
+  renderGame = null,
+  showRoundActions = true,
 }) {
   const isPlacementRound = (round) => {
     const normalizedTitle = String(round?.title || "").toLocaleLowerCase("pt-BR");
@@ -206,12 +208,12 @@ export function BracketColumn({
             <section className="roundCard bracketRoundLane" key={`${round.title}-${roundIndex}`}>
               <div className="roundHeader bracketRoundHeader">
                 <h3>{round.title === "Disputa Paralela" ? title : round.title}</h3>
-                <div className="voiceActions bracketRoundActions">
+                {showRoundActions && <div className="voiceActions bracketRoundActions">
                   <button type="button" className="voiceBtn" onClick={() => speakBracketRound(round, voiceRepeat, courtNumbers)}>
                     🔊 Chamar fase
                   </button>
                   <button type="button" className="secondaryBtn stopBtn" onClick={stopSpeech}>⏹️ Parar</button>
-                </div>
+                </div>}
               </div>
 
               <div className="bracketRoundTrack">
@@ -220,7 +222,7 @@ export function BracketColumn({
                     className={`bracketMatchNode ${roundIndex > 0 ? "hasPrevious" : ""} ${roundIndex < treeRounds.length - 1 ? "hasNext" : ""} ${gameIndex % 2 === 0 ? "isTopSeed" : "isBottomSeed"}`}
                     key={game.matchKey}
                   >
-                    {renderBracketGame(game, round)}
+                    {renderGame ? renderGame(game, round, gameIndex) : renderBracketGame(game, round)}
                   </div>
                 ))}
               </div>
@@ -235,13 +237,13 @@ export function BracketColumn({
             <section className="roundCard bracketPlacementRound" key={`${round.title}-placement-${roundIndex}`}>
               <div className="roundHeader bracketRoundHeader">
                 <h3>{round.title}</h3>
-                <div className="voiceActions bracketRoundActions">
+                {showRoundActions && <div className="voiceActions bracketRoundActions">
                   <button type="button" className="voiceBtn" onClick={() => speakBracketRound(round, voiceRepeat, courtNumbers)}>🔊 Chamar fase</button>
                   <button type="button" className="secondaryBtn stopBtn" onClick={stopSpeech}>⏹️ Parar</button>
-                </div>
+                </div>}
               </div>
               <div className="bracketPlacementGames">
-                {round.games.map((game) => <div key={game.matchKey}>{renderBracketGame(game, round)}</div>)}
+                {round.games.map((game, gameIndex) => <div key={game.matchKey}>{renderGame ? renderGame(game, round, gameIndex) : renderBracketGame(game, round)}</div>)}
               </div>
             </section>
           ))}

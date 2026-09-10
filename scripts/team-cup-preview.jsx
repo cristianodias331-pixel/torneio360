@@ -6,14 +6,15 @@ import { createOrganizerWorkspace } from "../src/OrganizerWorkspace.jsx";
 import PublicTournamentScreen from "../src/features/publicArena/PublicTournamentScreen.jsx";
 import { createInitialData } from "../src/domain/tournamentDataNormalization.mjs";
 import { modalityConfig } from "../src/domain/modalityConfig.mjs";
-import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified, TEAM_LEVELS, drawTeamCaptains, drawTeamMembers } from "../src/domain/teamCup.mjs";
+import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, updateTeamCupLeg, teamCupQualified, TEAM_COUNTS, TEAM_LEVELS, drawTeamCaptains, drawTeamMembers } from "../src/domain/teamCup.mjs";
 import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo } from "../src/domain/teamCupVideo.mjs";
 const query = new URLSearchParams(location.search);
 const kind = query.get("kind") || "trio";
-const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "") + (query.has("videos") ? "-videos-v1" : "") + (query.has("podium") ? "-podium-v1" : "") + (query.has("focus") ? "-focus-test" : "");
+const count = TEAM_COUNTS.includes(Number(query.get("count"))) ? Number(query.get("count")) : query.has("participants") ? 9 : 6;
+const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "") + (query.has("videos") ? "-videos-v1" : "") + (query.has("podium") ? "-podium-v1" : "") + (query.has("focus") ? "-focus-test" : "") + (query.has("count") ? `-${count}-teams` : "");
 function initial() {
   const base = createInitialData("Times/Equipes", modalityConfig["Times/Equipes"]);
-  const data = createTeamCupData({ ...base, winningScore: 6 }, query.has("participants") ? 9 : 6, kind);
+  const data = createTeamCupData({ ...base, winningScore: 6 }, count, kind);
   if (query.has("setup") || query.has("empty")) return data;
   const names = ["Cristiano", "Danilo", "Cristian", "Layner", "Nicolas", "Guilherme", "Maria", "Ana", "Júlia", "Fernanda", "Beatriz", "Carolina"];
   data.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => a.name = names[(i * 3 + j) % names.length] + " " + (i + 1) + (j + 1)));
