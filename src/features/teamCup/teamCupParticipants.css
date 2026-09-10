@@ -53,6 +53,9 @@ html[data-theme="dark"] .tcorg-overlay { --org-bg:#081e2d; --org-surface:#0b2639
 .tcorg-stages button { flex:1; }
 .tcorg-stages .active { color:var(--org-purple); border-color:var(--org-purple); background:var(--org-selected); }
 .tcorg-modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+.tcorg-modes-two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.tcorg-choice-title { font-size:13px; margin:0 0 10px; }
+.tcorg-captain-options button { min-height:64px; }
 .tcorg-modes button { padding:14px 12px; justify-content:flex-start; text-align:left; background:var(--org-surface); }
 .tcorg-modes button.selected { border-color:var(--org-purple); box-shadow:inset 3px 0 var(--org-purple); background:var(--org-selected); }
 .tcorg-modes b { display:block; font-size:12px; }
@@ -97,9 +100,11 @@ html[data-theme="dark"] .tcorg-overlay { --org-bg:#081e2d; --org-surface:#0b2639
 .tcorg-draw > label { display:flex; align-items:center; gap:8px; }
 .tcorg-draw p { color:var(--org-muted); line-height:1.5; }
 .tcorg-candidates { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); max-height:220px; overflow:auto; gap:8px; margin-bottom:12px; }
-.tcorg-candidates label { display:flex; align-items:center; gap:6px; border:1px solid var(--org-line); border-radius:8px; padding:8px; font-size:11px; }
-.tcorg-candidates label span { overflow-wrap:anywhere; }
+.tcorg-candidates label, .tcorg-candidate { display:flex; align-items:center; gap:6px; border:1px solid var(--org-line); border-radius:8px; padding:8px; font-size:11px; }
+.tcorg-candidates span { overflow-wrap:anywhere; }
 .tcorg-candidates small { color:var(--org-muted); margin-left:auto; font-size:10px; }
+.tcorg-draw-result h3 { font-size:14px; margin:0 0 10px; }
+.tcorg-draw-result .tcorg-roster-row { grid-template-columns:minmax(0,1fr) auto; }
 .tcorg-import-modes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
 .tcorg-import-modes button { display:block; text-align:left; background:var(--org-surface); }
 .tcorg-import-modes button.selected { border-color:var(--org-purple); box-shadow:inset 3px 0 var(--org-purple); background:var(--org-selected); }

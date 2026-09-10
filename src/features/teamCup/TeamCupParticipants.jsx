@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Check, ClipboardPaste, Crown, GripVertical, Grid3X3, Layers, Search, Shuffle, SlidersHorizontal, Users, X } from "lucide-react";
 import { TEAM_LEVELS, drawTeamCaptains, drawTeamMembers, teamName, teamSize } from "../../domain/teamCup.mjs";
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, isTeamCupVacancy, organizeTeamCupGroups, organizationLocked, organizationSignature,
-  participantEntries, prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems,
+  participantEntries, prepareTeamCupFormation, swapTeamCupGroupItems,
   teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature,
   teamCupOrganizationGroups, teamLevelValue, updateTeamCupParticipant, updateTeamCupTeamName } from "../../domain/teamCupOrganization.mjs";
 import { ConfirmRegenerationModal } from "../dialogs/ConfirmationDialogs.jsx";
@@ -119,6 +119,8 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
   const [confirmation, setConfirmation] = useState(null);
   const [signature] = useState(() => organizationSignature(data));
   const [stage, setStage] = useState("teams");
+  const [captainEligibility, setCaptainEligibility] = useState(() => data.teamCup.formation === "random" && data.teamCup.drawStage !== "pending"
+    ? data.teamCup.designatedCaptains ? "selected" : "any" : null);
   const [error, setError] = useState(""), [selection, setSelection] = useState(null);
   const drawPresentation = useTeamCupDrawPresentation();
   const dragged = useRef(null);
@@ -132,6 +134,7 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
     if (drawPresentation.busy) return;
     try {
       const captains = stage === "captains";
+      if (captains && !captainEligibility) throw new Error("Escolha quem poderá ser capitão antes de sortear.");
       const next = captains ? recordTeamCupCaptainDraw(drawTeamCaptains(draft)) : recordTeamCupMemberDraw(drawTeamMembers(draft));
       const captainIds = new Set(draft.players.teams.map(t => t.captainId));
       const candidates = draft.teamCup.pool.filter(a => captains ? !draft.teamCup.designatedCaptains || a.captainCandidate : !captainIds.has(a.id));
@@ -166,15 +169,15 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
   }
   const modes = stage === "groups"
     ? [["manual", "Manual", "Troque equipes inteiras de posição.", Grid3X3], ["balanced", "Níveis equilibrados", "Distribui a força média entre os grupos.", SlidersHorizontal], ["similar", "Mesmo nível junto", "Aproxima equipes de força semelhante.", Layers]]
-    : [["manual", "Manual", "Equipes fixas e capitães definidos por você.", Users], ["balanced", "Sorteio equilibrado", "Equilibra os níveis, considerando os capitães.", SlidersHorizontal], ["random", "Sorteio aleatório", "Primeiro capitães, depois os integrantes.", Shuffle]];
+    : [["balanced", "Sorteio equilibrado", "Equilibra os níveis, considerando os capitães.", SlidersHorizontal], ["random", "Sorteio aleatório", "Primeiro capitães, depois os integrantes.", Shuffle]];
   const mode = stage === "groups" ? draft.teamCup.groupMode || "manual" : random ? draft.teamCup.balanced ? "balanced" : "random" : "manual";
-  return <><Dialog busy={drawPresentation.busy} suspended={Boolean(confirmation)} title="Organizar equipes e grupos" eyebrow={`COPA · TIMES/EQUIPES · ${draft.teamCup.kind.toUpperCase()}`} intro="Primeiro, coloque os nomes em Colar lista ou manualmente. Depois, forme as equipes e organize os grupos da sua forma." onClose={onClose}
+  return <><Dialog busy={drawPresentation.busy} suspended={Boolean(confirmation)} title="Organizar equipes e grupos" eyebrow={`COPA · TIMES/EQUIPES · ${draft.teamCup.kind.toUpperCase()}`} intro="Cadastre e edite os times na lista de Participantes. Aqui, sorteie capitães e integrantes e organize os grupos da copa." onClose={onClose}
     footer={<><button type="button" onClick={onClose}>Cancelar</button><button type="button" className="tcorg-save" onClick={() => save()}><Check /> Salvar formação</button></>}>
     <nav className="tcorg-stages" aria-label="Etapas da organização"><button type="button" className={stage === "teams" ? "active" : ""} onClick={() => { setStage("teams"); setSelection(null); }}>1. Equipes e capitães</button><button type="button" className={stage === "groups" ? "active" : ""} onClick={() => { setStage("groups"); setSelection(null); }}>2. Grupos da copa</button></nav>
     <TeamCupVideoActions data={draft} tournament={tournament} draft only={stage === "teams" ? "teams" : "groups"} />
-    {hasGames && <p className="tcorg-hint">Edite equipes, capitães e integrantes normalmente. Os placares são mantidos. Se mudar a distribuição dos grupos, será solicitada confirmação antes de refazer os jogos.</p>}
-    <div className="tcorg-modes">{modes.map(([key, title, text, Icon]) => <button type="button" key={key} className={mode === key ? "selected" : ""} aria-pressed={mode === key} disabled={stage === "groups" && !formed}
-      onClick={() => { setSelection(null); edit(d => stage === "groups" ? organizeTeamCupGroups(d, key) : prepareTeamCupFormation(d, key)); }}><Icon /><span><b>{title}</b><small>{text}</small></span></button>)}</div>
+    {hasGames && <p className="tcorg-hint">Sortear novamente as equipes mantém os jogos e placares dos times. Se mudar a distribuição dos grupos, será solicitada confirmação antes de refazer os jogos.</p>}
+    <div className={`tcorg-modes ${stage === "teams" ? "tcorg-modes-two" : ""}`}>{modes.map(([key, title, text, Icon]) => <button type="button" key={key} className={mode === key ? "selected" : ""} aria-pressed={mode === key} disabled={stage === "groups" && !formed}
+      onClick={() => { setSelection(null); if (stage === "teams") setCaptainEligibility(null); edit(d => stage === "groups" ? organizeTeamCupGroups(d, key) : prepareTeamCupFormation(d, key)); }}><Icon /><span><b>{title}</b><small>{text}</small></span></button>)}</div>
     {error && <p className="tcorg-error" role="alert">{error}</p>}
     {stage === "groups" ? <>
       {!formed ? <p className="tcorg-hint">Conclua o sorteio de capitães e integrantes na etapa 1 para distribuir as equipes nos grupos.</p> : <div className="tcorg-preview">
@@ -185,21 +188,37 @@ function OrganizationDialog({ data, tournament, onChange, onClose }) {
             return <div className="tcorg-team-slot" key={id}><span className="tcorg-slot-number">{i + 1}</span><button type="button" className={`tcorg-team-tile ${selection?.kind === "team" && selection.id === id ? "selected" : ""}`} aria-label={`Trocar ${teamName(team)}`} onClick={() => swap({ kind: "team", id })} {...dragProps({ kind: "team", id })}><GripVertical /><span><b>{teamName(team)}</b><small>{team.athletes.map(a => (a.name || "A definir") + (a.id === team.captainId ? " (C)" : "")).join(" · ")}</small></span></button><div className="tcorg-team-level"><small>NÍVEL MÉDIO</small><span>{completeLevels ? TEAM_LEVELS[Math.round(value) - 1] : "A definir"}</span></div></div>;
           })}
         </section>)}</div>
-        <p className="tcorg-hint">Os níveis individuais são editados na lista ou em Equipes e capitães. Aqui, cada time permanece inteiro. O equilíbrio é aproximado; não muda a classificação V → SG → total de games.</p>
+        <p className="tcorg-hint">Os níveis individuais são editados na lista de Participantes. Aqui, cada time permanece inteiro. O equilíbrio é aproximado; não muda a classificação V → SG → total de games.</p>
       </div>}
     </> : <>
-      {random && <div className="tcorg-draw"><label><input type="checkbox" checked={draft.teamCup.designatedCaptains} disabled={draft.teamCup.drawStage !== "pending"} onChange={e => edit(d => ({ ...d, teamCup: { ...d.teamCup, designatedCaptains: e.target.checked } }))} /> Definir previamente quem pode ser capitão</label>
-        <p>O capitão integra o time. {draft.teamCup.designatedCaptains ? `Marque exatamente ${teams.length} capitães abaixo.` : "O primeiro sorteio escolhe um capitão por equipe."} {draft.teamCup.kind === "squad" && "Squad mantém 2 atletas do masculino e 2 do feminino."}</p>
-        <div className="tcorg-candidates">{draft.teamCup.pool.map(a => <label key={a.id}><input type="checkbox" checked={Boolean(a.captainCandidate)} disabled={!draft.teamCup.designatedCaptains || draft.teamCup.drawStage !== "pending"} onChange={e => edit(d => updateTeamCupParticipant(d, a.id, { captainCandidate: e.target.checked }))} /><span>{a.name || "Nome não preenchido"}</span><small>{a.gender === "H" ? "Masculino" : "Feminino"} · {a.level || "Sem nível"}</small></label>)}</div>
-        <div className="tcorg-actions"><button type="button" disabled={drawPresentation.busy || draft.teamCup.drawStage !== "pending"} onClick={() => draw("captains")}>1. Sortear capitães</button><button type="button" disabled={drawPresentation.busy || draft.teamCup.drawStage !== "captains"} onClick={() => draw("members")}>2. Sortear integrantes</button><span>{draft.teamCup.drawStage === "complete" ? "Equipes formadas" : draft.teamCup.drawStage === "captains" ? "Capitães sorteados; faltam os integrantes" : "Aguardando sorteio"}</span></div>
+      {!random && <p className="tcorg-hint">Escolha um dos sorteios acima para formar as equipes. Se os times já estão definidos, siga para “Grupos da copa”.</p>}
+      {random && <div className="tcorg-draw">
+        <h3 className="tcorg-choice-title">Quem poderá ser capitão?</h3>
+        <div className="tcorg-modes tcorg-modes-two tcorg-captain-options" role="radiogroup" aria-label="Quem poderá ser capitão?">
+          {[
+            ["any", "Qualquer participante poderá ser capitão da equipe", Users],
+            ["selected", "Somente os participantes selecionados poderão ser capitães", Crown],
+          ].map(([value, label, Icon]) => <button key={value} type="button" role="radio" aria-checked={captainEligibility === value}
+            className={captainEligibility === value ? "selected" : ""} disabled={draft.teamCup.drawStage !== "pending"}
+            onClick={() => { setCaptainEligibility(value); edit(d => ({ ...d, teamCup: { ...d.teamCup, designatedCaptains: value === "selected" } })); }}><Icon /><b>{label}</b></button>)}
+        </div>
+        {!captainEligibility ? <p>Escolha uma opção acima para visualizar os participantes do sorteio.</p> : <>
+          <p>O capitão integra o time. {captainEligibility === "selected" ? `Marque exatamente ${teams.length} participantes abaixo, um capitão por equipe.` : "Todos os participantes abaixo estarão no sorteio, que escolhe um capitão por equipe."} {draft.teamCup.kind === "squad" && "Squad mantém 2 atletas do masculino e 2 do feminino."}</p>
+          <section className="tcorg-candidates" aria-label="Participantes para o sorteio de capitães">{draft.teamCup.pool.map(a => captainEligibility === "selected"
+            ? <label key={a.id}><input type="checkbox" aria-label={`Permitir ${a.name || a.id} como capitão`} checked={Boolean(a.captainCandidate)} disabled={draft.teamCup.drawStage !== "pending"} onChange={e => edit(d => updateTeamCupParticipant(d, a.id, { captainCandidate: e.target.checked }))} /><span>{a.name || "Nome não preenchido"}</span><small>{a.gender === "H" ? "Masculino" : "Feminino"} · {a.level || "Sem nível"}</small></label>
+            : <div className="tcorg-candidate" key={a.id}><span>{a.name || "Nome não preenchido"}</span><small>{a.gender === "H" ? "Masculino" : "Feminino"} · {a.level || "Sem nível"}</small></div>)}</section>
+        </>}
+        <div className="tcorg-actions"><button type="button" disabled={drawPresentation.busy || !captainEligibility || draft.teamCup.drawStage !== "pending"} onClick={() => draw("captains")}>1. Sortear capitães</button><button type="button" disabled={drawPresentation.busy || draft.teamCup.drawStage !== "captains"} onClick={() => draw("members")}>2. Sortear integrantes</button><span>{draft.teamCup.drawStage === "complete" ? "Equipes formadas" : draft.teamCup.drawStage === "captains" ? "Capitães sorteados; faltam os integrantes" : "Aguardando sorteio"}</span></div>
       </div>}
-      <div className="tcorg-roster-grid">{teams.map(team => <section className="tcorg-roster" key={team.id}><label>Nome da equipe<input value={team.name} maxLength={60} onChange={e => edit(d => ({ ...d, players: { ...d.players, teams: d.players.teams.map(t => t.id === team.id ? { ...t, name: e.target.value, a: e.target.value } : t) } }))} /></label>
-        {random && draft.teamCup.drawStage === "pending" ? <p>Aguardando sorteio dos capitães.</p> : team.athletes.map(a => <div className="tcorg-roster-row" key={a.id}><div><b>{a.name || "A definir"}</b><small>{a.gender === "H" ? "Masculino" : "Feminino"}</small></div>
-          <select aria-label={`Nível de ${a.name || a.id}`} value={a.level} disabled={!formed} onChange={e => edit(d => updateTeamCupParticipant(d, a.id, { level: e.target.value }))}><option value="">Nível</option>{TEAM_LEVELS.map(level => <option key={level}>{level}</option>)}</select>
-          <label className="tcorg-captain"><input type="radio" name={`modal-captain-${team.id}`} disabled={!formed} checked={team.captainId === a.id} onChange={() => edit(d => ({ ...d, players: { ...d.players, teams: d.players.teams.map(t => t.id === team.id ? { ...t, captainId: a.id } : t) } }))} /><Crown /> Cap.</label>
-          {formed && <select className="tcorg-swap-athlete" aria-label={`Trocar ${a.name || a.id} de equipe`} value="" onChange={e => edit(d => swapTeamCupAthletes(d, a.id, e.target.value))}><option value="">Trocar com…</option>{teams.filter(t => t.id !== team.id).flatMap(t => t.athletes.filter(other => teamSize(draft) !== 4 || other.gender === a.gender).map(other => <option key={other.id} value={other.id}>{other.name || "A definir"} · {teamName(t)}</option>))}</select>}
-        </div>)}
-      </section>)}</div><p className="tcorg-hint">Nas trocas manuais, a vaga de capitão fica com quem entra nela; confira a marcação antes de salvar. A plataforma não escolhe a dupla que entra em quadra.</p>
+      {random && draft.teamCup.drawStage !== "pending" && <section className="tcorg-draw-result" aria-label="Resultado do sorteio">
+        <h3>{draft.teamCup.drawStage === "captains" ? "Capitães sorteados" : "Equipes sorteadas"}</h3>
+        <div className="tcorg-roster-grid">{teams.map(team => <section className="tcorg-roster" key={team.id}><h3>{teamName(team)}</h3>
+          {team.athletes.map(a => <div className="tcorg-roster-row" key={a.id}><div><b>{a.name || "A definir"}</b><small>{a.gender === "H" ? "Masculino" : "Feminino"} · {a.level || "Sem nível"}</small></div>
+            {team.captainId === a.id && <span className="tcorg-captain"><Crown /> Capitão/ã</span>}
+          </div>)}
+        </section>)}</div>
+        <p className="tcorg-hint">{draft.teamCup.drawStage === "captains" ? "Agora sorteie os integrantes para completar as equipes." : "Confira o resultado e salve a formação."} Para realizar um novo sorteio, escolha novamente Sorteio equilibrado ou Sorteio aleatório.</p>
+      </section>}
     </>}
   </Dialog><ConfirmRegenerationModal confirmation={confirmation} onCancel={() => setConfirmation(null)} onConfirm={() => save(confirmation)} />{drawPresentation.overlay}</>;
 }
