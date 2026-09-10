@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { TEAM_LEVELS, createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups } from "../src/domain/teamCup.mjs";
+import { TEAM_LEVELS, createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups, generateTeamCupBrackets, teamCupQualified, updateTeamCupLeg } from "../src/domain/teamCup.mjs";
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, organizeTeamCupGroups, organizationSignature, parseTeamCupList, participantEntries,
-  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupOrganizationGroups, updateTeamCupParticipant } from "../src/domain/teamCupOrganization.mjs";
+  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant } from "../src/domain/teamCupOrganization.mjs";
 import { normalizeTournamentData } from "../src/domain/tournamentDataNormalization.mjs";
 import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
 
@@ -29,10 +29,10 @@ for (const kind of ["trio", "squad"]) {
         assert([3, 4].includes(group.teamIds.length));
       }
       assert.deepEqual(normalizeTournamentData("Times/Equipes", saved).teamCup.groupOrder, saved.teamCup.groupOrder);
-      assert.throws(() => applyTeamCupOrganization(generated, saved, organizationSignature(generated)), /protegida/);
-      assert.throws(() => importTeamCupList(generated, "Outro"), /protegida/);
-      assert.throws(() => organizeTeamCupGroups(generated, "manual"), /protegida/);
-      assert.throws(() => updateTeamCupParticipant(generated, "athlete-0-0", { name: "Outro" }), /protegida/);
+      assert.deepEqual(applyTeamCupOrganization(generated, saved, organizationSignature(generated)).schedule, generated.schedule);
+      assert.throws(() => importTeamCupList(generated, "Outro"), /vagas/);
+      assert.deepEqual(organizeTeamCupGroups(teamCupOrganizationDraft(generated), "manual").teamCup.groupOrder, generated.players.teams.map(t => t.id));
+      assert.equal(participantEntries(updateTeamCupParticipant(generated, "athlete-0-0", { name: "Outro" })).find(e => e.athlete.id === "athlete-0-0").athlete.name, "Outro");
       assert.deepEqual(filled.players, saved.players, "Grouping never changes athletes or captains");
     }
     assert.throws(() => applyTeamCupOrganization(filled, filled, "stale"), /atualizada/);
@@ -105,7 +105,61 @@ for (const kind of ["trio", "squad"]) {
   assert.equal(poolReplaced.teamCup.pool[1].name, "Maria Santos");
   assert.equal(poolReplaced.players.teams[0].athletes[1].name, "Maria Santos");
   const locked = { ...data, schedule: [[{ matchKey: "existing", s1: "6", s2: "4" }]] };
-  assert.throws(() => importTeamCupList(locked, columnList, "replace", { replaceConfirmed: true }), /protegida/);
+  assert.deepEqual(importTeamCupList(locked, columnList, "replace", { replaceConfirmed: true }).schedule, locked.schedule);
   assert.equal(locked.schedule[0][0].s1, "6");
 }
-console.log("Times/Equipes organização: importação, grupos manuais/por nível, capitães, Squad, persistência e proteção de jogos aprovados.");
+for (const kind of ["trio", "squad"]) {
+  let current = createTeamCupData({ winningScore: 6 }, 9, kind);
+  current.players.teams.forEach((t, i) => t.athletes.forEach((a, j) => { a.name = `Atleta ${i}-${j}`; a.level = TEAM_LEVELS[(i + j) % 6]; }));
+  current = generateTeamCupGroups(current, () => .4);
+  for (const game of current.schedule.flat()) for (const leg of [0, 1]) current = updateTeamCupLeg(current, game.matchKey, leg, { s1: "6", s2: "2" });
+  for (const tie of teamCupQualified(current).unresolvedCampaignTies) current.cupConfig.campaignTieBreakOverrides[tie.tieKey] = tie.teamIds;
+  current = generateTeamCupBrackets(current);
+  const original = structuredClone(current), signature = organizationSignature(current);
+  let draft = teamCupOrganizationDraft(current);
+  assert.equal(draft.schedule.length, 0);
+  assert.deepEqual(current, original, "Opening organization does not mutate games or results");
+  draft.players.teams[0].name = "Nome escolhido pelo organizador";
+  draft.players.teams[0].a = draft.players.teams[0].name;
+  draft.players.teams[0].captainId = draft.players.teams[0].athletes[1].id;
+  draft = swapTeamCupAthletes(draft, draft.players.teams[0].athletes[0].id, draft.players.teams[1].athletes[0].id);
+  draft = updateTeamCupParticipant(draft, draft.players.teams[0].athletes[0].id, { name: "Nome Corrigido", level: "A" });
+  const edited = applyTeamCupOrganization(current, draft, signature);
+  assert.deepEqual(edited.schedule, original.schedule);
+  assert.deepEqual(edited.brackets, original.brackets);
+  assert.deepEqual(edited.players.teams.map(t => t.id), original.players.teams.map(t => t.id));
+  assert.equal(edited.players.teams[0].name, "Nome escolhido pelo organizador");
+  assert.deepEqual(mergeConcurrentTournamentData(current, edited, current).conflicts, []);
+  const live = updateTeamCupLeg({ ...current, brackets: [] }, current.schedule[0][0].matchKey, 0, { s1: "6", s2: "3" });
+  const savedOverLive = applyTeamCupOrganization(live, draft, signature);
+  assert.deepEqual(savedOverLive.schedule, live.schedule, "Roster-only changes preserve scores updated while dialog was open");
+  const rerolled = drawTeamMembers(drawTeamCaptains(prepareTeamCupFormation(teamCupOrganizationDraft(current), "balanced"), () => .3), () => .3);
+  assert.deepEqual(applyTeamCupOrganization(current, rerolled, signature).schedule, current.schedule, "Redrawing rosters does not erase results assigned to teams");
+  const regrouped = swapTeamCupGroupItems(teamCupOrganizationDraft(current), { kind: "team", id: current.players.teams[0].id }, { kind: "team", id: current.players.teams[3].id });
+  assert.equal(teamCupOrganizationNeedsRegeneration(current, regrouped), true);
+  assert.throws(() => applyTeamCupOrganization(current, regrouped, signature), /Confirme/);
+  assert.deepEqual(current, original, "Cancelling leaves all data unchanged");
+  const options = { regenerateConfirmed: true, resultsSignature: teamCupResultsSignature(current) };
+  assert.throws(() => applyTeamCupOrganization(live, regrouped, signature, options), /atualizados/);
+  const rebuilt = applyTeamCupOrganization(current, regrouped, signature, options);
+  assert.equal(rebuilt.brackets.length, 0);
+  assert(rebuilt.schedule.flat().every(g => g.teamCupLegs.every(leg => leg.s1 === "" && leg.s2 === "" && !leg.inProgress)));
+  assert.deepEqual(rebuilt.players.teams.map(t => t.id), regrouped.teamCup.groupOrder);
+  assert(rebuilt.schedule.flat().every(g => !current.schedule.flat().some(old => old.matchKey === g.matchKey)));
+  assert.deepEqual(rebuilt.cupConfig.tieBreakOverrides, {});
+  assert.deepEqual(rebuilt.cupConfig.campaignTieBreakOverrides, {});
+  assert.deepEqual(mergeConcurrentTournamentData(current, rebuilt, current).conflicts, [], "Explicit regeneration remains saveable with old finals removed");
+  assert(mergeConcurrentTournamentData(current, rebuilt, live).conflicts.length > 0, "Concurrent old-generation scores cannot silently attach to new games");
+  assert.deepEqual(normalizeTournamentData("Times/Equipes", rebuilt).schedule, rebuilt.schedule);
+  const legacy = structuredClone(current);
+  delete legacy.teamCup.defaultTeamNamesVersion;
+  legacy.players.teams.forEach(t => { t.name = `Time ${String.fromCharCode(65 + Number(t.id.slice(5)))}`; t.a = t.name; });
+  legacy.players.teams[0].name = "Os Campeões";
+  const migrated = normalizeTournamentData("Times/Equipes", legacy);
+  assert.equal(migrated.players.teams[0].name, "Os Campeões");
+  assert.equal(migrated.players.teams[1].name, `Time ${Number(migrated.players.teams[1].id.slice(5)) + 1}`);
+  assert.deepEqual(migrated.schedule, legacy.schedule);
+  migrated.players.teams[1].name = "Time " + String.fromCharCode(65 + Number(migrated.players.teams[1].id.slice(5)));
+  assert.equal(normalizeTournamentData("Times/Equipes", migrated).players.teams[1].name, migrated.players.teams[1].name, "Organizer can choose any custom name after the one-time default upgrade");
+}
+console.log("Times/Equipes organização: edição após gerar jogos, confirmação de redistribuição, preservação de placares, nomes numéricos, importação, sorteios e persistência aprovados.");

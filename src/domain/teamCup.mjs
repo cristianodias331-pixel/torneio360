@@ -18,6 +18,9 @@ export const TEAM_COUNTS = Array.from({ length: 29 }, (_, i) => i + 4).filter(n 
 export const isTeamCup = data => data?.cupConfig?.format === "team-cup";
 export const teamSize = data => data?.teamCup?.kind === "squad" ? 4 : 3;
 export function defaultTeamName(i) {
+  return `Time ${i + 1}`;
+}
+function legacyTeamName(i) {
   let label = "";
   for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(65 + (n - 1) % 26) + label;
   return "Time " + label;
@@ -41,7 +44,7 @@ export function createTeamCupData(base = {}, count = 6, kind = "trio") {
   return {
     ...base, rankingCriteria: "wins_balance_points",
     cupConfig: { format: "team-cup", teamCount: count, mainBracketName: "Eliminatória Principal", repechageName: "Consolation", repechageEnabled: false, tieBreakOverrides: {}, campaignTieBreakOverrides: {} },
-    teamCup: { version: 1, kind, formation: "fixed", balanced: false, designatedCaptains: false, drawStage: "pending", pool: [] },
+    teamCup: { version: 1, defaultTeamNamesVersion: 2, kind, formation: "fixed", balanced: false, designatedCaptains: false, drawStage: "pending", pool: [] },
     players: { teams: Array.from({ length: count }, (_, i) => blankTeam(i, kind === "squad" ? 4 : 3)) },
     schedule: [], brackets: [], groupsShuffled: false,
   };
@@ -49,11 +52,25 @@ export function createTeamCupData(base = {}, count = 6, kind = "trio") {
 
 export function normalizeTeamCupData(data, defaults) {
   const cup = { ...defaults.cupConfig, ...data.cupConfig, format: "team-cup" };
-  const settings = { ...defaults.teamCup, ...data.teamCup };
+  const settings = { ...defaults.teamCup, ...data.teamCup, defaultTeamNamesVersion: 2 };
   const teams = Array.isArray(data.players?.teams) ? data.players.teams : defaults.players.teams;
+  const upgradeNames = data.teamCup?.defaultTeamNamesVersion !== 2;
+  const displayName = (team, fallbackIndex) => {
+    const index = /^team-\d+$/.test(team.id) ? Number(team.id.slice(5)) : fallbackIndex;
+    const name = teamName(team, index);
+    return upgradeNames && name === legacyTeamName(index) ? defaultTeamName(index) : name;
+  };
+  // Upgrade only the old default labels, once. Custom names remain editable,
+  // and draw receipts keep matching the same unchanged team identities.
+  const receiptTeam = (team, i) => ({ ...team, name: displayName(team, i) });
+  if (upgradeNames && settings.drawVideo) settings.drawVideo = { ...settings.drawVideo,
+    ...(settings.drawVideo.captains ? { captains: settings.drawVideo.captains.map(receiptTeam) } : {}),
+    ...(settings.drawVideo.teams ? { teams: settings.drawVideo.teams.map(receiptTeam) } : {}) };
+  if (upgradeNames && settings.groupVideo) settings.groupVideo = { ...settings.groupVideo,
+    groups: settings.groupVideo.groups.map(group => ({ ...group, teams: group.teams.map(receiptTeam) })) };
   // Never truncate saved rosters, scores or captains during hydration.
   return { ...data, cupConfig: cup, teamCup: settings,
-    players: { ...data.players, teams: teams.map((team, i) => ({ ...team, name: teamName(team, i), a: teamName(team, i), b: "", athletes: Array.isArray(team.athletes) ? team.athletes : [] })) },
+    players: { ...data.players, teams: teams.map((team, i) => ({ ...team, name: displayName(team, i), a: displayName(team, i), b: "", athletes: Array.isArray(team.athletes) ? team.athletes : [] })) },
     schedule: (data.schedule || []).map(round => round.map(game => summarizeTeamMatch(game, data.winningScore))),
     brackets: (data.brackets || []).map(game => summarizeTeamMatch(game, data.winningScore)),
   };

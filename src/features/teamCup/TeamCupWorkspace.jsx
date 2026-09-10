@@ -128,12 +128,12 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   const campaignTies = groupsDone && !groups.some(g => g.unresolvedTieIds.length) ? teamCupQualified(data).unresolvedCampaignTies : [];
   const missingParallel = data.brackets.length > 0 && !data.brackets.some(g => g.phase === "repechage");
   useEffect(() => { if (!data.cupConfig.repechageEnabled && matchesTab === "repechage") setMatchesTab("main"); }, [data.cupConfig.repechageEnabled, matchesTab]);
-  function change(transform) {
+  function change(transform, options) {
     if (readOnly) return;
     setMessage("");
     setData(current => {
       try { return transform(current); } catch (error) { setMessage(error.message); return current; }
-    });
+    }, options);
   }
   function reconfigure(count, kind) {
     if (locked) return;

@@ -35,7 +35,7 @@ export function runTeamCupChecks() {
   const initial = createInitialData(cup.TEAM_CUP_TYPE, modalityConfig[cup.TEAM_CUP_TYPE]);
   assert.equal(initial.players.teams.length, 6);
   assert.equal(initial.players.teams[0].athletes.length, 3);
-  assert.equal(cup.defaultTeamName(26), "Time AA");
+  assert.equal(cup.defaultTeamName(26), "Time 27");
   assert.deepEqual(normalizeTournamentData(cup.TEAM_CUP_TYPE, initial).players, initial.players);
   assert.equal(cup.teamSize(fixture(6, "squad")), 4);
   for (const kind of ["trio", "squad"]) for (const count of cup.TEAM_COUNTS) {

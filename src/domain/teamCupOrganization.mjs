@@ -1,5 +1,5 @@
 import { createCearenseGroups } from "./cupGroups.mjs";
-import { TEAM_LEVELS, teamSize, validateTeamCupTeams } from "./teamCup.mjs";
+import { TEAM_LEVELS, generateTeamCupGroups, teamSize, validateTeamCupTeams } from "./teamCup.mjs";
 import { formatParticipantName } from "./participantNames.mjs";
 
 export const organizationLocked = data => Boolean(data.schedule?.length || data.brackets?.length);
@@ -7,6 +7,12 @@ export function assertOrganizationEditable(data) {
   if (organizationLocked(data)) throw new Error("A formação está protegida porque os jogos já foram gerados. Nenhum jogo ou placar será alterado.");
 }
 export const organizationSignature = data => JSON.stringify([data.players, data.teamCup, data.cupConfig?.teamCount]);
+export function teamCupOrganizationDraft(data) {
+  const draft = structuredClone(data);
+  // Work on formation without touching the competition's existing games.
+  if (organizationLocked(data)) draft.teamCup.groupOrder = data.players.teams.map(team => team.id);
+  return { ...draft, schedule: [], brackets: [] };
+}
 export function participantEntries(data) {
   if (data.teamCup.formation === "random" && data.teamCup.drawStage !== "complete") {
     return data.teamCup.pool.map((athlete, index) => ({ athlete, index, team: null }));
@@ -14,7 +20,6 @@ export function participantEntries(data) {
   return data.players.teams.flatMap(team => team.athletes.map(athlete => ({ athlete, team })));
 }
 export function updateTeamCupParticipant(data, id, patch) {
-  assertOrganizationEditable(data);
   if (data.teamCup.formation === "random" && data.teamCup.drawStage === "captains") throw new Error("Conclua o sorteio dos integrantes antes de editar a lista.");
   const next = structuredClone(data);
   // The pool and the assigned roster refer to the same athlete identity.
@@ -80,7 +85,6 @@ export function buildTeamCupImportPreview(data, source, mode = "available") {
     importedIds: targets.slice(0, imported).map(e => e.athlete.id) };
 }
 export function importTeamCupList(data, source, mode = "available", { replaceConfirmed = false, signature } = {}) {
-  assertOrganizationEditable(data);
   if (data.teamCup.formation === "random" && data.teamCup.drawStage === "captains") throw new Error("Conclua o sorteio dos integrantes antes de editar a lista.");
   if (signature !== undefined && organizationSignature(data) !== signature) throw new Error("A lista foi atualizada enquanto a janela estava aberta. Abra Colar lista novamente para revisar os participantes atuais.");
   const preview = buildTeamCupImportPreview(data, source, mode);
@@ -152,12 +156,30 @@ export function swapTeamCupAthletes(data, firstId, secondId) {
   }
   return next;
 }
-export function applyTeamCupOrganization(current, draft, signature) {
-  assertOrganizationEditable(current);
+export const teamCupResultsSignature = data => JSON.stringify([data.schedule, data.brackets, data.cupConfig, data.winningScore]);
+export function teamCupOrganizationNeedsRegeneration(current, draft) {
+  const order = teamCupOrganizationGroups(draft).flatMap(group => group.teamIds);
+  return organizationLocked(current) && JSON.stringify(order) !== JSON.stringify(current.players.teams.map(team => team.id));
+}
+export function applyTeamCupOrganization(current, draft, signature, { regenerateConfirmed = false, resultsSignature } = {}) {
   if (organizationSignature(current) !== signature) throw new Error("A lista foi atualizada enquanto a janela estava aberta. Abra Organizar grupos novamente para não sobrescrever alterações.");
   validateTeamCupTeams(draft);
   if (draft.teamCup.formation === "random" && draft.teamCup.drawStage !== "complete") throw new Error("Sorteie os capitães e depois os integrantes antes de salvar.");
-  return { ...current, players: structuredClone(draft.players), teamCup: structuredClone(draft.teamCup) };
+  if (draft.teamCup.kind !== current.teamCup.kind || draft.players.teams.length !== current.players.teams.length
+    || current.players.teams.some(t => !draft.players.teams.some(d => d.id === t.id))) throw new Error("A configuração das equipes mudou. Abra Organizar grupos novamente.");
+  // Games reference team array indices. Roster edits must keep those slots,
+  // including when a draw or draft presents teams in a different order.
+  const next = { ...current, players: { ...current.players, teams: current.players.teams.map(t => structuredClone(draft.players.teams.find(d => d.id === t.id))) }, teamCup: structuredClone(draft.teamCup) };
+  if (!teamCupOrganizationNeedsRegeneration(current, draft)) return next;
+  if (!regenerateConfirmed) throw new Error("Confirme a nova distribuição dos grupos: os confrontos serão refeitos e os placares e eliminatórias atuais serão apagados.");
+  if (resultsSignature !== teamCupResultsSignature(current)) throw new Error("Os jogos foram atualizados durante a revisão. Revise e confirme novamente antes de refazer os grupos.");
+  const rebuilt = generateTeamCupGroups({ ...next, schedule: [], brackets: [],
+    cupConfig: { ...next.cupConfig, tieBreakOverrides: {}, campaignTieBreakOverrides: {} } });
+  // New identities prevent old-device scores from attaching to a new matchup.
+  const generation = globalThis.crypto.randomUUID();
+  rebuilt.schedule = rebuilt.schedule.map(round => round.map(game => ({ ...game, matchKey: `${game.matchKey}_${generation}`,
+    teamCupLegs: game.teamCupLegs.map((leg, i) => ({ ...leg, matchKey: `${game.matchKey}_${generation}_leg${i + 1}` })) })));
+  return rebuilt;
 }
 export function prepareTeamCupFormation(data, mode) {
   assertOrganizationEditable(data);
