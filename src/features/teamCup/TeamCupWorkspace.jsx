@@ -244,7 +244,13 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       <h3>Classificação dos grupos</h3>
       <p className="tc-help">Ordem: vitórias em confrontos → saldo de games → total de games → confronto direto → sorteio. O saldo soma os games das partidas concluídas de cada confronto finalizado, incluindo o desempate.</p>
       <div className="tc-team-grid">{groups.map(group => <section key={group.id}>
-        <RankingTable title={group.name} rows={group.rows} rankingCriteria="wins_balance_points" showPodium={false} columns={[{ key: "w", label: "Vitórias" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
+        <RankingTable title={group.name} rows={group.rows} rankingCriteria="wins_balance_points" showPodium={false}
+          nameColumnLabel="Equipe" renderName={row => {
+            const team = teams[row.id];
+            return <div className="tc-group-team"><span>{row.name}</span>
+              {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" · ")}</span>}
+            </div>;
+          }} columns={[{ key: "w", label: "Vitórias" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
         {group.unresolvedTieIds.length > 0 && <div className="tc-tie"><p>Empate: {group.rows.filter(r => group.unresolvedTieIds.includes(r.id)).map(r => r.name).join(", ")}.</p>{!readOnly && !data.brackets.length && <button type="button" onClick={() => drawTie("tieBreakOverrides", String(group.id), group.unresolvedTieIds)}>Sortear desempate do grupo</button>}</div>}
       </section>)}</div>
