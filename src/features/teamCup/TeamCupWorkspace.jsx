@@ -51,8 +51,6 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const playable = teamLegAvailable(data, game, selected);
   const finished = teamLegWinner(leg, data.winningScore);
   const lockedGroups = game.phase === "groups" && data.brackets.length > 0;
-  const status = game.isBye ? "BYE · avanço direto" : !game.ids1.length || !game.ids2.length ? "Aguardando definição"
-    : state.winner ? "Confronto finalizado" : state.decider ? "Desempate necessário" : "Melhor de 3 partidas";
   const call = () => {
     const names = [game.ids1[0], game.ids2[0]].map(i => teamName(data.players.teams[i]));
     if ("speechSynthesis" in window) {
@@ -97,8 +95,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
           </span>)}<span className="tc-total">{game.isBye ? "—" : state.wins[row]}</span>
         </div></React.Fragment>;
       })}</div>
-    {!game.isBye && <footer className="tc-match-note">
-      <span><b>{labels[selected]}</b> · {status}</span>
+    {!game.isBye && ((selected === 2 && !state.decider) || announcementStatus) && <footer className="tc-match-note">
       {selected === 2 && !state.decider && <small>Disponível somente se as duas primeiras partidas terminarem em 1 a 1.</small>}
       {announcementStatus && <small role="status">{announcementStatus}</small>}
     </footer>}
