@@ -3,6 +3,7 @@ import {
   getBrazilTodayISO,
 } from "./dateTime.mjs";
 import { modalityConfig } from "./modalityConfig.mjs";
+import { reiDoSolCompletion } from "./reiDoSolData.mjs";
 import { isCupType } from "./modalityClassification.mjs";
 import {
   isCampeonatoCearenseData,
@@ -44,6 +45,7 @@ export function isTournamentGameFinished(game, winningScore) {
 export function getTournamentCompletionState(tournament) {
   const config = modalityConfig[tournament?.type];
   const data = normalizeTournamentData(tournament?.type, tournament?.data);
+  if (config?.type === "reiDoSol") return reiDoSolCompletion(data);
   const winningScore = getWinningScore(data);
   const scheduleGames = (data.schedule || []).flat().filter((game) => (
     hasTournamentGameSide(game, 1) && hasTournamentGameSide(game, 2)

@@ -35,11 +35,13 @@ export const allowedByPlan = {
     "Campeonato Cearense Individual",
     "Modelo Play Ranking",
     "Times/Equipes",
+    "Rei do Sol",
     "Copa Sunset",
   ],
 };
 
 export const modalityConfig = {
+  "Rei do Sol": { type: "reiDoSol", defaultPlayers: 16, total: 16, label: "Atleta", courts: 4 },
   "Times/Equipes": {
     type: "teamCup", cupMode: "team-cup", defaultTeams: 6,
     allowedTeamCounts: Array.from({ length: 29 }, (_, i) => i + 4).filter(n => n !== 5),

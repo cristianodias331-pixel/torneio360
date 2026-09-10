@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import TeamCupWorkspace from "./features/teamCup/TeamCupWorkspace.jsx";
+import ReiDoSolWorkspace from "./features/reiDoSol/ReiDoSolWorkspace.jsx";
 import { createPortal } from "react-dom";
 import "./styles/30-organizer-event-management.css";
 import "./styles/40-organizer-data-and-navigation.css";
@@ -6465,7 +6466,7 @@ setNewPublicInfo({
 
               <div className="formField fullField">
                 <label>Critério do ranking</label>
-                {modalityConfig[editForm.type]?.type === "playranking" ? (
+                {["playranking", "reiDoSol"].includes(modalityConfig[editForm.type]?.type) ? (
                   <select value="playranking_group_rule" disabled aria-label="Critério automático do Modelo Torneio 360">
                     <option value="playranking_group_rule">{getAutomaticCupRankingLabel(editForm.type)}</option>
                   </select>
@@ -6608,7 +6609,7 @@ setNewPublicInfo({
                       </div>
                       <div className="formField fullField">
                         <label>Critério do ranking</label>
-                        {modalityConfig[category.type]?.type === "playranking" ? (
+                        {["playranking", "reiDoSol"].includes(modalityConfig[category.type]?.type) ? (
                           <select value="playranking_group_rule" disabled aria-label="Critério automático do Modelo Torneio 360">
                             <option value="playranking_group_rule">{getAutomaticCupRankingLabel(category.type)}</option>
                           </select>
@@ -7096,7 +7097,7 @@ setNewPublicInfo({
 
           <div className="formField compactField categoryCriteriaField">
             <label>Critério do ranking</label>
-            {isCupType(modalityConfig[item.type]) ? (
+            {isCupType(modalityConfig[item.type]) || modalityConfig[item.type]?.type === "reiDoSol" ? (
               <select value={cupRankingCriteria} disabled aria-label="Critério automático das modalidades de copa">
                 <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(item.type)}</option>
               </select>
@@ -7275,7 +7276,7 @@ setNewPublicInfo({
 
   <div className="formField fullField">
     <label>Critério do ranking <span aria-hidden="true">*</span></label>
-    {isCupType(modalityConfig[newType]) ? (
+    {isCupType(modalityConfig[newType]) || modalityConfig[newType]?.type === "reiDoSol" ? (
       <select value={cupRankingCriteria} disabled aria-label="Critério automático das modalidades de copa">
         <option value={cupRankingCriteria}>{getAutomaticCupRankingLabel(newType)}</option>
       </select>
@@ -10834,6 +10835,14 @@ function clearTable() {
   setClearTableOpen(false);
   showNotice("success", "Jogos e placares apagados", "Todos os jogos e placares foram removidos. Os participantes foram mantidos.");
 }
+
+  if (config.type === "reiDoSol") return <>
+    <NoticeModal notice={notice} onClose={() => setNotice(null)} />
+    <ReiDoSolWorkspace data={data} setData={setData} tournament={tournament} onBack={onBack}
+      savingBadge={<SavingStatusBadge />} onShare={enablePublicShare} onOpenCourtCenter={onOpenCourtCenter}
+      courtOptions={operationalCourtNumbers}
+      unavailableCourts={[...unavailableCentralCourtNumbers, ...(venueCourtUsages || []).filter(usage => usage.tournamentId !== tournament.id).map(usage => usage.courtNumber)]} />
+  </>;
 
 if (config.type === "teamCup") return <>
   <NoticeModal notice={notice} onClose={() => setNotice(null)} />

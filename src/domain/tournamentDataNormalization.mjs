@@ -5,6 +5,7 @@ import {
 } from "./courtNumbers.mjs";
 import { modalityConfig } from "./modalityConfig.mjs";
 import { createTeamCupData, normalizeTeamCupData } from "./teamCup.mjs";
+import { createReiDoSolData, normalizeReiDoSolData } from "./reiDoSolData.mjs";
 import {
   isCupType,
   isFixedTeamType,
@@ -168,6 +169,7 @@ export function createInitialData(type, config) {
     return { ...base, players: [] };
   }
   if (config.type === "teamCup") return createTeamCupData(base);
+  if (config.type === "reiDoSol") return createReiDoSolData(base);
 
   if (isMixedType(config)) {
     return {
@@ -310,6 +312,7 @@ export function normalizeTournamentData(type, rawData) {
   delete normalized.courtLabels;
 
   if (config.type === "teamCup") return normalizeTeamCupData(normalized, defaults);
+  if (config.type === "reiDoSol") return normalizeReiDoSolData({ ...normalized, brackets: normalizeBrackets(source.brackets) });
 
   if (isCupType(config)) {
     const sourceCupConfig = isTournamentDataObject(source.cupConfig) ? source.cupConfig : {};
@@ -454,6 +457,9 @@ export function normalizeTournamentData(type, rawData) {
 export function needsTournamentDataRepair(type, rawData) {
   const config = modalityConfig[type];
   if (!config || !isTournamentDataObject(rawData) || !Array.isArray(rawData.schedule)) return true;
+
+  if (config.type === "reiDoSol") return !Array.isArray(rawData.players) || rawData.players.length < 16
+    || rawData.reiDoSol?.playerCount !== rawData.players.length || !Array.isArray(rawData.brackets);
 
   const players = isTournamentDataObject(rawData.players) ? rawData.players : {};
 
