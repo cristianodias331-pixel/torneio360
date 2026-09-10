@@ -77,11 +77,11 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
       {!readOnly && <button type="button" className="voiceBtn matchCallButton" disabled={!playable || Boolean(finished) || lockedGroups} onClick={call}>🔊 Chamar jogo</button>}
     </div>}
     <div className="tc-score-heading tc-score-columns"><span>Equipes</span>{labels.map((label, i) =>
-      <button type="button" key={label} title={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i + 1}º</b><small className="tc-set-label">Set
+      <button type="button" key={label} title={label} aria-pressed={selected === i} aria-label={"Selecionar " + label} onClick={() => setSelected(i)}><b>{i === 2 ? "3º Set" : `${i + 1}º`}</b><small className="tc-set-label">{i < 2 && "Set"}
         {data.teamCup.kind === "squad" && <span className="tc-set-detail">{["Masculino", "Feminino", "Misto"][i]}</span>}
-        {i === 2 && <span className="tc-set-detail">Desempate</span>}
-      </small></button>)}<span>Total<small>sets</small></span></div>
-    <div className="matchTeamStack">{[1, 2].map((side, row) => {
+        {i === 2 && <span className="tc-set-detail tc-set-decider">Desempate</span>}
+      </small></button>)}</div>
+    <div className="matchTeamStack">{[1, 2].map(side => {
         const team = data.players.teams[game["ids" + side]?.[0]];
         return <React.Fragment key={side}>{side === 2 && <div className="matchVsDivider" aria-hidden="true"><span>VS</span></div>}
           <div className={`matchTeamRow tc-score-columns ${state.winner === "team" + side ? "is-winner" : state.winner ? "is-loser" : ""} ${game.isBye && !team ? "is-bye" : ""}`}>
@@ -95,7 +95,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
                 value={part["s" + side]} disabled={!teamLegAvailable(data, game, i) || lockedGroups}
                 onFocus={() => setSelected(i)}
                 onChange={e => { if (/^\d?$/.test(e.target.value)) onLegChange(game.matchKey, i, { ["s" + side]: e.target.value }); }} />}
-          </span>)}<span className="tc-total">{game.isBye ? "—" : state.wins[row]}</span>
+          </span>)}
         </div></React.Fragment>;
       })}</div>
     {!game.isBye && ((selected === 2 && !state.decider) || announcementStatus) && <footer className="tc-match-note">
