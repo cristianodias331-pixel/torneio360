@@ -106,7 +106,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
         return <React.Fragment key={side}>{side === 2 && <div className="matchVsDivider" aria-hidden="true"><span>VS</span></div>}
           <div className={`matchTeamRow tc-score-columns ${state.winner === "team" + side ? "is-winner" : state.winner ? "is-loser" : ""} ${game.isBye && !team ? "is-bye" : ""}`}>
           <div className="tc-team-identity"><span className="matchTeamName">{team ? teamName(team) : game.isBye ? "BYE" : "Aguardando"}</span>
-            {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" · ")}</span>}</div>
+            {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</span>}</div>
           {game.teamCupLegs.map((part, i) => <span key={i} className="matchScoreCell">
             {game.isBye || (i === 2 && !state.decider) ? <span title={i === 2 ? "Somente em caso de empate em 1 a 1" : "Avanço direto"}>—</span>
               : readOnly ? <output className="matchScoreOutput">{part["s" + side] === "" ? "—" : part["s" + side]}</output>
@@ -272,7 +272,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
           nameColumnLabel="Equipe" renderName={row => {
             const team = teams[row.id];
             return <div className="tc-group-team"><span>{row.name}</span>
-              {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" · ")}</span>}
+              {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</span>}
             </div>;
           }} columns={[{ key: "w", label: "Vitórias" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
