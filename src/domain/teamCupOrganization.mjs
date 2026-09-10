@@ -19,6 +19,40 @@ export function participantEntries(data) {
   }
   return data.players.teams.flatMap(team => team.athletes.map(athlete => ({ athlete, team })));
 }
+
+// Participants is the manual editor, independent of a pending draw. Merely
+// rendering this projection never changes saved data; an explicit manual edit
+// applies it. Draws continue to use their own pool inside OrganizationDialog.
+export function teamCupManualData(data) {
+  const captainFirst = team => ({ ...team, athletes: [...team.athletes]
+    .sort((a, b) => Number(b.id === team.captainId) - Number(a.id === team.captainId)) });
+  if (data.teamCup.formation !== "random") {
+    if (data.players.teams.every(team => team.athletes[0]?.id === team.captainId)) return data;
+    return { ...data, players: { ...data.players, teams: data.players.teams.map(captainFirst) } };
+  }
+  const pending = data.teamCup.drawStage !== "complete";
+  const pool = new Map((data.teamCup.pool || []).map(athlete => [athlete.id, athlete]));
+  const teams = data.players.teams.map(team => ({ ...team,
+    athletes: team.athletes.map(athlete => ({ ...athlete, ...(pending ? pool.get(athlete.id) : {}) })),
+  }));
+  // Older, partially saved draws may contain only captains in the rosters.
+  // Keep those captains and every registered athlete, filling vacant slots in
+  // pool order (and respecting Squad composition whenever possible).
+  const assigned = new Set(teams.flatMap(team => team.athletes.map(athlete => athlete.id)));
+  const remaining = pending ? [...pool.values()].filter(athlete => !assigned.has(athlete.id)) : [];
+  for (const team of teams) {
+    while (team.athletes.length < teamSize(data) && remaining.length) {
+      let index = teamSize(data) === 4 ? remaining.findIndex(athlete => team.athletes.filter(a => a.gender === athlete.gender).length < 2) : 0;
+      if (index < 0) index = 0;
+      team.athletes.push({ ...remaining.splice(index, 1)[0] });
+    }
+    if (!team.athletes.some(a => a.id === team.captainId)) team.captainId = team.athletes[0]?.id;
+  }
+  const orderedTeams = teams.map(captainFirst);
+  return { ...data, players: { ...data.players, teams: orderedTeams }, teamCup: { ...data.teamCup,
+    formation: "fixed", drawStage: "pending", pool: structuredClone([...orderedTeams.flatMap(team => team.athletes), ...remaining]),
+  } };
+}
 export function updateTeamCupParticipant(data, id, patch) {
   if (data.teamCup.formation === "random" && data.teamCup.drawStage === "captains") throw new Error("Conclua o sorteio dos integrantes antes de editar a lista.");
   const next = structuredClone(data);

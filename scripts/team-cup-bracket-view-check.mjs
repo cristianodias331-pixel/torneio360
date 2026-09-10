@@ -5,6 +5,7 @@ import { createServer } from "vite";
 import { fixture, finishGroups } from "./team-cup-check.mjs";
 import * as cup from "../src/domain/teamCup.mjs";
 import { teamCupPodium } from "../src/domain/teamCupPodium.mjs";
+import { prepareTeamCupFormation } from "../src/domain/teamCupOrganization.mjs";
 
 const server = await createServer({ configFile: false, logLevel: "error", server: { middlewareMode: true, hmr: false }, appType: "custom" });
 try {
@@ -13,7 +14,32 @@ try {
   const { BracketColumn } = await server.ssrLoadModule("/src/features/brackets/CupBracketView.jsx");
   const { default: CupPodiumView } = await server.ssrLoadModule("/src/features/ranking/CupPodiumView.jsx");
   const { default: TeamCupRoster } = await server.ssrLoadModule("/src/features/teamCup/TeamCupRoster.jsx");
+  const { default: TeamCupParticipants } = await server.ssrLoadModule("/src/features/teamCup/TeamCupParticipants.jsx");
   const { drawPodiumParticipantRows } = await server.ssrLoadModule("/src/features/rankingShare/rankingShareExport.mjs");
+  for (const kind of ["trio", "squad"]) {
+    const fixed = fixture(9, kind);
+    fixed.players.teams.forEach(team => { team.captainId = team.athletes.at(-1).id; });
+    const pending = prepareTeamCupFormation(fixed, "random");
+    const captains = cup.drawTeamCaptains(pending, () => .4);
+    const drawn = cup.drawTeamMembers(captains, () => .4);
+    for (const data of [fixed, pending, captains, drawn]) {
+      const original = JSON.stringify(data);
+      const markup = renderToStaticMarkup(React.createElement(TeamCupParticipants, { data, onChange() {} }));
+      const sections = markup.split('<section class="tcp-team"').slice(1);
+      assert.equal(sections.length, 9, "Manual participants always show one card per team, including pending draws");
+      assert(!markup.includes("Lista para sorteio") && !markup.includes("tcp-pool-list"));
+      assert.equal((markup.match(/class="tcp-captain-label"/g) || []).length, 9, "Exactly one captain label, with crown, per team");
+      assert.equal((markup.match(/<select/g) || []).length, 9 * cup.teamSize(data) * 2, "Only composition and level selectors; no extra captain selector");
+      assert(!/<(?:input|select)[^>]*disabled/.test(markup), "Pending draws do not disable manual names, composition or level");
+      for (const [index, section] of sections.entries()) {
+        const team = data.players.teams[index], captain = team.athletes.find(a => a.id === team.captainId);
+        const firstRow = section.slice(section.indexOf('class="tcp-row"'));
+        assert.equal(firstRow.match(/aria-label="Nome de ([^"]+)"/)[1], captain.name, "First name is always the existing captain, regardless of saved roster order");
+        assert.equal((section.match(/class="tcp-row"/g) || []).length, cup.teamSize(data));
+      }
+      assert.equal(JSON.stringify(data), original, "Rendering preserves team IDs, roster order, captains and draw state");
+    }
+  }
   for (const kind of ["trio", "squad"]) {
     let data = cup.generateTeamCupGroups(fixture(6, kind), () => .4);
     const key = data.schedule[0][0].matchKey;
