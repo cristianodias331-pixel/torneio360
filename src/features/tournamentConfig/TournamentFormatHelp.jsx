@@ -228,7 +228,7 @@ export default function TournamentFormatInfoButton({
             <header className="formatInfoHeader">
               <div>
                 <span>Formato calculado para {summary.teamCount} {participantPlural}</span>
-                <h2>{isSunset ? "Copa Sunset" : isPlayRanking ? "Modelo Torneio 360" : isIndividualCup ? "Torneio modelo Campeonato Cearense — Individual" : "Torneio modelo Campeonato Cearense"}</h2>
+                <h2>{isSunset ? "Copa Sunset" : isPlayRanking ? "Modelo Torneio 360" : isIndividualCup ? getModalityDisplayName("Campeonato Cearense Individual") : "Torneio modelo Campeonato Cearense"}</h2>
                 <p>Veja o caminho dos participantes desde os grupos até {visibleBracketNames.join(", ").replace(/, ([^,]*)$/, " e $1")}.</p>
               </div>
               <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar explicação">×</button>

@@ -12,7 +12,7 @@ export const modalityDisplayNames = {
   "Super 12 (Dupla Fixa)": "Super 12 (dupla fixa)",
   "Simples 8": "Simples (1 contra 1 por jogo)",
   "Campeonato Cearense": "Torneio modelo Campeonato Cearense",
-  "Campeonato Cearense Individual": "Torneio modelo Campeonato Cearense — Individual",
+  "Campeonato Cearense Individual": "Simples/Individual",
   "Modelo Play Ranking": "Modelo Torneio 360",
   "Copa Sunset": "Copa Sunset",
 };
@@ -44,7 +44,6 @@ export const modalityPickerGroups = [
     title: "Mistas",
     subtitle: "Homens e mulheres participam com combinações de parceiros.",
     types: [
-      "Super 10 Mista (Dupla Aleatória)",
       "Super 12 Mista (Dupla Aleatória)",
       "Super 16 Mista (Dupla Aleatória)",
       "Super 20 Mista (Dupla Aleatória)",
@@ -54,7 +53,7 @@ export const modalityPickerGroups = [
     id: "cups",
     title: "Copas e modelos",
     subtitle: "Formatos com grupos, eliminatórias ou regras especiais.",
-    types: ["Copa - 18 duplas", "Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking", "Copa Sunset", "Times/Equipes"],
+    types: ["Campeonato Cearense", "Campeonato Cearense Individual", "Modelo Play Ranking", "Copa Sunset", "Times/Equipes"],
   },
 ];
 

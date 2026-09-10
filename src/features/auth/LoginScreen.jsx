@@ -594,7 +594,7 @@ export default function LoginScreen({
               <div>2</div>
               <h3>Escolha o formato</h3>
               <p>
-                Selecione Super 6, Super 8, Super 12, modalidades mistas, Simples, Copa 18, Torneio modelo Campeonato Cearense ou Modelo Torneio 360 conforme a realidade do evento.
+                Selecione Super 6, Super 8, Super 12, modalidades mistas, Simples, Torneio modelo Campeonato Cearense ou Modelo Torneio 360 conforme a realidade do evento.
               </p>
             </div>
 
@@ -652,7 +652,7 @@ export default function LoginScreen({
             <div className="featureCard">
               <span>🏆</span>
               <h3>Copa Premium</h3>
-              <p>Formato de Copa com 18 duplas, grupos, chaves finais e disputa paralela.</p>
+              <p>Formatos de Copa com grupos, chaves finais e disputas paralelas.</p>
             </div>
           </div>
         </section>
@@ -696,11 +696,6 @@ export default function LoginScreen({
             />
 
             <Info
-              title="Super 10 mista"
-              text="Formato com 5 homens e 5 mulheres. São 5 rodadas, 2 jogos por rodada, e em cada rodada descansam 1 homem e 1 mulher. Todos jogam 4 partidas e descansam 1 vez. O ranking é separado masculino e feminino."
-            />
-
-            <Info
               title="Super 12 mista"
               text="Formato misto com 12 participantes: 6 homens e 6 mulheres. Primeiro, os atletas são cadastrados e sorteados. Depois, o sistema combina os participantes para formar duplas mistas em diferentes rodadas, mantendo equilíbrio entre homens e mulheres. Cada jogador participa de jogos com combinações variadas, e o desempenho é calculado individualmente. É uma boa opção para eventos sociais e competitivos com rotação de parceiros."
             />
@@ -718,11 +713,6 @@ export default function LoginScreen({
             <Info
               title="Simples (1 contra 1 por jogo)"
               text="Formato individual para 4, 6, 8, 10, 12 ou 14 jogadores, sem formação de duplas. O organizador escolhe a quantidade e o sistema monta automaticamente todos contra todos, com cada atleta enfrentando cada adversário exatamente uma vez e sem folgas nas rodadas. Os placares alimentam um ranking geral individual por vitórias, total de games e saldo de games."
-            />
-
-            <Info
-              title="Copa - 18 duplas"
-              text="Formato de Copa com 18 duplas, dividido em 6 grupos de 3 duplas. Cada grupo joga sua fase classificatória, e o sistema calcula a classificação com base nos critérios definidos. Os melhores avançam para a chave principal; os 2 melhores gerais podem receber BYE, entrando em fase mais avançada. Também há disputa paralela para duplas específicas, como terceiros colocados, permitindo manter mais atletas em atividade. É um formato ideal para torneios grandes, com organização mais profissional e várias fases."
             />
 
             <Info
