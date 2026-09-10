@@ -10,7 +10,7 @@ import { createTeamCupData, generateTeamCupGroups, generateTeamCupBrackets, upda
 import { recordTeamCupCaptainDraw, recordTeamCupMemberDraw, recordTeamCupGroupVideo } from "../src/domain/teamCupVideo.mjs";
 const query = new URLSearchParams(location.search);
 const kind = query.get("kind") || "trio";
-const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "") + (query.has("videos") ? "-videos-v1" : "") + (query.has("podium") ? "-podium-v1" : "");
+const fixtureKey = "team-cup-visual-fixture-" + kind + (query.has("participants") ? "-participants-v2" : query.has("setup") ? "-setup" : query.has("finals") ? "-finals" : "") + (query.has("empty") ? "-empty" : "") + (query.has("videos") ? "-videos-v1" : "") + (query.has("podium") ? "-podium-v1" : "") + (query.has("focus") ? "-focus-test" : "");
 function initial() {
   const base = createInitialData("Times/Equipes", modalityConfig["Times/Equipes"]);
   const data = createTeamCupData({ ...base, winningScore: 6 }, query.has("participants") ? 9 : 6, kind);
@@ -50,12 +50,12 @@ const mockSupabase = { from: () => ({ upsert: async () => ({ error: null }) }) }
 const { TournamentScreen } = createOrganizerWorkspace({ supabase: mockSupabase });
 function Preview() {
   const [record, setRecord] = useState(() => ({ id: fixtureKey, type: "Times/Equipes", name: "Copa Times/Equipes · teste local",
-    user_id: "fixture-user", revision: 1, updated_at: "2026-09-09T12:00:00Z", data: JSON.parse(localStorage.getItem(fixtureKey) || "null") || initial() }));
+    user_id: "fixture-user", revision: 1, updated_at: "2026-09-09T12:00:00Z", data: (!query.has("focus") && JSON.parse(localStorage.getItem(fixtureKey) || "null")) || initial() }));
   const [theme, setTheme] = useState("dark");
   const [saves, setSaves] = useState(0);
   async function save(payload) {
     const tournament = { ...record, data: payload.data, last_change_id: payload.changeId, revision: (record.revision || 1) + 1, updated_at: new Date().toISOString() };
-    localStorage.setItem(fixtureKey, JSON.stringify(tournament.data));
+    if (!query.has("focus")) localStorage.setItem(fixtureKey, JSON.stringify(tournament.data));
     setRecord(tournament); setSaves(n => n + 1);
     return { ok: true, tournament, savedData: tournament.data };
   }

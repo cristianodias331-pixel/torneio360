@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Flame, Grid3X3, Share2, Trophy, Users } from "lucide-react";
 import { RankingTable } from "../ranking/RankingTables.jsx";
@@ -25,6 +25,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const [selected, setSelected] = useState(0);
   const [courtEditorOpen, setCourtEditorOpen] = useState(false);
   const [announcementStatus, setAnnouncementStatus] = useState("");
+  const scoreInputs = useRef({});
   useEffect(() => {
     if (!courtEditorOpen) return;
     const previous = document.activeElement, overflow = document.body.style.overflow;
@@ -51,6 +52,25 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   const playable = teamLegAvailable(data, game, selected);
   const finished = teamLegWinner(leg, data.winningScore);
   const lockedGroups = game.phase === "groups" && data.brackets.length > 0;
+  const advanceScoreFocus = (index, side, currentInput) => {
+    const otherInput = scoreInputs.current[`${index}-${side === 1 ? 2 : 1}`];
+    if (otherInput && !otherInput.disabled && otherInput.value === "") {
+      otherInput.focus();
+      otherInput.select();
+    } else currentInput?.blur();
+  };
+  const changeScore = (event, index, side) => {
+    const nextValue = event.target.value;
+    if (!/^\d?$/.test(nextValue)) return;
+    const currentInput = event.currentTarget;
+    const accepted = onLegChange(game.matchKey, index, { ["s" + side]: nextValue });
+    if (!nextValue || accepted === false) return;
+    window.requestAnimationFrame(() => {
+      if (currentInput.isConnected && document.activeElement === currentInput && currentInput.value === nextValue) {
+        advanceScoreFocus(index, side, currentInput);
+      }
+    });
+  };
   const call = () => {
     const names = [game.ids1[0], game.ids2[0]].map(i => teamName(data.players.teams[i]));
     if ("speechSynthesis" in window) {
@@ -91,10 +111,13 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
             {game.isBye || (i === 2 && !state.decider) ? <span title={i === 2 ? "Somente em caso de empate em 1 a 1" : "Avanço direto"}>—</span>
               : readOnly ? <output className="matchScoreOutput">{part["s" + side] === "" ? "—" : part["s" + side]}</output>
               : <input className="matchScoreInput" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
+                ref={input => { scoreInputs.current[`${i}-${side}`] = input; }}
+                enterKeyHint={part["s" + (side === 1 ? 2 : 1)] === "" ? "next" : "done"}
                 aria-label={(team ? teamName(team) : "Aguardando") + " · " + labels[i] + " · games"}
                 value={part["s" + side]} disabled={!teamLegAvailable(data, game, i) || lockedGroups}
                 onFocus={() => setSelected(i)}
-                onChange={e => { if (/^\d?$/.test(e.target.value)) onLegChange(game.matchKey, i, { ["s" + side]: e.target.value }); }} />}
+                onChange={e => changeScore(e, i, side)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); advanceScoreFocus(i, side, e.currentTarget); } }} />}
           </span>)}
         </div></React.Fragment>;
       })}</div>
