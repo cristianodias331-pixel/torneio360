@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { TEAM_LEVELS, createTeamCupData, drawTeamCaptains, drawTeamMembers, generateTeamCupGroups, generateTeamCupBrackets, teamCupQualified, updateTeamCupLeg, reconfigureTeamCup, setTeamCupFormation, teamCupFormatChangeNeedsConfirmation } from "../src/domain/teamCup.mjs";
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, organizeTeamCupGroups, organizationSignature, parseTeamCupList, participantEntries,
-  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupManualData, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant, updateTeamCupTeamName } from "../src/domain/teamCupOrganization.mjs";
+  prepareTeamCupFormation, swapTeamCupAthletes, swapTeamCupGroupItems, teamCupManualData, applyTeamCupManualEdit, teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature, teamCupOrganizationGroups, updateTeamCupParticipant, updateTeamCupTeamName } from "../src/domain/teamCupOrganization.mjs";
 import { normalizeTournamentData } from "../src/domain/tournamentDataNormalization.mjs";
 import { mergeConcurrentTournamentData } from "../src/offlineDataStore.mjs";
 import { applyTeamCupComposition, setTeamCupTrioComposition, teamCupGenderQuota } from "../src/domain/teamCupComposition.mjs";
@@ -64,6 +64,37 @@ for (const kind of ["trio", "squad"]) {
       assert.equal(editedManual.players.teams[0].athletes[0].name, "Capitão Editado");
       assert.deepEqual(state, original, "Opening manual participants never mutates the saved draw or roster");
       assert.deepEqual(normalizeTournamentData("Times/Equipes", editedManual).players, editedManual.players);
+      const athleteId = roster.at(-1).athlete.id;
+      const edit = transform => applyTeamCupManualEdit(state, transform);
+      const changedName = edit(d => updateTeamCupParticipant(d, athleteId, { name: "Nome Manual Mantido" }));
+      const changedGender = edit(d => updateTeamCupParticipant(d, athleteId, { gender: "M" }));
+      const changedLevel = edit(d => updateTeamCupParticipant(d, athleteId, { level: "A" }));
+      const changedTeam = edit(d => updateTeamCupTeamName(d, state.players.teams[0].id, "Equipe Manual Mantida"));
+      const replaced = edit(d => importTeamCupList(d, [{ name: "Nova Pessoa", level: "B" }], "replace", { replaceConfirmed: true, signature: organizationSignature(manual) }));
+      for (const changed of [changedName, changedGender, changedLevel, changedTeam, replaced]) {
+        assert.equal(changed.teamCup.formation, state.teamCup.formation, "Manual edits and imports never switch formation");
+        assert.equal(changed.teamCup.drawStage, state.teamCup.drawStage, "Manual edits never reset or complete a draw");
+        assert.equal(changed.teamCup.balanced, state.teamCup.balanced);
+        assert.equal(changed.teamCup.designatedCaptains, state.teamCup.designatedCaptains);
+        assert.deepEqual(changed.teamCup.pool.map(a => a.id), state.teamCup.pool.map(a => a.id), "Keep the draw pool order");
+        assert.deepEqual(changed.players.teams.map(t => [t.id, t.captainId, t.athletes.map(a => a.id)]), state.players.teams.map(t => [t.id, t.captainId, t.athletes.map(a => a.id)]), "Do not persist provisional member assignments");
+        assert.deepEqual(changed.schedule, state.schedule);
+        assert.deepEqual(changed.brackets, state.brackets);
+        const reloaded = normalizeTournamentData("Times/Equipes", changed);
+        assert.equal(reloaded.teamCup.formation, state.teamCup.formation);
+        assert.equal(reloaded.teamCup.drawStage, state.teamCup.drawStage);
+      }
+      const findAthlete = data => participantEntries(teamCupManualData(data)).find(e => e.athlete.id === athleteId).athlete;
+      assert.equal(findAthlete(changedName).name, "Nome Manual Mantido");
+      assert.equal(findAthlete(changedGender).gender, "M");
+      assert.equal(findAthlete(changedLevel).level, "A");
+      assert.equal(changedTeam.players.teams[0].name, "Equipe Manual Mantida");
+      if (state.teamCup.drawStage === "captains") {
+        const continued = drawTeamMembers(changedName, () => .3);
+        assert.equal(continued.teamCup.drawStage, "complete", "Member draw still works after editing provisional manual rows");
+        assert.equal(findAthlete(continued).name, "Nome Manual Mantido");
+      }
+      assert.deepEqual(state, original, "Manual saves do not mutate their source");
     }
     assert.equal(members.teamCup.drawStage, "complete");
     assert.equal(new Set(members.players.teams.flatMap(t => t.athletes.map(a => a.id))).size, participantEntries(filled).length);
@@ -188,6 +219,12 @@ for (const kind of ["trio", "squad"]) {
   assert.deepEqual(expanded.players.teams[0].athletes.slice(0, 3), reduced.players.teams[0].athletes);
   const original = structuredClone(current), signature = organizationSignature(current);
   const manualWithResults = teamCupManualData(setTeamCupFormation(current, "random"));
+  const randomWithResults = setTeamCupFormation(current, "random");
+  const preservedMode = applyTeamCupManualEdit(randomWithResults, d => updateTeamCupParticipant(d, d.players.teams[0].captainId, { name: "Capitão Sem Trocar Formação" }));
+  assert.equal(preservedMode.teamCup.formation, "random");
+  assert.equal(preservedMode.teamCup.drawStage, "complete");
+  assert.deepEqual(preservedMode.schedule, randomWithResults.schedule);
+  assert.deepEqual(preservedMode.brackets, randomWithResults.brackets);
   const captainId = manualWithResults.players.teams[0].captainId;
   const manualEdited = updateTeamCupParticipant(manualWithResults, captainId, { name: "Capitão Manual" });
   assert.deepEqual(manualEdited.schedule, current.schedule);

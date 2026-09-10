@@ -22,8 +22,8 @@ export function participantEntries(data) {
 }
 
 // Participants is the manual editor, independent of a pending draw. Merely
-// rendering this projection never changes saved data; an explicit manual edit
-// applies it. Draws continue to use their own pool inside OrganizationDialog.
+// rendering this projection never changes saved data. Persist only its edited
+// registration fields through applyTeamCupManualEdit, not its temporary mode.
 export function teamCupManualData(data) {
   data = applyTeamCupComposition(data);
   const captainFirst = team => ({ ...team, athletes: [...team.athletes]
@@ -64,6 +64,19 @@ export function updateTeamCupParticipant(data, id, patch) {
     if (athlete.id === id) Object.assign(athlete, patch);
   }
   return applyTeamCupComposition(next);
+}
+export function applyTeamCupManualEdit(data, transform) {
+  data = applyTeamCupComposition(data);
+  const edited = transform(teamCupManualData(data));
+  const teams = new Map(edited.players.teams.map(team => [team.id, team]));
+  const athletes = new Map([...edited.teamCup.pool, ...edited.players.teams.flatMap(team => team.athletes)].map(a => [a.id, a]));
+  const updateAthlete = a => ({ ...a, ...athletes.get(a.id) });
+  // Keep the organizer's formation, draw stage, pool order and assigned slots.
+  // In a captains-only draw, provisional manual rows must not be persisted as
+  // drawn members: the remaining athletes still need to participate in step 2.
+  return { ...data, players: { ...data.players, teams: data.players.teams.map(team => ({ ...team,
+    name: teams.get(team.id).name, a: teams.get(team.id).a, athletes: team.athletes.map(updateAthlete),
+  })) }, teamCup: { ...data.teamCup, pool: data.teamCup.pool.map(updateAthlete) } };
 }
 export function updateTeamCupTeamName(data, id, name) {
   if (!data.players.teams.some(team => team.id === id)) throw new Error("Equipe não encontrada.");

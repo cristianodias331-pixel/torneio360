@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Check, ClipboardPaste, Crown, GripVertical, Grid3X3, Layers, Search, Shuffle, SlidersHorizontal, Users, X } from "lucide-react";
 import { TEAM_LEVELS, TEAM_CUP_GROUP_RANKING_LABEL, drawTeamCaptains, drawTeamMembers, teamName, teamSize } from "../../domain/teamCup.mjs";
 import { applyTeamCupOrganization, buildTeamCupImportPreview, importTeamCupList, isTeamCupVacancy, organizeTeamCupGroups, organizationLocked, organizationSignature,
-  participantEntries, prepareTeamCupFormation, swapTeamCupGroupItems, teamCupManualData,
+  participantEntries, prepareTeamCupFormation, swapTeamCupGroupItems, teamCupManualData, applyTeamCupManualEdit,
   teamCupOrganizationDraft, teamCupOrganizationNeedsRegeneration, teamCupResultsSignature,
   teamCupOrganizationGroups, teamLevelValue, updateTeamCupParticipant, updateTeamCupTeamName } from "../../domain/teamCupOrganization.mjs";
 import { ConfirmRegenerationModal } from "../dialogs/ConfirmationDialogs.jsx";
@@ -244,7 +244,7 @@ export default function TeamCupParticipants({ data, tournament, onChange }) {
   const filled = entries.filter(e => e.athlete.name.trim()).length;
   const visibleTeams = displayedTeams.map(({ team }) => ({ team, rows: filtered.filter(entry => entry.team.id === team.id) })).filter(section => section.rows.length);
   function manualChange(transform, options) {
-    onChange(current => transform(teamCupManualData(current)), options);
+    onChange(current => applyTeamCupManualEdit(current, transform), options);
   }
   const participantRow = ({ athlete: a, team }, i) => <div className="tcp-row" key={a.id}>
     <span className="tcp-number">{i + 1}</span><label className="tcp-name"><span>{team.captainId === a.id ? <span className="tcp-captain-label"><Crown aria-hidden="true" /> Nome · Capitão/ã</span> : "Nome"}</span><input aria-label={`Nome de ${a.name || a.id}`} placeholder="Nome do atleta" maxLength={100} value={a.name} onChange={e => manualChange(d => updateTeamCupParticipant(d, a.id, { name: e.target.value }))} /></label>
