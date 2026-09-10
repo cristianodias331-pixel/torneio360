@@ -280,7 +280,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
             return <div className="tc-group-team"><span>{row.name}</span>
               {team && <span className="tc-roster">{team.athletes.map(a => a.name + (a.id === team.captainId ? " (C)" : "")).join(" | ")}</span>}
             </div>;
-          }} columns={[{ key: "w", label: "Vitórias" }, { key: "setBalance", label: "Saldo de sets" }, { key: "coefficient", label: "Coeficiente" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games (estatística)" }]} />
+          }} columns={[{ key: "w", label: "Vitórias" }, { key: "setBalance", label: "Saldo de sets" }, { key: "coefficient", label: "Coeficiente" }, { key: "bal", label: "Saldo de games" }, { key: "pts", label: "Total de games" }]} />
         {groupsDone && !group.unresolvedTieIds.length && <p className="tc-help">Principal: {group.rows.slice(0, 2).map(r => r.name).join(", ")}. {data.cupConfig.repechageEnabled ? "Consolation" : "Eliminados"}: {group.rows.slice(2).map(r => r.name).join(", ")}.</p>}
         {group.unresolvedTieIds.length > 0 && <div className="tc-tie"><p>Empate: {group.rows.filter(r => group.unresolvedTieIds.includes(r.id)).map(r => r.name).join(", ")}.</p>{!readOnly && !data.brackets.length && <button type="button" onClick={() => drawTie("tieBreakOverrides", String(group.id), group.unresolvedTieIds)}>Sortear desempate do grupo</button>}</div>}
       </section>)}</div>
