@@ -286,25 +286,29 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
       {!readOnly && organizationTab === "format" && <div className="organizationPanel cupConfigBox"><div className="twoCols tc-fields">
         <Field label="Formação da equipe"><select value={data.teamCup.kind} onChange={e => reconfigure(teams.length, e.target.value)}><option value="trio">Trio · 3 atletas{teamCupIsMixed(data) ? ", composição mista" : teamCupFixedGender(data) ? `, ${teamCupCompositionLabel(data)}` : ", composição livre"}</option><option value="squad">{teamCupFixedGender(data) ? `Squad · 4 atletas, ${teamCupCompositionLabel(data)}` : "Squad · 2 atletas do masculino e 2 do feminino"}</option></select></Field>
         {data.teamCup.kind === "trio" && teamCupIsMixed(data) && <Field label="Composição do trio"><select value={teamCupTrioComposition(data)} onChange={e => change(d => setTeamCupTrioComposition(d, e.target.value))}><option value="2H1M">2 homens e 1 mulher</option><option value="1H2M">2 mulheres e 1 homem</option></select><small>Válida para todas as equipes e para o sorteio. Ao alterar, confira os participantes já cadastrados.</small></Field>}
-        <Field label="Quantidade de equipes"><select value={teams.length} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
-        <Field label="Formação"><select value={data.teamCup.formation} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
         <Field label="Nome da chave principal"><input value={data.cupConfig.mainBracketName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, mainBracketName: e.target.value } }))} /></Field>
+        <Field label="Formação"><select value={data.teamCup.formation} onChange={e => formation(e.target.value)}><option value="fixed">Equipes já definidas</option><option value="random">Sorteio de capitães e integrantes</option></select></Field>
       </div>
-        <div className="tc-format-explanation"><FormatExplanationButton label={`Como funciona com ${teams.length} equipes`} eyebrow={`Formato calculado para ${teams.length} equipes`} title={`Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`}
+      <div className="twoCols tc-fields tc-format-details">
+        <div className="tc-team-count">
+          <Field label="Quantidade de equipes"><select value={teams.length} onChange={e => reconfigure(Number(e.target.value), data.teamCup.kind)}>{TEAM_COUNTS.map(n => <option key={n} value={n}>{n} equipes</option>)}</select></Field>
+          <div className="tc-format-explanation"><FormatExplanationButton label={`Como funciona com ${teams.length} equipes`} eyebrow={`Formato calculado para ${teams.length} equipes`} title={`Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`}
           sections={[
             { title: "Grupos e classificação", content: <p>Grupos de 3, usando grupos de 4 quando necessário. Os dois melhores de cada grupo avançam. Somente os eliminados dos grupos entram no Consolation, quando habilitado.</p> },
             { title: "Critérios de classificação", content: <p>{TEAM_CUP_GROUP_RANKING_LABEL}. Se todos empatarem, sorteio. O total de games é apenas estatística.</p> },
             { title: "Sets da partida", content: <p>{teamCupMixedSquad(data) ? "O 1º set (masculino) e o 2º set (feminino) podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, a equipe escolhe a dupla mista para o 3º set de desempate." : data.teamCup.kind === "squad" ? "O 1º e o 2º set podem ocorrer simultaneamente em quadras diferentes. Em 1 a 1, ocorre o 3º set de desempate. Todos os atletas seguem a composição escolhida na criação." : "1º set e 2º set em sequência; o 3º set de desempate ocorre somente em caso de empate em 1 a 1. As duplas e substituições ficam a cargo da equipe."}</p> },
             { title: "Resultado e capitães", content: <p>Os três sets usam a mesma regra de games. Quem vencer dois sets ganha a partida entre as equipes. O capitão ou a capitã faz parte da equipe.</p> },
           ]} /></div>
-        <div className="twoCols tc-fields">
+        </div>
+        <div className="tc-parallel-config">
           <div className="parallelDisputeChoice"><div className="parallelChoiceHeading"><strong>Realizar 1ª disputa paralela?</strong></div>
             <div className="parallelChoiceOptions" role="radiogroup" aria-label="Realizar 1ª disputa paralela?">{[[true, "Sim"], [false, "Não"]].map(([enabled, label]) => <button key={label} type="button" role="radio" aria-checked={data.cupConfig.repechageEnabled === enabled}
               className={data.cupConfig.repechageEnabled === enabled ? "selected " + (enabled ? "yes" : "no") : ""} onClick={() => change(d => setTeamCupConsolationEnabled(d, enabled))}>{label}</button>)}</div>
-            <p className="tc-help">A chave é preparada junto às eliminatórias. Sim exibe a disputa; Não apenas a oculta, sem apagar os placares.</p>
           </div>
           {data.cupConfig.repechageEnabled && <Field label="Nome da 1ª disputa paralela"><input value={data.cupConfig.repechageName} maxLength={70} onChange={e => change(d => ({ ...d, cupConfig: { ...d.cupConfig, repechageName: e.target.value } }))} /></Field>}
+          <p className="tc-help">A chave é preparada junto às eliminatórias. Sim exibe a disputa; Não apenas a oculta, sem apagar os placares.</p>
         </div>
+      </div>
       </div>}
       {organizationTab === "players" && !readOnly && <div className="organizationPanel"><TeamCupParticipants data={data} tournament={tournament} onChange={change} /></div>}
       {readOnly && <div className="tc-team-grid">{teams.map(team => <section className="tc-panel" key={team.id}><h2>{teamName(team)}</h2>

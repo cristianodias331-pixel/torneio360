@@ -24,6 +24,14 @@ try {
     const format = renderToStaticMarkup(React.createElement(TeamCupWorkspace, { data, setData() {}, tournament: { name: "Teste de composição" } }));
     assert.equal(format.includes("Composição do trio"), mode === "mista" && kind === "trio");
     assert(!format.includes("Games por set"), "No duplicate games selector inside the tournament");
+    assert(format.indexOf("Nome da chave principal") < format.indexOf('class="tc-team-count"'), "Team count occupies the former bracket-name position");
+    assert.match(format, /class="tc-team-count"><label class="tc-field"><span>Quantidade de equipes<\/span><select[^>]*>[\s\S]*?<\/select><\/label><div class="tc-format-explanation"><button[^>]*aria-label="Como funciona com 6 equipes"/, "Team-count explanation stays directly beneath its selector, outside the label");
+    for (const enabled of [false, true]) {
+      const parallelFormat = renderToStaticMarkup(React.createElement(TeamCupWorkspace, { data: cup.setTeamCupConsolationEnabled(data, enabled), setData() {}, tournament: { name: "Teste de composição" } }));
+      const parallelConfig = parallelFormat.slice(parallelFormat.indexOf('class="tc-parallel-config"'));
+      assert.equal(parallelConfig.includes("Nome da 1ª disputa paralela"), enabled, "Parallel name follows the existing visibility setting");
+      if (enabled) assert.match(parallelConfig, /class="parallelDisputeChoice">[\s\S]*?>Sim<\/button>[\s\S]*?>Não<\/button><\/div><\/div><label class="tc-field"><span>Nome da 1ª disputa paralela<\/span>/, "Parallel yes/no controls sit directly above their bracket name");
+    }
     assert.equal(data.winningScore, 4);
   }
   for (const kind of ["trio", "squad"]) {
