@@ -131,7 +131,6 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
           <div className="tc-team-identity"><span className="matchTeamName">{team ? teamName(team) : game.isBye ? "BYE" : "Aguardando"}</span>
             {team && <TeamCupRoster team={team} />}</div>
           {game.teamCupLegs.map((part, i) => <span key={i} className="matchScoreCell">
-            {readOnly && <span className="tc-mobile-score-label" aria-hidden="true">{i === 2 ? 'Desempate' : `${i + 1}º set`}</span>}
             {game.isBye || (i === 2 && !state.decider) ? <span title={i === 2 ? "Somente em caso de empate em 1 a 1" : "Avanço direto"}>—</span>
               : readOnly ? <output className="matchScoreOutput" aria-label={(team ? teamName(team) : "Aguardando") + " · " + labels[i] + " · games"}>{part["s" + side] === "" ? "—" : part["s" + side]}</output>
               : <input className="matchScoreInput" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
