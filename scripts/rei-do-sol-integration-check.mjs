@@ -84,7 +84,7 @@ try {
   assert.doesNotMatch(html, /Dados simulados|Carregar exemplo|Testar outros exemplos|PRÉVIA LOCAL/);
   const { default: Public } = await server.ssrLoadModule('/src/features/publicArena/PublicTournamentScreen.jsx');
   for (const data of [initial, complete, applyReiDoSolState(initial, tied)]) {
-    const publicHtml = renderToStaticMarkup(React.createElement(Public, { tournament: { id: 'rds-check', name: 'Evento oficial', type, data }, runtime: {} }));
+    const publicHtml = renderToStaticMarkup(React.createElement(Public, { tournament: { id: 'rds-check', name: 'Evento oficial', type, data }, runtime: { getTournamentTimingSummary: operations.getTournamentTimingSummary } }));
     assert.match(publicHtml, /Evento oficial/);
     assert.doesNotMatch(publicHtml, /scoreInput|<input|<textarea|<select|Sortear desempate|Escolher manualmente|Confirmar todos|Criar rodadas e jogos|Gerar fase final|Compartilhar<|PRÉVIA LOCAL/);
     assert.ok(!publicHtml.includes('Modalidade indisponível'));

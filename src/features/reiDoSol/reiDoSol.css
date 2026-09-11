@@ -45,6 +45,8 @@
 :is(.rds-preview.playAppShell, .rds-workspace) button.scheduleStatusFilter:hover { border-color: #6ea0ff !important; color: var(--rds-text) !important; }
 :is(.rds-preview.playAppShell, .rds-workspace) button.scheduleStatusFilter span, :is(.rds-preview.playAppShell, .rds-workspace) button.scheduleStatusFilter strong { color: inherit; -webkit-text-fill-color: currentColor; }
 .rds-zero { background: #10985720; color: #26c787; padding: 9px 12px; border: 1px solid #26956d66; border-radius: 99px; font-size: 13px; font-weight: 700; text-align: center; }
+.rds-workspace.theme-light .rds-zero { color: #166534; }
+.rds-finals-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
 .rds-group-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
 .rds-group { border: 1px solid var(--rds-line); border-top: 3px solid var(--group-color); border-radius: 13px; padding: 18px; min-width: 0; background: var(--rds-soft); }
 .rds-group > header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 15px; color: var(--group-color); }
@@ -126,15 +128,91 @@
   .rds-members li { font-size: 14px; }
   .rds-preview .rds-participant-list .participantAttendanceColumns { grid-template-columns: 1fr !important; }
 }
-.rds-workspace { min-height: 0; display: grid; gap: 16px; }
+.rds-workspace { min-height: 0; min-width: 0; display: grid; gap: 16px; }
 .rds-workspace .tournamentHeaderTitleRow h1 { font-size: clamp(22px, 2.4vw, 30px); line-height: 1.2; margin: 0; }
 .rds-workspace .organizationSubTabs { margin-bottom: 20px; }
-.rds-workspace .rds-format-count { display: grid; gap: 8px; max-width: 560px; margin-bottom: 16px; }
-.rds-workspace .rds-format-count > div { display: flex; gap: 12px; flex-wrap: wrap; }
+.rds-workspace .rds-format-count { display: grid; gap: 10px; max-width: 620px; padding: 18px; margin-bottom: 20px; border: 1px solid var(--rds-line); border-radius: 12px; background: var(--rds-soft); }
+.rds-workspace .rds-count-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
 .rds-workspace .rds-format-count label { color: var(--rds-text); font-size: 14px; font-weight: 700; }
-.rds-workspace .rds-format-count input { width: 120px; min-height: 42px; font-size: 16px; padding: 8px 12px; border: 1px solid var(--rds-line); border-radius: 9px; background: var(--rds-soft); color: var(--rds-text); }
-.rds-workspace .rds-format-count p { font-size: 14px; margin: 0; }
+.rds-workspace .rds-count-field { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 48px; padding: 0 14px; border: 1px solid var(--rds-line); border-radius: 10px; background: var(--rds-surface); color: var(--rds-muted); }
+.rds-workspace .rds-count-field:focus-within { outline: 2px solid #618cfa; outline-offset: 2px; }
+.rds-workspace .rds-count-field svg { flex-shrink: 0; }
+.rds-workspace .rds-count-field span { font-size: 14px; }
+.rds-workspace .rds-format-count .rds-count-field input { width: 100%; min-width: 52px; height: 48px !important; min-height: 48px; font-size: 22px !important; font-weight: 700; padding: 8px 0 !important; border: 0 !important; border-radius: 0; background: transparent !important; color: var(--rds-text); box-shadow: none !important; outline: none; }
+.rds-workspace .rds-count-controls .primaryBtn { min-height: 48px; margin: 0; border-radius: 10px; font-size: 14px; }
+.rds-workspace .rds-format-count p { font-size: 13px; margin: 0; }
 .rds-public-participants { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .rds-public-participants li { display: flex; gap: 12px; padding: 12px; background: var(--rds-soft); border: 1px solid var(--rds-line); border-radius: 10px; overflow-wrap: anywhere; }
 .rds-public-participants li > span { color: var(--rds-muted); }
 @media (max-width: 760px) { .rds-public-participants { grid-template-columns: 1fr; } }
+@media (max-width: 520px) {
+  .rds-workspace .rds-count-controls { grid-template-columns: minmax(0, 1fr); }
+  .rds-workspace .rds-format-count { padding: 14px; }
+  .rds-finals-actions { justify-content: flex-start; width: 100%; }
+  .rds-finals-actions .primaryBtn { width: 100%; }
+}
+
+/* Only the organizer's Rei do Sol toolbar: the desktop search flex-basis
+   otherwise becomes a 330px-tall search box when the toolbar stacks on phones. */
+@media (max-width: 640px) {
+  .proDashboard .rds-workspace:not(.rds-embedded) .scheduleOverviewToolbar {
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+  .proDashboard .rds-workspace:not(.rds-embedded) .scheduleOverviewPrimary {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+  }
+  .proDashboard .rds-workspace:not(.rds-embedded) .scheduleStatusFilters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    gap: 6px;
+    padding: 0;
+    overflow: visible;
+  }
+  .proDashboard .rds-workspace:not(.rds-embedded) button.scheduleStatusFilter {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+  .proDashboard .rds-workspace:not(.rds-embedded) .scheduleSearch {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    align-self: auto !important;
+    margin: 0 !important;
+    padding: 0 10px !important;
+  }
+  .proDashboard .rds-workspace:not(.rds-embedded) .scheduleSearch input {
+    height: 38px !important;
+    min-height: 0 !important;
+    line-height: normal !important;
+    font-size: 13px !important;
+  }
+  .proDashboard .rds-workspace:not(.rds-embedded) .scheduleOverviewToolbar .voiceRepeatBox {
+    width: 100% !important;
+    min-height: 0 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    margin: 0 !important;
+    gap: 8px !important;
+  }
+}

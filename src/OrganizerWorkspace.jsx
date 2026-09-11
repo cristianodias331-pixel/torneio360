@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import TeamCupWorkspace from "./features/teamCup/TeamCupWorkspace.jsx";
 import ReiDoSolWorkspace from "./features/reiDoSol/ReiDoSolWorkspace.jsx";
+import {
+  reiDoSolTabFromNavigation,
+  reiDoSolNavigationFromTab,
+  teamCupTabFromNavigation,
+  teamCupNavigationFromTab,
+  teamCupMatchesTabFromNavigation,
+  teamCupNavigationFromMatchesTab,
+} from "./domain/specializedTournamentNavigation.mjs";
 import { createPortal } from "react-dom";
 import "./styles/30-organizer-event-management.css";
 import "./styles/40-organizer-data-and-navigation.css";
@@ -8655,7 +8663,7 @@ function TournamentScreen({
     const params = new URLSearchParams(window.location.search);
     return params.get("partidas") || "grupos";
   });
-  const supportsTournamentFormatConfiguration = isCupType(config) || isFlexibleSimpleType(config) || isReizinhoType(config);
+  const supportsTournamentFormatConfiguration = isCupType(config) || isFlexibleSimpleType(config) || isReizinhoType(config) || config.type === "reiDoSol";
   const [activeOrganizationTab, setActiveOrganizationTab] = useState(() => (
     supportsTournamentFormatConfiguration ? "formato" : "participantes"
   ));
@@ -8712,18 +8720,34 @@ function TournamentScreen({
     updateTournamentUrl({ activeMatchesTab: tab });
   }
 
+  function setReiDoSolTab(tab) {
+    const next = reiDoSolNavigationFromTab(tab, activeMatchesTab);
+    setActiveTournamentTabState(next.tournamentTab);
+    setActiveMatchesTabState(next.matchesTab);
+    // Persist both values together, without briefly saving the previous phase.
+    updateTournamentUrl({ activeTournamentTab: next.tournamentTab, activeMatchesTab: next.matchesTab });
+  }
+
   useEffect(() => {
     updateTournamentUrl();
   }, []);
 
   useEffect(() => {
+    if (config.type === "teamCup") {
+      if (activeMatchesTab === "paralela" && !data.cupConfig?.repechageEnabled) {
+        setActiveMatchesTab("chaves");
+      }
+      return;
+    }
     if (activeMatchesTab === "paralela" && !isCearenseSecondParallelEnabled(data)) {
       setActiveMatchesTab("chaves");
     } else if (activeMatchesTab === "paralela3" && !isCearenseThirdParallelEnabled(data)) {
       setActiveMatchesTab("chaves");
     }
   }, [
+    config.type,
     activeMatchesTab,
+    data.cupConfig?.repechageEnabled,
     data.cupConfig?.secondRepechageEnabled,
     data.cupConfig?.thirdRepechageEnabled,
   ]);
@@ -10839,6 +10863,9 @@ function clearTable() {
   if (config.type === "reiDoSol") return <>
     <NoticeModal notice={notice} onClose={() => setNotice(null)} />
     <ReiDoSolWorkspace data={data} setData={setData} tournament={tournament} onBack={onBack}
+      activeTab={reiDoSolTabFromNavigation(activeTournamentTab, activeMatchesTab)} onTabChange={setReiDoSolTab}
+      activeOrganizationTab={activeOrganizationTab === "formato" ? "format" : "players"}
+      onOrganizationTabChange={tab => setActiveOrganizationTab(tab === "format" ? "formato" : "participantes")}
       savingBadge={<SavingStatusBadge />} onShare={enablePublicShare} onOpenCourtCenter={onOpenCourtCenter}
       courtOptions={operationalCourtNumbers}
       unavailableCourts={[...unavailableCentralCourtNumbers, ...(venueCourtUsages || []).filter(usage => usage.tournamentId !== tournament.id).map(usage => usage.courtNumber)]} />
@@ -10847,6 +10874,11 @@ function clearTable() {
 if (config.type === "teamCup") return <>
   <NoticeModal notice={notice} onClose={() => setNotice(null)} />
   <TeamCupWorkspace data={data} setData={setData} tournament={tournament} onBack={onBack}
+    activeTab={teamCupTabFromNavigation(activeTournamentTab)} onTabChange={tab => setActiveTournamentTab(teamCupNavigationFromTab(tab))}
+    activeOrganizationTab={activeOrganizationTab === "formato" ? "format" : "players"}
+    onOrganizationTabChange={tab => setActiveOrganizationTab(tab === "format" ? "formato" : "participantes")}
+    activeMatchesTab={teamCupMatchesTabFromNavigation(activeMatchesTab, data.cupConfig?.repechageEnabled)}
+    onMatchesTabChange={tab => setActiveMatchesTab(teamCupNavigationFromMatchesTab(tab))}
     savingStatus={savingStatus} savingBadge={<SavingStatusBadge />} onShare={enablePublicShare} onOpenCourtCenter={onOpenCourtCenter}
     onRegisterCourtNumber={onRegisterCentralCourtNumber}
     courtOptions={operationalCourtNumbers}
