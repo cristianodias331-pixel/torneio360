@@ -124,8 +124,8 @@ try {
     assert.doesNotMatch(html, /Quantidade de equipes/);
   }
 
-  // A public mobile card needs room for its full roster and a label beside
-  // each score. The organizer keeps its original compact, editable layout.
+  // Public mobile cards keep the established names-beside-scores layout.
+  // Only their typography is reduced; the organizer retains its own controls.
   for (const kind of ["trio", "squad"]) {
     const source = fixture(6, kind);
     source.players.teams.forEach((team, teamIndex) => {
@@ -147,13 +147,17 @@ try {
     }));
     const publicCard = card(true);
     assert.match(publicCard, /class="[^"]*\btc-match\b[^\"]*\btc-match--public\b/);
-    assert.equal((publicCard.match(/class="tc-mobile-score-label"/g) || []).length, 6, "Both teams have a label for each of their three scores");
-    const scoreLabels = [...publicCard.matchAll(/<span class="tc-mobile-score-label"[^>]*>([^<]*)<\/span>/g)].map(([, label]) => label);
-    assert.deepEqual(scoreLabels, ["1º set", "2º set", "Desempate", "1º set", "2º set", "Desempate"]);
+    assert.doesNotMatch(publicCard, /tc-mobile-score-label/, "Scores stay beside names without repeated stacked-row labels");
+    assert.match(publicCard, /class="tc-score-scroll"><div class="tc-score-table">/);
+    assert.match(publicCard, /class="tc-score-heading tc-score-columns"><span>Equipes<\/span>/);
+    assert.equal((publicCard.match(/class="matchTeamRow tc-score-columns/g) || []).length, 2, "Both teams retain the shared names-and-three-scores columns");
+    assert.equal((publicCard.match(/class="tc-roster tc-roster-paired"/g) || []).length, 2);
+    assert.equal((publicCard.match(/class="tc-roster-separator"/g) || []).length, kind === "squad" ? 4 : 2);
     assert.equal(buttons(publicCard).filter(button => button.attributes.includes('aria-label="Selecionar ')).length, 3, "All three set selectors remain usable publicly");
     assert.doesNotMatch(publicCard, /<input\b|<textarea\b|<select\b/);
     const scores = [...publicCard.matchAll(/<output class="matchScoreOutput"[^>]*>([^<]*)<\/output>/g)].map(([, value]) => value);
     assert.deepEqual(scores, ["6", "2", "6", "2", "6", "3"], "Responsive score grouping preserves set and team order");
+    assert.equal((publicCard.match(/<output[^>]*aria-label="[^"]+ · [123]º set[^"]* · games"/g) || []).length, 6, "Score outputs keep accessible team and set descriptions");
     for (const id of [...game.ids1, ...game.ids2]) {
       const team = data.players.teams[id];
       assert.ok(publicCard.includes(team.name));
@@ -165,7 +169,7 @@ try {
     assert.match(organizerCard, /tc-roster-paired/);
     assert.equal(JSON.stringify(data), before);
   }
-  // Taller mobile cards must retain measured slots rather than fixed heights.
+  // Bracket cards retain measured slots rather than fixed heights.
   // Browser geometry is checked separately; this protects the resize wiring.
   const bracketSource = readFileSync(new URL("../src/features/teamCup/TeamCupBracketView.jsx", import.meta.url), "utf8");
   assert.match(bracketSource, /querySelectorAll\("\.tc-match"\)/);
@@ -174,7 +178,10 @@ try {
   assert.match(bracketSource, /cards\.forEach\(card => observer\.observe\(card\)\)/);
   assert.match(bracketSource, /"--tc-bracket-node-height": `\$\{nodeHeight\}px`/);
   const teamCss = readFileSync(new URL("../src/features/teamCup/teamCup.css", import.meta.url), "utf8");
-  assert.match(teamCss, /\.tc-mobile-score-label\s*\{\s*display:\s*none/);
+  assert.doesNotMatch(teamCss, /tc-mobile-score-label/);
+  assert.match(teamCss, /\.tc-score-table\s*\{[^}]*grid-template-columns:\s*minmax\(max-content,\s*1fr\) repeat\(2,\s*52px\) 73px/);
+  assert.match(teamCss, /\.tc-roster\.tc-roster-paired\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*max-content\)/);
+  assert.match(teamCss, /\.tc-score-scroll\s*\{[^}]*overflow-x:\s*auto/);
   assert.match(teamCss, /--bracket-node-height:\s*var\(--tc-bracket-node-height,\s*360px\)\s*!important/);
   const publicPhoneRules = teamCss.slice(teamCss.lastIndexOf("@media (max-width:760px)"));
   assert.match(publicPhoneRules, /^@media \(max-width:760px\)/);
@@ -187,12 +194,12 @@ try {
   }
   assert.match(publicPhoneRules, /\.tc-workspace\.tc-embedded \.tc-brackets \.roundCard\.bracketPlacementRound\s*\{\s*padding:\s*0\s*!important/);
   assert.match(publicPhoneRules, /@supports\s*\(width:\s*1cqi\)\s*\{\s*\.tc-workspace\.tc-embedded \.tc-brackets \.bracketColumn\.bracketTree\s*\{\s*container-type:\s*inline-size;\s*--bracket-round-width:\s*calc\(100cqi - 4px\)/);
-  assert.match(publicPhoneRules, /\.tc-score-scroll\s*\{\s*overflow-x:\s*visible/);
-  assert.match(publicPhoneRules, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(publicPhoneRules, /\.tc-roster\.tc-roster-paired\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-  assert.match(publicPhoneRules, /\.tc-roster-member\s*\{\s*white-space:\s*normal;\s*overflow-wrap:\s*anywhere/);
-  assert.match(publicPhoneRules, /\.matchScoreCell\s*\{[^}]*align-self:\s*stretch/);
-  assert.match(publicPhoneRules, /\.matchScoreCell > span:not\(\.tc-mobile-score-label\)\s*\{[^}]*min-height:\s*40px/);
+  assert.doesNotMatch(publicPhoneRules, /\.(?:tc-score-scroll|tc-score-table|tc-score-columns|tc-team-identity|tc-roster-member|tc-roster-separator|matchScoreCell)\b/, "Public typography overrides do not replace the paired roster or score grid");
+  assert.match(publicPhoneRules, /\.tc-roster(?:\.tc-roster-paired)?\s*\{[^}]*font-size:\s*12px/);
+  assert.match(publicPhoneRules, /\.matchTeamName\s*\{[^}]*font-size:\s*12px/);
+  assert.match(publicPhoneRules, /\.matchScoreOutput\s*\{[^}]*font-size:\s*13px/);
+  assert.match(publicPhoneRules, /\.tc-score-heading button\s*\{[^}]*font-size:\s*11px/);
+  assert.match(publicPhoneRules, /\.tc-set-detail(?:[^{}]*)\{[^}]*font-size:\s*8px/);
   const reiCss = readFileSync(new URL("../src/features/reiDoSol/reiDoSol.css", import.meta.url), "utf8");
   const reiPhoneRules = reiCss.slice(reiCss.lastIndexOf("@media (max-width: 640px)"));
   assert.match(reiPhoneRules, /^@media \(max-width: 640px\)/);
