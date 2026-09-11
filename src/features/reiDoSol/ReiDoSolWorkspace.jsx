@@ -27,11 +27,16 @@ import { reiDoSolState, applyReiDoSolState, resizeReiDoSol } from '../../domain/
 
 const tabs = [['organization', 'Organização', Settings], ['qualifying', 'Classificatória', Swords], ['finals', 'Fase final', Sun], ['ranking', 'Ranking', Trophy]];
 export default function ReiDoSolWorkspace({ data, setData, tournament, onBack, onShare, savingBadge,
-  readOnly = false, onOpenCourtCenter, courtOptions = data.courtNumbers, unavailableCourts = [] }) {
+  readOnly = false, onOpenCourtCenter, courtOptions = data.courtNumbers, unavailableCourts = [],
+  embedded = false, activeTab, onTabChange, activeOrganizationTab, onOrganizationTabChange, shareContext: publicShareContext }) {
   const state = reiDoSolState(data);
   const courts = courtOptions?.length ? courtOptions : ['1', '2', '3', '4'];
-  const [tab, setTab] = useState(readOnly && state.qualifying.length ? 'qualifying' : 'organization');
-  const [organizationTab, setOrganizationTab] = useState('format');
+  const [localTab, setLocalTab] = useState(readOnly && state.qualifying.length ? 'qualifying' : 'organization');
+  const tab = activeTab ?? localTab;
+  const setTab = next => { setLocalTab(next); onTabChange?.(next); };
+  const [localOrganizationTab, setLocalOrganizationTab] = useState('format');
+  const organizationTab = activeOrganizationTab ?? localOrganizationTab;
+  const setOrganizationTab = next => { setLocalOrganizationTab(next); onOrganizationTabChange?.(next); };
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
   const [theme, setTheme] = useState(() => typeof document === 'undefined' ? 'light' : document.documentElement.dataset.theme || 'light');
   const [count, setCount] = useState(String(state.players.length));
@@ -45,7 +50,9 @@ export default function ReiDoSolWorkspace({ data, setData, tournament, onBack, o
   }, []);
   const organizer = data.publicInfo?.organizer || {};
   const shareContext = { title: tournament.name, subtitle: 'Rei do Sol',
-    arenaName: organizer.arenaName || organizer.organizerName || 'Torneio 360', arenaPhotoUrl: organizer.photoUrl || '' };
+    arenaName: organizer.arenaName || organizer.organizerName || 'Torneio 360', arenaPhotoUrl: organizer.photoUrl || '', ...publicShareContext };
+  const countValid = Number.isSafeInteger(Number(count)) && Number(count) >= 16;
+  const countChanged = Number(count) !== state.players.length;
   function setState(value, options = {}) {
     if (readOnly) return false;
     let accepted = false;
@@ -282,13 +289,13 @@ export default function ReiDoSolWorkspace({ data, setData, tournament, onBack, o
     speakRound: (round, index, options) => startGames(round.map(game => game.matchKey), () => speakRound(round, index, options)),
   };
 
-  return <><section className={`appPage rds-preview rds-workspace theme-${theme}`} inert={Boolean(draw || shuffleResult || confirmation)}>
-      <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? 'detailsOpen' : ''}`}>
+  return <><section className={`${embedded ? 'rds-embedded' : 'appPage'} rds-preview rds-workspace theme-${embedded ? 'light' : theme}`} inert={Boolean(draw || shuffleResult || confirmation)}>
+      {!embedded && <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? 'detailsOpen' : ''}`}>
         <div><div className="tournamentHeaderTitleRow"><h1>{tournament.name}</h1></div>
           <div className="tournamentHeaderMeta" id="rds-header-details"><span><Trophy aria-hidden="true" /> Rei do Sol</span><span><Users aria-hidden="true" /> {state.players.length} atletas · {state.target} games por set</span></div></div>
         <div className="actions tournamentHeaderActions"><button type="button" className="tournamentHeaderDetailsToggle" aria-controls="rds-header-details" aria-expanded={headerDetailsOpen} onClick={() => setHeaderDetailsOpen(open => !open)}>Informações <ChevronDown aria-hidden="true" /></button>{!readOnly && onShare && <button type="button" className="tournamentHeaderShareButton" onClick={onShare}><Share2 aria-hidden="true" /> Compartilhar</button>}{onBack && <button type="button" onClick={onBack}>Voltar</button>}</div>
-      </header>
-      <nav className="tournamentTopTabs rds-tabs" aria-label="Etapas do Rei do Sol">{tabs.map(([id, label, Icon]) => <button key={id} type="button" className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={18} />{readOnly && id === 'organization' ? 'Participantes' : label}</button>)}</nav>
+      </header>}
+      {!embedded && <nav className={`tournamentTopTabs ${readOnly ? 'publicTournamentTabs' : ''}`} aria-label="Etapas do Rei do Sol">{tabs.map(([id, label, Icon]) => <button key={id} type="button" className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon aria-hidden="true" size={18} />{readOnly && id === 'organization' ? 'Participantes' : label}</button>)}</nav>}
 
       {tab === 'organization' && <section className="card rds-panel">
         <div className="rds-section-heading"><div><h2>{readOnly ? "Participantes" : "Organização do torneio"}</h2><p>O cadastro continua individual. As duplas mudam a cada jogo.</p></div>
@@ -300,10 +307,17 @@ export default function ReiDoSolWorkspace({ data, setData, tournament, onBack, o
           {onOpenCourtCenter && <button type="button" className="organizationCourtCenterShortcut" onClick={onOpenCourtCenter}><Grid3X3 aria-hidden="true" /> Quadras</button>}
         </nav>}
         {(readOnly || organizationTab === 'format') && <div className="organizationPanel cupConfigBox">
-          {!readOnly && <div className="rds-format-count"><label htmlFor="rds-player-count">Quantidade de atletas</label><div><input id="rds-player-count" type="number" min="16" step="1" value={count} onChange={event => setCount(event.target.value)} /><button type="button" className="secondaryBtn" disabled={Number(count) === state.players.length} onClick={changeCount}>Aplicar quantidade</button></div><p>Mínimo de 16 atletas. {state.target} games por set, conforme a criação do torneio.</p></div>}
+          {!readOnly && <div className="rds-format-count">
+            <label htmlFor="rds-player-count">Quantidade de atletas</label>
+            <div className="rds-count-controls">
+              <div className="rds-count-field"><Users aria-hidden="true" size={20} /><input id="rds-player-count" type="number" inputMode="numeric" min="16" step="1" value={count} aria-describedby="rds-count-help" aria-invalid={!countValid} onChange={event => setCount(event.target.value)} /><span>atletas</span></div>
+              <button type="button" className="primaryBtn" disabled={!countValid || !countChanged} onClick={changeCount}>Aplicar quantidade</button>
+            </div>
+            <p id="rds-count-help">Mínimo de 16 atletas. {state.target} games por set, conforme a criação do torneio.</p>
+          </div>}
           <FormatExplanationButton label="Como funciona o Rei do Sol" title="Rei do Sol" eyebrow="Formato do torneio" intro="Uma classificação individual em jogos de duplas, com troca de parceiros."
             sections={[{ title: 'Classificatória', content: <p>A partir de 16 atletas. Cada atleta faz quatro jogos, sempre com parceiros diferentes. O sorteio equilibra participações e evita repetições; não usa nível técnico.</p> }, { title: 'Fase final', content: <p>Os 16 primeiros formam Ouro, Prata, Bronze e Lango, nesta ordem. Cada grupo tem quatro atletas e três jogos. Todos começam do zero e cada grupo tem seu campeão.</p> }, { title: 'Desempate', content: <p>{CRITERIA}. O confronto direto decide entre dois empatados, considerando somente partidas em lados opostos. Se não decidir, aplica-se o coeficiente. Persistindo o empate, o organizador pode sortear ou escolher manualmente a ordem. {COEFFICIENT_HELP}</p> }]} />
-        <div className="rds-metrics"><div><Users /><strong>{state.players.length} atletas</strong><span>Inscrição individual</span></div><div><Swords /><strong>4 jogos por atleta</strong><span>4 parceiros diferentes</span></div><div><Sun /><strong>16 classificados</strong><span>4 grupos finais</span></div><div><Trophy /><strong>4 campeões</strong><span>Um em cada grupo</span></div></div></div>}
+        {!readOnly && <div className="rds-metrics"><div><Users /><strong>{state.players.length} atletas</strong><span>Inscrição individual</span></div><div><Swords /><strong>4 jogos por atleta</strong><span>4 parceiros diferentes</span></div><div><Sun /><strong>16 classificados</strong><span>4 grupos finais</span></div><div><Trophy /><strong>4 campeões</strong><span>Um em cada grupo</span></div></div>}</div>}
         {!readOnly && organizationTab === 'players' && <ReiDoSolParticipants data={state} config={config} onImport={() => setImporting(true)} onUndoImport={importBackup ? undoImport : null} onShuffle={requestShuffle} onGenerate={requestGenerate} onVideo={() => setVideoSnapshot(state.lastShuffleVideo)}
           onSetAllAttendance={confirmed => setState(current => ({ ...current, participantAttendance: current.players.map(() => confirmed) }))}
           updatePlayer={({ index }, name) => { setImportBackup(null); setState(current => ({ ...current, players: current.players.map((old, i) => i === index ? name : old) })); }}
@@ -312,7 +326,7 @@ export default function ReiDoSolWorkspace({ data, setData, tournament, onBack, o
       </section>}
 
       {tab === 'qualifying' && <section className="rds-panel">
-        <div className="rds-section-heading"><div><h2>Classificatória</h2><p>{qualification.completed} de {qualification.total} jogos concluídos · 4 partidas por atleta · Ranking individual</p></div>{!readOnly && <button className="primaryBtn" disabled={!qualification.settled} onClick={generateFinals}>{state.finals.length ? 'Gerar fase final novamente' : 'Gerar fase final'}</button>}</div>
+        <div className="rds-section-heading"><div><h2>Classificatória</h2><p>{qualification.completed} de {qualification.total} jogos concluídos · 4 partidas por atleta · Ranking individual</p></div></div>
         <p className="rds-info">Cada atleta tem quatro parceiros diferentes. Os 16 melhores avançam; a pontuação não é levada para a final.</p>
         {state.qualifying.length ? <ScheduleView {...commonSchedule} schedule={withNames(state.qualifying, state.players)} updateScore={(r, g, field, value) => changeScore(state.qualifying[r][g].matchKey, field, value)} onStatusToggle={(r, g) => toggle(state.qualifying[r][g].matchKey)} /> : <div className="infoBox"><p>{readOnly ? 'Aguardando a criação dos jogos pelo organizador.' : 'Clique em “Criar rodadas e jogos”, em Participantes, para montar os confrontos.'}</p>{!readOnly && <button type="button" className="secondaryBtn" onClick={() => { setTab('organization'); setOrganizationTab('players'); }}>Ir para Participantes</button>}</div>}
         {tiePanel('qualifying', qualification)}
@@ -320,10 +334,12 @@ export default function ReiDoSolWorkspace({ data, setData, tournament, onBack, o
       </section>}
 
       {tab === 'finals' && <section className="rds-panel">
-        <div className="rds-section-heading"><div><h2>Fase final</h2><p>Quatro grupos. Três jogos em cada grupo. Um campeão por grupo.</p></div><span className="rds-zero">Pontuação começa do zero</span></div>
+        <div className="rds-section-heading"><div><h2>Fase final</h2><p>Quatro grupos. Três jogos em cada grupo. Um campeão por grupo.</p></div>
+          <div className="rds-finals-actions"><span className="rds-zero">Pontuação começa do zero</span>{!readOnly && <button type="button" className="primaryBtn" disabled={!qualification.settled} onClick={generateFinals}><Sun aria-hidden="true" size={18} />{state.finals.length ? 'Gerar fase final novamente' : 'Gerar fase final'}</button>}</div>
+        </div>
         <p className="rds-info">Os grupos são formados pela posição na classificatória. Não há mata-mata: em cada grupo, todos jogam com todos como parceiros.</p>
         {!finalsCurrent && <div className="infoBox rds-finals-warning"><strong>Confira a fase final após a atualização dos critérios.</strong><p>Os grupos salvos ainda não correspondem à classificação atual. Os jogos e placares foram preservados. Resolva os desempates da classificatória e gere a fase final novamente antes de definir os campeões.</p><button type="button" className="secondaryBtn" onClick={() => setTab('qualifying')}>Revisar classificatória</button></div>}
-        {!state.finals.length ? <div className="rds-empty"><Sun size={32} /><h3>Aguardando a classificatória</h3><p>Conclua os jogos e os desempates para distribuir os 16 classificados.</p><button className="primaryBtn" onClick={() => setTab('qualifying')}>Ir para a classificatória</button></div> : <div className="rds-group-grid">
+        {!state.finals.length ? <div className="rds-empty"><Sun size={32} /><h3>{qualification.settled ? 'Classificatória concluída' : 'Aguardando a classificatória'}</h3><p>{qualification.settled ? readOnly ? 'Aguardando o organizador gerar a fase final.' : 'Use “Gerar fase final” acima para distribuir os 16 classificados.' : 'Conclua os jogos e os desempates para distribuir os 16 classificados.'}</p><button type="button" className="secondaryBtn" onClick={() => setTab('qualifying')}>Ver classificatória</button></div> : <div className="rds-group-grid">
           {finalRankings.map(({ group, ranking }) => <article className="rds-group" key={group.id} style={groupColorStyle(group)}>
             <header><div><span>{group.range} da classificatória</span><h3>Grupo {group.name}</h3></div><span>{ranking.completed}/3 jogos</span></header>
             <ol className="rds-members">{group.ids.map(id => <li key={id}><span>{qualification.settled ? `${qualification.rows.findIndex(row => row.id === id) + 1}º` : '—'}</span>{state.players[id]}</li>)}</ol>

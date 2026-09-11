@@ -99,7 +99,7 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   };
   const timerClass = `matchCardStatus ${game.isBye ? "is-bye" : finished ? "is-finished" : !playable ? "is-blocked" : leg.inProgress ? "is-in-progress" : "is-waiting"}`;
   const timerContent = <><span>{game.isBye ? "BYE" : finished ? "Finalizado" : !playable ? "Aguardando" : leg.inProgress ? "● Em jogo" : "▷ A chamar"}</span>{!game.isBye && <time className="matchStatusTimer">{formatMatchDuration(getMatchElapsedSeconds(leg, now))}</time>}</>;
-  return <article className={`gameCard universalMatchCard tc-match ${state.winner || game.isBye ? "gameFinished" : "gameWaiting"} ${game.isBye ? "universalMatchCard--bye" : ""}`} aria-label={round + " · Confronto " + number}>
+  return <article className={`gameCard universalMatchCard tc-match ${readOnly ? "tc-match--public" : ""} ${state.winner || game.isBye ? "gameFinished" : "gameWaiting"} ${game.isBye ? "universalMatchCard--bye" : ""}`} aria-label={round + " · Confronto " + number}>
     <div className="matchCardMeta"><span className="matchCardPhase">{round}</span>
       {!readOnly && playable && !finished ? <button type="button" className={timerClass} aria-pressed={Boolean(leg.inProgress)}
         title={leg.inProgress ? "Pausar cronômetro" : "Iniciar cronômetro"} aria-label={labels[selected] + (leg.inProgress ? " · Pausar cronômetro" : " · Iniciar cronômetro")}
@@ -131,8 +131,9 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
           <div className="tc-team-identity"><span className="matchTeamName">{team ? teamName(team) : game.isBye ? "BYE" : "Aguardando"}</span>
             {team && <TeamCupRoster team={team} />}</div>
           {game.teamCupLegs.map((part, i) => <span key={i} className="matchScoreCell">
+            {readOnly && <span className="tc-mobile-score-label" aria-hidden="true">{i === 2 ? 'Desempate' : `${i + 1}º set`}</span>}
             {game.isBye || (i === 2 && !state.decider) ? <span title={i === 2 ? "Somente em caso de empate em 1 a 1" : "Avanço direto"}>—</span>
-              : readOnly ? <output className="matchScoreOutput">{part["s" + side] === "" ? "—" : part["s" + side]}</output>
+              : readOnly ? <output className="matchScoreOutput" aria-label={(team ? teamName(team) : "Aguardando") + " · " + labels[i] + " · games"}>{part["s" + side] === "" ? "—" : part["s" + side]}</output>
               : <input className="matchScoreInput" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
                 ref={input => { scoreInputs.current[`${i}-${side}`] = input; }}
                 enterKeyHint={part["s" + (side === 1 ? 2 : 1)] === "" ? "next" : "done"}
@@ -158,10 +159,17 @@ export function TeamCupMatchCard({ data, game: storedGame, number, round, onLegC
   </article>;
 }
 
-export default function TeamCupWorkspace({ data, setData, tournament, onBack, onShare, onOpenCourtCenter, onRegisterCourtNumber, savingStatus = "", savingBadge, readOnly = false, unavailableCourts = [], courtOptions = data.courtNumbers }) {
-  const [tab, setTab] = useState(readOnly && data.schedule.length ? "games" : "teams");
-  const [organizationTab, setOrganizationTab] = useState("format");
-  const [matchesTab, setMatchesTab] = useState("groups");
+export default function TeamCupWorkspace({ data, setData, tournament, onBack, onShare, onOpenCourtCenter, onRegisterCourtNumber, savingStatus = "", savingBadge, readOnly = false, unavailableCourts = [], courtOptions = data.courtNumbers,
+  embedded = false, activeTab, onTabChange, activeOrganizationTab, onOrganizationTabChange, activeMatchesTab, onMatchesTabChange, shareContext: publicShareContext }) {
+  const [localTab, setLocalTab] = useState(readOnly && data.schedule.length ? "games" : "teams");
+  const tab = activeTab ?? localTab;
+  const setTab = next => { setLocalTab(next); onTabChange?.(next); };
+  const [localOrganizationTab, setLocalOrganizationTab] = useState("format");
+  const organizationTab = activeOrganizationTab ?? localOrganizationTab;
+  const setOrganizationTab = next => { setLocalOrganizationTab(next); onOrganizationTabChange?.(next); };
+  const [localMatchesTab, setLocalMatchesTab] = useState("groups");
+  const matchesTab = activeMatchesTab ?? localMatchesTab;
+  const setMatchesTab = next => { setLocalMatchesTab(next); onMatchesTabChange?.(next); };
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [formatConfirmation, setFormatConfirmation] = useState(null);
@@ -267,14 +275,14 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
   }
   const saveIndicator = readOnly ? null : savingBadge || <span className="savingBadge saved">💾 {savingStatus}</span>;
   const matchCard = (game, number, round) => <TeamCupMatchCard key={game.matchKey} data={data} game={game} number={number} round={round} now={now} onLegChange={onLegChange} onRegisterCourtNumber={onRegisterCourtNumber} readOnly={readOnly} courtOptions={courtOptions} unavailableCourts={unavailableCourts} />;
-  return <><section className="appPage tc-workspace" inert={drawPresentation.busy || Boolean(formatConfirmation) || Boolean(scoreConfirmation)}>
-    <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
+  return <><section className={`${embedded ? 'tc-embedded' : 'appPage'} tc-workspace`} inert={drawPresentation.busy || Boolean(formatConfirmation) || Boolean(scoreConfirmation)}>
+    {!embedded && <header className={`tournamentWorkspaceHeader ${headerDetailsOpen ? "detailsOpen" : ""}`}>
       <div><div className="tournamentHeaderTitleRow"><h1>{tournament.name}</h1></div>
         <div className="tournamentHeaderMeta" id="tc-header-details"><span><Trophy aria-hidden="true" /> Times/Equipes · {data.teamCup.kind === "squad" ? "Squad" : "Trio"}</span><span><Users aria-hidden="true" /> {teams.length} equipes · {teamSize(data)} atletas por equipe</span></div></div>
       <div className="actions tournamentHeaderActions"><button type="button" className="tournamentHeaderDetailsToggle" aria-controls="tc-header-details" aria-expanded={headerDetailsOpen} onClick={() => setHeaderDetailsOpen(open => !open)}>Informações <ChevronDown aria-hidden="true" /></button>{!readOnly && onShare && <button type="button" className="tournamentHeaderShareButton" onClick={onShare}><Share2 aria-hidden="true" /> Compartilhar</button>}{onBack && <button type="button" onClick={onBack}>Voltar</button>}</div>
-    </header>
-    <nav className={`tournamentTopTabs ${readOnly ? "publicTournamentTabs" : ""}`} aria-label="Organização do torneio">{[["teams", readOnly ? "Equipes" : "Organização", Users], ["groups", "Grupos", Grid3X3], ["games", "Partidas", Flame], ["ranking", "Ranking", Trophy]].map(([key, label, Icon]) =>
-      <button type="button" key={key} aria-current={tab === key ? "page" : undefined} className={tab === key ? "active" : ""} onClick={() => setTab(key)}><Icon aria-hidden="true" /> {label}</button>)}</nav>
+    </header>}
+    {!embedded && <nav className={`tournamentTopTabs ${readOnly ? "publicTournamentTabs" : ""}`} aria-label="Organização do torneio">{[["teams", readOnly ? "Equipes" : "Organização", Users], ["groups", "Grupos", Grid3X3], ["games", "Partidas", Flame], ["ranking", "Ranking", Trophy]].map(([key, label, Icon]) =>
+      <button type="button" key={key} aria-current={tab === key ? "page" : undefined} className={tab === key ? "active" : ""} onClick={() => setTab(key)}><Icon aria-hidden="true" /> {label}</button>)}</nav>}
     {message && <p className="tc-message" role="alert">{message}</p>}
     {tab === "teams" && <section className="card">
       <div className="cardTitleRow"><h2>{readOnly ? "Equipes" : "Organização do torneio"}</h2>{saveIndicator}</div>
@@ -346,7 +354,7 @@ export default function TeamCupWorkspace({ data, setData, tournament, onBack, on
         const podium = teamCupPodium(data, phase);
         return <div className="cupRankingPanel" key={phase}><h3>{title}</h3>{podium.length ? <CupPodiumView podium={podium} title={title} variant={phase === "main" ? "main" : "parallel"}
           showPlayTime={false} renderParticipants={item => teams[item.id] ? <TeamCupRoster team={teams[item.id]} /> : null}
-          shareContext={{ title: tournament.name, modalityName: `Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`, rankingCriteria: "wins_balance_points", criteriaLabel: "Pódio definido pelas eliminatórias" }} /> : <p>Finalize {phase === "main" ? "a chave principal" : "a disputa paralela"} para ver o pódio.</p>}</div>;
+          shareContext={{ title: tournament.name, modalityName: `Times/Equipes · ${data.teamCup.kind === "squad" ? "Squad" : "Trio"}`, rankingCriteria: "wins_balance_points", criteriaLabel: "Pódio definido pelas eliminatórias", ...publicShareContext }} /> : <p>Finalize {phase === "main" ? "a chave principal" : "a disputa paralela"} para ver o pódio.</p>}</div>;
       })}</div>
     </section>}
     {tab === "games" && <section className="card tournamentMatchesSection">

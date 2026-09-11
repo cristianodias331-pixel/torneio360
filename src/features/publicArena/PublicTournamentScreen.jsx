@@ -44,6 +44,8 @@ import {
   getRankingCriteria,
 } from "../../domain/rankingCriteria.mjs";
 import { getWinningScore } from "../../domain/scoreRules.mjs";
+import { reiDoSolTabFromNavigation, reiDoSolNavigationFromTab, teamCupTabFromNavigation, teamCupNavigationFromTab,
+  teamCupMatchesTabFromNavigation, teamCupNavigationFromMatchesTab } from "../../domain/specializedTournamentNavigation.mjs";
 import { normalizeTournamentData } from "../../domain/tournamentDataNormalization.mjs";
 import {
   getTournamentClassificationLabels,
@@ -108,12 +110,13 @@ export default function PublicTournamentScreenView({
   const sunsetFinalDisplayName = data.cupConfig?.sunsetBracketName || "Etapa Sunset";
 
   useEffect(() => {
+    if (config?.type === "reiDoSol" || config?.type === "teamCup") return;
     if (activePublicMatchesTab === "paralela" && !secondParallelVisible) {
       setActivePublicMatchesTab("chaves");
     } else if (activePublicMatchesTab === "paralela3" && !thirdParallelVisible) {
       setActivePublicMatchesTab("chaves");
     }
-  }, [activePublicMatchesTab, secondParallelVisible, thirdParallelVisible]);
+  }, [activePublicMatchesTab, secondParallelVisible, thirdParallelVisible, config?.type]);
 
   if (!config) {
     return (
@@ -127,17 +130,28 @@ export default function PublicTournamentScreenView({
   }
 
   const publicInfo = data.publicInfo || {};
-  if (config.type === "teamCup") return <div className="publicPage"><TeamCupWorkspace data={data} tournament={tournament} onBack={onBackToArena} readOnly /></div>;
-  if (config.type === "reiDoSol") return <div className="publicPage"><ReiDoSolWorkspace data={data} tournament={tournament} onBack={onBackToArena} readOnly /></div>;
+  const isTeamCup = config.type === "teamCup";
+  const isReiDoSol = config.type === "reiDoSol";
+  const hasSpecializedWorkspace = isTeamCup || isReiDoSol;
   const publicVisibility = publicInfo.visibility || {};
   const storedOrganizer = publicInfo.organizer || {};
   const publicOrganizer = liveOrganizer
     ? { ...storedOrganizer, ...liveOrganizer }
     : storedOrganizer;
+  const publicOrganizerCardVisible = Boolean(
+    (publicVisibility.showArenaName && publicOrganizer.arenaName) ||
+    (publicVisibility.showOrganizerName && publicOrganizer.organizerName) ||
+    (publicVisibility.showWhatsapp && publicOrganizer.whatsapp) ||
+    (publicVisibility.showWhatsappGroupLink && publicOrganizer.whatsappGroupLink) ||
+    (publicVisibility.showInstagram && (publicOrganizer.instagramHandle || publicOrganizer.instagramLink)) ||
+    (publicVisibility.showAddress && publicOrganizer.address) ||
+    (publicVisibility.showMapsLink && publicOrganizer.mapsLink) ||
+    (publicVisibility.showCityState && (publicOrganizer.city || publicOrganizer.state))
+  );
   const registrationClosed = data.registrationDeadline ? new Date() > new Date(`${data.registrationDeadline}T23:59:59`) : false;
-  const ranking = calculateRanking(data, tournament.type, data.rankingCriteria);
-  const isCup = isCupType(config);
-  const publicCompletionState = getTournamentCompletionState({
+  const ranking = hasSpecializedWorkspace ? [] : calculateRanking(data, tournament.type, data.rankingCriteria);
+  const isCup = !hasSpecializedWorkspace && isCupType(config);
+  const publicCompletionState = hasSpecializedWorkspace ? { completed: false } : getTournamentCompletionState({
     type: tournament.type,
     data,
   });
@@ -147,7 +161,7 @@ export default function PublicTournamentScreenView({
     ? calculateCupGroupRankings(data, data.rankingCriteria)
     : [];
 
-  const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = getSafeCupPresentation(data, config);
+  const { currentBrackets, parallelRanking, mainCupPodium, consolationCupPodium, secondParallelPodium, thirdParallelPodium, sunsetPodium } = hasSpecializedWorkspace ? {} : getSafeCupPresentation(data, config);
   const publicTournamentTimingSummary = getTournamentTimingSummary(data);
   const publicRankingShareContext = {
     title: tournament.name,
@@ -157,9 +171,30 @@ export default function PublicTournamentScreenView({
     rankingCriteria: data.rankingCriteria || defaultRankingCriteria,
     tournamentDurationSeconds: publicTournamentTimingSummary.complete ? publicTournamentTimingSummary.durationSeconds : 0,
   };
+  const specializedRankingShareContext = {
+    ...publicRankingShareContext,
+    arenaName: (publicVisibility.showArenaName && publicOrganizer.arenaName)
+      || (publicVisibility.showOrganizerName && publicOrganizer.organizerName) || "Torneio360",
+    arenaPhotoUrl: publicOrganizerCardVisible ? publicOrganizer.photoUrl || "" : "",
+  };
 
-  const publicAthletes = getRegisteredAthletesForPublic(data, config);
+  const publicAthletes = hasSpecializedWorkspace ? [] : getRegisteredAthletesForPublic(data, config);
   const tournamentCoverDisplay = data.coverImageThumbnailUrl || data.coverImageUrl || "";
+  const publicTab = hasSpecializedWorkspace && !["participantes", "partidas", "ranking", ...(isTeamCup ? ["grupos"] : [])].includes(activePublicTab)
+    ? "participantes" : activePublicTab;
+  const reiDoSolMatchesTab = reiDoSolTabFromNavigation("partidas", activePublicMatchesTab);
+  const workspaceTab = isTeamCup
+    ? teamCupTabFromNavigation(publicTab)
+    : reiDoSolTabFromNavigation(publicTab, activePublicMatchesTab);
+
+  function changeSpecializedTab(tab) {
+    if (isTeamCup) setActivePublicTab(teamCupNavigationFromTab(tab));
+    else {
+      const next = reiDoSolNavigationFromTab(tab, activePublicMatchesTab);
+      setActivePublicTab(next.tournamentTab);
+      setActivePublicMatchesTab(next.matchesTab);
+    }
+  }
 
   return (
     <div className="publicPage">
@@ -217,14 +252,7 @@ export default function PublicTournamentScreenView({
           </div>
         </section>
 
-        {(publicVisibility.showArenaName && publicOrganizer.arenaName) ||
-          (publicVisibility.showOrganizerName && publicOrganizer.organizerName) ||
-          (publicVisibility.showWhatsapp && publicOrganizer.whatsapp) ||
-          (publicVisibility.showWhatsappGroupLink && publicOrganizer.whatsappGroupLink) ||
-          (publicVisibility.showInstagram && (publicOrganizer.instagramHandle || publicOrganizer.instagramLink)) ||
-          (publicVisibility.showAddress && publicOrganizer.address) ||
-          (publicVisibility.showMapsLink && publicOrganizer.mapsLink) ||
-          (publicVisibility.showCityState && (publicOrganizer.city || publicOrganizer.state)) ? (
+        {publicOrganizerCardVisible ? (
           <section className="card publicOrganizerCard">
             <h2>Organização</h2>
             <div className="publicOrganizerHeader">
@@ -249,12 +277,23 @@ export default function PublicTournamentScreenView({
         </div>
 
         <nav className="tournamentTopTabs publicTournamentTabs" aria-label="Visualização pública do torneio">
-          <button type="button" className={activePublicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
-          {isCup ? <button type="button" className={activePublicTab === "grupos" ? "active" : ""} onClick={() => setActivePublicTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button> : null}
-          <button type="button" className={activePublicTab === "partidas" ? "active" : ""} onClick={() => setActivePublicTab("partidas")}><Flame aria-hidden="true" /> Partidas</button>
-          <button type="button" className={activePublicTab === "ranking" ? "active" : ""} onClick={() => setActivePublicTab("ranking")}><Trophy aria-hidden="true" /> Ranking</button>
+          <button type="button" className={publicTab === "participantes" ? "active" : ""} onClick={() => setActivePublicTab("participantes")}><Users aria-hidden="true" /> Participantes</button>
+          {isCup || isTeamCup ? <button type="button" className={publicTab === "grupos" ? "active" : ""} onClick={() => setActivePublicTab("grupos")}><Grid3X3 aria-hidden="true" /> Grupos</button> : null}
+          <button type="button" className={publicTab === "partidas" ? "active" : ""} onClick={() => setActivePublicTab("partidas")}><Flame aria-hidden="true" /> Partidas</button>
+          <button type="button" className={publicTab === "ranking" ? "active" : ""} onClick={() => setActivePublicTab("ranking")}><Trophy aria-hidden="true" /> Ranking</button>
         </nav>
 
+        {hasSpecializedWorkspace ? <>
+          {isReiDoSol && publicTab === "partidas" ? (
+            <div className="matchesSubTabs" aria-label="Etapas das partidas do Rei do Sol">
+              <button type="button" className={reiDoSolMatchesTab === "qualifying" ? "active" : ""} onClick={() => setActivePublicMatchesTab("grupos")}>Classificatória</button>
+              <button type="button" className={reiDoSolMatchesTab === "finals" ? "active" : ""} onClick={() => setActivePublicMatchesTab("chaves")}>Fase final</button>
+            </div>
+          ) : null}
+          {isTeamCup ? <TeamCupWorkspace key={tournament.id} data={data} tournament={tournament} readOnly embedded activeTab={workspaceTab} onTabChange={changeSpecializedTab}
+            activeMatchesTab={teamCupMatchesTabFromNavigation(activePublicMatchesTab, Boolean(data.cupConfig?.repechageEnabled))} onMatchesTabChange={tab => setActivePublicMatchesTab(teamCupNavigationFromMatchesTab(tab))} shareContext={specializedRankingShareContext} />
+            : <ReiDoSolWorkspace key={tournament.id} data={data} tournament={tournament} readOnly embedded activeTab={workspaceTab} onTabChange={changeSpecializedTab} shareContext={specializedRankingShareContext} />}
+        </> : <>
         <section className="card publicAthletesCard" style={{ display: activePublicTab === "participantes" ? undefined : "none" }}>
           <div className="cardTitleRow">
             <h2>Participantes</h2>
@@ -503,7 +542,7 @@ export default function PublicTournamentScreenView({
             <RankingView ranking={ranking} type={tournament.type} rankingCriteria={data.rankingCriteria || defaultRankingCriteria} shareContext={publicRankingShareContext} />
           )}
         </section>
-
+        </>}
       </main>
       <PublicImageLightbox image={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
