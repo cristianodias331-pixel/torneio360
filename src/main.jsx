@@ -45,6 +45,7 @@ import {
 } from "./domain/dateTime.mjs";
 import {
   isProfilePendingEmailConfirmation,
+  isProfileAwaitingSubscription,
 } from "./domain/authValidation.mjs";
 import {
   clearAuthCallbackUrl,
@@ -54,6 +55,7 @@ import {
 import {
   getBrazilianWhatsAppUrl,
   getPlanRegularizationWhatsAppUrl,
+  getSignupWhatsAppUrl,
 } from "./domain/contactLinks.mjs";
 import {
   formatStatusBR,
@@ -247,6 +249,7 @@ function App() {
           status === "active" ||
           status === "blocked" ||
           status === "expired" ||
+          isProfileAwaitingSubscription(data, emailConfirmed) ||
           (!emailConfirmed && isProfilePendingEmailConfirmation(data));
 
         if (!waitForAccess || isStableProfile || attempt === attempts - 1) {
@@ -493,9 +496,10 @@ function App() {
   const hasActivePeriod = !profile.expires_at || profile.expires_at >= today;
   const status = String(profile.status || "").toLowerCase();
   const isActive = status === "active";
+  const needsSubscription = isProfileAwaitingSubscription(profile, session.user?.email_confirmed_at);
   const isExplicitlyBlocked = ["blocked", "suspended", "inactive", "expired"].includes(status);
 
-  if (!isActive && !expired && !isExplicitlyBlocked) {
+  if (!isActive && !expired && !isExplicitlyBlocked && !needsSubscription) {
     return <AccessPreparing onRetry={refreshProfile} onLogout={logout} />;
   }
 
@@ -505,8 +509,9 @@ function App() {
         plan={profile.plan || "Não informado"}
         status={formatStatusBR(profile.status)}
         expiresAt={profile.expires_at ? formatDateBR(profile.expires_at) : "Não definido"}
-        regularizationUrl={getPlanRegularizationWhatsAppUrl(profile, session.user)}
-        autoRedirect={status !== "suspended"}
+        needsSubscription={needsSubscription}
+        regularizationUrl={needsSubscription ? getSignupWhatsAppUrl() : getPlanRegularizationWhatsAppUrl(profile, session.user)}
+        autoRedirect={!needsSubscription && status !== "suspended"}
         onBrowse={() => window.location.assign(`${window.location.origin}/?publico=1`)}
         onLogout={logout}
       />

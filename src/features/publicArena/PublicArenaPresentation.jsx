@@ -519,7 +519,7 @@ export function PublicPlatformHomeView({
         <section className="publicOrganizerCallout">
           <div>
             <span>Para organizadores</span>
-            <h2>Crie torneios e circuitos com 7 dias grátis</h2>
+            <h2>Organize seus torneios e circuitos com o Torneio360</h2>
             <p>A visualização é aberta para todos. A criação e a administração dos eventos ficam disponíveis para assinantes.</p>
           </div>
           <button type="button" onClick={onOrganizerAction}>

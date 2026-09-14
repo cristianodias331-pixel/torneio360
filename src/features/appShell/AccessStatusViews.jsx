@@ -85,6 +85,7 @@ export function Blocked({
   plan,
   status,
   expiresAt,
+  needsSubscription = false,
   regularizationUrl,
   autoRedirect = false,
   onBrowse,
@@ -107,8 +108,10 @@ export function Blocked({
 
         <div className="blockedAccessIcon" aria-hidden="true"><MessageCircle /></div>
         <span className="blockedAccessEyebrow">Acesso e assinatura</span>
-        <h1 id="blocked-access-title">Seu período gratuito terminou</h1>
-        <p>Para continuar organizando seus torneios, fale com o Torneio360 e regularize o pagamento do seu plano.</p>
+        <h1 id="blocked-access-title">{needsSubscription ? "Ative sua assinatura" : "Seu período gratuito terminou"}</h1>
+        <p>{needsSubscription
+          ? "Seu cadastro foi concluído. Para organizar torneios, fale com o Torneio360 e ative uma assinatura."
+          : "Para continuar organizando seus torneios, fale com o Torneio360 e regularize o pagamento do seu plano."}</p>
 
         <dl className="blockedAccessSummary">
           <div><dt>Plano</dt><dd>{plan}</dd></div>

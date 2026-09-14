@@ -38,3 +38,7 @@ export function getAuthErrorMessage(error, fallback) {
 export function isProfilePendingEmailConfirmation(profile) {
   return profile?.status === "pending" && !profile?.expires_at;
 }
+
+export function isProfileAwaitingSubscription(profile, emailConfirmed) {
+  return Boolean(emailConfirmed) && isProfilePendingEmailConfirmation(profile);
+}

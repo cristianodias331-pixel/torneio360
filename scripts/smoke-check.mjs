@@ -46,6 +46,7 @@ import {
   getAuthErrorMessage,
   isEmailNotConfirmedError,
   isProfilePendingEmailConfirmation,
+  isProfileAwaitingSubscription,
   isUserAlreadyRegisteredError,
   isValidEmail,
   normalizeEmail,
@@ -65,6 +66,7 @@ import {
   getBrazilianWhatsAppUrl,
   getPlanRegularizationWhatsAppUrl,
   getPlatformWhatsAppUrl,
+  getSignupWhatsAppUrl,
 } from "../src/domain/contactLinks.mjs";
 import {
   formatStatusBR,
@@ -903,6 +905,21 @@ assert.equal(
   "Um perfil com acesso definido passou a ser tratado como confirmação pendente."
 );
 assert.equal(formatStatusBR("active"), "ATIVO", "O status ativo deixou de ser traduzido.");
+assert.equal(isProfileAwaitingSubscription({ status: "pending", expires_at: null }, true), true,
+  "O novo cadastro confirmado deve aguardar assinatura, sem ficar em preparação infinita.");
+assert.equal(isProfileAwaitingSubscription({ status: "pending", expires_at: null }, false), false,
+  "A confirmação de e-mail continua obrigatória.");
+for (const previousStatus of ["active", "blocked", "expired", "suspended"]) {
+  assert.equal(isProfileAwaitingSubscription({ status: previousStatus, expires_at: null }, true), false,
+    `A regra de novos cadastros não deve reclassificar o status ${previousStatus}.`);
+}
+assert.equal(isProfileAwaitingSubscription({ status: "pending", expires_at: "2026-12-31" }, true), false,
+  "Um prazo existente deve permanecer no fluxo anterior.");
+const signupWhatsApp = new URL(getSignupWhatsAppUrl());
+assert.equal(signupWhatsApp.hostname, "wa.me");
+assert.equal(signupWhatsApp.pathname, new URL(getPlatformWhatsAppUrl()).pathname,
+  "O cadastro deve abrir o WhatsApp oficial da plataforma.");
+assert.equal(signupWhatsApp.searchParams.get("text"), "Olá! Acabei de me cadastrar no Torneio360 e quero ativar uma assinatura.");
 assert.equal(formatStatusBR("legado"), "LEGADO", "Um status legado deixou de ser preservado em maiúsculas.");
 assert.equal(normalizeCircuitStatus("finished"), "closed", "Um circuito finalizado deixou de ser encerrado.");
 assert.equal(normalizeCircuitStatus("archived"), "closed", "Um circuito arquivado deixou de ser encerrado.");
@@ -5024,7 +5041,18 @@ assert.ok(
 assert.ok(authValidationSource.includes("function isUserAlreadyRegisteredError"), "O cadastro não reconhece e-mails que já possuem conta.");
 assert.ok(loginScreenSource.includes("Este e-mail já possui uma conta"), "O cadastro não orienta o usuário a entrar com a conta existente.");
 assert.ok(loginScreenSource.includes('id="contato"'), "Os contatos da plataforma não estão visíveis antes do login.");
-assert.ok(loginScreenSource.includes("landingTrialBanner"), "O destaque público dos 7 dias grátis está ausente.");
+assert.ok(!loginScreenSource.includes("landingTrialBanner"), "O cadastro voltou a anunciar o teste grátis para novos usuários.");
+assert.ok(!/7 dias|dias grátis|teste grátis|período gratuito/i.test(loginScreenSource + publicArenaPresentationSource),
+  "Uma tela de aquisição voltou a oferecer teste grátis.");
+assert.ok(loginScreenSource.includes('if (data?.user?.id && !existingAccountResponse)')
+    && loginScreenSource.includes('window.location.assign(getSignupWhatsAppUrl())'),
+  "Somente um cadastro novo concluído deve abrir o WhatsApp automaticamente.");
+assert.ok(mainEntrySource.includes('isProfileAwaitingSubscription(data, emailConfirmed)')
+    && mainEntrySource.includes('!isExplicitlyBlocked && !needsSubscription')
+    && mainEntrySource.includes('needsSubscription={needsSubscription}'),
+  "O cadastro sem assinatura precisa concluir o carregamento e exibir a orientação de ativação.");
+assert.ok(mainEntrySource.includes('autoRedirect={!needsSubscription && status !== "suspended"}'),
+  "O login de uma conta aguardando assinatura não deve repetir o encaminhamento automático do cadastro.");
 assert.ok(contactLinksSource.includes("function getPlanRegularizationWhatsAppUrl"), "A regularização do plano não possui mensagem própria no WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("window.location.assign(regularizationUrl)"), "O acesso vencido não direciona o usuário para o WhatsApp.");
 assert.ok(accessStatusViewsSource.includes("Regularizar pelo WhatsApp"), "A tela de acesso vencido não possui alternativa manual para abrir o WhatsApp.");
