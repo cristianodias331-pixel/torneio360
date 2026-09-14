@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Gift, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { NoticeModal } from "../dialogs/ConfirmationDialogs.jsx";
 import {
   BeachLogo,
@@ -16,6 +16,7 @@ import {
   normalizeEmail,
 } from "../../domain/authValidation.mjs";
 import { getAuthRedirectUrl } from "../../domain/authNavigation.mjs";
+import { getSignupWhatsAppUrl } from "../../domain/contactLinks.mjs";
 
 async function resendEmailConfirmation(supabase, email) {
   return supabase.auth.resend({
@@ -60,7 +61,7 @@ export function EmailConfirmationPendingScreen({ email, onRefresh, supabase, onL
       setNotice({
         type: "success",
         title: "E-mail reenviado",
-        message: "Abra o link recebido para confirmar seu endereço e iniciar os 7 dias grátis.",
+        message: "Abra o link recebido para confirmar seu endereço de e-mail.",
       });
     } catch (error) {
       console.error(error);
@@ -109,7 +110,7 @@ export function EmailConfirmationPendingScreen({ email, onRefresh, supabase, onL
         <span className="authStatusEyebrow">Confirmação necessária</span>
         <h1 id="email-confirmation-title">Confirme seu e-mail</h1>
         <p>
-          Enviamos um link de confirmação para <strong>{email || "seu e-mail"}</strong>. O teste Premium de {7} dias só começa depois dessa confirmação.
+          Enviamos um link de confirmação para <strong>{email || "seu e-mail"}</strong>. Abra o link para concluir seu cadastro.
         </p>
 
         <div className="authStatusActions">
@@ -212,7 +213,7 @@ export default function LoginScreen({
       }
 
       setResendCooldown(60);
-      showNotice("success", "E-mail reenviado", "Confira sua caixa de entrada e abra o link para iniciar os 7 dias grátis.");
+      showNotice("success", "E-mail reenviado", "Confira sua caixa de entrada e abra o link para confirmar seu e-mail.");
     } catch (error) {
       console.error(error);
       showNotice("error", "Não foi possível reenviar", "Verifique sua conexão e tente novamente.");
@@ -410,9 +411,13 @@ export default function LoginScreen({
         "success",
         confirmationRequired || existingAccountResponse ? "Confira seu e-mail" : "Conta criada",
         confirmationRequired || existingAccountResponse
-          ? "Se este endereço puder receber confirmações, enviamos um link. Abra-o para ativar sua conta e iniciar os 7 dias grátis."
-          : "Sua conta foi criada e os 7 dias grátis do plano Premium já estão ativos."
+          ? "Se este endereço puder receber confirmações, enviamos um link. Abra-o para confirmar seu e-mail e concluir o cadastro. Para organizar torneios, ative uma assinatura."
+          : "Sua conta foi criada. Vamos abrir o WhatsApp do Torneio360 para ativar sua assinatura."
       );
+
+      if (data?.user?.id && !existingAccountResponse) {
+        window.location.assign(getSignupWhatsAppUrl());
+      }
     } catch (error) {
       console.error(error);
       showNotice("error", "Não foi possível concluir", "Verifique sua conexão e tente novamente.");
@@ -468,35 +473,6 @@ export default function LoginScreen({
       </header>
 
       <main>
-        <section className="landingTrialBanner" aria-labelledby="landing-trial-title">
-          <div className="landingTrialSeal" aria-hidden="true">
-            <Gift />
-            <strong>7</strong>
-            <span>dias grátis</span>
-          </div>
-
-          <div className="landingTrialCopy">
-            <span>Oferta para novos usuários</span>
-            <h2 id="landing-trial-title">Experimente o plano Premium completo por 7 dias</h2>
-            <p>Crie sua conta e confirme o e-mail para liberar seu período gratuito.</p>
-            <div className="landingTrialBenefits" aria-label="Benefícios do teste grátis">
-              <span>Todos os formatos Premium</span>
-              <span>Rankings e tabelas automáticas</span>
-              <span>Começa após confirmar o e-mail</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              changeMode("signup");
-              document.getElementById("acesso")?.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            Começar teste grátis
-          </button>
-        </section>
-
         <section className="landingHero">
           <div className="heroContent">
             <div className="heroBadge">
@@ -759,7 +735,7 @@ export default function LoginScreen({
               {mode === "login"
                 ? "Acesse seus torneios salvos e continue de onde parou."
                 : mode === "signup"
-                  ? "Confirme seu e-mail e ganhe 7 dias grátis no plano Premium."
+                  ? "Após o cadastro, vamos abrir o WhatsApp da plataforma para ativar sua assinatura. Confirme também o link enviado ao seu e-mail."
                   : mode === "forgotPassword"
                     ? "Informe seu e-mail para receber o link de redefinição."
                     : "Crie uma nova senha com pelo menos 8 caracteres para voltar a acessar sua conta."}
@@ -786,16 +762,6 @@ export default function LoginScreen({
                 Criar conta
               </button>
             </div>
-
-            {mode === "signup" ? (
-              <div className="accessTrialCallout" role="status">
-                <span className="accessTrialCalloutIcon"><Gift aria-hidden="true" /></span>
-                <span>
-                  <strong>Seu Premium começa com 7 dias grátis</strong>
-                  <small>Confirme o e-mail depois do cadastro para ativar o teste.</small>
-                </span>
-              </div>
-            ) : null}
 
             <form onSubmit={handleSubmit} noValidate>
               {mode === "signup" && (

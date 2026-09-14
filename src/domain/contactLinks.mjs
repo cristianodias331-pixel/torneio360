@@ -5,6 +5,10 @@ export function getPlatformWhatsAppUrl(message = PLATFORM_WHATSAPP_DEFAULT_MESSA
   return `https://wa.me/${PLATFORM_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
+export function getSignupWhatsAppUrl() {
+  return getPlatformWhatsAppUrl("Olá! Acabei de me cadastrar no Torneio360 e quero ativar uma assinatura.");
+}
+
 export function getBrazilianWhatsAppUrl(value, message = "") {
   const digits = String(value || "").replace(/\D/g, "");
   if (!digits) return "";
