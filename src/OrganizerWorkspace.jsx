@@ -147,6 +147,7 @@ import {
   normalizeCircuitRow,
   normalizeCircuitTournamentIds,
 } from "./domain/circuitDirectory.mjs";
+import { resolveCircuitTournamentSelection } from "./domain/circuitTournamentSelection.mjs";
 import {
   listPendingTournaments,
   mergeConcurrentTournamentData,
@@ -1955,7 +1956,7 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       ? (form._baseCircuit || latestCircuit)
       : null;
     const comparisonCircuit = latestCircuit || previousCircuit;
-    const selectedTournamentIds = normalizeCircuitTournamentIds(form.tournamentIds);
+    let selectedTournamentIds = normalizeCircuitTournamentIds(form.tournamentIds);
     const nextRankingSettings = normalizeCircuitRankingSettings({
       ...form.rankingSettings,
       coverImageUrl: form.coverImageUrl,
@@ -1998,22 +1999,29 @@ const [newPublicInfo, setNewPublicInfo] = useState({
         !== JSON.stringify(comparableRankingSettings(previousCircuit?.rankingSettings));
 
     let effectiveTournamentSource = tournamentsRef.current;
+    let removedTournamentIds = [];
     if (rankingCalculationChanged) {
-      const fullTournamentRows = await loadFullTournamentRows(selectedTournamentIds, { silentError: true });
-      const fullTournamentRowsById = new Map(fullTournamentRows.map((row) => [String(row.id), row]));
-      const missingTournamentDetails = selectedTournamentIds.some((id) => !fullTournamentRowsById.has(id));
-      if (missingTournamentDetails) {
+      const selection = await resolveCircuitTournamentSelection({
+        tournamentIds: selectedTournamentIds,
+        previousTournamentIds: previousCircuit?.tournamentIds,
+        loadFullTournamentRows,
+        supabase,
+        userId: user.id,
+      });
+      if (selection.missingTournamentIds.length) {
         showNotice(
           "warning",
-          "Torneios ainda carregando",
-          "Não foi possível obter agora todos os resultados necessários para calcular este circuito. Nenhuma informação do circuito foi alterada."
+          "Resultados indisponíveis",
+          "Não foi possível confirmar todos os resultados necessários. Verifique a conexão e se os torneios selecionados continuam disponíveis. Nenhuma informação do circuito foi alterada."
         );
         return false;
       }
+      selectedTournamentIds = selection.tournamentIds;
+      removedTournamentIds = selection.removedTournamentIds;
       const effectiveTournamentById = new Map(
         tournamentsRef.current.map((tournament) => [String(tournament.id), tournament])
       );
-      fullTournamentRows.forEach((row) => effectiveTournamentById.set(String(row.id), row));
+      selection.fullRows.forEach((row) => effectiveTournamentById.set(String(row.id), row));
       effectiveTournamentSource = [...effectiveTournamentById.values()];
     }
 
@@ -2165,7 +2173,9 @@ const [newPublicInfo, setNewPublicInfo] = useState({
       return false;
     }
     if (!silentSuccess) {
-      showNotice("success", isEditing ? "Circuito atualizado" : "Circuito criado", "As alterações foram salvas no Supabase.");
+      showNotice("success", isEditing ? "Circuito atualizado" : "Circuito criado", removedTournamentIds.length
+        ? "As alterações foram salvas. Vínculos antigos com torneios já excluídos foram removidos; os torneios existentes foram mantidos."
+        : "As alterações foram salvas no Supabase.");
     }
     return true;
   }
@@ -3825,7 +3835,13 @@ const [newPublicInfo, setNewPublicInfo] = useState({
 
     const requestKey = missingIds.slice().sort().join(",");
     const existingRequest = tournamentDetailsLoadPromisesRef.current.get(requestKey);
-    if (existingRequest) return existingRequest;
+    if (existingRequest) {
+      // A chave compartilha apenas os IDs faltantes, não a seleção completa.
+      // Cada chamada precisa manter os próprios torneios já carregados.
+      const sharedRows = await existingRequest;
+      const sharedRowsById = new Map(sharedRows.map((row) => [String(row.id), row]));
+      return [...loadedRows, ...missingIds.map((id) => sharedRowsById.get(id)).filter(Boolean)];
+    }
 
     const request = (async () => {
       const { data, error } = await supabase
@@ -4893,6 +4909,9 @@ setNewPublicInfo({
 
     const target = await hydrateTournamentDetails(deleteTarget);
     if (!target) return;
+    const affectedCircuitIds = [...circuitsRef.current, ...trashCircuitsRef.current]
+      .filter((circuit) => normalizeCircuitTournamentIds(circuit.tournamentIds).includes(String(target.id)))
+      .map((circuit) => circuit.id);
     const previousTournaments = tournaments;
     const previousTrashTournaments = trashTournaments;
     const previousOpenTournamentIds = openTournamentIds;
@@ -4961,8 +4980,22 @@ setNewPublicInfo({
         if (remainingOrder.error) console.error("Erro ao compactar a ordem após excluir o torneio:", remainingOrder.error);
         else tournamentsForDirectory = remainingOrder.tournaments;
       }
-      const { circuits: rankedCircuits } = await persistCircuitRankings(tournamentsForDirectory, circuits, target.id);
-      await syncPublicArenaDirectory(tournamentsForDirectory, rankedCircuits, {
+      // O banco já removeu os vínculos e os resultados na transação da
+      // exclusão. Releia apenas os circuitos afetados, sem regravar o ranking.
+      if (affectedCircuitIds.length) {
+        const { data: updatedCircuits, error: circuitsError } = await supabase
+          .from("circuits")
+          .select(circuitDirectorySelect)
+          .eq("user_id", user.id)
+          .in("id", affectedCircuitIds);
+        if (circuitsError) {
+          console.warn("Os circuitos foram atualizados no banco, mas a releitura falhou.", circuitsError);
+          return;
+        }
+        (updatedCircuits || []).forEach((row) => applyRemoteCircuitChange({ eventType: "UPDATE", new: row }));
+        await Promise.all((updatedCircuits || []).map((row) => loadCircuitRankingHistory(row.id, { force: true })));
+      }
+      await syncPublicArenaDirectory(tournamentsForDirectory, circuitsRef.current, {
         updateLocalState: false,
         protectConcurrentData: true,
       });
