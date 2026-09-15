@@ -40,6 +40,10 @@ export function ConfirmModal({ target, onCancel, onConfirm }) {
           O torneio <strong>{target.name}</strong> será movido para a lixeira e
           poderá ser recuperado em até 30 dias.
         </p>
+        <p>
+          Ele será retirado dos circuitos vinculados, junto com seus pontos e resultados.
+          Se recuperá-lo, será necessário vinculá-lo novamente.
+        </p>
 
         <div className="confirmActions">
           <button type="button" className="cancelBtn" onClick={onCancel}>Cancelar</button>
